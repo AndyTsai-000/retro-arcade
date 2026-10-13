@@ -25,7 +25,19 @@ kbd{font-family:var(--pixel);font-size:10px;background:var(--ink);border:1px sol
 
 /* ---------- 大廳 ---------- */
 #hub{max-width:920px;margin:0 auto;padding-inline:16px;padding-block:28px 40px;display:flex;flex-direction:column;gap:28px}
-.mast{display:flex;flex-direction:column;gap:10px}
+.mast{display:flex;flex-direction:column;gap:10px;position:relative}
+.me{font-weight:900;color:#14122b;background:var(--yellow);border:2px solid #0b0a1c;border-radius:4px;padding:4px 10px;white-space:nowrap;max-width:11em;overflow:hidden;text-overflow:ellipsis}
+.me:empty{display:none}
+#hubName{position:absolute;right:0;top:0;box-shadow:3px 3px 0 #0b0a1c}
+#modal{position:fixed;inset:0;z-index:20;background:rgba(10,9,26,.9);display:flex;padding:16px;overflow:auto}
+#pName{width:10em;text-align:center;background:var(--ink);border:2px solid var(--line);border-radius:4px;padding:8px;font-weight:700;font-size:17px}
+.warn{color:var(--pink)!important;font-weight:700;min-height:1.6em}
+.lk{width:100%;max-width:360px;aspect-ratio:9/5;margin:0 auto;display:block;background:var(--ink);border:2px solid #0b0a1c;border-radius:4px}
+.lkrow{display:grid;grid-template-columns:5em 1fr;gap:8px;align-items:center;text-align:left}
+.lkrow>span{color:var(--dim);font-weight:700}
+.lkrow .chips{justify-content:flex-start}
+.sw{width:30px;height:30px;border-radius:50%;border:3px solid #0b0a1c;padding:0}
+.sw.sel{outline:3px solid var(--text);outline-offset:2px}
 .coin{font-family:var(--pixel);font-size:11px;letter-spacing:.12em;color:var(--cyan)}
 .coin b{color:var(--yellow);font-weight:400;animation:blink 1.1s steps(2) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -102,6 +114,7 @@ body.touch #pad{display:flex}
 
 <div id="hub">
   <header class="mast">
+    <button class="me" id="hubName" type="button"></button>
     <div class="coin">RETRO ARCADE <b>&#9654; INSERT COIN</b></div>
     <h1>懷舊遊戲區</h1>
     <p>放學後的網咖、電腦課偷玩的那幾款。選一張卡帶就能開始，電腦用鍵盤、手機用畫面上的按鈕。</p>
@@ -114,6 +127,7 @@ body.touch #pad{display:flex}
   <div class="bar">
     <button class="btn" id="bBack">&larr; 大廳</button>
     <h2 id="gName"></h2>
+    <span class="me" id="barName"></span>
     <button class="btn" id="bPause">暫停</button>
     <button class="btn" id="bMute">聲音：開</button>
   </div>
@@ -123,6 +137,8 @@ body.touch #pad{display:flex}
   </div>
   <div id="pad"><div class="side" id="padL"></div><div class="side" id="padR"></div></div>
 </div>
+
+<div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script src="stairs.js"></script>
 <script src="kart.js"></script>
@@ -285,8 +301,31 @@ function bindChips(after){
 }
 const variantName=g=>{ const v=g.variants&&g.variants.find(v=>v.id===variantSel); return v?v.label:''; };
 function padSpec(g,mode){ return typeof g.touch==='function'?g.touch(mode):g.touch; }
+/* ---------- 造型：每款遊戲各自的選項，存在這台裝置 ---------- */
+let lookPrev=null;
+function normLook(g,o){
+  if(!g.looks) return null; o=o&&typeof o==='object'?o:{}; const r={};
+  for(const L of g.looks){ const ids=L.opts.map(x=>x.id||x); r[L.key]=ids.includes(o[L.key])?o[L.key]:ids[0]; }
+  return r;
+}
+function lookOf(g){ let o=null; try{o=JSON.parse(load('arcade.look.'+g.id)||'null');}catch(e){} return normLook(g,o); }
+function lookCard(){
+  const g=cur,look=lookOf(g);
+  showCard('<h3>我的造型</h3><canvas id="lkCv" width="720" height="400" class="lk"></canvas>'+
+    g.looks.map(L=>'<div class="lkrow"><span>'+L.label+'</span><div class="chips">'+L.opts.map(o=>L.type==='color'
+      ?'<button class="sw'+(look[L.key]===o?' sel':'')+'" data-k="'+L.key+'" data-o="'+o+'" style="background:'+o+'" aria-label="顏色 '+o+'"></button>'
+      :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join('')+'</div></div>').join('')+
+    '<p>選好就會自動記住，下次打開還在。</p><div class="row"><button class="btn main" id="lkOk">完成</button></div>');
+  const ctx=$('#lkCv').getContext('2d'); ctx.scale(2,2); lookPrev={g,ctx,look};
+  card.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>{
+    look[b.dataset.k]=b.dataset.o; save('arcade.look.'+g.id,JSON.stringify(look)); SFX.click();
+    card.querySelectorAll('[data-k="'+b.dataset.k+'"]').forEach(x=>x.classList.toggle('sel',x===b));
+  }));
+  on('lkOk',startCard);
+}
 function killInst(){ if(inst){ try{inst.destroy();}catch(e){} inst=null; } stage.innerHTML=''; }
 function open(id){
+  if(!myName){ nameModal(); return; }
   audio(); SFX.click();
   cur=G[id]; stageSel=0; variantSel=cur.variants?cur.variants[0].id:null;
   $('#hub').hidden=true; $('#play').hidden=false; $('#gName').textContent=cur.name;
@@ -297,8 +336,9 @@ function startCard(){
   const g=cur; state='ready'; $('#bPause').textContent='暫停';
   showCard('<h3>'+g.name+'</h3><p>'+g.goal+'</p>'+helpHtml(g)+chipsHtml(g)+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
-    (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+'</div>');
-  bindChips(); on('sGo',()=>start({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();});
+    (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>');
+  lookPrev=null;
+  bindChips(); on('sGo',()=>start({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>start({stage:stageSel,mode:b.dataset.m})));
 }
 async function start(opts){
@@ -316,7 +356,8 @@ async function start(opts){
   }
   for(const k in hits) delete hits[k];
   buildPad(padSpec(cur,opts.mode));
-  inst=cur.create(env,{stage:opts.stage||0,mode:opts.mode,variant:opts.variant,net:opts.net?mkNet():null}); state='running'; acc=0; ov.hidden=true; $('#bPause').textContent='暫停';
+  lookPrev=null;
+  inst=cur.create(env,{stage:opts.stage||0,mode:opts.mode,variant:opts.variant,look:lookOf(cur),name:myName,net:opts.net?mkNet():null}); state='running'; acc=0; ov.hidden=true; $('#bPause').textContent='暫停';
 }
 function finish(res){
   if(state!=='running') return; state='over';
@@ -344,7 +385,7 @@ function togglePause(){
 }
 function back(){
   leaveNet(); killInst(); cur=null; state='hub';
-  for(const k in keys) keys[k]=false;
+  for(const k in keys) keys[k]=false; lookPrev=null;
   $('#play').hidden=true; $('#hub').hidden=false; buildHub();
 }
 $('#bBack').addEventListener('click',back);
@@ -362,6 +403,7 @@ const Net={peer:null,host:false,conns:[],hostConn:null,code:'',me:0,count:1,inGa
 const cleanName=v=>String(v==null?'':v).replace(/[<>&"'\\]/g,'').trim().slice(0,8);
 let myName=cleanName(load('arcade.name'));
 const allNames=()=>[myName].concat(Net.conns.map(c=>c.name||'')).map((n,i)=>n||'玩家'+(i+1));
+const allLooks=()=>[lookOf(cur)].concat(Net.conns.map(c=>normLook(cur,c.look)));
 function leaveNet(){
   clearTimeout(Net.timer);
   const p=Net.peer; Net.peer=null; Net.conns=[]; Net.hostConn=null; Net.inGame=false; Net.game=null; Net.joined=false; Net.host=false;
@@ -401,7 +443,7 @@ async function hostRoom(tries){
       Net.conns.push(c); roster();
     });
     c.on('data',d=>{ if(!d||c.gone) return;
-      if(d.t==='name'){ c.name=cleanName(d.name); if(!Net.inGame) roster(); }
+      if(d.t==='name'){ c.name=cleanName(d.name); c.look=d.look; if(!Net.inGame) roster(); }
       else if(d.g!==undefined&&Net.game&&Net.game.onmsg&&c.idx) Net.game.onmsg(d.g,c.idx); });
     const drop=()=>{ if(c.gone||Net.peer!==peer) return; c.gone=true;
       if(Net.inGame){ if(Net.game&&Net.game.onleave&&c.idx) Net.game.onleave(c.idx); } else roster(); };
@@ -424,7 +466,7 @@ function joinRoom(code){
     peer.on('open',()=>{
       if(Net.peer!==peer) return;
       const c=peer.connect(PREFIX+cur.id+'-'+code,{reliable:true,serialization:'json'}); Net.hostConn=c;
-      c.on('open',()=>{ if(Net.peer===peer&&myName){ try{c.send({t:'name',name:myName});}catch(e){} } });
+      c.on('open',()=>{ if(Net.peer===peer){ try{c.send({t:'name',name:myName,look:lookOf(cur)});}catch(e){} } });
       c.on('data',d=>{ if(Net.peer===peer) fromHost(d); });
       const lost=()=>{ if(Net.peer!==peer) return; const was=Net.joined; leaveNet(); netCard(was?'與房主的連線中斷了。':'房間已滿，或遊戲正在進行中。'); };
       c.on('close',lost); c.on('error',lost);
@@ -440,31 +482,25 @@ function fromHost(d){
   if(!d) return;
   if(d.t==='roster'){ Net.joined=true; clearTimeout(Net.timer); Net.me=d.me; Net.count=d.n; Net.names=d.names||[]; stageSel=d.stage; variantSel=d.variant; if(!Net.inGame) roomCard(); }
   else if(d.t==='full'){ leaveNet(); netCard('房間已滿，或遊戲正在進行中。'); }
-  else if(d.t==='start'){ Net.inGame=true; Net.me=d.me; Net.count=d.n; Net.seed=d.seed; Net.names=d.names||Net.names; stageSel=d.stage; variantSel=d.variant; state='ready'; start({stage:d.stage,net:true}); }
+  else if(d.t==='start'){ Net.inGame=true; Net.me=d.me; Net.count=d.n; Net.seed=d.seed; Net.names=d.names||Net.names; Net.looks=(d.looks||[]).map(o=>normLook(cur,o)); stageSel=d.stage; variantSel=d.variant; state='ready'; start({stage:d.stage,net:true}); }
   else if(d.t==='room'){ Net.inGame=false; Net.game=null; killInst(); roomCard(); }
   else if(d.g!==undefined&&Net.game&&Net.game.onmsg) Net.game.onmsg(d.g,0);
 }
 function roomCard(){
   state='ready'; const g=cur;
   if(Net.host) Net.names=allNames();
-  // 重畫房間時保留正在輸入的名字與游標
-  const old=$('#nName'),typing=old&&document.activeElement===old,draft=old?old.value:myName;
   showCard('<h3>房間</h3><div class="code">'+Net.code+'</div>'+
-    '<div class="row"><label for="nName">你的名字</label><input id="nName" maxlength="8" placeholder="玩家 '+(Net.me+1)+'" autocomplete="off"></div>'+
     '<ol class="who">'+Net.names.map((n,i)=>'<li'+(i===Net.me?' class="me"':'')+'>'+n+(i===0?'（房主）':'')+'</li>').join('')+'</ol>'+
     (Net.host?'<p>把房號告訴朋友。</p>':'')+
     (Net.host?chipsHtml(g)+'<div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
       :(g.stages?'<p>關卡：第 '+(stageSel+1)+' 關　'+g.stages[stageSel]+(variantName(g)?'　'+variantName(g):'')+'</p>':'')+'<p>等房主按開始…</p>')+
     '<div class="row"><button class="btn" id="nLeave">離開房間</button></div>');
   bindChips(()=>roster());
-  const inp=$('#nName'); inp.value=draft; if(typing){ inp.focus(); try{inp.setSelectionRange(draft.length,draft.length);}catch(e){} }
-  const sendName=()=>{ const v=cleanName(inp.value); if(v===myName) return; myName=v; save('arcade.name',v);
-    if(Net.host) roster(); else if(Net.hostConn&&Net.hostConn.open){ try{Net.hostConn.send({t:'name',name:v});}catch(e){} } };
-  inp.addEventListener('change',sendName); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') inp.blur(); });
   on('nStart',()=>{
     Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1; Net.inGame=true; Net.seed=(Math.random()*2147483647)|0;
-    const nm=$('#nName'); if(nm){ myName=cleanName(nm.value); save('arcade.name',myName); } Net.names=allNames();
-    Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'start',stage:stageSel,variant:variantSel,me:i+1,n:Net.count,seed:Net.seed,names:Net.names});}catch(e){} });
+    Net.names=allNames();
+    Net.looks=allLooks();
+    Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'start',stage:stageSel,variant:variantSel,me:i+1,n:Net.count,seed:Net.seed,names:Net.names,looks:Net.looks});}catch(e){} });
     start({stage:stageSel,net:true});
   });
   on('nLeave',()=>{leaveNet();netCard();});
@@ -476,18 +512,74 @@ function hostToRoom(){
 }
 function mkNet(){
   const host=Net.host;
-  Net.game={host,me:Net.me,count:Net.count,seed:Net.seed,names:Net.names.slice(),onmsg:null,onleave:null,
+  Net.game={host,me:Net.me,count:Net.count,seed:Net.seed,names:Net.names.slice(),looks:(Net.looks||[]).slice(),onmsg:null,onleave:null,
     send(p){ const m={g:p};
       if(host){ for(const c of Net.conns) if(!c.gone&&c.open){ try{c.send(m);}catch(e){} } }
       else if(Net.hostConn&&Net.hostConn.open){ try{Net.hostConn.send(m);}catch(e){} } }};
   return Net.game;
 }
 
+/* ---------- 玩家名字 ----------
+   沒有後端資料庫，所以用 PeerJS 佔位：每個開著網頁的人佔住一個以名字命名的 id，
+   別人想用同一個名字時會佔不到。只擋得住「同時在線上」的重複。 */
+const modal=$('#modal'),mcard=$('#mcard');
+let presence=null;
+const nameId=n=>PREFIX+'user-'+Array.from(n.toLowerCase()).map(c=>c.codePointAt(0).toString(16)).join('-');
+function showName(){ $('#hubName').textContent=myName?myName+'　▾':''; $('#barName').textContent=myName; }
+function claim(name){
+  return new Promise(res=>{
+    if(!CAN_NET) return res('offline');
+    if(presence&&name.toLowerCase()===String(presence.nameKey)) return res('ok');
+    needPeer().then(()=>{
+      let pr,done=false;
+      const fin=r=>{ if(done) return; done=true; clearTimeout(to);
+        if(r==='ok'){ if(presence){ try{presence.destroy();}catch(e){} } presence=pr; pr.nameKey=name.toLowerCase(); pr.on('disconnected',()=>{ try{pr.reconnect();}catch(e){} }); }
+        else if(pr){ try{pr.destroy();}catch(e){} }
+        res(r); };
+      const to=setTimeout(()=>fin('offline'),8000);
+      try{ pr=new Peer(nameId(name)); }catch(e){ return fin('offline'); }
+      pr.on('open',()=>fin('ok')); pr.on('error',e=>fin(e.type==='unavailable-id'?'taken':'offline'));
+    }).catch(()=>res('offline'));
+  });
+}
+function popup(text,then){
+  mcard.innerHTML='<h3>提醒</h3><p>'+text+'</p><div class="row"><button class="btn main" id="pOk">知道了</button></div>';
+  modal.hidden=false; $('#pOk').addEventListener('click',then); $('#pOk').focus();
+}
+function nameModal(force,draft){
+  const first=!myName;
+  mcard.innerHTML='<h3>'+(first?'先取一個遊戲名字':'更改名字')+'</h3><p>名字會顯示在右上角和每一款遊戲裡，最多 8 個字，不能和別人重複。</p>'+
+    '<div class="row"><input id="pName" maxlength="8" autocomplete="off" placeholder="你的名字"><button class="btn main" id="pGo">確定</button></div><p class="warn" id="pMsg"></p>'+
+    (first||force?'':'<div class="row"><button class="btn" id="pCancel">取消</button></div>');
+  modal.hidden=false;
+  const inp=$('#pName'),msg=$('#pMsg'),go=$('#pGo'); inp.value=draft!=null?draft:(force?'':myName); inp.focus();
+  const submit=async()=>{
+    const v=cleanName(inp.value);
+    if(!v){ msg.textContent='請輸入名字。'; return; }
+    if(v===myName&&!force){ modal.hidden=true; return; }
+    go.disabled=true; msg.textContent='檢查名字有沒有重複…';
+    const r=await claim(v);
+    if(r==='taken'){ popup('「'+v+'」這個名字已經有人使用了，請換一個。',()=>nameModal(force,v)); return; }
+    myName=v; save('arcade.name',v); modal.hidden=true; showName(); buildHub();
+  };
+  go.addEventListener('click',submit); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
+  const c=$('#pCancel'); if(c) c.addEventListener('click',()=>{ modal.hidden=true; });
+}
+function holdName(){
+  // 同一台電腦開多個分頁時，只讓其中一個分頁去佔名字，免得自己擋到自己
+  const go=()=>claim(myName).then(r=>{ if(r==='taken'&&state==='hub') popup('「'+myName+'」現在有別人正在使用，請換一個名字。',()=>nameModal(true)); });
+  if(navigator.locks){ try{ navigator.locks.request('arcade-name',{ifAvailable:true},lock=>{ if(!lock) return; go(); return new Promise(()=>{}); }); }catch(e){ go(); } } else go();
+}
+$('#hubName').addEventListener('click',()=>nameModal());
+showName();
+if(myName) holdName(); else nameModal();
+
 const STEP=1/120;
 function frame(ts){
   requestAnimationFrame(frame);
   const dt=Math.min(.05,(ts-last)/1000||0); last=ts;
   if(state==='hub'){ drawThumbs(ts/1000); return; }
+  if(lookPrev&&state==='ready'){ try{ lookPrev.g.preview(lookPrev.ctx,360,200,lookPrev.look,ts/1000); }catch(e){} }
   if(!inst) return;
   const live=()=>inst&&(state==='running'||(state==='over'&&inst.bg));
   if(live()){

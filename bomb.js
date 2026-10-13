@@ -20,24 +20,37 @@ const STAGES=[
 const r2=v=>Math.round(v*100)/100;
 
 /* ---------- 畫圖 ---------- */
-function drawChar(ctx,cx,cy,color,dir,moving,t,sc){
-  const s=sc||1,bob=moving?Math.sin(t*16)*1.5:0;
+const WATER=['#57a8ff','#ff7eb6','#5fd068','#ff9d3d','#b98cff','#3ddbd9'];
+const rgb=hex=>{ const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
+const mix=(hex,k)=>'rgb('+rgb(hex).map(v=>Math.round(k<1?v*k:v+(255-v)*(k-1))).join(',')+')';
+function drawChar(ctx,cx,cy,color,dir,moving,t,sc,style){
+  const s=sc||1,bob=moving?Math.sin(t*16)*1.5:0,st=style||'cap';
   ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(cx,cy+15*s,11*s,4*s,0,0,7); ctx.fill();
   ctx.fillStyle='#3a2a20'; ctx.fillRect(cx-8*s,cy+10*s+bob,6*s,5*s); ctx.fillRect(cx+2*s,cy+10*s-bob,6*s,5*s);
   ctx.fillStyle=color; ctx.beginPath(); ctx.ellipse(cx,cy+5*s,10*s,9*s,0,0,7); ctx.fill();
+  if(st==='bunny'){ ctx.beginPath(); ctx.ellipse(cx-5*s,cy-22*s,3.5*s,9*s,-.15,0,7); ctx.ellipse(cx+5*s,cy-22*s,3.5*s,9*s,.15,0,7); ctx.fill(); }
+  if(st==='cat'){ ctx.beginPath(); ctx.moveTo(cx-11*s,cy-11*s); ctx.lineTo(cx-9*s,cy-22*s); ctx.lineTo(cx-2*s,cy-16*s); ctx.fill(); ctx.beginPath(); ctx.moveTo(cx+11*s,cy-11*s); ctx.lineTo(cx+9*s,cy-22*s); ctx.lineTo(cx+2*s,cy-16*s); ctx.fill(); }
   ctx.fillStyle='#ffe0b8'; ctx.beginPath(); ctx.arc(cx,cy-7*s,11*s,0,7); ctx.fill();
-  ctx.fillStyle=color; ctx.beginPath(); ctx.arc(cx,cy-9*s,11.5*s,Math.PI,0); ctx.fill(); ctx.fillRect(cx-12*s,cy-10*s,24*s,3*s);
+  ctx.fillStyle=color;
+  if(st==='cap'){ ctx.beginPath(); ctx.arc(cx,cy-9*s,11.5*s,Math.PI,0); ctx.fill(); ctx.fillRect(cx-12*s,cy-10*s,24*s,3*s); }
+  else if(st==='crown'){ ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(cx-10*s,cy-13*s); ctx.lineTo(cx-10*s,cy-23*s); ctx.lineTo(cx-5*s,cy-17*s); ctx.lineTo(cx,cy-25*s); ctx.lineTo(cx+5*s,cy-17*s); ctx.lineTo(cx+10*s,cy-23*s); ctx.lineTo(cx+10*s,cy-13*s); ctx.fill(); ctx.fillStyle=color; ctx.fillRect(cx-10*s,cy-15*s,20*s,3*s); }
+  else { ctx.beginPath(); ctx.arc(cx,cy-10*s,10.5*s,Math.PI*1.08,Math.PI*1.92); ctx.fill(); }
   ctx.fillStyle='#14122b';
   if(dir===1){ ctx.fillRect(cx-5*s,cy-5*s,3*s,4*s); ctx.fillRect(cx+2*s,cy-5*s,3*s,4*s); }
   else if(dir===2){ ctx.fillRect(cx-8*s,cy-5*s,3*s,4*s); ctx.fillRect(cx-2*s,cy-5*s,3*s,4*s); }
   else if(dir===3){ ctx.fillRect(cx+5*s,cy-5*s,3*s,4*s); ctx.fillRect(cx-1*s,cy-5*s,3*s,4*s); }
 }
-function drawBalloon(ctx,cx,cy,t,r0){
-  const r=(r0||15)*(1+.07*Math.sin(t*9));
-  ctx.fillStyle='#2f7fe0'; ctx.beginPath(); ctx.arc(cx,cy+1,r,0,7); ctx.fill();
-  ctx.fillStyle='#57a8ff'; ctx.beginPath(); ctx.arc(cx-1,cy-1,r*.82,0,7); ctx.fill();
+function drawBalloon(ctx,cx,cy,t,r0,shape,col){
+  const r=(r0||15)*(1+.07*Math.sin(t*9)),c=col||WATER[0],sh=shape||'ball';
+  if(sh==='star'){ ctx.fillStyle=mix(c,.7); ctx.beginPath();
+    for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5,rr=(i%2?.52:1.12)*r; ctx[i?'lineTo':'moveTo'](cx+Math.cos(a)*rr,cy+1+Math.sin(a)*rr); } ctx.closePath(); ctx.fill();
+    ctx.fillStyle=c; ctx.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5,rr=(i%2?.42:.95)*r; ctx[i?'lineTo':'moveTo'](cx+Math.cos(a)*rr,cy+Math.sin(a)*rr); } ctx.closePath(); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(cx-r*.2,cy-r*.25,r*.14,0,7); ctx.fill(); return; }
+  ctx.fillStyle=mix(c,.62); ctx.beginPath(); ctx.arc(cx,cy+1,r,0,7); ctx.fill();
+  ctx.fillStyle=c; ctx.beginPath(); ctx.arc(cx-1,cy-1,r*.82,0,7); ctx.fill();
+  if(sh==='melon'){ ctx.strokeStyle=mix(c,.55); ctx.lineWidth=r*.16; for(const k of [-.5,0,.5]){ ctx.beginPath(); ctx.ellipse(cx,cy,Math.abs(k)*r*1.2+.01,r*.82,0,0,7); ctx.stroke(); } }
   ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(cx-r*.35,cy-r*.4,r*.25,r*.16,-.6,0,7); ctx.fill();
-  ctx.fillStyle='#2f7fe0'; ctx.fillRect(cx-2,cy-r-3,4,4);
+  ctx.fillStyle=mix(c,.62); ctx.fillRect(cx-2,cy-r-3,4,4);
 }
 function drawItem(ctx,x,y,type,t){
   const cx=x+T/2,cy=y+T/2+Math.sin(t*4+x)*1.5;
@@ -62,7 +75,7 @@ function drawTile(ctx,st,v,x,y,gx,gy){
 function create(env,opts){
   const st=STAGES[opts.stage||0],net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p',single=!net&&!local2,me=net?net.me:0,humans=net?net.count:local2?2:1;
   const {ctx}=env.canvas2d(W,H);
-  const grid=new Uint8Array(N),flameT=new Float32Array(N),bombAt=new Uint8Array(N);
+  const grid=new Uint8Array(N),flameT=new Float32Array(N),bombAt=new Uint8Array(N),flameC=new Uint8Array(N);
   let items=new Map(),bombs=[],pending=[],time=180,t=0,overT=0,ended=false,evq=[],sendT=0,lastSent='';
   const inputs=[],pressT=[[0,0,0,0],[0,0,0,0]];
   const sfx=n=>{ env.sfx(n); if(net&&net.host) evq.push(n); };
@@ -77,6 +90,9 @@ function create(env,opts){
     name:local2&&i<2?(i+1)+'P':i===me?'你':i<humans?((net&&net.names&&net.names[i])||'玩家'+(i+1)).slice(0,5):'電腦',
     ai:i<humans?null:{think:Math.random()*.5,path:[],flee:false,avoid:new Map()}}));
   for(let i=0;i<total;i++) inputs.push({dir:-1,bomb:false});
+  const CH=['cap','cat','bunny','crown'],SHP=['ball','star','melon'];
+  players.forEach((p,i)=>{ p.look=(p.human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{char:CH[(i+1)%4],bomb:SHP[i%3],water:WATER[i%WATER.length]};
+    p.wc=Math.max(0,WATER.indexOf(p.look.water)); });
 
   const cellOf=p=>Math.round(p.y)*COLS+Math.round(p.x);
   const speedOf=p=>p.state==='trapped'?.5:3.6+p.spd*.55;
@@ -103,13 +119,13 @@ function create(env,opts){
   function rollItem(){ const r=Math.random(); return r<.36?'b':r<.68?'p':r<.92?'s':'n'; }
   function detonate(first){
     const q=[first]; first.done=true;
-    while(q.length){ const b=q.pop(),i0=b.y*COLS+b.x; bombAt[i0]=0; flameT[i0]=FLAME;
+    while(q.length){ const b=q.pop(),i0=b.y*COLS+b.x,wc=players[b.owner]?players[b.owner].wc:0; bombAt[i0]=0; flameT[i0]=FLAME; flameC[i0]=wc;
       for(const [dx,dy] of DIRS) for(let s=1;s<=b.power;s++){
         const x=b.x+dx*s,y=b.y+dy*s; if(x<0||y<0||x>=COLS||y>=ROWS) break; const i=y*COLS+x;
         if(grid[i]===1) break;
-        if(grid[i]===2){ grid[i]=0; flameT[i]=FLAME; if(Math.random()<st.drop) pending.push({i,t:FLAME+.02,type:rollItem()}); break; }
+        if(grid[i]===2){ grid[i]=0; flameT[i]=FLAME; flameC[i]=wc; if(Math.random()<st.drop) pending.push({i,t:FLAME+.02,type:rollItem()}); break; }
         if(bombAt[i]){ const o=bombs.find(o=>!o.done&&o.x===x&&o.y===y); if(o){ o.done=true; q.push(o); } }
-        items.delete(i); flameT[i]=FLAME; } }
+        items.delete(i); flameT[i]=FLAME; flameC[i]=wc; } }
     bombs=bombs.filter(b=>!b.done); sfx('boom');
   }
   // 預測用：不改動地圖
@@ -199,15 +215,15 @@ function create(env,opts){
 
   function snapshot(){
     let g=''; for(let i=0;i<N;i++) g+=grid[i];
-    const f=[]; for(let i=0;i<N;i++) if(flameT[i]>0) f.push(i,r2(flameT[i]));
-    const m={s:1,g,i:[...items],b:bombs.map(b=>[b.x,b.y,r2(b.t)]),f,tm:Math.ceil(time),e:evq,
+    const f=[]; for(let i=0;i<N;i++) if(flameT[i]>0) f.push(i,r2(flameT[i]),flameC[i]);
+    const m={s:1,g,i:[...items],b:bombs.map(b=>[b.x,b.y,r2(b.t),b.owner]),f,tm:Math.ceil(time),e:evq,
       p:players.map(p=>[r2(p.x),r2(p.y),p.dir,p.state==='alive'?0:p.state==='trapped'?1:2,r2(p.trapT),p.maxB,p.power,p.spd,p.needles,p.moving?1:0])};
     evq=[]; return m;
   }
   function apply(m){
     for(let i=0;i<N;i++){ grid[i]=m.g.charCodeAt(i)-48; flameT[i]=0; bombAt[i]=0; }
-    for(let k=0;k<m.f.length;k+=2) flameT[m.f[k]]=m.f[k+1];
-    items=new Map(m.i); bombs=m.b.map(b=>({x:b[0],y:b[1],t:b[2]})); time=m.tm;
+    for(let k=0;k<m.f.length;k+=3){ flameT[m.f[k]]=m.f[k+1]; flameC[m.f[k]]=m.f[k+2]; }
+    items=new Map(m.i); bombs=m.b.map(b=>({x:b[0],y:b[1],t:b[2],owner:b[3]})); time=m.tm;
     m.p.forEach((a,i)=>{ const p=players[i]; p.x=a[0]; p.y=a[1]; p.dir=a[2]; p.state=a[3]===0?'alive':a[3]===1?'trapped':'dead'; p.trapT=a[4]; p.maxB=a[5]; p.power=a[6]; p.spd=a[7]; p.needles=a[8]; p.moving=!!a[9]; });
     for(const n of m.e) env.sfx(n);
   }
@@ -286,21 +302,30 @@ function create(env,opts){
     ctx.save(); ctx.translate(0,HUD);
     for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) drawTile(ctx,st,grid[y*COLS+x],x*T,y*T,x,y);
     for(const [i,type] of items) drawItem(ctx,(i%COLS)*T,((i/COLS)|0)*T,type,t);
-    for(const b of bombs) drawBalloon(ctx,b.x*T+T/2,b.y*T+T/2,t+b.x);
+    for(const b of bombs){ const o=players[b.owner],L=o?o.look:null; drawBalloon(ctx,b.x*T+T/2,b.y*T+T/2,t+b.x,15,L&&L.bomb,L&&L.water); }
     for(let i=0;i<N;i++){ const f=flameT[i]; if(f<=0) continue; const x=(i%COLS)*T,y=((i/COLS)|0)*T,k=Math.min(1,f/.2),m=(1-k)*10;
-      ctx.fillStyle='rgba(87,168,255,'+(.55+.4*k)+')'; ctx.fillRect(x+m,y+m,T-2*m,T-2*m);
+      ctx.fillStyle='rgba('+rgb(WATER[flameC[i]]||WATER[0]).join(',')+','+(.55+.4*k)+')'; ctx.fillRect(x+m,y+m,T-2*m,T-2*m);
       ctx.fillStyle='rgba(255,255,255,'+.75*k+')'; ctx.fillRect(x+m+8,y+m+8,T-2*m-16,T-2*m-16); }
     const order=players.filter(p=>p.state!=='dead').sort((a,b)=>a.ry-b.ry);
     for(const p of order){ const cx=p.rx*T+T/2,cy=p.ry*T+T/2;
       if(p.state==='trapped'){ const bob=Math.sin(t*5)*2; if(p.trapT<1.5&&Math.floor(t*10)%2) ctx.globalAlpha=.6;
-        drawChar(ctx,cx,cy+bob,COLORS[p.id],1,false,t,.72);
+        drawChar(ctx,cx,cy+bob,COLORS[p.id],1,false,t,.72,p.look.char);
         ctx.fillStyle='rgba(120,200,255,.5)'; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy+bob,18,0,7); ctx.fill(); ctx.stroke();
         ctx.fillStyle='rgba(255,255,255,.8)'; ctx.beginPath(); ctx.ellipse(cx-7,cy+bob-8,5,3,-.6,0,7); ctx.fill(); ctx.globalAlpha=1; }
-      else { if(p.inv>0&&Math.floor(t*14)%2) ctx.globalAlpha=.5; drawChar(ctx,cx,cy-4,COLORS[p.id],p.dir,p.moving,t); ctx.globalAlpha=1; }
+      else { if(p.inv>0&&Math.floor(t*14)%2) ctx.globalAlpha=.5; drawChar(ctx,cx,cy-4,COLORS[p.id],p.dir,p.moving,t,1,p.look.char); ctx.globalAlpha=1; }
       if(p.id===me||(local2&&p.id<2)){ ctx.fillStyle=local2?COLORS[p.id]:'#fff'; ctx.beginPath(); ctx.moveTo(cx-5,cy-30); ctx.lineTo(cx+5,cy-30); ctx.lineTo(cx,cy-23); ctx.fill(); } }
     ctx.restore();
   }
   return {update,draw,destroy(){},_dbg:{players,grid,bombs:()=>bombs,inputs}};
+}
+
+function preview(ctx,w,h,L,t){
+  const st=STAGES[0]; for(let y=0;y<5;y++) for(let x=0;x<9;x++){ ctx.fillStyle=st.g[(x+y)%2]; ctx.fillRect(x*T,y*T,T,T); }
+  ctx.save(); ctx.translate(w*.3,h*.56); ctx.scale(3,3); drawChar(ctx,0,0,COLORS[0],1,true,t,1,L.char); ctx.restore();
+  const ph=(t%2.4)/2.4;
+  if(ph<.7){ ctx.save(); ctx.translate(w*.72,h*.52); ctx.scale(2.6,2.6); drawBalloon(ctx,0,0,t,15,L.bomb,L.water); ctx.restore(); }
+  else { const k=1-(ph-.7)/.3,c=rgb(L.water).join(','); ctx.fillStyle='rgba('+c+','+(.5+.4*k)+')'; ctx.fillRect(w*.72-70,h*.52-22,140,44); ctx.fillRect(w*.72-22,h*.52-70,44,140);
+    ctx.fillStyle='rgba(255,255,255,'+.7*k+')'; ctx.fillRect(w*.72-58,h*.52-10,116,20); ctx.fillRect(w*.72-10,h*.52-58,20,116); }
 }
 
 function thumb(ctx,w,h,t){
@@ -328,6 +353,9 @@ function thumb(ctx,w,h,t){
   touchHelp:[['方向盤','移動'],['水球','放水球，被困時用針']],
   touch:{left:'dpad',right:[{l:'水球',c:'Space',act:true}]},
   best:{label:'已過關',fmt:v=>v+' / '+STAGES.length,lower:false},
-  thumb,create
+  looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'}]},
+    {key:'bomb',label:'炸彈造型',opts:[{id:'ball',label:'水球'},{id:'star',label:'星星'},{id:'melon',label:'西瓜紋'}]},
+    {key:'water',label:'水球顏色',type:'color',opts:['#57a8ff','#ff7eb6','#5fd068','#ff9d3d','#b98cff','#3ddbd9']}],
+  preview,thumb,create
 };
 })();

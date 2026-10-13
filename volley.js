@@ -7,17 +7,25 @@ const PIX='"Press Start 2P","Noto Sans TC","Microsoft JhengHei",monospace';
 const COL=[['#ff9d3d','#c96a14'],['#4f9dff','#1f5fc0']];
 const r1=v=>Math.round(v*10)/10;
 
-function drawCat(ctx,x,y,face,col,air,t,moving){
-  const bob=!air&&moving?Math.sin(t*18)*2:0;
+function shade(hex,k){ const n=parseInt(hex.slice(1),16); return 'rgb('+[(n>>16)&255,(n>>8)&255,n&255].map(v=>Math.round(v*k)).join(',')+')'; }
+function drawCat(ctx,x,y,face,col,air,t,moving,animal){
+  const bob=!air&&moving?Math.sin(t*18)*2:0,a=animal||'cat';
   ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x,GROUND+3,22,5,0,0,7); ctx.fill();
-  ctx.strokeStyle=col[1]; ctx.lineWidth=6; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-face*20,y-12); ctx.quadraticCurveTo(x-face*38,y-18,x-face*34,y-40); ctx.stroke();
+  // 尾巴
+  if(a==='cat'){ ctx.strokeStyle=col[1]; ctx.lineWidth=6; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-face*20,y-12); ctx.quadraticCurveTo(x-face*38,y-18,x-face*34,y-40); ctx.stroke(); }
+  else if(a==='dog'){ ctx.strokeStyle=col[1]; ctx.lineWidth=7; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-face*20,y-16); ctx.lineTo(x-face*33,y-30+Math.sin(t*14)*4); ctx.stroke(); }
+  else { ctx.fillStyle=a==='rabbit'?'#fff':col[1]; ctx.beginPath(); ctx.arc(x-face*25,y-14,a==='rabbit'?8:6,0,7); ctx.fill(); }
   ctx.fillStyle=col[1]; ctx.fillRect(x-16,y-8+bob,11,8); ctx.fillRect(x+5,y-8-bob,11,8);
+  // 耳朵
+  ctx.fillStyle=col[0];
+  if(a==='rabbit'){ ctx.beginPath(); ctx.ellipse(x-11,y-62,6,17,-.15,0,7); ctx.ellipse(x+11,y-62,6,17,.15,0,7); ctx.fill(); ctx.fillStyle='#ffc2d4'; ctx.beginPath(); ctx.ellipse(x-11,y-62,2.5,11,-.15,0,7); ctx.ellipse(x+11,y-62,2.5,11,.15,0,7); ctx.fill(); }
+  else if(a==='bear'){ ctx.beginPath(); ctx.arc(x-18,y-47,9,0,7); ctx.arc(x+18,y-47,9,0,7); ctx.fill(); ctx.fillStyle=col[1]; ctx.beginPath(); ctx.arc(x-18,y-47,4,0,7); ctx.arc(x+18,y-47,4,0,7); ctx.fill(); }
+  else if(a==='cat'){ ctx.beginPath(); ctx.moveTo(x-22,y-40); ctx.lineTo(x-17,y-62); ctx.lineTo(x-5,y-48); ctx.fill(); ctx.beginPath(); ctx.moveTo(x+22,y-40); ctx.lineTo(x+17,y-62); ctx.lineTo(x+5,y-48); ctx.fill(); }
   ctx.fillStyle=col[0]; ctx.beginPath(); ctx.ellipse(x,y-28,25,24,0,0,7); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(x-22,y-40); ctx.lineTo(x-17,y-62); ctx.lineTo(x-5,y-48); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(x+22,y-40); ctx.lineTo(x+17,y-62); ctx.lineTo(x+5,y-48); ctx.fill();
+  if(a==='dog'){ ctx.fillStyle=col[1]; ctx.beginPath(); ctx.ellipse(x-23,y-34,7,15,.25,0,7); ctx.ellipse(x+23,y-34,7,15,-.25,0,7); ctx.fill(); }
   ctx.fillStyle='#fff3e0'; ctx.beginPath(); ctx.ellipse(x+face*5,y-20,14,12,0,0,7); ctx.fill();
   ctx.fillStyle='#14122b'; ctx.beginPath(); ctx.arc(x+face*2,y-34,3,0,7); ctx.arc(x+face*15,y-34,3,0,7); ctx.fill();
-  ctx.fillStyle='#ff5d8f'; ctx.beginPath(); ctx.arc(x+face*9,y-27,2.5,0,7); ctx.fill();
+  ctx.fillStyle=a==='cat'||a==='rabbit'?'#ff5d8f':'#14122b'; ctx.beginPath(); ctx.arc(x+face*9,y-27,a==='bear'||a==='dog'?3.5:2.5,0,7); ctx.fill();
   if(air){ ctx.fillStyle=col[0]; ctx.fillRect(x+face*14,y-58,9,18); }
 }
 function drawBall(ctx,x,y,rot){
@@ -47,6 +55,9 @@ function create(env,opts){
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
   function serve(to){ for(const p of ps){ p.x=p.n?360:120; p.y=GROUND; p.vx=p.vy=0; } ball.x=to?360:120; ball.y=70; ball.vx=ball.vy=0; ball.hot=0; wait=.9; }
   serve(0);
+
+  const ALT=[{animal:'cat',color:'#ff9d3d'},{animal:'bear',color:'#4f9dff'}];
+  ps.forEach(p=>{ p.look=(net?net.looks&&net.looks[p.n]:p.n===0?opts.look:null)||ALT[p.n]; if(p.n===1&&!net&&opts.look&&p.look.color===opts.look.color) p.look={animal:p.look.animal,color:'#5fd068'}; p.col=[p.look.color,shade(p.look.color,.68)]; });
 
   function keysA(){ const k=env.keys; return {dx:(k.ArrowRight||k.KeyD?1:0)-(k.ArrowLeft||k.KeyA?1:0),jump:!!(k.ArrowUp||k.KeyW),down:!!(k.ArrowDown||k.KeyS),up:!!(k.ArrowUp||k.KeyW),hit:env.hit('Space')||env.hit('Enter')}; }
   function inputOf(n){
@@ -149,15 +160,21 @@ function create(env,opts){
   function draw(){
     drawCourt(ctx,t);
     ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='22px '+PIX; ctx.lineWidth=4; ctx.strokeStyle='#14122b';
-    ps.forEach(p=>{ const x=p.n?W-70:70; ctx.strokeText(p.score,x,34); ctx.fillStyle=COL[p.n][0]; ctx.fillText(p.score,x,34); });
+    ps.forEach(p=>{ const x=p.n?W-70:70; ctx.strokeText(p.score,x,34); ctx.fillStyle=p.col[0]; ctx.fillText(p.score,x,34); });
     if(net){ ctx.font='700 12px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.fillStyle='#14122b'; ctx.fillText('你',me?W-70:70,58); }
-    for(const p of ps) drawCat(ctx,p.x,p.y,p.face,COL[p.n],p.y<GROUND-1,t,p.moving);
+    for(const p of ps) drawCat(ctx,p.x,p.y,p.face,p.col,p.y<GROUND-1,t,p.moving,p.look.animal);
     if(ball.hot>0){ ctx.fillStyle='rgba(255,93,143,.35)'; ctx.beginPath(); ctx.arc(ball.x-ball.vx*.03,ball.y-ball.vy*.03,BR,0,7); ctx.fill(); }
     drawBall(ctx,ball.x,ball.y,ball.rot);
     if(wait>0&&lastW>=0&&!over){ const msg=two?(lastW?'右邊得分':'左邊得分'):lastW===me?'得分！':'失分';
       ctx.font='900 30px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.lineWidth=6; ctx.strokeText(msg,W/2,120); ctx.fillStyle='#ffd23f'; ctx.fillText(msg,W/2,120); }
   }
   return {update,draw,destroy(){},_dbg:{ps,ball}};
+}
+
+function preview(ctx,w,h,L,t){
+  const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#5ec8ff'); g.addColorStop(.7,'#c9f0ff'); g.addColorStop(.7,'#f3d892'); g.addColorStop(1,'#f3d892'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  const up=Math.max(0,Math.sin(t*2.4))*26;
+  ctx.save(); ctx.translate(w/2,h-30-GROUND*1.9); ctx.scale(1.9,1.9); drawCat(ctx,0,GROUND-up/1.9,1,[L.color,shade(L.color,.68)],up>4,t,false,L.animal); ctx.restore();
 }
 
 function thumb(ctx,w,h,t){
@@ -179,6 +196,8 @@ function thumb(ctx,w,h,t){
   touchHelp:[['◀ ▶','移動'],['跳','跳起來'],['殺球','在空中按']],
   touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'跳',c:'ArrowUp'},{l:'殺球',c:'Space',act:true}]},
   best:{label:'最大勝分',fmt:v=>'贏 '+v+' 分',lower:false},
-  thumb,create
+  looks:[{key:'animal',label:'動物',opts:[{id:'cat',label:'貓'},{id:'rabbit',label:'兔子'},{id:'bear',label:'熊'},{id:'dog',label:'狗'}]},
+    {key:'color',label:'顏色',type:'color',opts:['#ff5d4f','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#4f9dff','#b98cff','#ff7eb6']}],
+  preview,thumb,create
 };
 })();

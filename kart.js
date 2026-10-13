@@ -99,33 +99,49 @@ function create(env,opts){
     trunk.count=crown.count=n; scene.add(trunk); scene.add(crown); }
 
   /* ---- 車 ---- */
-  function makeKart(color){
-    const g=new T.Group(),body=new T.MeshLambertMaterial({color}),dark=new T.MeshLambertMaterial({color:0x22222c});
+  function makeKart(L){
+    const g=new T.Group(),body=new T.MeshLambertMaterial({color:new T.Color(L.color)}),dark=new T.MeshLambertMaterial({color:0x22222c}),lam=c=>new T.MeshLambertMaterial({color:c});
     const box=(w,h,d,m,x,y,z)=>{ const b=new T.Mesh(new T.BoxGeometry(w,h,d),m); b.position.set(x,y,z); g.add(b); return b; };
-    box(1.9,.5,3,body,0,.6,0); box(1.3,.36,.9,body,0,.55,1.75); box(2.1,.12,.55,dark,0,1.25,-1.5); box(.15,.5,.15,dark,-.7,.98,-1.5); box(.15,.5,.15,dark,.7,.98,-1.5);
-    const wg=new T.CylinderGeometry(.46,.46,.42,12);
-    for(const [x,z] of [[-1.12,1.05],[1.12,1.05],[-1.12,-1.05],[1.12,-1.05]]){ const w=new T.Mesh(wg,dark); w.rotation.z=Math.PI/2; w.position.set(x,.46,z); g.add(w); }
-    box(.8,.7,.7,new T.MeshLambertMaterial({color:0xffffff}),0,1.15,-.3);
-    const head=new T.Mesh(new T.SphereGeometry(.5,12,10),body); head.position.set(0,1.85,-.3); g.add(head);
-    box(.62,.22,.3,dark,0,1.85,.12);
-    const flame=new T.Mesh(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:0xffa41a})); flame.rotation.x=-Math.PI/2; flame.position.set(0,.65,-2.5); flame.visible=false; g.add(flame);
+    const ball=(r,m,x,y,z)=>{ const b=new T.Mesh(new T.SphereGeometry(r,12,10),m); b.position.set(x,y,z); g.add(b); return b; };
+    const B=L.body,wr=B==='buggy'?.62:B==='sport'?.4:.46,wx=B==='buggy'?1.25:1.12,by=B==='buggy'?.95:B==='sport'?.5:.6;
+    if(B==='sport'){ box(2,.36,3.4,body,0,by,0); box(1.5,.26,1.1,body,0,by-.05,2.1); box(.2,.3,1.6,body,-1,by+.3,-.6); box(.2,.3,1.6,body,1,by+.3,-.6); }
+    else if(B==='buggy'){ box(1.7,.6,2.6,body,0,by,0); box(1.3,.4,.7,body,0,by-.05,1.55); box(2.3,.16,.2,dark,0,by-.25,2); box(.12,.9,.12,dark,-.7,by+.75,-1.1); box(.12,.9,.12,dark,.7,by+.75,-1.1); box(1.5,.12,.12,dark,0,by+1.2,-1.1); }
+    else { box(1.9,.5,3,body,0,by,0); box(1.3,.36,.9,body,0,by-.05,1.75); }
+    const wg=new T.CylinderGeometry(wr,wr,.42,12);
+    for(const [x,z] of [[-wx,1.05],[wx,1.05],[-wx,-1.05],[wx,-1.05]]){ const w=new T.Mesh(wg,dark); w.rotation.z=Math.PI/2; w.position.set(x,wr,z); g.add(w); }
+    // 配件
+    if(L.part==='wing'){ box(2.5,.14,.7,body,0,by+1.05,-1.6); box(.15,.7,.15,dark,-.8,by+.65,-1.6); box(.15,.7,.15,dark,.8,by+.65,-1.6); }
+    else if(L.part==='flag'){ box(.08,2.3,.08,dark,-.8,by+1.35,-1.4); box(.9,.5,.05,new T.MeshBasicMaterial({color:0xffd23f}),-.33,by+2.2,-1.4); }
+    else if(L.part==='exhaust'){ const eg2=new T.CylinderGeometry(.2,.26,1,10),em=lam(0xb9c2d0); for(const x of [-.5,.5]){ const e=new T.Mesh(eg2,em); e.rotation.x=Math.PI/2; e.position.set(x,by+.2,-1.85); g.add(e); } }
+    else { box(2.1,.12,.55,dark,0,by+.65,-1.5); box(.15,.5,.15,dark,-.7,by+.38,-1.5); box(.15,.5,.15,dark,.7,by+.38,-1.5); }
+    // 人物
+    const hy=by+1.25; box(.8,.7,.7,lam(0xffffff),0,by+.55,-.3);
+    if(L.driver==='bear'){ const br=lam(0x9a6a3a); ball(.5,br,0,hy,-.3); ball(.2,br,-.38,hy+.42,-.3); ball(.2,br,.38,hy+.42,-.3); ball(.2,lam(0xf3dcb8),0,hy-.08,.14); }
+    else if(L.driver==='bunny'){ const wh=lam(0xffffff); ball(.5,wh,0,hy,-.3); box(.18,.75,.14,wh,-.22,hy+.72,-.3); box(.18,.75,.14,wh,.22,hy+.72,-.3); ball(.09,lam(0xff7eb6),0,hy-.05,.2); }
+    else if(L.driver==='cap'){ ball(.5,lam(0xffd9a8),0,hy,-.3); const cp=new T.Mesh(new T.CylinderGeometry(.52,.52,.26,14),body); cp.position.set(0,hy+.3,-.3); g.add(cp); box(.6,.07,.42,body,0,hy+.2,.2); }
+    else { ball(.5,body,0,hy,-.3); box(.62,.22,.3,dark,0,hy,.12); }
+    if(L.driver!=='helmet'){ box(.1,.12,.06,dark,-.18,hy+.05,.18); box(.1,.12,.06,dark,.18,hy+.05,.18); }
+    const flame=new T.Mesh(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:0xffa41a})); flame.rotation.x=-Math.PI/2; flame.position.set(0,by+.05,-2.5); flame.visible=false; g.add(flame);
     const sh=new T.Mesh(new T.CircleGeometry(1.9,14),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.28})); sh.rotation.x=-Math.PI/2; sh.position.y=.1; g.add(sh);
     const sd=new T.Mesh(new T.SphereGeometry(2.5,12,10),new T.MeshBasicMaterial({color:0x66e0ff,transparent:true,opacity:.3})); sd.position.y=1; sd.visible=false; g.add(sd);
     g.userData.flame=flame; g.userData.shield=sd; scene.add(g); return g;
   }
+  const BODIES=['std','sport','buggy'],PARTS=['none','wing','flag','exhaust'],DRIVERS=['helmet','bear','bunny','cap'];
+  const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{body:BODIES[i%3],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4]};
   const karts=[];
   for(let i=0;i<TOTAL;i++){
     const human=i<humans,slot=human?(TOTAL-humans)+i:i-humans; // 電腦排前面，玩家排後面
     const si=(N-6-Math.floor(slot/2)*6)%N,lane=(slot%2?-1:1)*5;
-    const k={i,human,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
+    const look=lookFor(i,human);
+    const k={i,human,color:look.color,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
       boostT:0,drifting:false,driftT:0,gauge:0,stock:0,item:null,spin:0,shield:0,fin:null,wall:false,left:false,flags:0,
-      ai:human?null:{lane:lane*.8,skill:st.ai+(i-humans)*.022,nt:6+Math.random()*8},mesh:makeKart(COLORS[i])};
-    k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':'你'):'電腦'+(i-humans+1);
+      ai:human?null:{lane:lane*.8,skill:st.ai+(i-humans)*.022,nt:6+Math.random()*8},mesh:makeKart(look)};
+    k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1);
     { // 車頂名牌
       const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const c=cv.getContext('2d');
       c.font='900 36px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=8; c.strokeStyle='#0b0a1c'; c.lineJoin='round';
       c.strokeText(k.name,128,34); c.fillStyle=human?'#fff':'#c9c6e6'; c.fillText(k.name,128,34);
-      const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true,depthWrite:false,fog:false})); sp.scale.set(7,1.75,1); sp.position.y=3.7; k.mesh.add(sp);
+      const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true,depthWrite:false,fog:false})); sp.scale.set(5,1.25,1); sp.position.y=3.9; k.mesh.add(sp);
     }
     k.tx=k.x; k.tz=k.z; k.th=k.h; k.v={camH:k.h,fov:62,wrongT:0,lap:1}; karts.push(k);
   }
@@ -312,20 +328,20 @@ function create(env,opts){
     c.fillStyle='#fff'; c.font=13*s+'px '+PIX;
     const live=karts.filter(q=>!q.left).length;
     c.fillText(clamp(Math.floor(k.prog/N)+1,1,LAPS)+'/'+LAPS,20+48*s,10+19*s); c.fillStyle='#ffd23f'; c.fillText(rankOf(k)+'/'+live,20+48*s,10+43*s);
-    if(local2){ c.fillStyle=COLORS[k.i]; c.font=12*s+'px '+PIX; c.fillText((k.i+1)+'P',20+112*s,10+19*s); }
+    if(local2){ c.fillStyle=k.color; c.font=12*s+'px '+PIX; c.fillText((k.i+1)+'P',20+112*s,10+19*s); }
     // 左側：所有人的即時名次
     const order=karts.filter(q=>!q.left).sort((a,b)=>(a.fin!=null?a.fin-1e6:-a.prog)-(b.fin!=null?b.fin-1e6:-b.prog)),rh=20*s,ly=10+66*s;
     order.forEach((q,n)=>{ const y=ly+n*(rh+2*s); c.fillStyle=q===k?'rgba(255,210,63,.9)':'rgba(11,10,28,.62)'; c.fillRect(10,y,150*s,rh);
       c.textAlign='left'; c.fillStyle=q===k?'#14122b':'#fff'; c.font=10*s+'px '+PIX; c.fillText(String(n+1),16,y+rh/2+1);
-      c.fillStyle=COLORS[q.i]; c.beginPath(); c.arc(16+22*s,y+rh/2,5*s,0,7); c.fill();
+      c.fillStyle=q.color; c.beginPath(); c.arc(16+22*s,y+rh/2,5*s,0,7); c.fill();
       c.fillStyle=q===k?'#14122b':'#fff'; c.font='700 '+13*s+'px '+TC; c.fillText(q.name,16+32*s,y+rh/2+1);
       if(q.fin!=null){ c.textAlign='right'; c.font='700 '+11*s+'px '+TC; c.fillText('完賽',10+146*s,y+rh/2+1); } });
     // 右上：時間與小地圖
     const mw=118*s; panel(w-10-mw,10,mw,26*s+mw); c.textAlign='center'; c.fillStyle='#fff'; c.font=11*s+'px '+PIX; c.fillText(fmtTime(k.fin!=null?k.fin:t),w-10-mw/2,10+14*s);
     const sc=(mw-16)/Math.max(maxX-minX,maxZ-minZ),ox=w-10-mw/2-(minX+maxX)/2*sc,oy=10+26*s+mw/2-(minZ+maxZ)/2*sc;
     c.strokeStyle='#f4f0ff'; c.lineWidth=3; c.beginPath(); for(let i=0;i<=N;i+=3){ const j=i%N; if(i) c.lineTo(ox+px[j]*sc,oy+pz[j]*sc); else c.moveTo(ox+px[j]*sc,oy+pz[j]*sc); } c.closePath(); c.stroke();
-    for(const q of karts){ if(q.left||q===k) continue; c.fillStyle=COLORS[q.i]; c.beginPath(); c.arc(ox+q.x*sc,oy+q.z*sc,3,0,7); c.fill(); }
-    c.fillStyle=COLORS[k.i]; c.strokeStyle='#fff'; c.lineWidth=2; c.beginPath(); c.arc(ox+k.x*sc,oy+k.z*sc,4.5,0,7); c.fill(); c.stroke();
+    for(const q of karts){ if(q.left||q===k) continue; c.fillStyle=q.color; c.beginPath(); c.arc(ox+q.x*sc,oy+q.z*sc,3,0,7); c.fill(); }
+    c.fillStyle=k.color; c.strokeStyle='#fff'; c.lineWidth=2; c.beginPath(); c.arc(ox+k.x*sc,oy+k.z*sc,4.5,0,7); c.fill(); c.stroke();
     // 下方：時速與氮氣
     const bw=230*s,bx=w/2-bw/2,by=h-52*s; panel(bx,by,bw,42*s);
     c.textAlign='left'; c.fillStyle='#fff'; c.font=14*s+'px '+PIX; c.fillText(String(Math.round(Math.hypot(k.vx,k.vz)*3)).padStart(3,'0'),bx+10*s,by+22*s);
@@ -345,6 +361,27 @@ function create(env,opts){
     pause(p){ if(eg) eg.gain.value=p?0:.022; },
     destroy(){ ro.disconnect(); if(osc){ try{osc.stop();}catch(e){} } scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); } }); renderer.dispose(); },
     _dbg:{karts,my,N,px,pz}};
+}
+
+function preview(ctx,w,h,L,t){
+  ctx.fillStyle='#8fd3ff'; ctx.fillRect(0,0,w,h*.5); ctx.fillStyle='#4c9a3c'; ctx.fillRect(0,h*.5,w,h*.5);
+  ctx.fillStyle='#4a4a55'; ctx.beginPath(); ctx.moveTo(w*.42,h*.5); ctx.lineTo(w*.58,h*.5); ctx.lineTo(w*.95,h); ctx.lineTo(w*.05,h); ctx.fill();
+  const x=w/2+Math.sin(t*1.5)*10,y=h*.86,s=2.3,B=L.body,ww=B==='buggy'?13:10,wh=B==='buggy'?20:B==='sport'?12:15,bw=B==='sport'?40:36,bh=B==='sport'?13:B==='buggy'?19:16,lift=B==='buggy'?6:0;
+  const R=(a,b,c,d)=>ctx.fillRect(x+a*s,y+b*s,c*s,d*s);
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x,y+3*s,28*s,6*s,0,0,7); ctx.fill();
+  ctx.fillStyle='#22222c'; R(-bw/2-ww+3,-wh+2,ww,wh); R(bw/2-3,-wh+2,ww,wh);
+  if(L.part==='exhaust'){ ctx.fillStyle='#b9c2d0'; R(-9,-8-lift,6,7); R(3,-8-lift,6,7); }
+  ctx.fillStyle=L.color; R(-bw/2,-bh-2-lift,bw,bh);
+  const top=-bh-2-lift;
+  if(L.part==='wing'){ ctx.fillStyle='#22222c'; R(-14,top-9,3,9); R(11,top-9,3,9); ctx.fillStyle=L.color; R(-25,top-13,50,5); }
+  else if(L.part==='none'){ ctx.fillStyle='#22222c'; R(-21,top-6,42,4); }
+  else if(L.part==='flag'){ ctx.fillStyle='#22222c'; R(-17,top-36,1.5,36); ctx.fillStyle='#ffd23f'; R(-15.5,top-36,14,8); }
+  ctx.fillStyle='#fff'; R(-7,top-12,14,12);
+  const hx=x,hy=y+(top-19)*s,hr=9*s,C=(cx,cy,r,c)=>{ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.fill(); };
+  if(L.driver==='bear'){ C(hx-7*s,hy-7*s,3.6*s,'#9a6a3a'); C(hx+7*s,hy-7*s,3.6*s,'#9a6a3a'); C(hx,hy,hr,'#9a6a3a'); }
+  else if(L.driver==='bunny'){ ctx.fillStyle='#fff'; ctx.fillRect(hx-6*s,hy-22*s,4*s,15*s); ctx.fillRect(hx+2*s,hy-22*s,4*s,15*s); C(hx,hy,hr,'#fff'); }
+  else if(L.driver==='cap'){ C(hx,hy,hr,'#ffd9a8'); ctx.fillStyle=L.color; ctx.beginPath(); ctx.arc(hx,hy-1*s,hr+.5,Math.PI,0); ctx.fill(); }
+  else C(hx,hy,hr,L.color);
 }
 
 function thumb(ctx,w,h,t){
@@ -376,6 +413,10 @@ function thumb(ctx,w,h,t){
   touchHelp:[['◀ ▶','轉向，自動踩油門'],['飄移','過彎時按住'],['使用','用氮氣或道具'],['煞','煞車']],
   touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'煞',c:'ArrowDown'},{l:'飄移',c:'ShiftLeft'},{l:'使用',c:'KeyX',act:true}]},
   best:{label:'已過關',fmt:v=>v+' / '+STAGES.length,lower:false},
-  thumb,load,create
+  looks:[{key:'body',label:'車輛',opts:[{id:'std',label:'標準車'},{id:'sport',label:'跑車'},{id:'buggy',label:'越野車'}]},
+    {key:'color',label:'車輛顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#ff7eb6']},
+    {key:'part',label:'配件',opts:[{id:'none',label:'小尾翼'},{id:'wing',label:'大尾翼'},{id:'flag',label:'旗子'},{id:'exhaust',label:'排氣管'}]},
+    {key:'driver',label:'人物',opts:[{id:'helmet',label:'安全帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'},{id:'cap',label:'棒球帽'}]}],
+  preview,thumb,load,create
 };
 })();

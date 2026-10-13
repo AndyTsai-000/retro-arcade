@@ -52,19 +52,23 @@ function drawPlat(ctx,pl,y,t){
   ctx.fillStyle='#35641a'; for(let i=8;i<w;i+=18) ctx.fillRect(x+i,y+8,6,3);
 }
 
-function drawKid(ctx,x,y,face,walk,air,flash,shirt){
+function drawKid(ctx,x,y,face,walk,air,flash,shirt,char){
   if(flash&&Math.floor(flash*20)%2) return;
-  const s=Math.sin(walk*14);
-  ctx.fillStyle='#2b3f9e';
+  const s=Math.sin(walk*14),robot=char==='robot',ninja=char==='ninja',girl=char==='girl';
+  const skin=robot?'#b9c2d0':'#ffd9a8',hair=robot?'#6b7686':girl?'#7a3b1d':'#2a1b12';
+  ctx.fillStyle=robot?'#6b7686':ninja?'#4a4a66':'#2b3f9e';
   if(air){ ctx.fillRect(x-7,y-6,5,5); ctx.fillRect(x+2,y-6,5,5); }
   else { ctx.fillRect(x-7,y-6,5,6-Math.max(0,s)*2); ctx.fillRect(x+2,y-6,5,6-Math.max(0,-s)*2); }
   ctx.fillStyle=shirt; ctx.fillRect(x-8,y-15,16,9);
-  ctx.fillStyle='#ffd9a8';
+  if(girl){ ctx.beginPath(); ctx.moveTo(x-8,y-9); ctx.lineTo(x+8,y-9); ctx.lineTo(x+11,y-4); ctx.lineTo(x-11,y-4); ctx.fill(); }
+  ctx.fillStyle=ninja?'#4a4a66':skin;
   if(air){ ctx.fillRect(x-12,y-21,4,7); ctx.fillRect(x+8,y-21,4,7); }
   else { ctx.fillRect(x-11,y-15,3,7); ctx.fillRect(x+8,y-15,3,7); }
   ctx.fillRect(x-8,y-26,16,11);
-  ctx.fillStyle='#2a1b12'; ctx.fillRect(x-8,y-27,16,4); ctx.fillRect(x-8*face-(face>0?0:2),y-24,2,4);
-  ctx.fillStyle='#14122b'; ctx.fillRect(x+face*3-1,y-21,2,3); ctx.fillRect(x+face*3-5*face-1,y-21,2,3);
+  if(ninja){ ctx.fillStyle=skin; ctx.fillRect(x-8,y-23,16,5); ctx.fillStyle=shirt; ctx.fillRect(x-8,y-27,16,3); ctx.fillRect(x-face*13-2,y-26,5,2); }
+  else if(robot){ ctx.fillStyle=hair; ctx.fillRect(x-1,y-31,2,5); ctx.fillStyle=shirt; ctx.fillRect(x-2,y-34,4,4); }
+  else { ctx.fillStyle=hair; ctx.fillRect(x-8,y-27,16,4); ctx.fillRect(x-8*face-(face>0?0:2),y-24,2,4); if(girl){ ctx.fillRect(x-11,y-25,3,10); ctx.fillRect(x+8,y-25,3,10); } }
+  ctx.fillStyle=robot?'#3ddbd9':'#14122b'; ctx.fillRect(x+face*3-1,y-21,2,3); ctx.fillRect(x+face*3-5*face-1,y-21,2,3);
 }
 
 function drawWall(ctx,cam){
@@ -89,7 +93,7 @@ function drawHud(ctx,ps,floor){
   ctx.font='9px '+PIX; ctx.textBaseline='middle'; ctx.textAlign='left';
   const m=ps.length,two=m>1,sw=m>2?3:two?7:8,st=m>2?4:two?8:10;
   ps.forEach((p,n)=>{ const x0=8+n*(m>2?72:128);
-    ctx.fillStyle=two?SHIRT[n]:'#aaa4d8'; ctx.fillText(two?(n+1)+'P':'LIFE',x0,HUD/2+1);
+    ctx.fillStyle=two?p.look.color:'#aaa4d8'; ctx.fillText(two?(n+1)+'P':'LIFE',x0,HUD/2+1);
     for(let i=0;i<MAXLIFE;i++){ ctx.fillStyle=i<p.life?(p.life<=4?'#ff5d8f':'#ffd23f'):'#2b2759'; ctx.fillRect(x0+(m>2?20:two?24:44)+i*st,11,sw,14); } });
   ctx.textAlign='right'; ctx.fillStyle='#f4f0ff'; ctx.font='bold 15px "Noto Sans TC","Microsoft JhengHei",sans-serif';
   ctx.fillText((two?'':'地下 ')+String(floor).padStart(3,'0')+(m>2?'':' 階'),W-8,HUD/2+1);
@@ -110,6 +114,9 @@ function create(env,opts){
   const ps=[];
   for(let n=0;n<num;n++){ const x=W/2+((num-1)/2-n)*22;
     ps.push({n,x,y:plats[1].y,tx:x,ty:plats[1].y,vx:0,vy:0,on:plats[1],last:plats[1],ignore:null,face:1,walk:0,life:MAXLIFE,hurt:0,dead:0,depth:0,why:'',remote:!!net&&n!==me,air:0}); }
+
+  const ALT=[{char:'boy',color:SHIRT[0]},{char:'girl',color:SHIRT[1]},{char:'robot',color:SHIRT[2]},{char:'ninja',color:SHIRT[3]}];
+  for(const p of ps) p.look=(net?net.looks&&net.looks[p.n]:p.n===0?opts&&opts.look:null)||ALT[p.n%4];
 
   function damage(p,n){ p.life=Math.max(0,p.life-n); p.hurt=.8; env.sfx('hurt'); }
   function land(p,pl){
@@ -189,12 +196,18 @@ function create(env,opts){
   function draw(){
     drawWall(ctx,cam);
     for(const pl of plats){ if(pl.gone) continue; const y=pl.y-cam; if(y>-20&&y<H+20) drawPlat(ctx,pl,y,t); }
-    for(let n=ps.length-1;n>=0;n--){ const p=ps[n]; drawKid(ctx,p.x,p.y-cam,p.face,p.walk,p.remote?!!p.air:!p.on,p.dead?0:Math.max(0,p.hurt),SHIRT[n]);
+    for(let n=ps.length-1;n>=0;n--){ const p=ps[n]; drawKid(ctx,p.x,p.y-cam,p.face,p.walk,p.remote?!!p.air:!p.on,p.dead?0:Math.max(0,p.hurt),p.look.color,p.look.char);
       if(net&&n===me&&!p.dead){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(p.x-5,p.y-cam-38); ctx.lineTo(p.x+5,p.y-cam-38); ctx.lineTo(p.x,p.y-cam-31); ctx.fill(); } }
     drawCeil(ctx); drawHud(ctx,ps,floor);
     if(net&&ps[me].dead&&!ended){ ctx.textAlign='center'; ctx.fillStyle='#ffd23f'; ctx.font='bold 16px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.fillText('你出局了，等其他人…',W/2,HUD+34); }
   }
   return {update,draw,destroy(){},_dbg:{ps}};
+}
+
+function preview(ctx,w,h,L,t){
+  ctx.fillStyle='#1a1530'; ctx.fillRect(0,0,w,h);
+  drawPlat(ctx,{x:w/2-PLW/2,w:PLW,type:'normal',sq:0,flip:0},h-50,t);
+  ctx.save(); ctx.translate(w/2,h-50); ctx.scale(3.4,3.4); drawKid(ctx,0,0,Math.sin(t*1.2)>0?1:-1,t,false,0,L.color,L.char); ctx.restore();
 }
 
 function thumb(ctx,w,h,t){
@@ -219,6 +232,8 @@ function thumb(ctx,w,h,t){
   touch:m=>m==='2p'?{left:[{l:'◀',c:'KeyA'},{l:'▶',c:'KeyD'}],right:[{l:'◀',c:'ArrowLeft',act:true},{l:'▶',c:'ArrowRight',act:true}]}
     :{left:[{l:'◀',c:'ArrowLeft'}],right:[{l:'▶',c:'ArrowRight'}]},
   best:{label:'最深',fmt:v=>'地下 '+v+' 階',lower:false},
-  thumb,create
+  looks:[{key:'char',label:'人物',opts:[{id:'boy',label:'男孩'},{id:'girl',label:'女孩'},{id:'robot',label:'機器人'},{id:'ninja',label:'忍者'}]},
+    {key:'color',label:'顏色',type:'color',opts:['#ff5d4f','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#4f9dff','#b98cff','#ff7eb6']}],
+  preview,thumb,create
 };
 })();
