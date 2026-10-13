@@ -1,6 +1,16 @@
 <!doctype html>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14122b">
+<meta property="og:title" content="懷舊遊戲區">
+<meta property="og:description" content="小朋友下樓梯、卡丁車、爆爆王、躲避球、足球、棒球、保齡球…打開就能玩，還能開房間連線。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://andytsai-000.github.io/retro-arcade/icon-512.png">
+<meta name="description" content="九款懷舊小遊戲，電腦手機都能玩，可開房間和朋友連線。">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="懷舊遊戲區">
 <title>懷舊遊戲區</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&display=swap">
 <style>
@@ -15,7 +25,7 @@
 }
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
-body{background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;
+body{overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%;background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;
   background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px)}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -67,7 +77,8 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .note{color:var(--dim);font-size:13px;margin:0}
 
 /* ---------- 遊戲畫面 ---------- */
-#play{height:100%;display:flex;flex-direction:column}
+#play{height:100%;display:flex;flex-direction:column;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+@supports (height:100dvh){#play{height:100dvh}}
 .bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:3px solid #0b0a1c}
 .bar h2{margin:0;font-size:17px;font-weight:900;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn{background:var(--panel2);border:2px solid #0b0a1c;border-radius:4px;padding:6px 12px;font-weight:700;white-space:nowrap}
@@ -123,6 +134,32 @@ body.touch #pad{display:flex}
 .dpad i.r{top:50%;right:12px;margin-top:-11px;border-left-color:var(--text);border-right-width:0}
 .dpad[data-d="u"] i.u,.dpad[data-d="d"] i.d,.dpad[data-d="l"] i.l,.dpad[data-d="r"] i.r{opacity:1;filter:drop-shadow(0 0 6px var(--yellow))}
 @media (max-width:440px){.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side:has(.tb:nth-child(4)) .tb{width:50px;height:50px;font-size:13px}}
+/* ---------- 手機版 ---------- */
+@media (max-width:640px){
+  #hub{padding-block:18px 28px;gap:18px}
+  .cart h2{font-size:20px}.cart .info{padding:12px 14px 14px}
+  .bar{gap:6px;padding:6px 8px}.bar .btn{padding:6px 9px;font-size:13px}.bar h2{font-size:15px}
+  #barName{display:none}
+  #hubName{position:static;align-self:flex-end;order:-1}
+  .card{padding:16px 14px;gap:12px}.card h3{font-size:23px}
+  .help{font-size:13px;gap:6px 10px}.chip{padding:5px 10px;font-size:13px}
+  .btn.main{font-size:16px;padding:10px 18px}
+  .lkrow{grid-template-columns:4.2em 1fr}
+}
+/* 手機橫放：畫面讓給遊戲，按鈕半透明疊在畫面兩側 */
+@media (orientation:landscape) and (max-height:540px){
+  body.touch #play{position:relative}
+  body.touch .bar{padding:3px 8px;gap:6px}
+  body.touch .bar .btn{padding:3px 9px;font-size:12px}
+  body.touch .bar h2{font-size:13px}
+  body.touch #pad{display:none}
+  body.touch.playing #pad{display:flex;position:absolute;left:0;right:0;bottom:0;background:none;border:0;pointer-events:none;z-index:5;padding:6px max(12px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-right,0px))}
+  body.touch.playing #pad .tb,body.touch.playing #pad .dpad{pointer-events:auto;opacity:.66}
+  body.touch.playing #pad .tb.on{opacity:.95}
+  .card{padding:12px 14px;gap:8px}.card h3{font-size:20px}
+}
+.turn{display:none;color:var(--yellow)!important;font-weight:700}
+@media (orientation:portrait){body.touch .turn{display:block}}
 @media (prefers-reduced-motion:reduce){.coin b{animation:none}.cart{transition:none}}
 </style>
 
@@ -142,6 +179,7 @@ body.touch #pad{display:flex}
     <button class="btn" id="bBack">&larr; 大廳</button>
     <h2 id="gName"></h2>
     <span class="me" id="barName"></span>
+    <button class="btn" id="bFull" hidden>全螢幕</button>
     <button class="btn" id="bPause">暫停</button>
     <button class="btn" id="bMute">聲音：開</button>
   </div>
@@ -155,19 +193,16 @@ body.touch #pad{display:flex}
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=25; // 每次改版加一
+window.ARCADE_V=27; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
-  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
 <script>
 (function(){
 'use strict';
-// LINE 內建瀏覽器改用外部瀏覽器開啟
-if(/Line\//i.test(navigator.userAgent) && location.protocol.indexOf('http')===0 && !/openExternalBrowser/.test(location.search)){
-  location.replace(location.pathname+'?openExternalBrowser=1'+location.hash); return;
-}
+// 在 LINE、Facebook、Instagram 等 App 的內建瀏覽器裡直接就能玩，不強制跳到外部瀏覽器
 const G=window.ARCADE_GAMES||{};
-const ORDER=['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball'].filter(k=>G[k]);
+const ORDER=['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;};
 const isTouch=matchMedia('(pointer:coarse)').matches;
@@ -298,7 +333,7 @@ const env={
     const ctx=c.getContext('2d'); ctx.scale(S,S); return {canvas:c,ctx}; },
   end(res){ finish(res); }
 };
-function showCard(html){ closeStage(); card.innerHTML=html; ov.hidden=false; ovAt=performance.now(); }
+function showCard(html){ closeStage(); document.body.classList.remove('playing'); card.innerHTML=html; ov.hidden=false; ovAt=performance.now(); }
 function on(id,fn){ const b=$('#'+id); if(b) b.addEventListener('click',fn); }
 function helpHtml(g){
   const t=isTouch&&g.touchHelp, rows=t?g.touchHelp:g.help;
@@ -356,7 +391,7 @@ function open(id){
 }
 function startCard(){
   const g=cur; state='ready'; $('#bPause').textContent='暫停';
-  showCard('<h3>'+g.name+'</h3><p>'+g.goal+'</p>'+helpHtml(g)+chipsHtml(g)+
+  showCard('<h3>'+g.name+'</h3><p>'+g.goal+'</p>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+helpHtml(g)+chipsHtml(g)+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>');
   closeLook();
@@ -398,7 +433,7 @@ async function start(opts){
   for(const k in hits) delete hits[k];
   buildPad(padSpec(cur,opts.mode));
   closeLook();
-  inst=cur.create(env,{stage:opts.stage||0,mode:opts.mode,variant:opts.variant,look:lookOf(cur),name:myName,net:opts.net?mkNet():null}); state='running'; acc=0; ov.hidden=true; $('#bPause').textContent='暫停';
+  inst=cur.create(env,{stage:opts.stage||0,mode:opts.mode,variant:opts.variant,look:lookOf(cur),name:myName,net:opts.net?mkNet():null}); state='running'; acc=0; ov.hidden=true; document.body.classList.add('playing'); $('#bPause').textContent='暫停';
 }
 function finish(res){
   if(state!=='running') return; state='over';
@@ -422,7 +457,7 @@ function togglePause(){
   if(state==='running'){ state='paused'; if(inst.pause) inst.pause(true);
     showCard('<h3>暫停</h3><div class="row"><button class="btn main" id="rGo">繼續</button><button class="btn" id="rHub">回大廳</button></div>');
     on('rGo',togglePause); on('rHub',back); $('#bPause').textContent='繼續'; }
-  else if(state==='paused'){ state='running'; if(inst.pause) inst.pause(false); ov.hidden=true; acc=0; $('#bPause').textContent='暫停'; }
+  else if(state==='paused'){ state='running'; if(inst.pause) inst.pause(false); ov.hidden=true; document.body.classList.add('playing'); acc=0; $('#bPause').textContent='暫停'; }
 }
 function back(){
   leaveNet(); killInst(); cur=null; state='hub';
@@ -430,10 +465,18 @@ function back(){
   $('#play').hidden=true; $('#hub').hidden=false; buildHub();
 }
 $('#bBack').addEventListener('click',back);
+$('#play').addEventListener('contextmenu',e=>{ if(isTouch) e.preventDefault(); }); // 手機長按不要跳出選單
 $('#bPause').addEventListener('click',togglePause);
 function muteLabel(){ $('#bMute').textContent='聲音：'+(muted?'關':'開'); }
 $('#bMute').addEventListener('click',()=>{ muted=!muted; save('arcade.mute',muted?'1':'0'); audio(); if(master) master.gain.value=muted?0:1; muteLabel(); });
 muteLabel();
+// 全螢幕：手機上才顯示，順便試著鎖成橫向（iPhone 的 Safari 不支援，按了沒反應是正常的）
+{ const fb=$('#bFull'),root=document.documentElement,can=root.requestFullscreen||root.webkitRequestFullscreen;
+  if(isTouch&&can){ fb.hidden=false; fb.addEventListener('click',()=>{
+    if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); return; }
+    try{ const p=can.call(root); if(p&&p.then) p.then(()=>{ try{ if(screen.orientation&&screen.orientation.lock&&cur&&cur.wide!==false) screen.orientation.lock('landscape').catch(()=>{}); }catch(e){} }).catch(()=>{}); }catch(e){} }); } }
+// 在獨立網址上才掛「加到主畫面」需要的設定
+if(/github\.io$/.test(location.hostname)){ const l=document.createElement('link'); l.rel='manifest'; l.href='manifest.webmanifest'; document.head.appendChild(l); const i=document.createElement('link'); i.rel='apple-touch-icon'; i.href='icon-192.png'; document.head.appendChild(i); }
 
 /* ---------- 多人連線 ----------
    先試 PeerJS 直連（WebRTC）；兩邊網路打不通時，改走公用 MQTT 伺服器轉送。
@@ -677,6 +720,6 @@ function frame(ts){
 }
 buildHub(); $('#ver').textContent=window.ARCADE_V||'';
 requestAnimationFrame(frame);
-window.__arcade={open,start,back,get state(){return state;},get inst(){return inst;},keys,press,release,Net};
+window.__arcade={step(n){ for(let i=0;i<(n||1)&&inst&&state==='running';i++){ inst.update(STEP); for(const k in hits) delete hits[k]; } },open,start,back,get state(){return state;},get inst(){return inst;},keys,press,release,Net};
 })();
 </script>

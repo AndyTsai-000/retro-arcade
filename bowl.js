@@ -7,6 +7,7 @@ const PIX='"Press Start 2P","Noto Sans TC","Microsoft JhengHei",monospace';
 const TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
 const SPOTS=[]; for(let r=0;r<4;r++) for(let i=0;i<=r;i++) SPOTS.push([(i-r/2)*12,PINY+r*10.39]);
 const BALLS=['#ff5d4f','#4f9dff','#5fd068','#ffd23f'];
+const TYPES=[{name:'直球',spin:0},{name:'左曲球',spin:-.55},{name:'右曲球',spin:.55},{name:'大左曲球',spin:-1},{name:'大右曲球',spin:1}];
 const BG={alley:['#2b2140','#3a2d57'],neon:['#0d0b2a','#1a1450'],day:['#bfe3ff','#e9f6ff']};
 
 /* ---- 正式計分 ---- */
@@ -42,17 +43,20 @@ function marks(fr,last){
 function create(env,opts){
   const net=opts.net,N=+(opts.variant||5)||5,L=opts.look||{ball:BALLS[0],lane:'#d9a45c',bg:'alley'},me=net?net.me:0;
   const np=net?net.count:Math.max(1,Math.min(4,+(opts.mode||1)||1));
-  const {ctx}=env.canvas2d(W,H);
+  const {ctx,canvas}=env.canvas2d(W,H);
+  // 滑鼠或手指按在畫面上，等同按住投球鍵
+  let md=false,mdHit=false; const onDown=e=>{ md=true; mdHit=true; e.preventDefault(); },onUp=()=>{ md=false; };
+  canvas.addEventListener('pointerdown',onDown); addEventListener('pointerup',onUp); addEventListener('pointercancel',onUp);
   const PL=[]; for(let i=0;i<np;i++) PL.push({name:net?(net.names&&net.names[i])||'玩家'+(i+1):np===1?(opts.name||'你'):'玩家 '+(i+1),frames:[],f:0,gone:false,
     col:net?((net.looks&&net.looks[i]&&net.looks[i].ball)||BALLS[i]):i===0?L.ball:BALLS[i]});
   if(!net) for(let i=1;i<np;i++) if(PL[i].col===PL[0].col) PL[i].col=BALLS.find(c=>!PL.some(p=>p.col===c))||BALLS[i];
-  let cur=0,phase='aim',step=0,pos=0,ang=0,pow=.7,spin=0,t=0,mt=0,stand=1023,pins=[],ball=null,camY=0,rollT=0,doneT=0,banner='',banT=0,pending=null,waitRes=false,ended=false,fx=[];
+  let cur=0,phase='aim',step=0,pos=0,ang=0,pow=0,spin=0,ptype=0,charging=false,prevHeld=false,t=0,mt=0,stand=1023,pins=[],ball=null,camY=0,rollT=0,doneT=0,banner='',banT=0,pending=null,waitRes=false,ended=false,fx=[];
   const local=i=>!net||i===me;
   const sfx=n=>env.sfx(n);
   function setPins(mask){ pins=SPOTS.map((s,i)=>({i,x:s[0],y:s[1],vx:0,vy:0,up:!!(mask>>i&1),down:false,rot:0,out:!(mask>>i&1)})); }
   setPins(1023);
 
-  function newTurn(){ stand=1023; setPins(1023); phase='aim'; step=0; mt=0; ball=null; camY=0; pos=0; }
+  function newTurn(){ stand=1023; setPins(1023); phase='aim'; step=0; mt=0; ball=null; camY=0; pos=0; pow=0; charging=false; }
   function nextPlayer(){
     for(let k=0;k<np;k++){ cur=(cur+1)%np; if(!PL[cur].gone&&PL[cur].f<N){ newTurn(); return; } }
     finish();
@@ -76,7 +80,7 @@ function create(env,opts){
   function afterSettle(){
     const pl=PL[cur],p=pending; pending=null;
     if(p.over){ pl.f++; nextPlayer(); }
-    else { if(p.reset){ stand=1023; } setPins(stand); phase='aim'; step=0; mt=0; ball=null; camY=0; }
+    else { if(p.reset){ stand=1023; } setPins(stand); phase='aim'; step=0; mt=0; ball=null; camY=0; pow=0; charging=false; }
   }
   function finish(){
     if(ended) return; ended=true; phase='done';
@@ -93,10 +97,15 @@ function create(env,opts){
     const v=235+p*150; ball={x,y:-6,vx:Math.sin(a)*v,vy:Math.cos(a)*v,spin:s,gutter:false,done:false,rot:0};
     phase='roll'; rollT=0; waitRes=false; sfx('place');
   }
+  function pathOf(x,p,sp){
+    const v=235+p*150,out=[]; let vx=0,y=-6,g=false;
+    for(let i=0;i<400&&y<PINY+30;i++){ if(!g){ vx+=sp*(y>260?14:3)*.02; if(Math.abs(x)>LW-.4){ g=true; x=Math.sign(x)*(LW+3.2); vx=0; } } x+=vx*.02; y+=v*.02; if(i%3===0) out.push([x,y]); }
+    return out;
+  }
   function simStep(dt){
     const b=ball; rollT+=dt;
     if(!b.done){
-      if(!b.gutter){ b.vx+=b.spin*(b.y>260?26:6)*dt; if(Math.abs(b.x)>LW-.4){ b.gutter=true; b.x=Math.sign(b.x)*(LW+3.2); b.vx=0; sfx('bump'); } }
+      if(!b.gutter){ b.vx+=b.spin*(b.y>260?14:3)*dt; if(Math.abs(b.x)>LW-.4){ b.gutter=true; b.x=Math.sign(b.x)*(LW+3.2); b.vx=0; sfx('bump'); } }
       b.x+=b.vx*dt; b.y+=b.vy*dt; b.rot+=b.vy*dt*.05;
       if(b.y>PINY+60) b.done=true;
     }
@@ -135,12 +144,18 @@ function create(env,opts){
     if(phase==='aim'){
       camY+=(0-camY)*Math.min(1,dt*6); mt+=dt;
       if(local(cur)){
-        const K=env.keys,mx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0),fire=env.hit('Space')||env.hit('KeyJ')||env.hit('Enter');
-        if(step===0){ pos=Math.max(-16,Math.min(16,pos+mx*22*dt)); if(fire){ step=1; mt=0; sfx('click'); } }
-        else if(step===1){ ang=Math.sin(mt*2.6)*.03; if(fire){ step=2; mt=0; sfx('click'); } }
-        else if(step===2){ pow=.5-Math.cos(mt*3)*.5; if(fire){ step=3; mt=0; sfx('click'); } }
-        else { spin=Math.sin(mt*2.8); if(fire){ const s=Math.round(spin*100)/100; if(net) net.send({th:[cur,pos,ang,pow,s]}); launch(pos,ang,pow,s); } }
+        const K=env.keys,mx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0),held=!!(K.Space||K.KeyJ||K.Enter||md),tapK=env.hit('Space')||env.hit('KeyJ')||env.hit('Enter')||mdHit;
+        if(step===0){ // 先選球種
+          if(env.hit('ArrowRight')||env.hit('ArrowDown')||env.hit('KeyD')){ ptype=(ptype+1)%TYPES.length; sfx('click'); }
+          if(env.hit('ArrowLeft')||env.hit('ArrowUp')||env.hit('KeyA')){ ptype=(ptype+TYPES.length-1)%TYPES.length; sfx('click'); }
+          spin=TYPES[ptype].spin; if(tapK&&mt>.25){ step=1; mt=0; charging=false; sfx('click'); }
+        } else { // 再選站位，長按蓄力、放開丟出
+          if(!charging){ pos=Math.max(-16,Math.min(16,pos+mx*22*dt)); if(env.hit('ArrowUp')){ step=0; mt=0; sfx('click'); } else if(held&&!prevHeld&&mt>.2){ charging=true; mt=0; } }
+          else { pow=.5-Math.cos(mt*2.6)*.5; if(!held){ const p2=Math.max(.12,pow),sp=TYPES[ptype].spin; charging=false; if(net) net.send({th:[cur,pos,0,p2,sp]}); launch(pos,0,p2,sp); } }
+        }
+        prevHeld=held;
       }
+      mdHit=false;
     } else if(phase==='roll'){
       if(!waitRes){ simStep(dt/2); if(phase==='roll'&&!waitRes) simStep(dt/2); }
       if(phase==='roll'){ if(waitRes&&pendRes!=null){ const m=pendRes; pendRes=null; waitRes=false; applyResult(m); } }
@@ -204,17 +219,28 @@ function create(env,opts){
       const mine=local(cur),who=PL[cur].name,fr=PL[cur].frames[PL[cur].f]||[];
       ctx.font='700 12px '+TC; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; const head='第 '+(PL[cur].f+1)+' 局 第 '+(fr.length+1)+' 球　'+(np>1?'輪到 '+who:'');
       ctx.strokeText(head,W/2,by+12); ctx.fillStyle='#fff'; ctx.fillText(head,W/2,by+12);
-      if(mine){ const tips=['← → 選站位，按「投球」','方向：按「投球」定住','力道：按「投球」定住','旋轉：按「投球」丟出去'],bars=[['方向',ang/.03],['力道',pow*2-1],['旋轉',spin]];
-        ctx.fillStyle='rgba(11,10,28,.78)'; ctx.fillRect(8,H-58,150,52);
-        bars.forEach((r,k)=>{ const y=H-50+k*15,on=step===k+1,done=step>k+1; ctx.font='700 10px '+TC; ctx.textAlign='left'; ctx.fillStyle=on?'#ffd23f':done?'#86dc4f':'#6b6799'; ctx.fillText(r[0],14,y+4);
-          ctx.fillStyle='#2b2759'; ctx.fillRect(44,y,106,8); ctx.fillStyle='rgba(255,255,255,.3)'; ctx.fillRect(96.5,y,1,8); if(on||done){ ctx.fillStyle=on?'#ffd23f':'#86dc4f'; ctx.fillRect(44+53+r[1]*50-2,y-1,4,10); } });
-        ctx.textAlign='center'; ctx.font='900 13px '+TC; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText(tips[step],W/2+60,H-16); ctx.fillStyle='#ffd23f'; ctx.fillText(tips[step],W/2+60,H-16); }
+      if(mine){
+        ctx.fillStyle='rgba(11,10,28,.8)'; ctx.fillRect(8,by+22,96,TYPES.length*14+20); ctx.textAlign='left'; ctx.font='700 9px '+TC; ctx.fillStyle='#6fd3ff'; ctx.fillText(step===0?'① 選球種（← →）':'球種（↑ 重選）',13,by+31);
+        TYPES.forEach((q,i)=>{ ctx.font=(i===ptype?'900 ':'700 ')+'11px '+TC; ctx.fillStyle=i===ptype?'#ffd23f':step===0?'#aaa4d8':'#6b6799'; ctx.fillText((i===ptype?'▶ ':'　')+q.name,13,by+46+i*14); });
+        if(step===1){ // 俯視的球道小圖，畫出這一球大概會怎麼走
+          const ox=W-74,oy=by+74,mw=40,mh=H-oy-16,sx=x=>ox+mw/2+x/(LW+6)*mw/2,sy=y=>oy+mh-(y+10)/(PINY+50)*mh;
+          ctx.fillStyle='rgba(11,10,28,.8)'; ctx.fillRect(ox-8,oy-14,mw+16,mh+22); ctx.fillStyle='#1b1420'; ctx.fillRect(ox,oy,mw,mh); ctx.fillStyle=L.lane; ctx.fillRect(sx(-LW),oy,sx(LW)-sx(-LW),mh);
+          ctx.fillStyle='#fff'; SPOTS.forEach((sp,i)=>{ if(stand>>i&1){ ctx.beginPath(); ctx.arc(sx(sp[0]),sy(sp[1]),1.6,0,7); ctx.fill(); } });
+          const pp=pathOf(pos,charging?Math.max(.12,pow):.7,TYPES[ptype].spin); ctx.strokeStyle='#ff3b3b'; ctx.lineWidth=2; ctx.setLineDash([4,3]); ctx.beginPath(); pp.forEach((q,i)=>{ i?ctx.lineTo(sx(q[0]),sy(q[1])):ctx.moveTo(sx(q[0]),sy(q[1])); }); ctx.stroke(); ctx.setLineDash([]);
+          ctx.fillStyle=col; ctx.beginPath(); ctx.arc(sx(pos),sy(-6),3,0,7); ctx.fill(); ctx.textAlign='center'; ctx.font='700 9px '+TC; ctx.fillStyle='#6fd3ff'; ctx.fillText('路徑',ox+mw/2,oy-7);
+          // 球道上也畫一條
+          ctx.strokeStyle='rgba(255,59,59,.85)'; ctx.lineWidth=2; ctx.setLineDash([6,5]); ctx.beginPath(); pp.forEach((q,i)=>{ const a=proj(q[0],q[1],.2); i?ctx.lineTo(a[0],a[1]):ctx.moveTo(a[0],a[1]); }); ctx.stroke(); ctx.setLineDash([]);
+          // 力道條
+          ctx.fillStyle='rgba(11,10,28,.8)'; ctx.fillRect(W/2-90,H-34,180,14); ctx.fillStyle='#2b2759'; ctx.fillRect(W/2-86,H-31,172,8); ctx.fillStyle=pow>.85?'#ff5d4f':pow>.5?'#ffd23f':'#86dc4f'; ctx.fillRect(W/2-86,H-31,172*(charging?pow:0),8);
+        }
+        const tip=env.touch?(step===0?'◀ ▶ 選球種，按「投球」確認':charging?'放開就丟出去！':'◀ ▶ 選站位，按住「投球」蓄力'):(step===0?'選好球種按空白鍵（或點畫面）':charging?'放開就丟出去！':'← → 選站位，按住空白鍵（或按住滑鼠左鍵）蓄力');
+        ctx.textAlign='center'; ctx.font='900 13px '+TC; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText(tip,W/2,H-46); ctx.fillStyle='#ffd23f'; ctx.fillText(tip,W/2,H-46); }
       else { ctx.font='900 14px '+TC; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText('等 '+who+' 投球…',W/2,H-18); ctx.fillStyle='#ffd23f'; ctx.fillText('等 '+who+' 投球…',W/2,H-18); }
     }
     for(const f of fx){ ctx.globalAlpha=Math.max(0,f.life); ctx.fillStyle=f.col; ctx.fillRect(f.x-2,f.y-2,4,4); } ctx.globalAlpha=1;
     if(banT>0&&banner){ const k=1+Math.max(0,banT-1.2)*1.2; ctx.save(); ctx.translate(W/2,150); ctx.scale(k,k); ctx.font='900 30px '+TC; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; ctx.strokeText(banner,0,0); ctx.fillStyle=/STRIKE|SPARE/.test(banner)?'#ffd23f':'#fff'; ctx.fillText(banner,0,0); ctx.restore(); }
   }
-  return {update,draw,destroy(){},_dbg:{PL,get phase(){return phase;},get cur(){return cur;},get stand(){return stand;},throw:(x,a,p,s)=>launch(x,a,p,s),scoreFrames}};
+  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); removeEventListener('pointerup',onUp); removeEventListener('pointercancel',onUp); },_dbg:{PL,get phase(){return phase;},get cur(){return cur;},get stand(){return stand;},throw:(x,a,p,s)=>launch(x,a,p,s),scoreFrames}};
 }
 
 function scene(ctx,w,h,L,t){
@@ -229,13 +255,13 @@ const preview=(ctx,w,h,L,t)=>scene(ctx,w,h,L,t);
 const thumb=(ctx,w,h,t)=>scene(ctx,w,h,{ball:'#ff5d4f',lane:'#d9a45c',bg:'alley'},t);
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bowl={
-  name:'保齡球',tag:'BOWLING',color:'#b98cff',online:true,maxPlayers:4,
-  desc:'選站位、方向、力道和旋轉把球瓶打倒。可選 3、5、7、9 局，照正式規則計分。同一台可 1～4 人輪流，也可開房間連線，最多 4 人。',
+  name:'保齡球大賽',tag:'BOWLING',color:'#b98cff',online:true,maxPlayers:4,
+  desc:'先選球種，再選站位，看著路徑圖長按蓄力把球丟出去。可選 3、5、7、9 局，照正式規則計分。同一台可 1～4 人輪流，也可開房間連線，最多 4 人。',
   goal:'每局有兩球把 10 支球瓶打倒。全倒（X）加後面兩球的分數，補中（/）加後面一球；最後一局全倒或補中可以加投。',
   variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'}],
   modes:[{id:'1',label:'1 人'},{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}],
-  help:[['← →','選站位'],['Space','投球：依序定住方向、力道、旋轉']],
-  touchHelp:[['◀ ▶','選站位'],['投球','依序定住方向、力道、旋轉']],
+  help:[['← →','選球種，確認後改成選站位'],['Space','確認球種；選站位時按住蓄力、放開丟球（按住滑鼠左鍵也可以）'],['↑','回去重選球種']],
+  touchHelp:[['◀ ▶','選球種，確認後改成選站位'],['投球','確認球種；選站位時按住蓄力、放開丟球（按住畫面也可以）']],
   touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'投球',c:'Space',act:true}]},
   looks:[{key:'ball',label:'球的顏色',type:'color',opts:['#ff5d4f','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#4f9dff','#b98cff','#ff7eb6']},
     {key:'lane',label:'球道顏色',type:'color',opts:['#d9a45c','#e8c890','#b9783a','#9ad0e8','#c8a0e0','#9fd68a']},

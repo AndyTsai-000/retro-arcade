@@ -223,7 +223,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).stairs={
-  name:'小朋友下樓梯',tag:'NS-SHAFT',color:'#86dc4f',online:true,
+  name:'小朋友下樓梯',tag:'NS-SHAFT',color:'#86dc4f',online:true,wide:false,
   desc:'天花板一直壓下來，踩著平台往下逃。小心尖刺、會翻的假板和輸送帶。可單人、兩人同一台，或開房間連線比誰撐得久。',
   goal:'踩平台往下走，別被天花板的尖刺刺到，也別掉出畫面。踩到新的平台會補血。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人'}],
