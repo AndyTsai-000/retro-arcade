@@ -16,10 +16,20 @@ const STAGES=[
    pts:[[0,0],[140,0],[220,-40],[240,-130],[170,-190],[90,-150],[20,-190],[-50,-260],[-150,-250],[-200,-170],[-140,-110],[-200,-50],[-100,0]]},
   {name:'城鎮夜路',stars:3,grip:1,ai:.9,sky:0x232a5c,ground:['#2f3b4f','#293447'],road:'#3c3c48',tree:[0x2a5a4a,0x3a3028],
    pts:[[0,0],[130,0],[190,-20],[200,-90],[140,-120],[130,-190],[190,-230],[120,-270],[0,-250],[-40,-170],[-120,-150],[-200,-200],[-240,-120],[-190,-40],[-100,0]]},
+  {name:'櫻花公園',stars:3,grip:1,ai:.9,sky:0xffe3ef,ground:['#9ed68a','#93cc80'],road:'#5b5560',tree:[0xff9ec4,0x6b4a3a],
+   pts:[[0,0],[130,0],[210,-30],[230,-110],[160,-150],[170,-230],[90,-270],[10,-230],[30,-150],[-50,-120],[-130,-170],[-210,-140],[-220,-50],[-100,0]]},
   {name:'冰原彎道',stars:4,grip:.5,ai:.86,sky:0xcfe9ff,ground:['#eef6ff','#dfeefa'],road:'#8fb4c9',tree:[0xbfe3f2,0x6f8fa3],
    pts:[[0,0],[100,0],[170,-50],[110,-110],[180,-170],[100,-230],[10,-180],[-60,-240],[-150,-250],[-210,-180],[-130,-130],[-210,-70],[-100,0]]},
+  {name:'海盜港灣',stars:4,grip:1,ai:.91,sky:0xffb37a,ground:['#e9cf8f','#dcbf7c'],road:'#4f4a52',tree:[0x2f8f6a,0x7a5a36],
+   pts:[[0,0],[120,0],[190,-50],[130,-110],[200,-170],[260,-110],[300,-190],[230,-260],[120,-240],[40,-280],[-40,-220],[20,-140],[-60,-90],[-150,-150],[-230,-90],[-180,-10],[-100,0]]},
+  {name:'叢林遺跡',stars:4,grip:.9,ai:.91,sky:0xb7e0c0,ground:['#2f7a3c','#286e35'],road:'#5a5446',tree:[0x1f6a2c,0x4a3a22],
+   pts:[[0,0],[110,0],[180,-30],[200,-100],[140,-140],[70,-100],[10,-140],[60,-210],[150,-220],[210,-280],[110,-330],[0,-300],[-70,-230],[-150,-270],[-230,-210],[-190,-130],[-240,-60],[-170,-10],[-100,0]]},
   {name:'火山環道',stars:5,grip:.9,ai:.93,sky:0x4a2030,ground:['#4a332e','#3f2a26'],road:'#2e2a30',tree:[0x8a3a22,0x3a2a22],
-   pts:[[0,0],[110,0],[170,-40],[120,-90],[190,-130],[130,-180],[200,-230],[110,-280],[20,-240],[40,-160],[-40,-110],[-100,-180],[-60,-260],[-160,-280],[-230,-210],[-170,-140],[-240,-80],[-180,-20],[-100,0]]}
+   pts:[[0,0],[110,0],[170,-40],[120,-90],[190,-130],[130,-180],[200,-230],[110,-280],[20,-240],[40,-160],[-40,-110],[-100,-180],[-60,-260],[-160,-280],[-230,-210],[-170,-140],[-240,-80],[-180,-20],[-100,0]]},
+  {name:'太空站',stars:5,grip:.8,ai:.94,sky:0x0c0c22,ground:['#3a3d52','#33364a'],road:'#5a3f8a',tree:[0x3ddbd9,0x8a8fa8],
+   pts:[[0,0],[100,0],[160,-40],[110,-90],[170,-140],[110,-190],[180,-240],[240,-190],[240,-110],[320,-50],[365,-150],[335,-260],[235,-315],[120,-290],[40,-240],[-20,-290],[-100,-250],[-70,-170],[-10,-120],[-90,-80],[-170,-130],[-240,-80],[-190,-10],[-100,0]]},
+  {name:'冰河峽灣',stars:5,grip:.45,ai:.9,sky:0xa9d6f5,ground:['#e6f2fb','#d5e8f6'],road:'#7fa6c2',tree:[0xd6eef8,0x5f7f93],
+   pts:[[0,0],[120,0],[200,-40],[180,-120],[250,-180],[190,-250],[100,-210],[95,-135],[30,-100],[-30,-170],[30,-250],[-50,-310],[-150,-270],[-130,-180],[-210,-130],[-180,-40],[-100,0]]}
 ];
 const ITEMS=['nitro','banana','missile','shield','water','cloud','bolt'],INAME={nitro:'氮氣',banana:'香蕉',missile:'飛彈',shield:'護盾',water:'水球',cloud:'烏雲',bolt:'閃電'};
 const wrap=a=>{ while(a>Math.PI)a-=2*Math.PI; while(a<-Math.PI)a+=2*Math.PI; return a; };
@@ -41,10 +51,11 @@ function routePts(pts){
   return out;
 }
 function routeLen(si){ const r=routePts(STAGES[si].pts); let L=0; for(let i=0;i<r.length;i++){ const a=r[i],b=r[(i+1)%r.length]; L+=Math.hypot(b[0]-a[0],b[1]-a[1]); } return L; }
-function stagePreview(ctx,w,h,si){
-  const st=STAGES[si],hw=w/2-3,hz=h*.44;
+function stagePreview(ctx,w,h,si,mode){
+  const st=STAGES[si],solo=mode==='route',hw=solo?w:w/2-3,hz=h*.44;
   ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,w,h);
   // 環境
+  if(!solo){
   ctx.save(); ctx.beginPath(); ctx.rect(0,0,hw,h); ctx.clip();
   ctx.fillStyle=hex(st.sky); ctx.fillRect(0,0,hw,hz); ctx.fillStyle=st.ground[0]; ctx.fillRect(0,hz,hw,h-hz);
   ctx.fillStyle=st.ground[1]; for(let i=0;i<30;i++) ctx.fillRect((i*47)%hw,hz+8+(i*31)%(h-hz-10),10,3);
@@ -55,8 +66,9 @@ function stagePreview(ctx,w,h,si){
     ctx.fillStyle=st.road; ctx.beginPath(); ctx.moveTo(c0-w0,y0); ctx.lineTo(c0+w0,y0); ctx.lineTo(c1+w1,y1+1); ctx.lineTo(c1-w1,y1+1); ctx.fill(); }
   tree(hw*.1,h*.86,1.7); tree(hw*.93,h*.8,1.4);
   ctx.restore();
+  }
   // 路線
-  const x0=w/2+3,r=routePts(st.pts); let a=1e9,b=-1e9,c=1e9,d=-1e9; for(const p of r){ a=Math.min(a,p[0]); b=Math.max(b,p[0]); c=Math.min(c,p[1]); d=Math.max(d,p[1]); }
+  const x0=solo?0:w/2+3,r=routePts(st.pts); let a=1e9,b=-1e9,c=1e9,d=-1e9; for(const p of r){ a=Math.min(a,p[0]); b=Math.max(b,p[0]); c=Math.min(c,p[1]); d=Math.max(d,p[1]); }
   ctx.fillStyle='#211e45'; ctx.fillRect(x0,0,hw,h);
   const k=Math.min((hw-36)/(b-a),(h-44)/(d-c)),ox=x0+hw/2-(a+b)/2*k,oy=h/2+6-(c+d)/2*k,P=p=>[ox+p[0]*k,oy+p[1]*k];
   const path=()=>{ ctx.beginPath(); r.forEach((p,i)=>{ const q=P(p); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); }); ctx.closePath(); };
@@ -65,7 +77,7 @@ function stagePreview(ctx,w,h,si){
   ctx.save(); ctx.translate(s0[0],s0[1]); ctx.rotate(ang); ctx.fillStyle='#fff'; ctx.fillRect(-2,-8,4,16); ctx.fillStyle='#14122b'; ctx.fillRect(-2,-8,2,4); ctx.fillRect(0,-4,2,4); ctx.fillRect(-2,0,2,4); ctx.fillRect(0,4,2,4);
   ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(10,-6); ctx.lineTo(22,0); ctx.lineTo(10,6); ctx.fill(); ctx.restore();
   ctx.font='700 11px '+TC; ctx.textBaseline='top'; ctx.textAlign='left';
-  for(const [tx,ty,txt] of [[6,5,'環境'],[x0+6,5,'路線（黃色箭頭是起跑方向）']]){ ctx.fillStyle='rgba(11,10,28,.7)'; ctx.fillRect(tx-3,ty-2,ctx.measureText(txt).width+6,16); ctx.fillStyle='#fff'; ctx.fillText(txt,tx,ty); }
+  for(const [tx,ty,txt] of (solo?[[6,5,'路線（黃色箭頭是起跑方向）']]:[[6,5,'環境'],[x0+6,5,'路線（黃色箭頭是起跑方向）']])){ ctx.fillStyle='rgba(11,10,28,.7)'; ctx.fillRect(tx-3,ty-2,ctx.measureText(txt).width+6,16); ctx.fillStyle='#fff'; ctx.fillText(txt,tx,ty); }
 }
 const stageInfo=si=>{ const st=STAGES[si]; return '難度 '+'★'.repeat(st.stars)+'　一圈約 '+Math.round(routeLen(si)*.83/10)*10+' 公尺，共 '+LAPS+' 圈　'+(st.grip<.7?'冰面很滑':st.grip<1?'路面略滑':'路面抓地力正常'); };
 
@@ -172,18 +184,10 @@ function viewer(host,look){
   };
 }
 
-function create(env,opts){
-  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=opts.variant==='drift',humans=net?net.count:local2?2:1;
-  const stage=env.stage,dpr=Math.min(window.devicePixelRatio||1,2);
-  const renderer=new T.WebGLRenderer({antialias:true}); renderer.setPixelRatio(dpr); stage.appendChild(renderer.domElement);
-  const hudC=document.createElement('canvas'); stage.appendChild(hudC); const hud=hudC.getContext('2d');
+/* ---- 賽道場景：路面、護欄、地面、起跑拱門、加速板、樹 ---- */
+function buildWorld(T,st){
   const scene=new T.Scene(); scene.background=new T.Color(st.sky); scene.fog=new T.Fog(st.sky,140,560);
-  const cam=new T.PerspectiveCamera(62,1,.5,1000);
   scene.add(new T.HemisphereLight(0xffffff,0x667755,.95)); const sun=new T.DirectionalLight(0xffffff,.55); sun.position.set(60,120,40); scene.add(sun);
-  let vw=1,vh=1;
-  function resize(){ vw=Math.max(1,stage.clientWidth); vh=Math.max(1,stage.clientHeight); renderer.setSize(vw,vh,false); cam.aspect=vw/vh; cam.updateProjectionMatrix(); hudC.width=vw*dpr; hudC.height=vh*dpr; }
-  const ro=new ResizeObserver(resize); ro.observe(stage); resize();
-
   function tex(w,h,draw,rx,ry){ const c=document.createElement('canvas'); c.width=w;c.height=h; draw(c.getContext('2d'),w,h);
     const t=new T.CanvasTexture(c); t.wrapS=t.wrapT=T.RepeatWrapping; if(rx) t.repeat.set(rx,ry); return t; }
 
@@ -237,6 +241,32 @@ function create(env,opts){
       d.position.set(x,1.5*s,z); d.scale.set(s,s,s); d.rotation.y=Math.random()*6; d.updateMatrix(); trunk.setMatrixAt(n,d.matrix);
       d.position.set(x,6.5*s,z); d.updateMatrix(); crown.setMatrixAt(n,d.matrix); n++; }
     trunk.count=crown.count=n; scene.add(trunk); scene.add(crown); }
+
+  return {scene,tex,px,pz,tx,tz,nx,nz,curv,N,minX,maxX,minZ,maxZ,LIM,pads};
+}
+// 進場前的 3D 預覽：鏡頭沿著賽道低空飛一圈
+function stageViewer(host,si){
+  const T=window.THREE,W_=buildWorld(T,STAGES[si]),r=new T.WebGLRenderer({antialias:true}),dpr=Math.min(window.devicePixelRatio||1,2);
+  const w=host.clientWidth||300,h=host.clientHeight||225; r.setPixelRatio(dpr); r.setSize(w,h,false);
+  const cv=r.domElement; cv.style.cssText='width:100%;height:100%;display:block'; host.appendChild(cv);
+  const cam=new T.PerspectiveCamera(62,w/h,.5,1000),{px,pz,N,scene}=W_; let u=N-30;
+  const at=(v,a)=>{ const i=Math.floor(v)%N,j=(i+1)%N,f=v-Math.floor(v); return a[i]+(a[j]-a[i])*f; };
+  return {
+    draw(){ u=(u+.3)%N; cam.position.set(at(u,px),8.5,at(u,pz)); cam.lookAt(at(u+14,px),2,at(u+14,pz)); r.render(scene,cam); },
+    destroy(){ scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); } }); r.dispose(); try{ r.forceContextLoss(); }catch(e){} cv.remove(); }
+  };
+}
+
+function create(env,opts){
+  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=opts.variant==='drift',humans=net?net.count:local2?2:1;
+  const stage=env.stage,dpr=Math.min(window.devicePixelRatio||1,2);
+  const renderer=new T.WebGLRenderer({antialias:true}); renderer.setPixelRatio(dpr); stage.appendChild(renderer.domElement);
+  const hudC=document.createElement('canvas'); stage.appendChild(hudC); const hud=hudC.getContext('2d');
+  const {scene,tex,px,pz,tx,tz,nx,nz,curv,N,minX,maxX,minZ,maxZ,LIM,pads}=buildWorld(T,st);
+  const cam=new T.PerspectiveCamera(62,1,.5,1000);
+  let vw=1,vh=1;
+  function resize(){ vw=Math.max(1,stage.clientWidth); vh=Math.max(1,stage.clientHeight); renderer.setSize(vw,vh,false); cam.aspect=vw/vh; cam.updateProjectionMatrix(); hudC.width=vw*dpr; hudC.height=vh*dpr; }
+  const ro=new ResizeObserver(resize); ro.observe(stage); resize();
 
   /* ---- 車 ---- */
   const makeKart=L=>{ const g=buildKart(T,L); scene.add(g); return g; };
@@ -608,7 +638,7 @@ function thumb(ctx,w,h,t){
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'跑跑卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,
-  desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 6 關，星星越多越難；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
+  desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 11 關，星星越多越難；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
   goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。甩噴賽：甩尾一放開就自動噴氮氣，甩越久噴越久。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'},{id:'drift',label:'甩噴賽'}],
@@ -621,6 +651,6 @@ function thumb(ctx,w,h,t){
     {key:'color',label:'車輛顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#ff7eb6']},
     {key:'part',label:'配件',opts:[{id:'none',label:'小尾翼'},{id:'wing',label:'大尾翼'},{id:'flag',label:'旗子'},{id:'exhaust',label:'排氣管'}]},
     {key:'driver',label:'人物',opts:[{id:'helmet',label:'賽車手'},{id:'cap',label:'棒球帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'}]}],
-  stagePreview,stageInfo,preview,viewer,thumb,load,create
+  stagePreview,stageInfo,stageViewer,ready:()=>!!window.THREE,preview,viewer,thumb,load,create
 };
 })();
