@@ -83,6 +83,14 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .help{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;text-align:left;align-items:center;font-size:14px;margin:0 auto}
 .help span{color:var(--dim)}
 .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;align-items:center}
+.podium{display:flex;justify-content:center;align-items:flex-end;gap:8px}
+.pod{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:0;max-width:120px}
+.pod b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pod span{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+.pod i{font-style:normal;font-family:var(--pixel);font-size:20px;color:#14122b;width:100%;display:flex;align-items:center;justify-content:center;border:3px solid #0b0a1c;border-bottom:0;border-radius:4px 4px 0 0}
+.pod.p1 i{height:92px}.pod.p2 i{height:66px}.pod.p3 i{height:46px}
+.pod.p1 b{color:var(--yellow);font-size:18px}
+.rest{list-style:none;margin:0;padding:0;color:var(--dim);font-size:14px;font-variant-numeric:tabular-nums}
 .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .chip{background:var(--ink);border:2px solid var(--line);border-radius:999px;padding:5px 14px;font-weight:700}
 .chip.sel{background:var(--cyan);border-color:#0b0a1c;color:#14122b}
@@ -370,7 +378,7 @@ function finish(res){
   let btn;
   if(Net.peer) btn=Net.host?'<button class="btn main" id="rRoom">回房間</button>':'<p>等房主回到房間，就能再玩一場。</p>';
   else btn=(res.next?'<button class="btn main" id="rNext">下一關</button><button class="btn" id="rAgain">再玩一次</button>':'<button class="btn main" id="rAgain">再玩一次</button>');
-  showCard('<h3>'+res.title+'</h3>'+(res.big?'<div class="big">'+res.big+'</div>':'')+(res.text?'<p>'+res.text+'</p>':'')+
+  showCard('<h3>'+res.title+'</h3>'+(res.html||'')+(res.big?'<div class="big">'+res.big+'</div>':'')+(res.text?'<p>'+res.text+'</p>':'')+
     (Net.peer?'':'<p>'+(rec?'<b style="color:var(--green)">新紀錄！</b> ':'')+bestText(g)+'</p>')+
     '<div class="row">'+btn+'<button class="btn" id="rHub">'+(Net.peer?'離開':'回大廳')+'</button></div>');
   on('rAgain',()=>start(lastOpts)); on('rNext',()=>{stageSel=lastOpts.stage+1;start({stage:stageSel,mode:lastOpts.mode,variant:lastOpts.variant});});

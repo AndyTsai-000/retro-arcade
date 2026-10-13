@@ -134,7 +134,7 @@ function create(env,opts){
     const si=(N-6-Math.floor(slot/2)*6)%N,lane=(slot%2?-1:1)*5;
     const look=lookFor(i,human);
     const k={i,human,color:look.color,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
-      boostT:0,drifting:false,driftT:0,gauge:0,stock:0,item:null,spin:0,shield:0,fin:null,wall:false,left:false,flags:0,
+      boostT:0,drifting:false,driftT:0,gauge:0,stock:0,items:[],toastT:0,toastText:'',spin:0,shield:0,fin:null,wall:false,left:false,flags:0,
       ai:human?null:{lane:lane*.8,skill:st.ai+(i-humans)*.022,nt:6+Math.random()*8},mesh:makeKart(look)};
     k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1);
     { // 車頂名牌
@@ -146,7 +146,7 @@ function create(env,opts){
     k.tx=k.x; k.tz=k.z; k.th=k.h; k.v={camH:k.h,fov:62,wrongT:0,lap:1}; karts.push(k);
   }
   const my=karts[me],locals=karts.filter(k=>k.local);
-  let t=0,cd=3.4,lastBeep=4,endT=0,ended=false,sendT=0;
+  let t=0,cd=3.4,lastBeep=4,endT=0,ended=false,sendT=0,remain=null,lastTick=99,pip=null;
 
   /* ---- 道具賽 ---- */
   const boxes=[],bananas=[],missiles=[]; let banN=0,banGeo,banMat,misGeo,misMat;
@@ -162,16 +162,32 @@ function create(env,opts){
   function addBanana(id,x,z,owner){ if(bananas.some(b=>b.id===id)) return; const mesh=new T.Mesh(banGeo,banMat); mesh.position.set(x,.8,z); scene.add(mesh); bananas.push({id,x,z,owner,age:0,mesh}); }
   function dropBanana(id){ const n=bananas.findIndex(b=>b.id===id); if(n>=0){ scene.remove(bananas[n].mesh); bananas.splice(n,1); } }
   function launch(from,to){ const mesh=new T.Mesh(misGeo,misMat); scene.add(mesh); missiles.push({from,to,t:0,mesh}); }
-  function hit(k,sec){ if(k.shield>0){ k.shield=0; if(k.local) env.sfx('item'); return; } k.spin=sec; k.vx*=.3; k.vz*=.3; k.boostT=0; if(k.local) env.sfx('hurt'); }
+  const fx=[],fxGeo=new T.SphereGeometry(1,12,8);
+  function burst(x,z,color,size){ const m=new T.Mesh(fxGeo,new T.MeshBasicMaterial({color,transparent:true,opacity:.7,depthWrite:false})); m.position.set(x,1.3,z); scene.add(m); fx.push({m,t:0,size}); }
+  function toast(k,text){ if(k&&k.local){ k.toastText=text; k.toastT=2.4; } }
+  // 命中由被打的那台車的主人判定，再通知所有人播特效
+  function hit(k,sec,owner,kind){
+    const blocked=k.shield>0?1:0;
+    if(blocked){ k.shield=0; if(k.local) env.sfx('item'); } else { k.spin=sec; k.vx*=.3; k.vz*=.3; k.boostT=0; if(k.local) env.sfx('hurt'); }
+    hitEvent(k.i,owner,kind,blocked); if(net) net.send({hit:[k.i,owner,kind,blocked]});
+  }
+  function hitEvent(v,o,kind,blocked){
+    const V=karts[v],O=karts[o]; if(!V) return; const what=INAME[kind]||'道具',other=O&&O!==V;
+    burst(V.x,V.z,blocked?0x66e0ff:kind==='missile'?0xff5533:0xffe14a,blocked?4:6);
+    toast(V,blocked?'護盾擋下了'+what:other?'被 '+O.name+' 的'+what+'打中':'踩到自己的'+what);
+    if(other&&O.local){ toast(O,blocked?V.name+' 用護盾擋下了':'你的'+what+'打中 '+V.name); env.sfx('item');
+      if(!local2) pip={k:V,t:2.8,text:V.name+(blocked?' 擋下了':' 中了')+what}; }
+  }
   function useItem(k){
-    const it=k.item;
+    const it=k.items[0];
     if(it==='missile'){ let best=null; for(const q of karts){ if(q===k||q.left||q.fin!=null) continue; const g=q.prog-k.prog; if(g>0&&(!best||g<best.prog-k.prog)) best=q; }
       if(!best){ if(k.local&&!k.ai) env.sfx('bump'); return false; }
-      launch(k.i,best.i); if(net) net.send({mis:[k.i,best.i]}); if(k.local) env.sfx('place'); }
-    else if(it==='nitro'){ k.boostT=2.8; if(k.local) env.sfx('boost'); }
-    else if(it==='banana'){ const id=k.i+'-'+(banN++),x=r2(k.x-Math.sin(k.h)*3.6),z=r2(k.z-Math.cos(k.h)*3.6); addBanana(id,x,z,k.i); if(net) net.send({ban:[id,x,z]}); if(k.local) env.sfx('place'); }
-    else { k.shield=8; if(k.local) env.sfx('item'); }
-    k.item=null; return true;
+      launch(k.i,best.i); if(net) net.send({mis:[k.i,best.i]}); burst(k.x,k.z,0xff5533,3); toast(k,'飛彈鎖定 '+best.name); if(k.local) env.sfx('place'); }
+    else if(it==='nitro'){ k.boostT=2.8; burst(k.x-Math.sin(k.h)*2,k.z-Math.cos(k.h)*2,0xffa41a,3.5); toast(k,'氮氣加速！'); if(k.local) env.sfx('boost'); }
+    else if(it==='banana'){ const id=k.i+'-'+(banN++),x=r2(k.x-Math.sin(k.h)*3.6),z=r2(k.z-Math.cos(k.h)*3.6); addBanana(id,x,z,k.i); if(net) net.send({ban:[id,x,z,k.i]}); burst(x,z,0xffe14a,2.5); if(k.local) env.sfx('place'); }
+    else { k.shield=8; burst(k.x,k.z,0x66e0ff,4); toast(k,'護盾啟動，可擋一次攻擊'); if(k.local) env.sfx('item'); }
+    if(it==='banana') toast(k,'放下香蕉');
+    k.items.shift(); return true;
   }
 
   function locate(k){
@@ -209,10 +225,14 @@ function create(env,opts){
     } else k.wall=false;
     for(const p of pads){ let dd=k.idx-p; if(dd>N/2) dd-=N; if(dd>=-2&&dd<=2&&Math.abs(k.d)<5&&k.boostT<1){ k.boostT=1.3; if(mine) env.sfx('boost'); } }
     if(itemMode){
-      if(!k.item) for(const b of boxes){ if(b.cool>0) continue; const dx=k.x-b.x,dz=k.z-b.z; if(dx*dx+dz*dz<10){ k.item=ITEMS[(Math.random()*ITEMS.length)|0]; b.cool=4; b.mesh.visible=false; if(mine) env.sfx('item'); break; } }
+      for(const b of boxes){ if(b.cool>0) continue; const dx=k.x-b.x,dz=k.z-b.z;
+        if(dx*dx+dz*dz<10){ // 最多留兩個，滿了就丟掉最舊的
+          const got=ITEMS[(Math.random()*ITEMS.length)|0]; k.items.push(got); const old=k.items.length>2?k.items.shift():null;
+          toast(k,'獲得 '+INAME[got]+(old?'（丟掉 '+INAME[old]+'）':'')); burst(b.x,b.z,0xffffff,3);
+          b.cool=4; b.mesh.visible=false; if(mine) env.sfx('item'); break; } }
       for(let n=bananas.length-1;n>=0;n--){ const b=bananas[n]; if(b.owner===k.i&&b.age<.6) continue; const dx=k.x-b.x,dz=k.z-b.z;
-        if(dx*dx+dz*dz<6){ const id=b.id; dropBanana(id); if(net) net.send({banx:id}); hit(k,1); } }
-      if(inp.nitro&&k.item) useItem(k);
+        if(dx*dx+dz*dz<6){ const id=b.id,ow=b.owner; dropBanana(id); if(net) net.send({banx:id}); hit(k,1,ow,'banana'); } }
+      if(inp.nitro&&k.items.length) useItem(k);
       if(k.shield>0) k.shield-=dt;
     }
     k.flags=(k.boostT>0?1:0)|(k.drifting?2:0)|(k.shield>0?4:0)|(k.spin>0?8:0);
@@ -227,7 +247,7 @@ function create(env,opts){
     const vt=Math.min(MAX*a.skill*band,1.75/Math.max(cmax,.001)*(st.grip<1?.75:1));
     inp.steer=clamp(diff*3,-1,1); inp.gas=spd<vt; inp.brake=spd>vt+8; inp.drift=false; inp.nitro=false; inp.max=a.skill*band;
     a.nt-=dt; if(!itemMode&&a.nt<=0&&cmax<.008&&k.fin==null){ k.boostT=2; a.nt=9+Math.random()*10; }
-    if(itemMode&&k.item&&k.fin==null){ a.it=(a.it==null?1+Math.random()*3:a.it)-dt; if(a.it<=0){ inp.nitro=false; a.it=useItem(k)?null:1.5; } }
+    if(itemMode&&k.items.length&&k.fin==null){ a.it=(a.it==null?1+Math.random()*3:a.it)-dt; if(a.it<=0){ inp.nitro=false; a.it=useItem(k)?null:1.5; } }
   }
   function humanInput(k){
     const K=env.keys; inp.max=1;
@@ -245,8 +265,9 @@ function create(env,opts){
   function gone(i){ const k=karts[i]; if(k){ k.left=true; k.mesh.visible=false; } }
   if(net){
     net.onmsg=m=>{ if(m.k) applyRemote(m.k); if(m.ks) for(const a of m.ks) if(a[0]!==me) applyRemote(a); if(m.gone!=null) gone(m.gone);
-      if(itemMode&&(m.ban||m.banx||m.mis)){ if(net.host) net.send(m);
-        if(m.ban) addBanana(m.ban[0],m.ban[1],m.ban[2],-1); if(m.banx) dropBanana(m.banx);
+      if(itemMode&&(m.ban||m.banx||m.mis||m.hit)){ if(net.host) net.send(m);
+        if(m.hit&&karts[m.hit[0]]&&karts[m.hit[0]].remote) hitEvent(m.hit[0],m.hit[1],m.hit[2],m.hit[3]);
+        if(m.ban) addBanana(m.ban[0],m.ban[1],m.ban[2],m.ban[3]); if(m.banx) dropBanana(m.banx);
         if(m.mis&&karts[m.mis[0]]&&karts[m.mis[1]]&&karts[m.mis[0]].remote) launch(m.mis[0],m.mis[1]); } };
     net.onleave=i=>{ gone(i); net.send({gone:i}); };
   }
@@ -277,26 +298,43 @@ function create(env,opts){
       for(const k of locals){ const v=k.v,lap=clamp(Math.floor(k.prog/N)+1,1,LAPS); if(lap>v.lap&&k.fin==null){ v.lap=lap; env.sfx('lap'); }
         const dot=Math.sin(k.h)*tx[k.idx]+Math.cos(k.h)*tz[k.idx]; v.wrongT=dot<-.3&&Math.hypot(k.vx,k.vz)>8?v.wrongT+dt:0; }
       if(!local2&&env.hit('KeyR')&&my.fin==null){ const j=my.idx; my.x=px[j]; my.z=pz[j]; my.h=Math.atan2(tx[j],tz[j]); my.vx=my.vz=0; }
-      if(!ended&&locals.every(k=>k.fin!=null)){ endT+=dt; if(endT>1.6){ ended=true;
-        if(local2){ const a=karts[0],b=karts[1]; env.sfx('win');
-          env.end({title:(a.fin<b.fin?'1P':'2P')+' 獲勝',big:fmtTime(Math.min(a.fin,b.fin)),text:'1P 第 '+rankOf(a)+' 名（'+fmtTime(a.fin)+'），2P 第 '+rankOf(b)+' 名（'+fmtTime(b.fin)+'）。',score:null}); }
-        else { const r=rankOf(my),ok=r<=3,single=!net;
-          if(!ok) env.sfx('lose');
-          env.end({title:r===1?'冠軍！':'第 '+r+' 名',big:fmtTime(my.fin),text:single?(ok?'過關！':'跑進前 3 名才算過關。'):'',
-            score:single&&ok?(opts.stage||0)+1:null,next:single&&ok&&(opts.stage||0)<STAGES.length-1}); } } }
+      let first=null; for(const k of karts) if(!k.left&&k.fin!=null&&(first==null||k.fin<first)) first=k.fin;
+      if(first!=null&&!ended){
+        remain=Math.max(0,15-(t-first));
+        const c2=Math.ceil(remain); if(c2<lastTick&&c2>=1&&c2<=5) env.sfx('beep'); lastTick=c2;
+        if(karts.every(k=>k.left||!k.human||k.fin!=null)) endT+=dt; // 真人都跑完就不用等滿 15 秒
+        if(remain<=0||endT>1.6){ ended=true; awards(); }
+      }
     }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/15;
       if(net.host) net.send({ks:karts.filter(k=>!k.left).map(pack)}); else net.send({k:pack(my)}); } }
     if(osc){ const s=Math.hypot(my.vx,my.vz); osc.frequency.value=55+s*2.6+(my.boostT>0?40:0); }
     if(itemMode){
       for(const b of boxes){ b.mesh.rotation.y+=dt*2; if(b.cool>0){ b.cool-=dt; if(b.cool<=0) b.mesh.visible=true; } }
-      for(const b of bananas) b.age+=dt;
+      for(const b of bananas){ b.age+=dt; b.mesh.scale.setScalar(Math.min(1,b.age*5)); b.mesh.rotation.y+=dt*3; }
       for(let n=missiles.length-1;n>=0;n--){ const m=missiles[n],A=karts[m.from],B=karts[m.to]; m.t+=dt; const u=Math.min(1,m.t/.9);
         m.mesh.position.set(A.x+(B.x-A.x)*u,1.4+Math.sin(u*Math.PI)*3,A.z+(B.z-A.z)*u);
-        if(u>=1){ scene.remove(m.mesh); missiles.splice(n,1); if(!B.remote) hit(B,1.3); } }
+        if(Math.floor(m.t/.1)!==Math.floor((m.t-dt)/.1)) burst(m.mesh.position.x,m.mesh.position.z,0xffaa55,1.3);
+        if(u>=1){ scene.remove(m.mesh); missiles.splice(n,1); if(!B.remote) hit(B,1.3,m.from,'missile'); } }
     }
+    for(let n=fx.length-1;n>=0;n--){ const f=fx[n]; f.t+=dt; const u=f.t/.5; f.m.scale.setScalar(.5+u*f.size); f.m.material.opacity=.7*(1-u);
+      if(u>=1){ scene.remove(f.m); f.m.material.dispose(); fx.splice(n,1); } }
+    for(const k of locals) if(k.toastT>0) k.toastT-=dt;
+    if(pip){ pip.t-=dt; if(pip.t<=0) pip=null; }
     for(const k of karts){ k.mesh.position.set(k.x,0,k.z); k.mesh.rotation.y=k.h+((k.flags&8)?t*16:0); k.mesh.userData.flame.visible=!!(k.flags&1); k.mesh.userData.shield.visible=!!(k.flags&4); }
     for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*5); v.fov+=((k.boostT>0?74:62)-v.fov)*Math.min(1,dt*4); }
+  }
+
+  const rankSort=(a,b)=>(a.fin!=null?a.fin-1e6:-a.prog)-(b.fin!=null?b.fin-1e6:-b.prog);
+  function awards(){
+    const order=karts.filter(q=>!q.left).sort(rankSort),single=!net&&!local2,r=order.indexOf(my)+1,ok=r<=3,stage=opts.stage||0;
+    const time=q=>q.fin!=null?fmtTime(q.fin):'未完賽',esc=v=>String(v).replace(/[<>&]/g,'');
+    env.sfx(local2||ok?'win':'lose');
+    const pod=[1,0,2].filter(n=>order[n]).map(n=>'<div class="pod p'+(n+1)+'"><b>'+esc(order[n].name)+'</b><span>'+time(order[n])+'</span><i style="background:'+order[n].color+'">'+(n+1)+'</i></div>').join('');
+    const rest=order.slice(3).map((q,n)=>'<li>第 '+(n+4)+' 名　'+esc(q.name)+'　'+time(q)+'</li>').join('');
+    env.end({title:'頒獎',html:'<div class="podium">'+pod+'</div>'+(rest?'<ul class="rest">'+rest+'</ul>':''),
+      text:local2?'':'你是第 '+r+' 名'+(single?(ok?'，過關！':'，跑進前 3 名才算過關。'):'。'),
+      score:single&&ok?stage+1:null,next:single&&ok&&stage<STAGES.length-1});
   }
 
   function draw(){
@@ -314,6 +352,14 @@ function create(env,opts){
       c.save(); c.translate(x,y); c.beginPath(); c.rect(0,0,w,h); c.clip(); drawHud(k,w,h); c.restore();
     });
     if(n>1){ c.fillStyle='#0b0a1c'; if(side) c.fillRect(vw/2-2,0,4,vh); else c.fillRect(0,vh/2-2,vw,4); }
+    if(pip&&n===1){ // 右下角小視窗：自己的道具打中誰
+      const pw=Math.max(150,Math.min(260,vw*.27)),ph=pw*.62,x0=vw-pw-10,y0=vh-ph-10,V=pip.k;
+      renderer.setScissorTest(true); renderer.setViewport(x0,10,pw,ph); renderer.setScissor(x0,10,pw,ph);
+      cam.aspect=pw/ph; cam.fov=55; cam.updateProjectionMatrix(); cam.position.set(V.x+7,5.5,V.z+7); cam.lookAt(V.x,1.2,V.z);
+      renderer.render(scene,cam); renderer.setScissorTest(false);
+      c.strokeStyle='#ffd23f'; c.lineWidth=3; c.strokeRect(x0,y0,pw,ph); c.fillStyle='rgba(11,10,28,.75)'; c.fillRect(x0,y0+ph-22,pw,22);
+      c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle'; c.font='700 13px '+TC; c.fillText(pip.text,x0+pw/2,y0+ph-10);
+    }
   }
   function drawHud(k,w,h){
     const c=hud,s=clamp(w/560,.62,1),v=k.v;
@@ -347,7 +393,9 @@ function create(env,opts){
     c.textAlign='left'; c.fillStyle='#fff'; c.font=14*s+'px '+PIX; c.fillText(String(Math.round(Math.hypot(k.vx,k.vz)*3)).padStart(3,'0'),bx+10*s,by+22*s);
     c.fillStyle='#aaa4d8'; c.font=8*s+'px '+PIX; c.fillText('KM/H',bx+62*s,by+24*s);
     const gx=bx+104*s,gw=64*s;
-    if(itemMode){ c.fillStyle='#2b2759'; c.fillRect(gx,by+8*s,114*s,26*s); c.textAlign='center'; c.fillStyle=k.item?'#ffd23f':'#6b6799'; c.font='900 '+15*s+'px '+TC; c.fillText(k.item?INAME[k.item]:'沒有道具',gx+57*s,by+22*s); }
+    if(itemMode){ // 兩格道具，左邊那格是下一個會用掉的
+      for(let n=0;n<2;n++){ const it=k.items[n],x2=gx+n*59*s; c.fillStyle=it&&n===0?'#ffd23f':'#2b2759'; c.fillRect(x2,by+8*s,55*s,26*s);
+        c.textAlign='center'; c.fillStyle=it?(n===0?'#14122b':'#fff'):'#6b6799'; c.font='900 '+14*s+'px '+TC; c.fillText(it?INAME[it]:'空',x2+27.5*s,by+22*s); } }
     else { c.fillStyle='#2b2759'; c.fillRect(gx,by+13*s,gw,16*s); c.fillStyle=k.drifting?'#ffd23f':'#3ddbd9'; c.fillRect(gx,by+13*s,gw*clamp(k.gauge,0,1),16*s);
       for(let i=0;i<2;i++){ c.fillStyle=i<k.stock?'#ff9d3d':'#2b2759'; c.beginPath(); c.arc(gx+gw+16*s+i*22*s,by+21*s,8*s,0,7); c.fill(); } }
     c.textAlign='center';
@@ -356,6 +404,9 @@ function create(env,opts){
     else if(t<.9) big('GO!','#86dc4f',60,PIX,h*.38);
     if(v.wrongT>1) big(local2?'逆向！':'逆向！按 R 回到賽道','#ff5d8f',30,TC,h*.3,'900 ');
     if(k.fin!=null) big('抵達終點','#ffd23f',50,TC,h*.36,'900 ');
+    if(remain!=null&&!ended){ const tw=190*s; c.fillStyle='rgba(226,59,59,.88)'; c.fillRect(w/2-tw/2,8,tw,30*s); c.fillStyle='#fff'; c.font='900 '+15*s+'px '+TC; c.fillText('比賽結束倒數 '+Math.ceil(remain)+' 秒',w/2,8+16*s); }
+    if(k.toastT>0){ c.font='900 '+18*s+'px '+TC; const tw=c.measureText(k.toastText).width+28*s; c.globalAlpha=Math.min(1,k.toastT*2.5);
+      c.fillStyle='rgba(11,10,28,.8)'; c.fillRect(w/2-tw/2,h*.2-17*s,tw,34*s); c.fillStyle='#ffd23f'; c.fillText(k.toastText,w/2,h*.2+1); c.globalAlpha=1; }
   }
   return {update,draw,bg:!!net,
     pause(p){ if(eg) eg.gain.value=p?0:.022; },
@@ -405,7 +456,7 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'跑跑卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 6 關，星星越多越難；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
-  goal:'跑 3 圈，前 3 名過關。競速賽：過彎按住飄移集氣，集滿得到氮氣。道具賽：撞彩色問號箱拿道具（氮氣、香蕉、飛彈、護盾）。',
+  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾），最多留 2 個。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
