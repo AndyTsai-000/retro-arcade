@@ -95,6 +95,7 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .pod i{font-style:normal;font-family:var(--pixel);font-size:20px;color:#14122b;width:100%;display:flex;align-items:center;justify-content:center;border:3px solid #0b0a1c;border-bottom:0;border-radius:4px 4px 0 0}
 .pod.p1 i{height:92px}.pod.p2 i{height:66px}.pod.p3 i{height:46px}
 .pod.p1 b{color:var(--yellow);font-size:18px}
+.ls{border-collapse:collapse;margin:0 auto;font-size:13px;font-variant-numeric:tabular-nums}.ls td,.ls th{border:1px solid var(--line);padding:2px 6px;text-align:center}.ls th{text-align:left;white-space:nowrap}
 .rest{list-style:none;margin:0;padding:0;color:var(--dim);font-size:14px;font-variant-numeric:tabular-nums}
 .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .chip{background:var(--ink);border:2px solid var(--line);border-radius:999px;padding:5px 14px;font-weight:700}
@@ -154,9 +155,9 @@ body.touch #pad{display:flex}
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=24; // 每次改版加一
+window.ARCADE_V=25; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
-  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
 <script>
 (function(){
@@ -166,7 +167,7 @@ if(/Line\//i.test(navigator.userAgent) && location.protocol.indexOf('http')===0 
   location.replace(location.pathname+'?openExternalBrowser=1'+location.hash); return;
 }
 const G=window.ARCADE_GAMES||{};
-const ORDER=['stairs','kart','bomb','volley','dodge','soccer','bowl'].filter(k=>G[k]);
+const ORDER=['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;};
 const isTouch=matchMedia('(pointer:coarse)').matches;
