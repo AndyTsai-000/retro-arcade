@@ -121,7 +121,7 @@ body.touch #pad{display:flex}
 .dpad i.l{top:50%;left:12px;margin-top:-11px;border-right-color:var(--text);border-left-width:0}
 .dpad i.r{top:50%;right:12px;margin-top:-11px;border-left-color:var(--text);border-right-width:0}
 .dpad[data-d="u"] i.u,.dpad[data-d="d"] i.d,.dpad[data-d="l"] i.l,.dpad[data-d="r"] i.r{opacity:1;filter:drop-shadow(0 0 6px var(--yellow))}
-@media (max-width:440px){.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}}
+@media (max-width:440px){.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side:has(.tb:nth-child(4)) .tb{width:50px;height:50px;font-size:13px}}
 @media (prefers-reduced-motion:reduce){.coin b{animation:none}.cart{transition:none}}
 </style>
 
@@ -154,7 +154,7 @@ body.touch #pad{display:flex}
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=21; // 每次改版加一
+window.ARCADE_V=22; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
