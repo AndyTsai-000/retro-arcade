@@ -75,6 +75,11 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .chip{background:var(--ink);border:2px solid var(--line);border-radius:999px;padding:5px 14px;font-weight:700}
 .chip.sel{background:var(--cyan);border-color:#0b0a1c;color:#14122b}
 .stars{color:var(--yellow);letter-spacing:.05em}.chip.sel .stars{color:#7a3d00}
+.who{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;counter-reset:w}
+.who li{counter-increment:w;background:var(--ink);border:2px solid var(--line);border-radius:4px;padding:3px 10px;font-weight:700}
+.who li::before{content:counter(w) '. ';color:var(--dim)}
+.who li.me{border-color:var(--yellow);color:var(--yellow)}
+#nName{width:9em;text-align:center;background:var(--ink);border:2px solid var(--line);border-radius:4px;padding:6px 8px;font-weight:700}
 #nCode{width:6.5em;text-align:center;font-family:var(--pixel);font-size:16px;background:var(--ink);border:2px solid var(--line);border-radius:4px;padding:8px}
 #pad{display:none;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
   background:var(--panel);border-top:3px solid #0b0a1c;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -353,7 +358,10 @@ const PEERJS='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js'
 // 連線只在獨立網址或本機能用；Claude 的頁面會擋掉對外連線
 const CAN_NET=location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$|github\.io$/.test(location.hostname);
 const NO_NET=CAN_NET?'連不上連線伺服器，請確認網路後再試一次。':'這個頁面是 Claude 的預覽頁，對外連線被擋住，所以不能開房間。請改用獨立網址（或直接開啟電腦裡的 index.html）。';
-const Net={peer:null,host:false,conns:[],hostConn:null,code:'',me:0,count:1,inGame:false,game:null,joined:false,timer:0};
+const Net={peer:null,host:false,conns:[],hostConn:null,code:'',me:0,count:1,inGame:false,game:null,joined:false,timer:0,names:[]};
+const cleanName=v=>String(v==null?'':v).replace(/[<>&"'\\]/g,'').trim().slice(0,8);
+let myName=cleanName(load('arcade.name'));
+const allNames=()=>[myName].concat(Net.conns.map(c=>c.name||'')).map((n,i)=>n||'玩家'+(i+1));
 function leaveNet(){
   clearTimeout(Net.timer);
   const p=Net.peer; Net.peer=null; Net.conns=[]; Net.hostConn=null; Net.inGame=false; Net.game=null; Net.joined=false; Net.host=false;
@@ -392,7 +400,9 @@ async function hostRoom(tries){
       if(Net.inGame||live.length>=maxP()-1){ try{c.send({t:'full'});}catch(e){} setTimeout(()=>{try{c.close();}catch(e){}},600); c.gone=true; return; }
       Net.conns.push(c); roster();
     });
-    c.on('data',d=>{ if(d&&d.g!==undefined&&Net.game&&Net.game.onmsg&&c.idx&&!c.gone) Net.game.onmsg(d.g,c.idx); });
+    c.on('data',d=>{ if(!d||c.gone) return;
+      if(d.t==='name'){ c.name=cleanName(d.name); if(!Net.inGame) roster(); }
+      else if(d.g!==undefined&&Net.game&&Net.game.onmsg&&c.idx) Net.game.onmsg(d.g,c.idx); });
     const drop=()=>{ if(c.gone||Net.peer!==peer) return; c.gone=true;
       if(Net.inGame){ if(Net.game&&Net.game.onleave&&c.idx) Net.game.onleave(c.idx); } else roster(); };
     c.on('close',drop); c.on('error',drop);
@@ -400,7 +410,8 @@ async function hostRoom(tries){
 }
 function roster(){
   Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1;
-  Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'roster',n:Net.count,me:i+1,code:Net.code,stage:stageSel,variant:variantSel});}catch(e){} });
+  Net.names=allNames();
+  Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'roster',n:Net.count,me:i+1,code:Net.code,stage:stageSel,variant:variantSel,names:Net.names});}catch(e){} });
   if(!Net.inGame) roomCard();
 }
 function joinRoom(code){
@@ -413,6 +424,7 @@ function joinRoom(code){
     peer.on('open',()=>{
       if(Net.peer!==peer) return;
       const c=peer.connect(PREFIX+cur.id+'-'+code,{reliable:true,serialization:'json'}); Net.hostConn=c;
+      c.on('open',()=>{ if(Net.peer===peer&&myName){ try{c.send({t:'name',name:myName});}catch(e){} } });
       c.on('data',d=>{ if(Net.peer===peer) fromHost(d); });
       const lost=()=>{ if(Net.peer!==peer) return; const was=Net.joined; leaveNet(); netCard(was?'與房主的連線中斷了。':'房間已滿，或遊戲正在進行中。'); };
       c.on('close',lost); c.on('error',lost);
@@ -426,22 +438,33 @@ function joinRoom(code){
 }
 function fromHost(d){
   if(!d) return;
-  if(d.t==='roster'){ Net.joined=true; clearTimeout(Net.timer); Net.me=d.me; Net.count=d.n; stageSel=d.stage; variantSel=d.variant; if(!Net.inGame) roomCard(); }
+  if(d.t==='roster'){ Net.joined=true; clearTimeout(Net.timer); Net.me=d.me; Net.count=d.n; Net.names=d.names||[]; stageSel=d.stage; variantSel=d.variant; if(!Net.inGame) roomCard(); }
   else if(d.t==='full'){ leaveNet(); netCard('房間已滿，或遊戲正在進行中。'); }
-  else if(d.t==='start'){ Net.inGame=true; Net.me=d.me; Net.count=d.n; Net.seed=d.seed; stageSel=d.stage; variantSel=d.variant; state='ready'; start({stage:d.stage,net:true}); }
+  else if(d.t==='start'){ Net.inGame=true; Net.me=d.me; Net.count=d.n; Net.seed=d.seed; Net.names=d.names||Net.names; stageSel=d.stage; variantSel=d.variant; state='ready'; start({stage:d.stage,net:true}); }
   else if(d.t==='room'){ Net.inGame=false; Net.game=null; killInst(); roomCard(); }
   else if(d.g!==undefined&&Net.game&&Net.game.onmsg) Net.game.onmsg(d.g,0);
 }
 function roomCard(){
   state='ready'; const g=cur;
-  showCard('<h3>房間</h3><div class="code">'+Net.code+'</div><p>目前 '+Net.count+' 人，你是玩家 '+(Net.me+1)+'。'+(Net.host?'把房號告訴朋友。':'')+'</p>'+
+  if(Net.host) Net.names=allNames();
+  // 重畫房間時保留正在輸入的名字與游標
+  const old=$('#nName'),typing=old&&document.activeElement===old,draft=old?old.value:myName;
+  showCard('<h3>房間</h3><div class="code">'+Net.code+'</div>'+
+    '<div class="row"><label for="nName">你的名字</label><input id="nName" maxlength="8" placeholder="玩家 '+(Net.me+1)+'" autocomplete="off"></div>'+
+    '<ol class="who">'+Net.names.map((n,i)=>'<li'+(i===Net.me?' class="me"':'')+'>'+n+(i===0?'（房主）':'')+'</li>').join('')+'</ol>'+
+    (Net.host?'<p>把房號告訴朋友。</p>':'')+
     (Net.host?chipsHtml(g)+'<div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
       :(g.stages?'<p>關卡：第 '+(stageSel+1)+' 關　'+g.stages[stageSel]+(variantName(g)?'　'+variantName(g):'')+'</p>':'')+'<p>等房主按開始…</p>')+
     '<div class="row"><button class="btn" id="nLeave">離開房間</button></div>');
   bindChips(()=>roster());
+  const inp=$('#nName'); inp.value=draft; if(typing){ inp.focus(); try{inp.setSelectionRange(draft.length,draft.length);}catch(e){} }
+  const sendName=()=>{ const v=cleanName(inp.value); if(v===myName) return; myName=v; save('arcade.name',v);
+    if(Net.host) roster(); else if(Net.hostConn&&Net.hostConn.open){ try{Net.hostConn.send({t:'name',name:v});}catch(e){} } };
+  inp.addEventListener('change',sendName); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') inp.blur(); });
   on('nStart',()=>{
     Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1; Net.inGame=true; Net.seed=(Math.random()*2147483647)|0;
-    Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'start',stage:stageSel,variant:variantSel,me:i+1,n:Net.count,seed:Net.seed});}catch(e){} });
+    const nm=$('#nName'); if(nm){ myName=cleanName(nm.value); save('arcade.name',myName); } Net.names=allNames();
+    Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'start',stage:stageSel,variant:variantSel,me:i+1,n:Net.count,seed:Net.seed,names:Net.names});}catch(e){} });
     start({stage:stageSel,net:true});
   });
   on('nLeave',()=>{leaveNet();netCard();});
@@ -453,7 +476,7 @@ function hostToRoom(){
 }
 function mkNet(){
   const host=Net.host;
-  Net.game={host,me:Net.me,count:Net.count,seed:Net.seed,onmsg:null,onleave:null,
+  Net.game={host,me:Net.me,count:Net.count,seed:Net.seed,names:Net.names.slice(),onmsg:null,onleave:null,
     send(p){ const m={g:p};
       if(host){ for(const c of Net.conns) if(!c.gone&&c.open){ try{c.send(m);}catch(e){} } }
       else if(Net.hostConn&&Net.hostConn.open){ try{Net.hostConn.send(m);}catch(e){} } }};

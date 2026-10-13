@@ -120,6 +120,13 @@ function create(env,opts){
     const k={i,human,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
       boostT:0,drifting:false,driftT:0,gauge:0,stock:0,item:null,spin:0,shield:0,fin:null,wall:false,left:false,flags:0,
       ai:human?null:{lane:lane*.8,skill:st.ai+(i-humans)*.022,nt:6+Math.random()*8},mesh:makeKart(COLORS[i])};
+    k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':'你'):'電腦'+(i-humans+1);
+    { // 車頂名牌
+      const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const c=cv.getContext('2d');
+      c.font='900 36px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=8; c.strokeStyle='#0b0a1c'; c.lineJoin='round';
+      c.strokeText(k.name,128,34); c.fillStyle=human?'#fff':'#c9c6e6'; c.fillText(k.name,128,34);
+      const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true,depthWrite:false,fog:false})); sp.scale.set(7,1.75,1); sp.position.y=3.7; k.mesh.add(sp);
+    }
     k.tx=k.x; k.tz=k.z; k.th=k.h; k.v={camH:k.h,fov:62,wrongT:0,lap:1}; karts.push(k);
   }
   const my=karts[me],locals=karts.filter(k=>k.local);
@@ -306,6 +313,13 @@ function create(env,opts){
     const live=karts.filter(q=>!q.left).length;
     c.fillText(clamp(Math.floor(k.prog/N)+1,1,LAPS)+'/'+LAPS,20+48*s,10+19*s); c.fillStyle='#ffd23f'; c.fillText(rankOf(k)+'/'+live,20+48*s,10+43*s);
     if(local2){ c.fillStyle=COLORS[k.i]; c.font=12*s+'px '+PIX; c.fillText((k.i+1)+'P',20+112*s,10+19*s); }
+    // 左側：所有人的即時名次
+    const order=karts.filter(q=>!q.left).sort((a,b)=>(a.fin!=null?a.fin-1e6:-a.prog)-(b.fin!=null?b.fin-1e6:-b.prog)),rh=20*s,ly=10+66*s;
+    order.forEach((q,n)=>{ const y=ly+n*(rh+2*s); c.fillStyle=q===k?'rgba(255,210,63,.9)':'rgba(11,10,28,.62)'; c.fillRect(10,y,150*s,rh);
+      c.textAlign='left'; c.fillStyle=q===k?'#14122b':'#fff'; c.font=10*s+'px '+PIX; c.fillText(String(n+1),16,y+rh/2+1);
+      c.fillStyle=COLORS[q.i]; c.beginPath(); c.arc(16+22*s,y+rh/2,5*s,0,7); c.fill();
+      c.fillStyle=q===k?'#14122b':'#fff'; c.font='700 '+13*s+'px '+TC; c.fillText(q.name,16+32*s,y+rh/2+1);
+      if(q.fin!=null){ c.textAlign='right'; c.font='700 '+11*s+'px '+TC; c.fillText('完賽',10+146*s,y+rh/2+1); } });
     // 右上：時間與小地圖
     const mw=118*s; panel(w-10-mw,10,mw,26*s+mw); c.textAlign='center'; c.fillStyle='#fff'; c.font=11*s+'px '+PIX; c.fillText(fmtTime(k.fin!=null?k.fin:t),w-10-mw/2,10+14*s);
     const sc=(mw-16)/Math.max(maxX-minX,maxZ-minZ),ox=w-10-mw/2-(minX+maxX)/2*sc,oy=10+26*s+mw/2-(minZ+maxZ)/2*sc;

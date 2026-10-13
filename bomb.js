@@ -74,7 +74,7 @@ function create(env,opts){
   const total=Math.max(4,humans); // 不足 4 人由電腦補滿，連線最多 6 人
   const players=SPAWN.slice(0,total).map(([x,y],i)=>({id:i,x,y,rx:x,ry:y,dir:1,moving:false,state:'alive',trapT:0,inv:0,
     maxB:i<humans?1:st.maxB,power:i<humans?1:st.power,spd:0,needles:0,human:i<humans,
-    name:local2&&i<2?(i+1)+'P':i===me?'你':i<humans?'玩家'+(i+1):'電腦',
+    name:local2&&i<2?(i+1)+'P':i===me?'你':i<humans?((net&&net.names&&net.names[i])||'玩家'+(i+1)).slice(0,5):'電腦',
     ai:i<humans?null:{think:Math.random()*.5,path:[],flee:false,avoid:new Map()}}));
   for(let i=0;i<total;i++) inputs.push({dir:-1,bomb:false});
 
