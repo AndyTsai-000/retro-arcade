@@ -445,6 +445,7 @@ function thumb(ctx,w,h,t){
   ctx.restore();
 }
 
+window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).dodge={
   name:'熱血躲避球',tag:'DODGE BALL',color:'#ff9d3d',online:true,maxPlayers:2,
   desc:'三對三躲避球，丟球打倒對方內野。助跑丟、跳起來丟會變成必殺球，共 7 種；集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
