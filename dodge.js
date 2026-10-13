@@ -28,26 +28,43 @@ const STAGES=[
 ];
 const r1=v=>Math.round(v*10)/10;
 
+// 人物：紅白機熱血系的二頭身畫法——大頭、粗眉、怒目、背心短褲球鞋，整個人描黑邊。
+// 先把每個色塊記下來，第一輪畫黑邊、第二輪上色。
 function drawGuy(ctx,x,y,z,face,col,hair,pose,t,alpha){
-  // pose: 0 站 1 走 2 丟 3 蹲 4 倒地 5 出局 6 接球
+  // pose: 0 站 1 跑 2 丟 3 蹲 4 倒地 5 出局 6 接球
   ctx.save(); if(alpha!=null) ctx.globalAlpha=alpha;
-  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x,y,10,3.5,0,0,7); ctx.fill();
-  ctx.translate(x,y-z);
-  if(pose===4){ ctx.rotate(face*-1.45); ctx.translate(0,8); }
-  if(pose===3) ctx.scale(1,.68);
-  const s=pose===1?Math.sin(t*16):0;
-  ctx.fillStyle='#2b2f55'; ctx.fillRect(-6,-10+Math.max(0,s)*2,5,10-Math.max(0,s)*2); ctx.fillRect(1,-10+Math.max(0,-s)*2,5,10-Math.max(0,-s)*2);
-  ctx.fillStyle=col; ctx.fillRect(-7,-22,14,13); ctx.fillStyle='rgba(255,255,255,.75)'; ctx.fillRect(-7,-17,14,2);
-  ctx.fillStyle='#ffd9a8';
-  if(pose===2) ctx.fillRect(face>0?5:-14,-21,9,4); else if(pose===6){ ctx.fillRect(face>0?4:-10,-20,6,4); ctx.fillRect(face>0?4:-10,-15,6,4); } else ctx.fillRect(face>0?-9:6,-20,3,8);
-  ctx.beginPath(); ctx.arc(0,-29,8,0,7); ctx.fill();
-  ctx.fillStyle=hair===2?'#7a3b1d':'#22181a';
-  ctx.beginPath(); ctx.arc(0,-31,8.2,Math.PI*1.02,Math.PI*1.98); ctx.fill();
-  if(hair===1){ ctx.beginPath(); ctx.moveTo(face*2,-39); ctx.lineTo(face*13,-36); ctx.lineTo(face*4,-31); ctx.fill(); }
-  if(hair===2){ ctx.fillRect(-face*9-2,-33,4,11); }
-  if(hair===3){ ctx.fillStyle=col; ctx.beginPath(); ctx.arc(0,-31,8.6,Math.PI,0); ctx.fill(); ctx.fillRect(face>0?0:-13,-32,13,3); ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(-8.6,-33,17.2,2); }
-  ctx.fillStyle='#14122b'; ctx.fillRect(face*3-1,-30,2,3);
-  if(pose===4){ ctx.fillStyle='#fff'; ctx.fillRect(face*2,-27,4,1.5); }
+  ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x,y,11,3.5,0,0,7); ctx.fill();
+  ctx.translate(x,y-z); ctx.scale(face,1);
+  if(pose===4){ ctx.rotate(-1.5); ctx.translate(3,9); }
+  const parts=[],R=(a,b,w,h,c,flat)=>parts.push([a,b,w,h,c,flat]);
+  const INK='#1b1420',sk='#f6c9a0',skd='#d99a6c',sho='#f6f6f6',pants='#2b3f9e',hc=hair===2?'#7a3b1d':INK;
+  const s=pose===1?Math.sin(t*17):0,duck=pose===3,down=pose===4,thr=pose===2,cat=pose===6;
+  const ly=duck?-4:-9,ty=ly-12,hy=ty-13+(pose===1?Math.abs(s)*-1:0);
+  // 腿與球鞋
+  R(-5-s*3,ly,4,-ly-2,sk); R(-6-s*4,-2.5,6,2.5,sho);
+  R(1+s*3,ly,4,-ly-2,sk); R(1+s*4,-2.5,6,2.5,sho);
+  // 短褲、背心
+  R(-6,ly-3,12,5,pants);
+  R(-6,ty,12,10,col); R(-6,ty+4,12,1.5,'#ffffff',1); R(-1,ty+1,3,2.5,'#ffffff',1);
+  // 手臂
+  if(thr){ R(-9,ty+2,3,6,sk); R(5,ty,9,3.5,sk); R(13,ty-1,4,5,sk); }
+  else if(cat){ R(5,ty+1,7,3,sk); R(5,ty+5.5,7,3,sk); }
+  else { R(-9+s*2,ty+1,3,8-Math.abs(s),sk); R(6-s*2,ty+1,3,8-Math.abs(s),sk); }
+  // 大頭
+  R(-8,hy,16,13,sk); R(-9,hy+5,2,4,skd);
+  if(hair===3){ R(-9,hy+3,2,6,INK); R(-8,hy-3,16,6,col); R(7,hy+1,6,2,col); R(-8,hy+1,16,1,'rgba(0,0,0,.3)',1); }
+  else { R(-8,hy-2.5,16,5.5,hc); R(-9.5,hy,3.5,9,hc);
+    if(hair===1){ R(4,hy-4.5,8,5,hc); R(-6,hy-4,10,2.5,hc); }
+    if(hair===2) R(-13,hy+2,4,10,hc);
+    if(hair===0) R(5,hy+2,3,2,hc,1); }
+  // 臉：粗眉、白底怒目、鼻子、嘴
+  if(down){ R(1,hy+6,5,1.5,INK,1); R(3,hy+4.5,1.5,5,INK,1); R(-4,hy+6,4,1.5,INK,1); R(2,hy+10,5,2.5,'#8a2a2a',1); }
+  else { R(0,hy+3.5,6.5,1.8,INK,1); R(0,hy+3,2,1.2,INK,1); R(-5,hy+3.5,4,1.8,INK,1);
+    R(1,hy+6,5,3.2,'#ffffff',1); R(3.8,hy+6,2.2,3.2,INK,1); R(-4.5,hy+6,3.5,3.2,'#ffffff',1); R(-2.8,hy+6,1.8,3.2,INK,1);
+    R(7,hy+8,1.6,2,skd,1);
+    if(thr||cat) R(2,hy+10,4.5,2.6,'#8a2a2a',1); else R(2.5,hy+10.6,4,1.2,'#8a3a2a',1); }
+  ctx.fillStyle=INK; for(const q of parts) if(!q[5]) ctx.fillRect(q[0]-1,q[1]-1,q[2]+2,q[3]+2);
+  for(const q of parts){ ctx.fillStyle=q[4]; ctx.fillRect(q[0],q[1],q[2],q[3]); }
   ctx.restore();
 }
 function drawBall(ctx,x,y,z,type,t,col){
@@ -328,7 +345,7 @@ function create(env,opts){
       if(p.state===5){ drawGuy(ctx,p.x,p.y-p.st*26,0,p.face,cols[p.team],p.hair,0,t,Math.max(0,1-p.st/1.2)); ctx.strokeStyle='#ffd23f'; ctx.lineWidth=2; ctx.globalAlpha=Math.max(0,1-p.st/1.2); ctx.beginPath(); ctx.ellipse(p.x,p.y-p.st*26-42,7,2.5,0,0,7); ctx.stroke(); ctx.globalAlpha=1; continue; }
       drawGuy(ctx,p.x,p.y,p.z,p.face,cols[p.team],p.hair,pose,t+p.id,p.inv>0&&Math.floor(t*16)%2?.45:p.role==='out'?.9:1);
       if(p.run&&p.z===0){ ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fillRect(p.x-p.face*14,p.y-3,6,2); ctx.fillRect(p.x-p.face*20,p.y-8,5,2); }
-      for(let tm=0;tm<2;tm++) if(human[tm]&&ctrl[tm]===p.id&&(!net||tm===me)){ ctx.fillStyle=tm?'#3ddbd9':'#ffd23f'; ctx.beginPath(); ctx.moveTo(p.x-5,p.y-p.z-46); ctx.lineTo(p.x+5,p.y-p.z-46); ctx.lineTo(p.x,p.y-p.z-40); ctx.fill(); }
+      for(let tm=0;tm<2;tm++) if(human[tm]&&ctrl[tm]===p.id&&(!net||tm===me)){ ctx.fillStyle=tm?'#3ddbd9':'#ffd23f'; ctx.beginPath(); ctx.moveTo(p.x-5,p.y-p.z-51); ctx.lineTo(p.x+5,p.y-p.z-51); ctx.lineTo(p.x,p.y-p.z-45); ctx.fill(); }
       if(has) drawBall(ctx,p.x+p.face*9,p.y+.5,p.z+18,null,t,L.ball);
     }
     if(ball.st!=='held'){ if(ball.type==='split') drawBall(ctx,ball.x,ball.y-ball.ghost,ball.z,'split',t,L.ball); drawBall(ctx,ball.x,ball.y+(ball.type==='split'?ball.ghost:0),ball.z,ball.type,t,L.ball); }
