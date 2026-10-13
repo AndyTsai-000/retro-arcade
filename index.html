@@ -154,9 +154,9 @@ body.touch #pad{display:flex}
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=23; // 每次改版加一
+window.ARCADE_V=24; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
-  document.write(['stairs','kart','bomb','volley','dodge','soccer'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
 <script>
 (function(){
@@ -166,7 +166,7 @@ if(/Line\//i.test(navigator.userAgent) && location.protocol.indexOf('http')===0 
   location.replace(location.pathname+'?openExternalBrowser=1'+location.hash); return;
 }
 const G=window.ARCADE_GAMES||{};
-const ORDER=['stairs','kart','bomb','volley','dodge','soccer'].filter(k=>G[k]);
+const ORDER=['stairs','kart','bomb','volley','dodge','soccer','bowl'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;};
 const isTouch=matchMedia('(pointer:coarse)').matches;
@@ -603,7 +603,7 @@ function roomCard(){
     (g.stagePreview?stageHtml(!!g.stageViewer&&g.ready()):'')+
     (Net.host?'<p>把房號告訴朋友。朋友要打開同一個網址、選同一款遊戲再輸入房號。</p>':(Net.hostConn&&Net.hostConn.relay?'<p>目前透過轉送連線，反應會比直接連線慢一點。</p>':''))+
     (Net.host?chipsHtml(g)+'<div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
-      :(g.stages?'<p>關卡：第 '+(stageSel+1)+' 關　'+g.stages[stageSel]+(variantName(g)?'　'+variantName(g):'')+'</p>':'')+'<p>等房主按開始…</p>')+
+      :(g.stages?'<p>關卡：第 '+(stageSel+1)+' 關　'+g.stages[stageSel]+(variantName(g)?'　'+variantName(g):'')+'</p>':(variantName(g)?'<p>賽制：'+variantName(g)+'</p>':''))+'<p>等房主按開始…</p>')+
     '<div class="row"><button class="btn" id="nLeave">離開房間</button></div>');
   bindChips(()=>roster());
   if(g.stagePreview){ const v3=!!g.stageViewer&&g.ready(); mountStage(stageSel,v3);
