@@ -33,6 +33,7 @@ kbd{font-family:var(--pixel);font-size:10px;background:var(--ink);border:1px sol
 #pName{width:10em;text-align:center;background:var(--ink);border:2px solid var(--line);border-radius:4px;padding:8px;font-weight:700;font-size:17px}
 .warn{color:var(--pink)!important;font-weight:700;min-height:1.6em}
 .lk{width:100%;max-width:360px;aspect-ratio:9/5;margin:0 auto;display:block;background:var(--ink);border:2px solid #0b0a1c;border-radius:4px}
+.hint{font-size:13px}
 .lkrow{display:grid;grid-template-columns:5em 1fr;gap:8px;align-items:center;text-align:left}
 .lkrow>span{color:var(--dim);font-weight:700}
 .lkrow .chips{justify-content:flex-start}
@@ -317,17 +318,22 @@ function normLook(g,o){
   return r;
 }
 function lookOf(g){ let o=null; try{o=JSON.parse(load('arcade.look.'+g.id)||'null');}catch(e){} return normLook(g,o); }
-function lookCard(){
-  const g=cur,look=lookOf(g);
-  showCard('<h3>我的造型</h3><canvas id="lkCv" width="720" height="400" class="lk"></canvas>'+
+function closeLook(){ if(lookPrev&&lookPrev.v){ try{lookPrev.v.destroy();}catch(e){} } lookPrev=null; }
+async function lookCard(){
+  const g=cur,look=lookOf(g); let use3d=!!g.viewer;
+  if(use3d&&g.load){ showCard('<h3>我的造型</h3><p>載入 3D 預覽中…</p>'); try{ await g.load(); }catch(e){ use3d=false; } if(cur!==g||state!=='ready') return; }
+  closeLook();
+  showCard('<h3>我的造型</h3>'+(use3d?'<div id="lkBox" class="lk"></div><p class="hint">按住拖曳可以旋轉，滾輪可以拉近拉遠</p>':'<canvas id="lkCv" width="720" height="400" class="lk"></canvas>')+
     g.looks.map(L=>'<div class="lkrow"><span>'+L.label+'</span><div class="chips">'+L.opts.map(o=>L.type==='color'
       ?'<button class="sw'+(look[L.key]===o?' sel':'')+'" data-k="'+L.key+'" data-o="'+o+'" style="background:'+o+'" aria-label="顏色 '+o+'"></button>'
       :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join('')+'</div></div>').join('')+
     '<p>選好就會自動記住，下次打開還在。</p><div class="row"><button class="btn main" id="lkOk">完成</button></div>');
-  const ctx=$('#lkCv').getContext('2d'); ctx.scale(2,2); lookPrev={g,ctx,look};
+  if(use3d){ let v=null; try{ v=g.viewer($('#lkBox'),look); }catch(e){} lookPrev={g,look,v}; if(!v) $('#lkBox').textContent='這台裝置無法顯示 3D 預覽'; }
+  else { const ctx=$('#lkCv').getContext('2d'); ctx.scale(2,2); lookPrev={g,ctx,look}; }
   card.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>{
     look[b.dataset.k]=b.dataset.o; save('arcade.look.'+g.id,JSON.stringify(look)); SFX.click();
     card.querySelectorAll('[data-k="'+b.dataset.k+'"]').forEach(x=>x.classList.toggle('sel',x===b));
+    if(lookPrev&&lookPrev.v) lookPrev.v.set(look);
   }));
   on('lkOk',startCard);
 }
@@ -345,7 +351,7 @@ function startCard(){
   showCard('<h3>'+g.name+'</h3><p>'+g.goal+'</p>'+helpHtml(g)+chipsHtml(g)+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>');
-  lookPrev=null;
+  closeLook();
   bindChips(); on('sGo',()=>start({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>start({stage:stageSel,mode:b.dataset.m})));
 }
@@ -364,7 +370,7 @@ async function start(opts){
   }
   for(const k in hits) delete hits[k];
   buildPad(padSpec(cur,opts.mode));
-  lookPrev=null;
+  closeLook();
   inst=cur.create(env,{stage:opts.stage||0,mode:opts.mode,variant:opts.variant,look:lookOf(cur),name:myName,net:opts.net?mkNet():null}); state='running'; acc=0; ov.hidden=true; $('#bPause').textContent='暫停';
 }
 function finish(res){
@@ -393,7 +399,7 @@ function togglePause(){
 }
 function back(){
   leaveNet(); killInst(); cur=null; state='hub';
-  for(const k in keys) keys[k]=false; lookPrev=null;
+  for(const k in keys) keys[k]=false; closeLook();
   $('#play').hidden=true; $('#hub').hidden=false; buildHub();
 }
 $('#bBack').addEventListener('click',back);
@@ -564,7 +570,7 @@ function frame(ts){
   requestAnimationFrame(frame);
   const dt=Math.min(.05,(ts-last)/1000||0); last=ts;
   if(state==='hub'){ drawThumbs(ts/1000); return; }
-  if(lookPrev&&state==='ready'){ try{ lookPrev.g.preview(lookPrev.ctx,360,200,lookPrev.look,ts/1000); }catch(e){} }
+  if(lookPrev&&state==='ready'){ try{ if(lookPrev.v) lookPrev.v.draw(); else if(lookPrev.ctx) lookPrev.g.preview(lookPrev.ctx,360,200,lookPrev.look,ts/1000); }catch(e){} }
   if(!inst) return;
   const live=()=>inst&&(state==='running'||(state==='over'&&inst.bg));
   if(live()){

@@ -32,6 +32,109 @@ function load(){
   return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=THREE_URL; s.onload=()=>res(); s.onerror=()=>{s.remove();rej(new Error('three'));}; document.head.appendChild(s); });
 }
 
+/* ---- 車與人物的模型：遊戲裡和「我的造型」的預覽共用 ---- */
+function buildKart(T,L){
+  const g=new T.Group(),PI=Math.PI;
+  const paint=new T.MeshPhongMaterial({color:new T.Color(L.color),shininess:90,specular:0x666666}),
+    dark=new T.MeshPhongMaterial({color:0x1c1c24,shininess:40}),rubber=new T.MeshLambertMaterial({color:0x121216}),
+    metal=new T.MeshPhongMaterial({color:0xc8ccd6,shininess:140,specular:0xffffff}),seatM=new T.MeshLambertMaterial({color:0x2c2c3a}),
+    suit=new T.MeshPhongMaterial({color:0xf4f4f8,shininess:20}),skin=new T.MeshLambertMaterial({color:0xf2c9a0}),lam=c=>new T.MeshLambertMaterial({color:c});
+  const add=(geo,m,x,y,z,rx,ry,rz,p)=>{ const b=new T.Mesh(geo,m); b.position.set(x,y,z); b.rotation.set(rx||0,ry||0,rz||0); (p||g).add(b); return b; };
+  const box=(w,h,d,m,x,y,z,rx)=>add(new T.BoxGeometry(w,h,d),m,x,y,z,rx);
+  const ball=(r,m,x,y,z,sx,sy,sz)=>{ const b=add(new T.SphereGeometry(r,18,14),m,x,y,z); if(sx) b.scale.set(sx,sy,sz); return b; };
+  const tube=(r,len,m,x,y,z,rx,ry,rz)=>add(new T.CylinderGeometry(r,r,len,10),m,x,y,z,rx,ry,rz);
+  // 車身：畫出側面輪廓再往左右拉出厚度，邊緣倒圓角
+  const hull=(pts,width,m)=>{ const sh=new T.Shape(); pts.forEach((p,i)=>i?sh.lineTo(p[0],p[1]):sh.moveTo(p[0],p[1]));
+    const geo=new T.ExtrudeGeometry(sh,{depth:width-.2,bevelEnabled:true,bevelThickness:.1,bevelSize:.09,bevelSegments:4}); geo.translate(0,0,-(width-.2)/2);
+    return add(geo,m,0,0,0,0,-PI/2,0); };
+  const B=L.body,buggy=B==='buggy',sport=B==='sport';
+  const wr=buggy?.68:sport?.44:.46,ww=buggy?.58:.44,wx=buggy?1.32:sport?1.08:1.14,wz=sport?1.3:1.12,by=buggy?1.02:sport?.5:.52;
+  if(sport){
+    hull([[-1.95,.2],[-2,.62],[-1.6,.86],[-.75,.84],[-.25,.66],[1.1,.56],[2.15,.36],[2.3,.22],[2.2,.14],[-1.85,.14]],1.75,paint);
+    box(1.5,.05,.9,dark,0,.69,.2,.14); box(1.3,.34,.06,new T.MeshPhongMaterial({color:0x9fd8ff,transparent:true,opacity:.45,shininess:120}),0,.86,.5,-.5);
+    box(1.95,.06,.5,dark,0,.14,2.2); box(.24,.1,.06,lam(0xfff6c8),-.62,.4,2.2); box(.24,.1,.06,lam(0xfff6c8),.62,.4,2.2);
+    box(.3,.1,.06,lam(0xff3b3b),-.6,.55,-2.02); box(.3,.1,.06,lam(0xff3b3b),.6,.55,-2.02);
+  } else if(buggy){
+    hull([[-1.45,.72],[-1.5,1.12],[-.5,1.18],[.5,1.1],[1.45,.92],[1.62,.76],[1.5,.66],[-1.35,.66]],1.5,paint);
+    for(const x of [-.72,.72]){ tube(.06,2,metal,x,2.05,-1.05); tube(.06,2.25,metal,x,2.02,.35,-.62); tube(.06,.8,metal,x,3.03,-.67,PI/2); }
+    tube(.06,1.5,metal,0,3.03,-1.05,0,0,PI/2); tube(.06,1.5,metal,0,3.0,-.3,0,0,PI/2);
+    for(const x of [-.4,.4]) ball(.16,lam(0xfff2a8),x,3.18,-.3);
+    box(1.7,.12,.3,dark,0,.74,1.72); box(1.7,.12,.3,dark,0,.74,-1.62);
+  } else {
+    hull([[-1.55,.26],[-1.6,.58],[-1.15,.7],[-.3,.62],[.9,.56],[1.85,.4],[2.02,.28],[1.9,.2],[-1.45,.2]],1.25,paint);
+    for(const x of [-.92,.92]){ const p=add(new T.CylinderGeometry(.2,.2,1.5,12),paint,x,.44,-.15,PI/2); p.scale.set(1.5,1,1); }
+    tube(.06,2.3,metal,0,.34,2.06,0,0,PI/2); tube(.06,2.2,metal,0,.4,-1.68,0,0,PI/2);
+    box(.9,.03,.5,lam(0xffffff),0,.6,1.25,.13);
+  }
+  // 座椅與方向盤
+  const sy=by+(buggy?.2:.12);
+  box(.78,.12,.7,seatM,0,sy,-.5); box(.78,.85,.14,seatM,0,sy+.42,-.88,-.2); box(.5,.2,.1,seatM,0,sy+.9,-.98,-.2);
+  tube(.035,.75,metal,0,sy+.38,.22,-.95); add(new T.TorusGeometry(.26,.05,8,18),dark,0,sy+.6,.02,-.95+PI/2);
+  // 輪胎：胎面、輪框、輪輻
+  const wheels=[];
+  for(const [x,z,k] of [[-wx,wz,1],[wx,wz,1],[-wx,-wz,sport||buggy?1:1.14],[wx,-wz,sport||buggy?1:1.14]]){
+    const w=new T.Group(),r=wr*k; w.position.set(x,r,z); g.add(w);
+    add(new T.CylinderGeometry(r,r,ww,24),rubber,0,0,0,0,0,PI/2,w); add(new T.TorusGeometry(r-.06,.07,8,24),rubber,-ww/2+.03,0,0,0,PI/2,0,w); add(new T.TorusGeometry(r-.06,.07,8,24),rubber,ww/2-.03,0,0,0,PI/2,0,w);
+    add(new T.CylinderGeometry(r*.62,r*.62,ww+.03,18),metal,0,0,0,0,0,PI/2,w); add(new T.CylinderGeometry(r*.2,r*.2,ww+.08,10),paint,0,0,0,0,0,PI/2,w);
+    for(let i=0;i<3;i++) add(new T.BoxGeometry(ww+.05,.07,r*1.15),dark,0,0,0,i*PI/3,0,0,w);
+    wheels.push(w);
+  }
+  tube(.07,wx*2,dark,0,wr,wz,0,0,PI/2); tube(.07,wx*2,dark,0,wr,-wz,0,0,PI/2);
+  // 配件
+  const ry=buggy?1.25:sport?.9:.72,rz=sport?-1.75:-1.45;
+  if(L.part==='wing'){ box(2.3,.08,.62,paint,0,ry+.75,rz,-.12); box(.06,.42,.7,dark,-1.16,ry+.72,rz); box(.06,.42,.7,dark,1.16,ry+.72,rz); tube(.05,.75,metal,-.55,ry+.36,rz); tube(.05,.75,metal,.55,ry+.36,rz); }
+  else if(L.part==='flag'){ tube(.035,2.4,metal,-.62,ry+1.2,rz); const f=add(new T.PlaneGeometry(.95,.55),new T.MeshLambertMaterial({color:0xffd23f,side:T.DoubleSide}),-.14,ry+2.1,rz,0,0,0); f.rotation.y=.25; ball(.07,metal,-.62,ry+2.42,rz); }
+  else if(L.part==='exhaust'){ for(const x of [-.42,.42]){ add(new T.CylinderGeometry(.13,.16,1.1,12),metal,x,ry+.05,rz-.3,1.15); add(new T.CylinderGeometry(.16,.16,.16,12),dark,x,ry+.28,rz-.82,1.15); } }
+  else { box(1.7,.07,.4,dark,0,ry+.32,rz); tube(.04,.34,metal,-.5,ry+.15,rz); tube(.04,.34,metal,.5,ry+.15,rz); }
+  // 駕駛：身體、手臂握方向盤、頭
+  add(new T.CylinderGeometry(.3,.38,.78,14),suit,0,sy+.5,-.55,-.1); add(new T.CylinderGeometry(.31,.31,.12,14),paint,0,sy+.62,-.56,-.1);
+  for(const x of [-1,1]){ ball(.17,suit,x*.36,sy+.82,-.56); add(new T.CylinderGeometry(.09,.085,.72,10),suit,x*.31,sy+.68,-.22,1.18,0,x*.12); ball(.1,dark,x*.24,sy+.58,.06);
+    add(new T.CylinderGeometry(.14,.12,.85,10),suit,x*.2,sy+.14,-.05,PI/2-.12); }
+  add(new T.CylinderGeometry(.12,.14,.16,10),L.driver==='helmet'?dark:skin,0,sy+.97,-.57);
+  const hy=sy+1.32,hz=-.57,eye=(x,r,c)=>{ ball(r||.055,lam(c||0x15151c),x,hy+.06,hz+.4); };
+  if(L.driver==='bear'){ const br=lam(0x9a6a3a),cr=lam(0xf0d6ad); ball(.46,br,0,hy,hz); for(const x of [-.34,.34]){ ball(.17,br,x,hy+.38,hz); ball(.09,cr,x,hy+.38,hz+.1); }
+    ball(.2,cr,0,hy-.1,hz+.36,1.15,.85,1); ball(.07,lam(0x2a1b12),0,hy-.03,hz+.55); eye(-.17); eye(.17); }
+  else if(L.driver==='bunny'){ const wh=lam(0xfafafa),pk=lam(0xffa8c8); ball(.44,wh,0,hy,hz); for(const x of [-.17,.17]){ ball(.14,wh,x,hy+.72,hz,1,3.2,.7); ball(.08,pk,x,hy+.72,hz+.06,1,3.6,.5); }
+    ball(.16,wh,0,hy-.1,hz+.36,1.2,.8,1); ball(.055,pk,0,hy-.03,hz+.5); eye(-.17); eye(.17); }
+  else if(L.driver==='cap'){ ball(.42,skin,0,hy,hz); add(new T.SphereGeometry(.445,18,10,0,PI*2,0,PI/2),paint,0,hy+.03,hz); const br=add(new T.CylinderGeometry(.3,.3,.04,16),paint,0,hy+.06,hz+.44); br.scale.set(1,1,.8);
+    add(new T.SphereGeometry(.43,16,8,PI,PI,PI/2,.6),lam(0x3a2a20),0,hy,hz); eye(-.16); eye(.16); ball(.05,lam(0xe0a882),0,hy-.05,hz+.42); box(.16,.025,.02,lam(0x9a4a3a),0,hy-.17,hz+.38); }
+  else { ball(.47,paint,0,hy,hz); add(new T.SphereGeometry(.485,20,8,PI/2-.95,1.9,1.12,.6),new T.MeshPhongMaterial({color:0x10121c,shininess:160,specular:0xaaccff}),0,hy,hz);
+    add(new T.TorusGeometry(.47,.03,6,24),lam(0xffffff),0,hy,hz,0,0,0); box(.5,.1,.3,dark,0,hy-.36,hz+.22); }
+  // 特效用的零件
+  const flame=add(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:0xffa41a}),0,by+.05,(sport?-2.9:-2.6),-PI/2); flame.visible=false;
+  add(new T.CircleGeometry(sport?2.3:2,18),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.3}),0,.1,0,-PI/2);
+  const sd=add(new T.SphereGeometry(2.7,14,10),new T.MeshBasicMaterial({color:0x66e0ff,transparent:true,opacity:.3}),0,1.1,0); sd.visible=false;
+  const cl=new T.Group(),cm=new T.MeshBasicMaterial({color:0x3a3d4d});
+  for(const [x,y,z,r] of [[0,0,0,1.5],[1.3,-.2,.2,1.1],[-1.3,-.2,-.1,1.2],[.4,.5,-.3,1]]) add(new T.SphereGeometry(r,10,8),cm,x,y,z,0,0,0,cl);
+  cl.position.set(0,5,1.2); cl.visible=false; g.add(cl);
+  const bolt=add(new T.ConeGeometry(.5,2.2,4),new T.MeshBasicMaterial({color:0xffe14a}),0,4.8,0,PI); bolt.visible=false;
+  g.userData={flame,shield:sd,cloud:cl,bolt,wheels};
+  return g;
+}
+// 「我的造型」裡可以拖曳旋轉的 3D 預覽
+function viewer(host,look){
+  const T=window.THREE,r=new T.WebGLRenderer({antialias:true}),dpr=Math.min(window.devicePixelRatio||1,2);
+  const w=host.clientWidth||360,h=host.clientHeight||200; r.setPixelRatio(dpr); r.setSize(w,h,false);
+  const cv=r.domElement; cv.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab'; host.appendChild(cv);
+  const scene=new T.Scene(); scene.background=new T.Color(0x2b2759);
+  scene.add(new T.HemisphereLight(0xffffff,0x554a88,.9)); const d1=new T.DirectionalLight(0xffffff,.75); d1.position.set(5,9,6); scene.add(d1); const d2=new T.DirectionalLight(0x9fd8ff,.35); d2.position.set(-6,4,-5); scene.add(d2);
+  const floor=new T.Mesh(new T.CircleGeometry(4.4,40),new T.MeshLambertMaterial({color:0x403b7c})); floor.rotation.x=-Math.PI/2; scene.add(floor);
+  const ring=new T.Mesh(new T.RingGeometry(4.4,4.6,40),new T.MeshBasicMaterial({color:0xffd23f})); ring.rotation.x=-Math.PI/2; ring.position.y=.01; scene.add(ring);
+  const cam=new T.PerspectiveCamera(36,w/h,.5,80);
+  let model=buildKart(T,look),yaw=.75,pitch=.3,dist=8,auto=true,drag=null; scene.add(model);
+  const kill=o=>o.traverse(m=>{ if(m.geometry) m.geometry.dispose(); if(m.material) m.material.dispose(); });
+  cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; auto=false; cv.style.cursor='grabbing'; try{cv.setPointerCapture(e.pointerId);}catch(_){ } });
+  cv.addEventListener('pointermove',e=>{ if(!drag) return; yaw-=(e.clientX-drag.x)*.012; pitch=Math.max(.03,Math.min(1.25,pitch+(e.clientY-drag.y)*.008)); drag={x:e.clientX,y:e.clientY}; });
+  const up=()=>{ drag=null; cv.style.cursor='grab'; }; cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{ e.preventDefault(); dist=Math.max(5,Math.min(16,dist+e.deltaY*.01)); },{passive:false});
+  return {
+    set(L){ scene.remove(model); kill(model); model=buildKart(T,L); scene.add(model); },
+    draw(){ if(auto) yaw+=.007; for(const wl of model.userData.wheels) wl.rotation.x+=auto?.05:0;
+      cam.position.set(Math.sin(yaw)*Math.cos(pitch)*dist,Math.sin(pitch)*dist+1,Math.cos(yaw)*Math.cos(pitch)*dist); cam.lookAt(0,1,0); r.render(scene,cam); },
+    destroy(){ kill(scene); r.dispose(); try{ r.forceContextLoss(); }catch(e){} cv.remove(); }
+  };
+}
+
 function create(env,opts){
   const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',humans=net?net.count:local2?2:1;
   const stage=env.stage,dpr=Math.min(window.devicePixelRatio||1,2);
@@ -99,37 +202,7 @@ function create(env,opts){
     trunk.count=crown.count=n; scene.add(trunk); scene.add(crown); }
 
   /* ---- 車 ---- */
-  function makeKart(L){
-    const g=new T.Group(),body=new T.MeshLambertMaterial({color:new T.Color(L.color)}),dark=new T.MeshLambertMaterial({color:0x22222c}),lam=c=>new T.MeshLambertMaterial({color:c});
-    const box=(w,h,d,m,x,y,z)=>{ const b=new T.Mesh(new T.BoxGeometry(w,h,d),m); b.position.set(x,y,z); g.add(b); return b; };
-    const ball=(r,m,x,y,z)=>{ const b=new T.Mesh(new T.SphereGeometry(r,12,10),m); b.position.set(x,y,z); g.add(b); return b; };
-    const B=L.body,wr=B==='buggy'?.62:B==='sport'?.4:.46,wx=B==='buggy'?1.25:1.12,by=B==='buggy'?.95:B==='sport'?.5:.6;
-    if(B==='sport'){ box(2,.36,3.4,body,0,by,0); box(1.5,.26,1.1,body,0,by-.05,2.1); box(.2,.3,1.6,body,-1,by+.3,-.6); box(.2,.3,1.6,body,1,by+.3,-.6); }
-    else if(B==='buggy'){ box(1.7,.6,2.6,body,0,by,0); box(1.3,.4,.7,body,0,by-.05,1.55); box(2.3,.16,.2,dark,0,by-.25,2); box(.12,.9,.12,dark,-.7,by+.75,-1.1); box(.12,.9,.12,dark,.7,by+.75,-1.1); box(1.5,.12,.12,dark,0,by+1.2,-1.1); }
-    else { box(1.9,.5,3,body,0,by,0); box(1.3,.36,.9,body,0,by-.05,1.75); }
-    const wg=new T.CylinderGeometry(wr,wr,.42,12);
-    for(const [x,z] of [[-wx,1.05],[wx,1.05],[-wx,-1.05],[wx,-1.05]]){ const w=new T.Mesh(wg,dark); w.rotation.z=Math.PI/2; w.position.set(x,wr,z); g.add(w); }
-    // 配件
-    if(L.part==='wing'){ box(2.5,.14,.7,body,0,by+1.05,-1.6); box(.15,.7,.15,dark,-.8,by+.65,-1.6); box(.15,.7,.15,dark,.8,by+.65,-1.6); }
-    else if(L.part==='flag'){ box(.08,2.3,.08,dark,-.8,by+1.35,-1.4); box(.9,.5,.05,new T.MeshBasicMaterial({color:0xffd23f}),-.33,by+2.2,-1.4); }
-    else if(L.part==='exhaust'){ const eg2=new T.CylinderGeometry(.2,.26,1,10),em=lam(0xb9c2d0); for(const x of [-.5,.5]){ const e=new T.Mesh(eg2,em); e.rotation.x=Math.PI/2; e.position.set(x,by+.2,-1.85); g.add(e); } }
-    else { box(2.1,.12,.55,dark,0,by+.65,-1.5); box(.15,.5,.15,dark,-.7,by+.38,-1.5); box(.15,.5,.15,dark,.7,by+.38,-1.5); }
-    // 人物
-    const hy=by+1.25; box(.8,.7,.7,lam(0xffffff),0,by+.55,-.3);
-    if(L.driver==='bear'){ const br=lam(0x9a6a3a); ball(.5,br,0,hy,-.3); ball(.2,br,-.38,hy+.42,-.3); ball(.2,br,.38,hy+.42,-.3); ball(.2,lam(0xf3dcb8),0,hy-.08,.14); }
-    else if(L.driver==='bunny'){ const wh=lam(0xffffff); ball(.5,wh,0,hy,-.3); box(.18,.75,.14,wh,-.22,hy+.72,-.3); box(.18,.75,.14,wh,.22,hy+.72,-.3); ball(.09,lam(0xff7eb6),0,hy-.05,.2); }
-    else if(L.driver==='cap'){ ball(.5,lam(0xffd9a8),0,hy,-.3); const cp=new T.Mesh(new T.CylinderGeometry(.52,.52,.26,14),body); cp.position.set(0,hy+.3,-.3); g.add(cp); box(.6,.07,.42,body,0,hy+.2,.2); }
-    else { ball(.5,body,0,hy,-.3); box(.62,.22,.3,dark,0,hy,.12); }
-    if(L.driver!=='helmet'){ box(.1,.12,.06,dark,-.18,hy+.05,.18); box(.1,.12,.06,dark,.18,hy+.05,.18); }
-    const flame=new T.Mesh(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:0xffa41a})); flame.rotation.x=-Math.PI/2; flame.position.set(0,by+.05,-2.5); flame.visible=false; g.add(flame);
-    const sh=new T.Mesh(new T.CircleGeometry(1.9,14),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.28})); sh.rotation.x=-Math.PI/2; sh.position.y=.1; g.add(sh);
-    const sd=new T.Mesh(new T.SphereGeometry(2.5,12,10),new T.MeshBasicMaterial({color:0x66e0ff,transparent:true,opacity:.3})); sd.position.y=1; sd.visible=false; g.add(sd);
-    const cl=new T.Group(),cm=new T.MeshBasicMaterial({color:0x3a3d4d});
-    for(const [x,y,z,r] of [[0,0,0,1.5],[1.3,-.2,.2,1.1],[-1.3,-.2,-.1,1.2],[.4,.5,-.3,1]]){ const b=new T.Mesh(new T.SphereGeometry(r,10,8),cm); b.position.set(x,y,z); cl.add(b); }
-    cl.position.set(0,4.6,1.2); cl.visible=false; g.add(cl);
-    const bolt=new T.Mesh(new T.ConeGeometry(.5,2.2,4),new T.MeshBasicMaterial({color:0xffe14a})); bolt.rotation.x=Math.PI; bolt.position.set(0,4.4,0); bolt.visible=false; g.add(bolt);
-    g.userData.flame=flame; g.userData.shield=sd; g.userData.cloud=cl; g.userData.bolt=bolt; scene.add(g); return g;
-  }
+  const makeKart=L=>{ const g=buildKart(T,L); scene.add(g); return g; };
   const BODIES=['std','sport','buggy'],PARTS=['none','wing','flag','exhaust'],DRIVERS=['helmet','bear','bunny','cap'];
   const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{body:BODIES[i%3],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4]};
   const karts=[];
@@ -145,7 +218,7 @@ function create(env,opts){
       const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const c=cv.getContext('2d');
       c.font='900 36px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=8; c.strokeStyle='#0b0a1c'; c.lineJoin='round';
       c.strokeText(k.name,128,34); c.fillStyle=human?'#fff':'#c9c6e6'; c.fillText(k.name,128,34);
-      const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true,depthWrite:false,fog:false})); sp.scale.set(5,1.25,1); sp.position.y=3.9; k.mesh.add(sp);
+      const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true,depthWrite:false,fog:false})); sp.scale.set(5,1.25,1); sp.position.y=4.3; k.mesh.add(sp);
     }
     k.tx=k.x; k.tz=k.z; k.th=k.h; k.v={camH:k.h,fov:62,wrongT:0,lap:1}; karts.push(k);
   }
@@ -352,7 +425,7 @@ function create(env,opts){
     for(const k of locals) if(k.toastT>0) k.toastT-=dt;
     if(flashT>0) flashT-=dt;
     if(pip){ pip.t-=dt; if(pip.t<=0) pip=null; }
-    for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); k.mesh.userData.flame.visible=!!(k.flags&1); k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
+    for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); k.mesh.userData.flame.visible=!!(k.flags&1); { const sp=Math.hypot(k.vx,k.vz)*dt*2; for(const wl of k.mesh.userData.wheels) wl.rotation.x+=sp; } k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
     for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*5); v.fov+=((k.boostT>0?74:62)-v.fov)*Math.min(1,dt*4); }
   }
 
@@ -504,7 +577,7 @@ function thumb(ctx,w,h,t){
   looks:[{key:'body',label:'車輛',opts:[{id:'std',label:'標準車'},{id:'sport',label:'跑車'},{id:'buggy',label:'越野車'}]},
     {key:'color',label:'車輛顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#ff7eb6']},
     {key:'part',label:'配件',opts:[{id:'none',label:'小尾翼'},{id:'wing',label:'大尾翼'},{id:'flag',label:'旗子'},{id:'exhaust',label:'排氣管'}]},
-    {key:'driver',label:'人物',opts:[{id:'helmet',label:'安全帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'},{id:'cap',label:'棒球帽'}]}],
-  preview,thumb,load,create
+    {key:'driver',label:'人物',opts:[{id:'helmet',label:'賽車手'},{id:'cap',label:'棒球帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'}]}],
+  preview,viewer,thumb,load,create
 };
 })();
