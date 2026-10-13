@@ -136,7 +136,7 @@ function viewer(host,look){
 }
 
 function create(env,opts){
-  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',humans=net?net.count:local2?2:1;
+  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=opts.variant==='drift',humans=net?net.count:local2?2:1;
   const stage=env.stage,dpr=Math.min(window.devicePixelRatio||1,2);
   const renderer=new T.WebGLRenderer({antialias:true}); renderer.setPixelRatio(dpr); stage.appendChild(renderer.domElement);
   const hudC=document.createElement('canvas'); stage.appendChild(hudC); const hud=hudC.getContext('2d');
@@ -292,7 +292,7 @@ function create(env,opts){
     const mine=k.local,g0=9*st.grip;
     let fx=Math.sin(k.h),fz=Math.cos(k.h),vf=k.vx*fx+k.vz*fz;
     if(!k.drifting&&inp.drift&&inp.steer&&vf>24){ k.drifting=true; k.driftT=0; }
-    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<12){ k.drifting=false; if(k.driftT>.6){ k.boostT=Math.max(k.boostT,.55); if(mine) env.sfx('boost'); } } }
+    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<12){ k.drifting=false; if(k.driftT>.6){ k.boostT=Math.max(k.boostT,driftMode?Math.min(2.4,.7+k.driftT*.9):.55); if(mine){ env.sfx('boost'); if(driftMode) toast(k,'甩噴！'); } } } }
     k.h+=inp.steer*1.9*Math.min(1,Math.abs(vf)/14)*(k.drifting?1.55:1)*(vf<0?-1:1)*dt;
     fx=Math.sin(k.h); fz=Math.cos(k.h); const lx=fz,lz=-fx;
     vf=k.vx*fx+k.vz*fz; let vl=k.vx*lx+k.vz*lz;
@@ -304,8 +304,9 @@ function create(env,opts){
     if(!inp.gas&&!inp.brake) vf-=vf*.6*dt;
     if(vf>max) vf-=Math.min(vf-max,(off?60:25)*dt);
     const slide=Math.abs(vl);
-    if(k.drifting){ vf-=slide*.2*dt; k.gauge+=itemMode?0:slide*dt*.024;
+    if(k.drifting){ vf-=slide*.08*dt; k.gauge+=itemMode||driftMode?0:slide*dt*.024;
       if(k.gauge>=1){ if(k.stock<2){ k.stock++; k.gauge=0; if(mine) env.sfx('item'); } else k.gauge=1; } }
+    if(driftMode) k.gauge=k.drifting?Math.min(1,k.driftT/1.9):0; // 甩噴賽：集氣條顯示這次甩尾能噴多久
     vl*=Math.exp(-(k.drifting?g0*.17:g0)*dt);
     k.vx=fx*vf+lx*vl; k.vz=fz*vf+lz*vl; k.x+=k.vx*dt; k.z+=k.vz*dt;
     if(k.boostT>0) k.boostT-=dt;
@@ -566,9 +567,9 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'跑跑卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 6 關，星星越多越難；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
-  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
+  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。甩噴賽：甩尾一放開就自動噴氮氣，甩越久噴越久。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
-  variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'}],
+  variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'},{id:'drift',label:'甩噴賽'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','油門、煞車、轉向'],['Shift','過彎時按住飄移'],['X','使用氮氣或道具'],['R','回到賽道中央'],['W A S D 左Shift Q','雙人 1P（左半畫面），Q 用氮氣或道具'],['↑ ↓ ← → 右Shift Enter','雙人 2P（右半畫面），Enter 用氮氣或道具']],
   touchHelp:[['◀ ▶','轉向，自動踩油門'],['飄移','過彎時按住'],['使用','用氮氣或道具'],['煞','煞車']],

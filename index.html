@@ -129,7 +129,7 @@ body.touch #pad{display:flex}
     <p>放學後的網咖、電腦課偷玩的那幾款。選一張卡帶就能開始，電腦用鍵盤、手機用畫面上的按鈕。</p>
   </header>
   <main class="shelf" id="shelf"></main>
-  <p class="note">紀錄只存在這台裝置的瀏覽器裡。</p>
+  <p class="note">紀錄只存在這台裝置的瀏覽器裡。　版本 <span id="ver"></span></p>
 </div>
 
 <div id="play" hidden>
@@ -149,10 +149,11 @@ body.touch #pad{display:flex}
 
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
-<script src="stairs.js"></script>
-<script src="kart.js"></script>
-<script src="bomb.js"></script>
-<script src="volley.js"></script>
+<script>
+window.ARCADE_V=14; // 每次改版加一
+(function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
+  document.write(['stairs','kart','bomb','volley'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+</script>
 <script>
 (function(){
 'use strict';
@@ -248,7 +249,9 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>release(e.code));
 addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='running') togglePause(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='running') togglePause();
+  // 切回來時，如果房主和連線伺服器斷了就重新掛上，朋友才找得到房間
+  if(!document.hidden&&Net.peer&&Net.peer.disconnected&&!Net.peer.destroyed){ try{Net.peer.reconnect();}catch(e){} } });
 
 function buildPad(spec){
   const L=$('#padL'),R=$('#padR'); L.innerHTML=''; R.innerHTML='';
@@ -408,12 +411,44 @@ function muteLabel(){ $('#bMute').textContent='聲音：'+(muted?'關':'開'); }
 $('#bMute').addEventListener('click',()=>{ muted=!muted; save('arcade.mute',muted?'1':'0'); audio(); if(master) master.gain.value=muted?0:1; muteLabel(); });
 muteLabel();
 
-/* ---------- 多人連線（PeerJS，房主當中繼） ---------- */
+/* ---------- 多人連線 ----------
+   先試 PeerJS 直連（WebRTC）；兩邊網路打不通時，改走公用 MQTT 伺服器轉送。
+   免費的 TURN 中繼實測都連不上，所以用轉送當備援。 */
 const PEERJS='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',PREFIX='retro-arcade-tw-',maxP=()=>(cur&&cur.maxPlayers)||4;
 // 連線只在獨立網址或本機能用；Claude 的頁面會擋掉對外連線
 const CAN_NET=location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$|github\.io$/.test(location.hostname);
 const NO_NET=CAN_NET?'連不上連線伺服器，請確認網路後再試一次。':'這個頁面是 Claude 的預覽頁，對外連線被擋住，所以不能開房間。請改用獨立網址（或直接開啟電腦裡的 index.html）。';
-const Net={peer:null,host:false,conns:[],hostConn:null,code:'',me:0,count:1,inGame:false,game:null,joined:false,timer:0,names:[]};
+const Net={peer:null,mq:null,sid:null,tick:0,host:false,conns:[],hostConn:null,code:'',me:0,count:1,inGame:false,game:null,joined:false,timer:0,names:[]};
+const ICE={config:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun.cloudflare.com:3478']}]}};
+const MQ_URL='wss://broker.emqx.io:8084/mqtt',TOPIC='retro-arcade-tw/',FORCE_RELAY=/relay/.test(location.hash);
+// 最小的 MQTT 3.1.1 用戶端：只做連線、訂閱、發佈（QoS 0）和心跳
+function Mq(url,onReady,onMsg){
+  const te=new TextEncoder(),td=new TextDecoder(); let ws,buf=new Uint8Array(0),ping=0,pid=1;
+  const str=t=>{ const b=te.encode(t),o=new Uint8Array(b.length+2); o[0]=b.length>>8; o[1]=b.length&255; o.set(b,2); return o; };
+  const join=parts=>{ let n=0; for(const a of parts) n+=a.length; const o=new Uint8Array(n); let k=0; for(const a of parts){ o.set(a,k); k+=a.length; } return o; };
+  const pkt=(h,body)=>{ const len=[]; let n=body.length; do{ let d=n%128; n=Math.floor(n/128); if(n>0) d|=128; len.push(d); }while(n>0); return join([[h],len,body]); };
+  const api={up:false,sub(){},pub(){},close(){}};
+  try{ ws=new WebSocket(url,'mqtt'); }catch(e){ return api; }
+  ws.binaryType='arraybuffer';
+  ws.onopen=()=>ws.send(pkt(0x10,join([str('MQTT'),[4,2,0,60],str('ra'+Math.random().toString(36).slice(2,12))])));
+  ws.onmessage=e=>{ buf=join([buf,new Uint8Array(e.data)]);
+    for(;;){ if(buf.length<2) return; let mul=1,len=0,i=1,d; do{ if(i>=buf.length) return; d=buf[i++]; len+=(d&127)*mul; mul*=128; }while(d&128);
+      if(buf.length<i+len) return; const type=buf[0]>>4,body=buf.slice(i,i+len); buf=buf.slice(i+len);
+      if(type===2){ api.up=true; ping=setInterval(()=>{ if(ws.readyState===1) ws.send(new Uint8Array([0xC0,0])); },30000); onReady(); }
+      else if(type===3){ const tl=(body[0]<<8)|body[1]; let o=null; try{ o=JSON.parse(td.decode(body.subarray(2+tl))); }catch(_){ } if(o) onMsg(o); } } };
+  ws.onclose=ws.onerror=()=>{ api.up=false; clearInterval(ping); };
+  api.sub=t=>{ if(ws.readyState===1) ws.send(pkt(0x82,join([[0,(pid++%250)+1],str(t),[0]]))); };
+  api.pub=(t,o)=>{ if(ws.readyState===1) ws.send(pkt(0x30,join([str(t),te.encode(JSON.stringify(o))]))); };
+  api.close=()=>{ clearInterval(ping); try{ws.close();}catch(e){} };
+  return api;
+}
+// 轉送連線：介面做得和 PeerJS 的連線一樣（open、send、on、close）
+function relayConn(sendFn){
+  const h={},c={open:true,relay:true,gone:false,last:performance.now(),
+    on(ev,fn){ (h[ev]=h[ev]||[]).push(fn); return c; }, emit(ev,a){ (h[ev]||[]).slice().forEach(f=>f(a)); },
+    send(m){ if(c.open) sendFn({d:m}); }, close(){ if(!c.open) return; c.open=false; sendFn({bye:1}); c.emit('close'); }};
+  return c;
+}
 const cleanName=v=>String(v==null?'':v).replace(/[<>&"'\\]/g,'').trim().slice(0,8);
 let myName=cleanName(load('arcade.name'));
 // 同一個房間裡名字相同的人，依序在後面加 1、2、3
@@ -424,9 +459,12 @@ const allNames=()=>{
 };
 const allLooks=()=>[lookOf(cur)].concat(Net.conns.map(c=>normLook(cur,c.look)));
 function leaveNet(){
-  clearTimeout(Net.timer);
-  const p=Net.peer; Net.peer=null; Net.conns=[]; Net.hostConn=null; Net.inGame=false; Net.game=null; Net.joined=false; Net.host=false;
+  clearTimeout(Net.timer); clearInterval(Net.tick);
+  const p=Net.peer,mq=Net.mq,list=Net.host?Net.conns.slice():(Net.hostConn?[Net.hostConn]:[]);
+  Net.sid=null; Net.peer=null; Net.mq=null; Net.conns=[]; Net.hostConn=null; Net.inGame=false; Net.game=null; Net.joined=false; Net.host=false;
+  for(const c of list) if(c.relay&&c.open){ try{c.close();}catch(e){} } // 轉送連線要主動說再見
   if(p){ try{p.destroy();}catch(e){} }
+  if(mq) setTimeout(()=>mq.close(),400);
 }
 function netCard(msg){
   state='ready'; killInst();
@@ -439,35 +477,47 @@ function netCard(msg){
 }
 function busy(t){ showCard('<h3>多人連線</h3><p>'+t+'</p><div class="row"><button class="btn" id="nBack">取消</button></div>'); on('nBack',()=>{leaveNet();netCard();}); }
 async function needPeer(){ if(!window.Peer) await loadScript(PEERJS); }
+// 房主收下一條連線（直連或轉送都走這裡）
+function adopt(c,sid){
+  c.on('open',()=>{
+    if(Net.sid!==sid) return;
+    const live=Net.conns.filter(x=>!x.gone);
+    if(Net.inGame||live.length>=maxP()-1){ try{c.send({t:'full'});}catch(e){} c.gone=true; setTimeout(()=>{try{c.close();}catch(e){}},600); return; }
+    Net.conns.push(c); roster();
+  });
+  c.on('data',d=>{ if(!d||c.gone||Net.sid!==sid) return;
+    if(d.t==='name'){ c.name=cleanName(d.name); c.look=d.look; if(!Net.inGame) roster(); }
+    else if(d.g!==undefined&&Net.game&&Net.game.onmsg&&c.idx) Net.game.onmsg(d.g,c.idx); });
+  const drop=()=>{ if(c.gone||Net.sid!==sid) return; c.gone=true;
+    if(Net.inGame){ if(Net.game&&Net.game.onleave&&c.idx) Net.game.onleave(c.idx); } else roster(); };
+  c.on('close',drop); c.on('error',drop);
+}
 async function hostRoom(tries){
   audio(); busy('建立房間中…');
-  try{ await needPeer(); }catch(e){ return netCard(NO_NET); }
+  let hasPeer=true; try{ await needPeer(); }catch(e){ hasPeer=false; }
   leaveNet();
-  const code=String(1000+Math.floor(Math.random()*9000)); let peer;
-  try{ peer=new Peer(PREFIX+cur.id+'-'+code); }catch(e){ return netCard(NO_NET); }
-  Net.peer=peer; Net.host=true; Net.code=code; Net.me=0; Net.count=1;
-  Net.timer=setTimeout(()=>{ if(Net.peer===peer&&!peer.open){ leaveNet(); netCard(NO_NET); } },CAN_NET?12000:5000);
-  peer.on('open',()=>{ if(Net.peer!==peer) return; clearTimeout(Net.timer); roomCard(); });
-  peer.on('disconnected',()=>{ if(Net.peer===peer){ try{peer.reconnect();}catch(e){} } });
-  peer.on('error',e=>{
-    if(Net.peer!==peer) return;
-    if(e.type==='unavailable-id'&&tries<3){ hostRoom(tries+1); return; }
-    if(!peer.open&&!Net.inGame){ leaveNet(); netCard(NO_NET); }
+  const code=String(1000+Math.floor(Math.random()*9000)),sid={},base=TOPIC+cur.id+'/'+code;
+  Net.sid=sid; Net.host=true; Net.code=code; Net.me=0; Net.count=1; Net.peer={destroy(){}};
+  let shown=false; const ready=()=>{ if(Net.sid!==sid||shown) return; shown=true; clearTimeout(Net.timer); roomCard(); };
+  Net.timer=setTimeout(()=>{ if(Net.sid===sid&&!shown){ leaveNet(); netCard(NO_NET); } },CAN_NET?12000:5000);
+  // 直連
+  let peer=null; if(hasPeer){ try{ peer=new Peer(PREFIX+cur.id+'-'+code,ICE); }catch(e){} }
+  if(peer){ Net.peer=peer; peer.on('open',ready);
+    peer.on('disconnected',()=>{ if(Net.sid===sid){ try{peer.reconnect();}catch(e){} } });
+    peer.on('error',e=>{ if(Net.sid===sid&&e.type==='unavailable-id'&&tries<3&&!shown) hostRoom(tries+1); });
+    peer.on('connection',c=>adopt(c,sid)); }
+  // 轉送：朋友直連不通時會從這裡進來
+  const byId={};
+  const mq=Mq(MQ_URL,()=>{ if(Net.sid!==sid) return; mq.sub(base+'/h'); ready(); },o=>{
+    if(Net.sid!==sid||!o.f) return; let c=byId[o.f];
+    if(o.bye){ if(c){ delete byId[o.f]; c.open=false; c.emit('close'); } return; }
+    if(!c){ if(!o.hello) return; const to=base+'/c/'+o.f; c=byId[o.f]=relayConn(m=>mq.pub(to,m)); adopt(c,sid); mq.pub(to,{ok:1}); c.emit('open'); return; }
+    c.last=performance.now(); if(o.hello) mq.pub(base+'/c/'+o.f,{ok:1}); if(o.d!==undefined) c.emit('data',o.d);
   });
-  peer.on('connection',c=>{
-    c.on('open',()=>{
-      if(Net.peer!==peer) return;
-      const live=Net.conns.filter(x=>!x.gone);
-      if(Net.inGame||live.length>=maxP()-1){ try{c.send({t:'full'});}catch(e){} setTimeout(()=>{try{c.close();}catch(e){}},600); c.gone=true; return; }
-      Net.conns.push(c); roster();
-    });
-    c.on('data',d=>{ if(!d||c.gone) return;
-      if(d.t==='name'){ c.name=cleanName(d.name); c.look=d.look; if(!Net.inGame) roster(); }
-      else if(d.g!==undefined&&Net.game&&Net.game.onmsg&&c.idx) Net.game.onmsg(d.g,c.idx); });
-    const drop=()=>{ if(c.gone||Net.peer!==peer) return; c.gone=true;
-      if(Net.inGame){ if(Net.game&&Net.game.onleave&&c.idx) Net.game.onleave(c.idx); } else roster(); };
-    c.on('close',drop); c.on('error',drop);
-  });
+  Net.mq=mq;
+  Net.tick=setInterval(()=>{ if(Net.sid!==sid) return; const now=performance.now();
+    for(const id in byId){ const c=byId[id]; if(!c.open){ delete byId[id]; continue; }
+      if(now-c.last>10000){ delete byId[id]; c.open=false; c.emit('close'); } else mq.pub(base+'/c/'+id,{hb:1}); } },2500);
 }
 function roster(){
   Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1;
@@ -475,27 +525,44 @@ function roster(){
   Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'roster',n:Net.count,me:i+1,code:Net.code,stage:stageSel,variant:variantSel,names:Net.names});}catch(e){} });
   if(!Net.inGame) roomCard();
 }
-function joinRoom(code){
+async function joinRoom(code){
   audio(); busy('加入房間中…');
-  needPeer().then(()=>{
-    leaveNet();
-    let peer; try{ peer=new Peer(); }catch(e){ return netCard(NO_NET); }
-    Net.peer=peer; Net.host=false; Net.code=code;
-    Net.timer=setTimeout(()=>{ if(Net.peer===peer&&!Net.joined){ leaveNet(); netCard(NO_NET); } },CAN_NET?15000:5000);
-    peer.on('open',()=>{
-      if(Net.peer!==peer) return;
-      const c=peer.connect(PREFIX+cur.id+'-'+code,{reliable:true,serialization:'json'}); Net.hostConn=c;
-      c.on('open',()=>{ if(Net.peer===peer){ try{c.send({t:'name',name:myName,look:lookOf(cur)});}catch(e){} } });
-      c.on('data',d=>{ if(Net.peer===peer) fromHost(d); });
-      const lost=()=>{ if(Net.peer!==peer) return; const was=Net.joined; leaveNet(); netCard(was?'與房主的連線中斷了。':'房間已滿，或遊戲正在進行中。'); };
-      c.on('close',lost); c.on('error',lost);
-    });
-    peer.on('error',e=>{
-      if(Net.peer!==peer) return;
-      if(e.type==='peer-unavailable'){ leaveNet(); netCard('找不到這個房間，請確認房號。'); }
-      else if(!Net.joined){ leaveNet(); netCard(NO_NET); }
-    });
-  }).catch(()=>netCard(NO_NET));
+  let hasPeer=!FORCE_RELAY; if(hasPeer){ try{ await needPeer(); }catch(e){ hasPeer=false; } }
+  leaveNet();
+  const sid={},base=TOPIC+cur.id+'/'+code,cid=Math.random().toString(36).slice(2,10);
+  Net.sid=sid; Net.host=false; Net.code=code; Net.peer={destroy(){}};
+  const fail=msg=>{ if(Net.sid!==sid) return; leaveNet(); netCard(msg); };
+  let direct=false,relayed=false,wired=false,rc=null,peer=null;
+  const wire=c=>{ if(wired) return; wired=true; Net.hostConn=c;
+    c.on('data',d=>{ if(Net.sid===sid) fromHost(d); });
+    const lost=()=>{ if(Net.sid===sid&&Net.hostConn===c) fail(Net.joined?'與房主的連線中斷了。':'房間已滿，或遊戲正在進行中。'); };
+    c.on('close',lost); c.on('error',lost);
+    try{ c.send({t:'name',name:myName,look:lookOf(cur)}); }catch(e){} };
+  // 1. 直連
+  if(hasPeer){ try{ peer=new Peer(ICE); }catch(e){} }
+  if(peer){ Net.peer=peer; peer.on('error',()=>{});
+    peer.on('open',()=>{ if(Net.sid!==sid||relayed) return;
+      const c=peer.connect(PREFIX+cur.id+'-'+code,{reliable:true,serialization:'json'});
+      c.on('open',()=>{ if(Net.sid!==sid||relayed){ try{c.close();}catch(e){} return; } direct=true; wire(c); }); }); }
+  // 2. 轉送（先連上備用，直連 6 秒內沒成功才真的用）
+  const mq=Mq(MQ_URL,()=>{ if(Net.sid===sid) mq.sub(base+'/c/'+cid); },o=>{
+    if(Net.sid!==sid||!relayed||!rc) return; rc.last=performance.now();
+    if(o.bye){ rc.open=false; rc.emit('close'); return; }
+    if(o.ok&&!wired) wire(rc);
+    if(o.d!==undefined) rc.emit('data',o.d);
+  });
+  Net.mq=mq;
+  const hello=()=>{ if(Net.sid===sid&&relayed) mq.pub(base+'/h',{f:cid,hello:1}); };
+  Net.timer=setTimeout(()=>{
+    if(Net.sid!==sid||direct) return;
+    relayed=true; if(peer){ try{peer.destroy();}catch(e){} Net.peer={destroy(){}}; }
+    const m=card.querySelector('p'); if(m) m.textContent='兩邊網路無法直接連線，改用轉送連線中…';
+    rc=relayConn(x=>mq.pub(base+'/h',Object.assign({f:cid},x)));
+    hello(); let n=0;
+    Net.tick=setInterval(()=>{ if(Net.sid!==sid) return; n++;
+      if(!wired){ if(n>9) return fail(mq.up?'找不到這個房間。請確認房號和遊戲是否相同，並請房主停在房間畫面。':NO_NET); hello(); }
+      else { if(n%2===0) hello(); if(performance.now()-rc.last>10000){ rc.open=false; rc.emit('close'); } } },1000);
+  },FORCE_RELAY?300:6000);
 }
 function fromHost(d){
   if(!d) return;
@@ -510,7 +577,7 @@ function roomCard(){
   if(Net.host) Net.names=allNames();
   showCard('<h3>房間</h3><div class="code">'+Net.code+'</div>'+
     '<ol class="who">'+Net.names.map((n,i)=>'<li'+(i===Net.me?' class="me"':'')+'>'+n+(i===0?'（房主）':'')+'</li>').join('')+'</ol>'+
-    (Net.host?'<p>把房號告訴朋友。</p>':'')+
+    (Net.host?'<p>把房號告訴朋友。朋友要打開同一個網址、選同一款遊戲再輸入房號。</p>':(Net.hostConn&&Net.hostConn.relay?'<p>目前透過轉送連線，反應會比直接連線慢一點。</p>':''))+
     (Net.host?chipsHtml(g)+'<div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
       :(g.stages?'<p>關卡：第 '+(stageSel+1)+' 關　'+g.stages[stageSel]+(variantName(g)?'　'+variantName(g):'')+'</p>':'')+'<p>等房主按開始…</p>')+
     '<div class="row"><button class="btn" id="nLeave">離開房間</button></div>');
@@ -579,7 +646,7 @@ function frame(ts){
   }
   if(inst) inst.draw();
 }
-buildHub();
+buildHub(); $('#ver').textContent=window.ARCADE_V||'';
 requestAnimationFrame(frame);
 window.__arcade={open,start,back,get state(){return state;},get inst(){return inst;},keys,press,release,Net};
 })();
