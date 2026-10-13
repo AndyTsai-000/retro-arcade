@@ -244,7 +244,7 @@ function create(env,opts){
   function addWater(id,x,z,h,owner,dist){ if(waters.some(w=>w.id===id)) return; const mesh=new T.Mesh(fxGeo,watMat); mesh.position.set(x,1.5,z); scene.add(mesh);
     waters.push({id,x0:x,z0:z,x,z,h,owner,dist,age:0,landed:false,mesh}); }
   const fx=[],fxGeo=new T.SphereGeometry(1,12,8);
-  function burst(x,z,color,size){ const m=new T.Mesh(fxGeo,new T.MeshBasicMaterial({color,transparent:true,opacity:.7,depthWrite:false})); m.position.set(x,1.3,z); scene.add(m); fx.push({m,t:0,size}); }
+  function burst(x,z,color,size,y,life){ const m=new T.Mesh(fxGeo,new T.MeshBasicMaterial({color,transparent:true,opacity:.7,depthWrite:false})); m.position.set(x,y==null?1.3:y,z); scene.add(m); fx.push({m,t:0,size,life:life||.5}); }
   function toast(k,text){ if(k&&k.local){ k.toastText=text; k.toastT=2.4; } }
   // 命中由被打的那台車的主人判定，再通知所有人播特效
   function hit(k,sec,owner,kind){
@@ -292,7 +292,7 @@ function create(env,opts){
     const mine=k.local,g0=9*st.grip;
     let fx=Math.sin(k.h),fz=Math.cos(k.h),vf=k.vx*fx+k.vz*fz;
     if(!k.drifting&&inp.drift&&inp.steer&&vf>24){ k.drifting=true; k.driftT=0; }
-    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<12){ k.drifting=false; if(k.driftT>.6){ k.boostT=Math.max(k.boostT,driftMode?Math.min(2.4,.7+k.driftT*.9):.55); if(mine){ env.sfx('boost'); if(driftMode) toast(k,'甩噴！'); } } } }
+    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<12){ k.drifting=false; if(k.driftT>.6){ k.boostT=Math.max(k.boostT,driftMode?Math.min(2.4,.7+k.driftT*.9):.55); burst(k.x,k.z,driftMode?0x4fd0ff:0xffd23f,driftMode?8:4,1,.45); if(mine){ env.sfx('boost'); if(driftMode){ toast(k,'甩噴！'); flashT=.12; } } } } }
     k.h+=inp.steer*1.9*Math.min(1,Math.abs(vf)/14)*(k.drifting?1.55:1)*(vf<0?-1:1)*dt;
     fx=Math.sin(k.h); fz=Math.cos(k.h); const lx=fz,lz=-fx;
     vf=k.vx*fx+k.vz*fz; let vl=k.vx*lx+k.vz*lz;
@@ -421,12 +421,17 @@ function create(env,opts){
         if(Math.floor(m.t/.1)!==Math.floor((m.t-dt)/.1)) burst(m.mesh.position.x,m.mesh.position.z,0xffaa55,1.3);
         if(u>=1){ scene.remove(m.mesh); missiles.splice(n,1); if(!B.remote) hit(B,1.3,m.from,'missile'); } }
     }
-    for(let n=fx.length-1;n>=0;n--){ const f=fx[n]; f.t+=dt; const u=f.t/.5; f.m.scale.setScalar(.5+u*f.size); f.m.material.opacity=.7*(1-u);
+    for(let n=fx.length-1;n>=0;n--){ const f=fx[n]; f.t+=dt; const u=f.t/f.life; f.m.scale.setScalar(.5+u*f.size); f.m.material.opacity=.7*(1-u);
       if(u>=1){ scene.remove(f.m); f.m.material.dispose(); fx.splice(n,1); } }
+    // 甩尾時後輪冒煙（甩越久顏色越熱），噴氮氣時車尾拖出火光
+    if(cd<=0) for(const k of karts){ if(k.left) continue; k.fxT=(k.fxT||0)-dt; if(k.fxT>0||!(k.flags&3)) continue; k.fxT=.045;
+      const sx=Math.sin(k.h),cz=Math.cos(k.h);
+      if(k.flags&2){ const c=k.remote?0xffffff:k.driftT>1.4?0xff7a1a:k.driftT>.6?0xffd23f:0xffffff; for(const d of [-1,1]) burst(k.x-sx*1.3+cz*d*1.1,k.z-cz*1.3-sx*d*1.1,c,1.2,.4,.4); }
+      if(k.flags&1) burst(k.x-sx*2.9,k.z-cz*2.9,driftMode?0x4fd0ff:0xffa41a,1.8,.8,.32); }
     for(const k of locals) if(k.toastT>0) k.toastT-=dt;
     if(flashT>0) flashT-=dt;
     if(pip){ pip.t-=dt; if(pip.t<=0) pip=null; }
-    for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); k.mesh.userData.flame.visible=!!(k.flags&1); { const sp=Math.hypot(k.vx,k.vz)*dt*2; for(const wl of k.mesh.userData.wheels) wl.rotation.x+=sp; } k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
+    for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); { const fl=k.mesh.userData.flame; fl.visible=!!(k.flags&1); if(fl.visible){ const q=1.5+Math.random()*.9; fl.scale.set(1.7,q,1.7); } } { const sp=Math.hypot(k.vx,k.vz)*dt*2; for(const wl of k.mesh.userData.wheels) wl.rotation.x+=sp; } k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
     for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*5); v.fov+=((k.boostT>0?74:62)-v.fov)*Math.min(1,dt*4); }
   }
 
