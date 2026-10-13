@@ -329,7 +329,7 @@ function create(env,opts){
     const mine=k.local,g0=9*st.grip;
     let fx=Math.sin(k.h),fz=Math.cos(k.h),vf=k.vx*fx+k.vz*fz;
     if(!k.drifting&&inp.drift&&inp.steer&&vf>24){ k.drifting=true; k.driftT=0; }
-    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<12){ k.drifting=false; if(k.driftT>.6){ k.boostT=Math.max(k.boostT,driftMode?Math.min(2.4,.7+k.driftT*.9):.55); burst(k.x,k.z,driftMode?0x4fd0ff:0xffd23f,driftMode?8:4,1,.45); if(mine){ env.sfx('boost'); if(driftMode){ toast(k,'甩噴！'); flashT=.12; } } } } }
+    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<12){ k.drifting=false; if(k.driftT>(driftMode?.25:.6)){ k.boostT=Math.max(k.boostT,driftMode?Math.min(2.4,.5+k.driftT):.55); burst(k.x,k.z,driftMode?0x4fd0ff:0xffd23f,driftMode?8:4,1,.45); if(mine){ env.sfx('boost'); if(driftMode){ toast(k,'甩噴！'); flashT=.12; } } } } }
     k.h+=inp.steer*1.9*Math.min(1,Math.abs(vf)/14)*(k.drifting?1.55:1)*(vf<0?-1:1)*dt;
     fx=Math.sin(k.h); fz=Math.cos(k.h); const lx=fz,lz=-fx;
     vf=k.vx*fx+k.vz*fz; let vl=k.vx*lx+k.vz*lz;
@@ -463,7 +463,7 @@ function create(env,opts){
     // 甩尾時後輪冒煙（甩越久顏色越熱），噴氮氣時車尾拖出火光
     if(cd<=0) for(const k of karts){ if(k.left) continue; k.fxT=(k.fxT||0)-dt; if(k.fxT>0||!(k.flags&3)) continue; k.fxT=.045;
       const sx=Math.sin(k.h),cz=Math.cos(k.h);
-      if(k.flags&2){ const c=k.remote?0xffffff:k.driftT>1.4?0xff7a1a:k.driftT>.6?0xffd23f:0xffffff; for(const d of [-1,1]) burst(k.x-sx*1.3+cz*d*1.1,k.z-cz*1.3-sx*d*1.1,c,1.2,.4,.4); }
+      if(k.flags&2){ const c=k.remote?0xffffff:k.driftT>1.4?0xff7a1a:k.driftT>(driftMode?.25:.6)?0xffd23f:0xffffff; for(const d of [-1,1]) burst(k.x-sx*1.3+cz*d*1.1,k.z-cz*1.3-sx*d*1.1,c,1.2,.4,.4); }
       if(k.flags&1) burst(k.x-sx*2.9,k.z-cz*2.9,driftMode?0x4fd0ff:0xffa41a,1.8,.8,.32); }
     for(const k of locals) if(k.toastT>0) k.toastT-=dt;
     if(flashT>0) flashT-=dt;
