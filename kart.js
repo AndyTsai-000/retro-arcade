@@ -21,7 +21,7 @@ const STAGES=[
   {name:'火山環道',stars:5,grip:.9,ai:.93,sky:0x4a2030,ground:['#4a332e','#3f2a26'],road:'#2e2a30',tree:[0x8a3a22,0x3a2a22],
    pts:[[0,0],[110,0],[170,-40],[120,-90],[190,-130],[130,-180],[200,-230],[110,-280],[20,-240],[40,-160],[-40,-110],[-100,-180],[-60,-260],[-160,-280],[-230,-210],[-170,-140],[-240,-80],[-180,-20],[-100,0]]}
 ];
-const ITEMS=['nitro','banana','missile','shield'],INAME={nitro:'氮氣',banana:'香蕉',missile:'飛彈',shield:'護盾'};
+const ITEMS=['nitro','banana','missile','shield','water','cloud','bolt'],INAME={nitro:'氮氣',banana:'香蕉',missile:'飛彈',shield:'護盾',water:'水球',cloud:'烏雲',bolt:'閃電'};
 const wrap=a=>{ while(a>Math.PI)a-=2*Math.PI; while(a<-Math.PI)a+=2*Math.PI; return a; };
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const r2=v=>Math.round(v*100)/100;
@@ -124,7 +124,11 @@ function create(env,opts){
     const flame=new T.Mesh(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:0xffa41a})); flame.rotation.x=-Math.PI/2; flame.position.set(0,by+.05,-2.5); flame.visible=false; g.add(flame);
     const sh=new T.Mesh(new T.CircleGeometry(1.9,14),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.28})); sh.rotation.x=-Math.PI/2; sh.position.y=.1; g.add(sh);
     const sd=new T.Mesh(new T.SphereGeometry(2.5,12,10),new T.MeshBasicMaterial({color:0x66e0ff,transparent:true,opacity:.3})); sd.position.y=1; sd.visible=false; g.add(sd);
-    g.userData.flame=flame; g.userData.shield=sd; scene.add(g); return g;
+    const cl=new T.Group(),cm=new T.MeshBasicMaterial({color:0x3a3d4d});
+    for(const [x,y,z,r] of [[0,0,0,1.5],[1.3,-.2,.2,1.1],[-1.3,-.2,-.1,1.2],[.4,.5,-.3,1]]){ const b=new T.Mesh(new T.SphereGeometry(r,10,8),cm); b.position.set(x,y,z); cl.add(b); }
+    cl.position.set(0,4.6,1.2); cl.visible=false; g.add(cl);
+    const bolt=new T.Mesh(new T.ConeGeometry(.5,2.2,4),new T.MeshBasicMaterial({color:0xffe14a})); bolt.rotation.x=Math.PI; bolt.position.set(0,4.4,0); bolt.visible=false; g.add(bolt);
+    g.userData.flame=flame; g.userData.shield=sd; g.userData.cloud=cl; g.userData.bolt=bolt; scene.add(g); return g;
   }
   const BODIES=['std','sport','buggy'],PARTS=['none','wing','flag','exhaust'],DRIVERS=['helmet','bear','bunny','cap'];
   const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{body:BODIES[i%3],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4]};
@@ -134,7 +138,7 @@ function create(env,opts){
     const si=(N-6-Math.floor(slot/2)*6)%N,lane=(slot%2?-1:1)*5;
     const look=lookFor(i,human);
     const k={i,human,color:look.color,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
-      boostT:0,drifting:false,driftT:0,gauge:0,stock:0,items:[],toastT:0,toastText:'',spin:0,shield:0,fin:null,wall:false,left:false,flags:0,
+      boostT:0,drifting:false,driftT:0,gauge:0,stock:0,items:[],toastT:0,toastText:'',spin:0,tumble:0,slowT:0,cloudT:0,shield:0,fin:null,wall:false,left:false,flags:0,
       ai:human?null:{lane:lane*.8,skill:st.ai+(i-humans)*.022,nt:6+Math.random()*8},mesh:makeKart(look)};
     k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1);
     { // 車頂名牌
@@ -146,7 +150,7 @@ function create(env,opts){
     k.tx=k.x; k.tz=k.z; k.th=k.h; k.v={camH:k.h,fov:62,wrongT:0,lap:1}; karts.push(k);
   }
   const my=karts[me],locals=karts.filter(k=>k.local);
-  let t=0,cd=3.4,lastBeep=4,endT=0,ended=false,sendT=0,remain=null,lastTick=99,pip=null;
+  let t=0,cd=3.4,lastBeep=4,endT=0,ended=false,sendT=0,remain=null,lastTick=99,pip=null,flashT=0;
 
   /* ---- 道具賽 ---- */
   const boxes=[],bananas=[],missiles=[]; let banN=0,banGeo,banMat,misGeo,misMat;
@@ -162,18 +166,30 @@ function create(env,opts){
   function addBanana(id,x,z,owner){ if(bananas.some(b=>b.id===id)) return; const mesh=new T.Mesh(banGeo,banMat); mesh.position.set(x,.8,z); scene.add(mesh); bananas.push({id,x,z,owner,age:0,mesh}); }
   function dropBanana(id){ const n=bananas.findIndex(b=>b.id===id); if(n>=0){ scene.remove(bananas[n].mesh); bananas.splice(n,1); } }
   function launch(from,to){ const mesh=new T.Mesh(misGeo,misMat); scene.add(mesh); missiles.push({from,to,t:0,mesh}); }
+  // 水球：往車頭方向丟出去，落地後留下一灘水花，碰到的車會彈起來翻滾（不鎖定目標，丟的人自己不會中）
+  const waters=[],W_FLY=.8,W_STAY=2.6,watMat=new T.MeshBasicMaterial({color:0x4fb4ff,transparent:true,opacity:.55,depthWrite:false});
+  function addWater(id,x,z,h,owner,dist){ if(waters.some(w=>w.id===id)) return; const mesh=new T.Mesh(fxGeo,watMat); mesh.position.set(x,1.5,z); scene.add(mesh);
+    waters.push({id,x0:x,z0:z,x,z,h,owner,dist,age:0,landed:false,mesh}); }
   const fx=[],fxGeo=new T.SphereGeometry(1,12,8);
   function burst(x,z,color,size){ const m=new T.Mesh(fxGeo,new T.MeshBasicMaterial({color,transparent:true,opacity:.7,depthWrite:false})); m.position.set(x,1.3,z); scene.add(m); fx.push({m,t:0,size}); }
   function toast(k,text){ if(k&&k.local){ k.toastText=text; k.toastT=2.4; } }
   // 命中由被打的那台車的主人判定，再通知所有人播特效
   function hit(k,sec,owner,kind){
     const blocked=k.shield>0?1:0;
-    if(blocked){ k.shield=0; if(k.local) env.sfx('item'); } else { k.spin=sec; k.vx*=.3; k.vz*=.3; k.boostT=0; if(k.local) env.sfx('hurt'); }
+    if(blocked){ k.shield=0; if(k.local) env.sfx('item'); } else { k.spin=sec; if(kind==='water') k.tumble=sec; k.vx*=.3; k.vz*=.3; k.boostT=0; if(k.local) env.sfx('hurt'); }
     hitEvent(k.i,owner,kind,blocked); if(net) net.send({hit:[k.i,owner,kind,blocked]});
+  }
+  // 烏雲、閃電：對施放者以外的所有車生效，各台車由自己的主人套用
+  function applyGlobal(kind,o){
+    const O=karts[o],what=INAME[kind]; if(kind==='bolt'){ flashT=.3; env.sfx('boom'); }
+    for(const k of karts){ if(k.remote||k.left||k.i===o||k.fin!=null) continue;
+      if(k.shield>0){ k.shield=0; toast(k,'護盾擋下了'+what); continue; }
+      if(kind==='bolt'){ k.slowT=3; k.boostT=0; } else k.cloudT=4.5;
+      toast(k,'被 '+(O?O.name:'')+' 的'+what+(kind==='bolt'?'擊中，減速中':'遮住視線')); if(k.local) env.sfx('hurt'); }
   }
   function hitEvent(v,o,kind,blocked){
     const V=karts[v],O=karts[o]; if(!V) return; const what=INAME[kind]||'道具',other=O&&O!==V;
-    burst(V.x,V.z,blocked?0x66e0ff:kind==='missile'?0xff5533:0xffe14a,blocked?4:6);
+    burst(V.x,V.z,blocked?0x66e0ff:kind==='missile'?0xff5533:kind==='water'?0x4fb4ff:0xffe14a,blocked?4:6);
     toast(V,blocked?'護盾擋下了'+what:other?'被 '+O.name+' 的'+what+'打中':'踩到自己的'+what);
     if(other&&O.local){ toast(O,blocked?V.name+' 用護盾擋下了':'你的'+what+'打中 '+V.name); env.sfx('item');
       if(!local2) pip={k:V,t:2.8,text:V.name+(blocked?' 擋下了':' 中了')+what}; }
@@ -185,6 +201,9 @@ function create(env,opts){
       launch(k.i,best.i); if(net) net.send({mis:[k.i,best.i]}); burst(k.x,k.z,0xff5533,3); toast(k,'飛彈鎖定 '+best.name); if(k.local) env.sfx('place'); }
     else if(it==='nitro'){ k.boostT=2.8; burst(k.x-Math.sin(k.h)*2,k.z-Math.cos(k.h)*2,0xffa41a,3.5); toast(k,'氮氣加速！'); if(k.local) env.sfx('boost'); }
     else if(it==='banana'){ const id=k.i+'-'+(banN++),x=r2(k.x-Math.sin(k.h)*3.6),z=r2(k.z-Math.cos(k.h)*3.6); addBanana(id,x,z,k.i); if(net) net.send({ban:[id,x,z,k.i]}); burst(x,z,0xffe14a,2.5); if(k.local) env.sfx('place'); }
+    else if(it==='cloud'||it==='bolt'){ applyGlobal(it,k.i); if(net) net.send({glob:[it,k.i]}); burst(k.x,k.z,it==='bolt'?0xffe14a:0x3a3d4d,5); toast(k,it==='bolt'?'閃電！其他人減速':'烏雲！遮住其他人的視線'); }
+    else if(it==='water'){ const id=k.i+'w'+(banN++),x=r2(k.x),z=r2(k.z),h=r2(k.h),dist=Math.round(34+Math.hypot(k.vx,k.vz)*.9);
+      addWater(id,x,z,h,k.i,dist); if(net) net.send({wat:[id,x,z,h,k.i,dist]}); toast(k,'丟出水球'); if(k.local) env.sfx('place'); }
     else { k.shield=8; burst(k.x,k.z,0x66e0ff,4); toast(k,'護盾啟動，可擋一次攻擊'); if(k.local) env.sfx('item'); }
     if(it==='banana') toast(k,'放下香蕉');
     k.items.shift(); return true;
@@ -205,7 +224,8 @@ function create(env,opts){
     fx=Math.sin(k.h); fz=Math.cos(k.h); const lx=fz,lz=-fx;
     vf=k.vx*fx+k.vz*fz; let vl=k.vx*lx+k.vz*lz;
     const off=Math.abs(k.d)>HALF+.5;
-    let max=(k.boostT>0?MAXB:MAX)*(inp.max||1); if(off) max=Math.min(max,30);
+    let max=(k.boostT>0?MAXB:MAX)*(inp.max||1)*(k.slowT>0?.5:1); if(off) max=Math.min(max,30);
+    if(k.slowT>0) k.slowT-=dt; if(k.cloudT>0) k.cloudT-=dt;
     if(inp.gas&&vf<max) vf=Math.min(max,vf+(k.boostT>0?80:36)*dt);
     if(inp.brake){ vf-=(vf>0?70:26)*dt; if(vf<-16) vf=-16; }
     if(!inp.gas&&!inp.brake) vf-=vf*.6*dt;
@@ -232,10 +252,11 @@ function create(env,opts){
           b.cool=4; b.mesh.visible=false; if(mine) env.sfx('item'); break; } }
       for(let n=bananas.length-1;n>=0;n--){ const b=bananas[n]; if(b.owner===k.i&&b.age<.6) continue; const dx=k.x-b.x,dz=k.z-b.z;
         if(dx*dx+dz*dz<6){ const id=b.id,ow=b.owner; dropBanana(id); if(net) net.send({banx:id}); hit(k,1,ow,'banana'); } }
+      if(k.spin<=0) for(const w of waters){ if(!w.landed||w.owner===k.i) continue; const dx=k.x-w.x,dz=k.z-w.z; if(dx*dx+dz*dz<46){ hit(k,1.7,w.owner,'water'); break; } }
       if(inp.nitro&&k.items.length) useItem(k);
       if(k.shield>0) k.shield-=dt;
     }
-    k.flags=(k.boostT>0?1:0)|(k.drifting?2:0)|(k.shield>0?4:0)|(k.spin>0?8:0);
+    k.flags=(k.boostT>0?1:0)|(k.drifting?2:0)|(k.shield>0?4:0)|(k.spin>0?8:0)|(k.tumble>0?16:0)|(k.slowT>0?32:0)|(k.cloudT>0?64:0);
   }
   const inp={steer:0,gas:false,brake:false,drift:false,nitro:false,max:1};
   function aiInput(k,dt){
@@ -246,6 +267,7 @@ function create(env,opts){
     const gap=k.prog-lead,band=gap>40?.93:gap<-40?1.07:1;
     const vt=Math.min(MAX*a.skill*band,1.75/Math.max(cmax,.001)*(st.grip<1?.75:1));
     inp.steer=clamp(diff*3,-1,1); inp.gas=spd<vt; inp.brake=spd>vt+8; inp.drift=false; inp.nitro=false; inp.max=a.skill*band;
+    if(k.cloudT>0){ inp.steer=clamp(inp.steer+Math.sin(t*7+k.i)*.6,-1,1); inp.max*=.85; } // 電腦被烏雲遮住時會開得歪歪的
     a.nt-=dt; if(!itemMode&&a.nt<=0&&cmax<.008&&k.fin==null){ k.boostT=2; a.nt=9+Math.random()*10; }
     if(itemMode&&k.items.length&&k.fin==null){ a.it=(a.it==null?1+Math.random()*3:a.it)-dt; if(a.it<=0){ inp.nitro=false; a.it=useItem(k)?null:1.5; } }
   }
@@ -265,7 +287,9 @@ function create(env,opts){
   function gone(i){ const k=karts[i]; if(k){ k.left=true; k.mesh.visible=false; } }
   if(net){
     net.onmsg=m=>{ if(m.k) applyRemote(m.k); if(m.ks) for(const a of m.ks) if(a[0]!==me) applyRemote(a); if(m.gone!=null) gone(m.gone);
-      if(itemMode&&(m.ban||m.banx||m.mis||m.hit)){ if(net.host) net.send(m);
+      if(itemMode&&(m.ban||m.banx||m.mis||m.hit||m.wat||m.glob)){ if(net.host) net.send(m);
+        if(m.glob&&karts[m.glob[1]]&&karts[m.glob[1]].remote) applyGlobal(m.glob[0],m.glob[1]);
+        if(m.wat) addWater(m.wat[0],m.wat[1],m.wat[2],m.wat[3],m.wat[4],m.wat[5]);
         if(m.hit&&karts[m.hit[0]]&&karts[m.hit[0]].remote) hitEvent(m.hit[0],m.hit[1],m.hit[2],m.hit[3]);
         if(m.ban) addBanana(m.ban[0],m.ban[1],m.ban[2],m.ban[3]); if(m.banx) dropBanana(m.banx);
         if(m.mis&&karts[m.mis[0]]&&karts[m.mis[1]]&&karts[m.mis[0]].remote) launch(m.mis[0],m.mis[1]); } };
@@ -287,6 +311,7 @@ function create(env,opts){
         if(k.left) continue;
         if(k.remote){ k.tx+=k.vx*dt; k.tz+=k.vz*dt; const f=Math.min(1,dt*10); k.x+=(k.tx-k.x)*f; k.z+=(k.tz-k.z)*f; k.h+=wrap(k.th-k.h)*f; continue; }
         if(k.ai) aiInput(k,dt); else humanInput(k);
+        if(k.tumble>0) k.tumble-=dt;
         if(k.spin>0){ k.spin-=dt; inp.steer=0; inp.gas=inp.brake=inp.drift=inp.nitro=false; }
         drive(k,inp,dt);
         if(k.fin==null&&k.prog>=LAPS*N){ k.fin=t; if(k.local){ env.sfx('win'); k.ai={lane:0,skill:.6,nt:1e9}; } }
@@ -311,6 +336,11 @@ function create(env,opts){
     if(osc){ const s=Math.hypot(my.vx,my.vz); osc.frequency.value=55+s*2.6+(my.boostT>0?40:0); }
     if(itemMode){
       for(const b of boxes){ b.mesh.rotation.y+=dt*2; if(b.cool>0){ b.cool-=dt; if(b.cool<=0) b.mesh.visible=true; } }
+      for(let n=waters.length-1;n>=0;n--){ const w=waters[n]; w.age+=dt; const u=Math.min(1,w.age/W_FLY);
+        w.x=w.x0+Math.sin(w.h)*w.dist*u; w.z=w.z0+Math.cos(w.h)*w.dist*u;
+        if(u<1){ w.mesh.position.set(w.x,1.5+Math.sin(u*Math.PI)*4.5,w.z); w.mesh.scale.setScalar(1.4); }
+        else { if(!w.landed){ w.landed=true; burst(w.x,w.z,0x4fb4ff,8); } const r=6.2+Math.sin(w.age*9)*.4; w.mesh.position.set(w.x,.8,w.z); w.mesh.scale.set(r,1.2,r); }
+        if(w.age>W_FLY+W_STAY){ scene.remove(w.mesh); waters.splice(n,1); } }
       for(const b of bananas){ b.age+=dt; b.mesh.scale.setScalar(Math.min(1,b.age*5)); b.mesh.rotation.y+=dt*3; }
       for(let n=missiles.length-1;n>=0;n--){ const m=missiles[n],A=karts[m.from],B=karts[m.to]; m.t+=dt; const u=Math.min(1,m.t/.9);
         m.mesh.position.set(A.x+(B.x-A.x)*u,1.4+Math.sin(u*Math.PI)*3,A.z+(B.z-A.z)*u);
@@ -320,8 +350,9 @@ function create(env,opts){
     for(let n=fx.length-1;n>=0;n--){ const f=fx[n]; f.t+=dt; const u=f.t/.5; f.m.scale.setScalar(.5+u*f.size); f.m.material.opacity=.7*(1-u);
       if(u>=1){ scene.remove(f.m); f.m.material.dispose(); fx.splice(n,1); } }
     for(const k of locals) if(k.toastT>0) k.toastT-=dt;
+    if(flashT>0) flashT-=dt;
     if(pip){ pip.t-=dt; if(pip.t<=0) pip=null; }
-    for(const k of karts){ k.mesh.position.set(k.x,0,k.z); k.mesh.rotation.y=k.h+((k.flags&8)?t*16:0); k.mesh.userData.flame.visible=!!(k.flags&1); k.mesh.userData.shield.visible=!!(k.flags&4); }
+    for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); k.mesh.userData.flame.visible=!!(k.flags&1); k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
     for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*5); v.fov+=((k.boostT>0?74:62)-v.fov)*Math.min(1,dt*4); }
   }
 
@@ -404,6 +435,12 @@ function create(env,opts){
     else if(t<.9) big('GO!','#86dc4f',60,PIX,h*.38);
     if(v.wrongT>1) big(local2?'逆向！':'逆向！按 R 回到賽道','#ff5d8f',30,TC,h*.3,'900 ');
     if(k.fin!=null) big('抵達終點','#ffd23f',50,TC,h*.36,'900 ');
+    if(k.cloudT>0){ // 烏雲蓋住畫面中央，只留下方和兩側
+      c.globalAlpha=Math.min(1,k.cloudT*2)*.93; c.fillStyle='#2c2f3d';
+      for(let i=0;i<14;i++){ const a=i*1.7,cx=w*(.14+.72*((i*37)%14)/13)+Math.sin(t*1.3+a)*14,cy=h*(.2+.36*((i*5)%7)/6)+Math.cos(t+a)*8; c.beginPath(); c.arc(cx,cy,Math.min(w,h)*(.13+.03*(i%3)),0,7); c.fill(); }
+      c.globalAlpha=1; }
+    if(k.slowT>0){ c.strokeStyle='rgba(255,225,74,'+(.5+.3*Math.sin(t*20))+')'; c.lineWidth=10; c.strokeRect(5,5,w-10,h-10); }
+    if(flashT>0){ c.fillStyle='rgba(255,255,220,'+Math.min(.8,flashT*3)+')'; c.fillRect(0,0,w,h); }
     if(remain!=null&&!ended){ const tw=190*s; c.fillStyle='rgba(226,59,59,.88)'; c.fillRect(w/2-tw/2,8,tw,30*s); c.fillStyle='#fff'; c.font='900 '+15*s+'px '+TC; c.fillText('比賽結束倒數 '+Math.ceil(remain)+' 秒',w/2,8+16*s); }
     if(k.toastT>0){ c.font='900 '+18*s+'px '+TC; const tw=c.measureText(k.toastText).width+28*s; c.globalAlpha=Math.min(1,k.toastT*2.5);
       c.fillStyle='rgba(11,10,28,.8)'; c.fillRect(w/2-tw/2,h*.2-17*s,tw,34*s); c.fillStyle='#ffd23f'; c.fillText(k.toastText,w/2,h*.2+1); c.globalAlpha=1; }
@@ -456,7 +493,7 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'跑跑卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 6 關，星星越多越難；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
-  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾），最多留 2 個。',
+  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
