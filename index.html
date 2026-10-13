@@ -402,7 +402,12 @@ const NO_NET=CAN_NET?'連不上連線伺服器，請確認網路後再試一次�
 const Net={peer:null,host:false,conns:[],hostConn:null,code:'',me:0,count:1,inGame:false,game:null,joined:false,timer:0,names:[]};
 const cleanName=v=>String(v==null?'':v).replace(/[<>&"'\\]/g,'').trim().slice(0,8);
 let myName=cleanName(load('arcade.name'));
-const allNames=()=>[myName].concat(Net.conns.map(c=>c.name||'')).map((n,i)=>n||'玩家'+(i+1));
+// 同一個房間裡名字相同的人，依序在後面加 1、2、3
+const allNames=()=>{
+  const list=[myName].concat(Net.conns.map(c=>c.name||'')).map((n,i)=>n||'玩家'+(i+1)),count={},seen={};
+  for(const n of list) count[n]=(count[n]||0)+1;
+  return list.map(n=>count[n]>1?n+(seen[n]=(seen[n]||0)+1):n);
+};
 const allLooks=()=>[lookOf(cur)].concat(Net.conns.map(c=>normLook(cur,c.look)));
 function leaveNet(){
   clearTimeout(Net.timer);
@@ -519,60 +524,32 @@ function mkNet(){
   return Net.game;
 }
 
-/* ---------- 玩家名字 ----------
-   沒有後端資料庫，所以用 PeerJS 佔位：每個開著網頁的人佔住一個以名字命名的 id，
-   別人想用同一個名字時會佔不到。只擋得住「同時在線上」的重複。 */
+/* ---------- 玩家名字：想取什麼都可以，存在這台裝置；連線撞名時由房間加編號 ---------- */
 const modal=$('#modal'),mcard=$('#mcard');
-let presence=null;
-const nameId=n=>PREFIX+'user-'+Array.from(n.toLowerCase()).map(c=>c.codePointAt(0).toString(16)).join('-');
 function showName(){ $('#hubName').textContent=myName?myName+'　▾':''; $('#barName').textContent=myName; }
-function claim(name){
-  return new Promise(res=>{
-    if(!CAN_NET) return res('offline');
-    if(presence&&name.toLowerCase()===String(presence.nameKey)) return res('ok');
-    needPeer().then(()=>{
-      let pr,done=false;
-      const fin=r=>{ if(done) return; done=true; clearTimeout(to);
-        if(r==='ok'){ if(presence){ try{presence.destroy();}catch(e){} } presence=pr; pr.nameKey=name.toLowerCase(); pr.on('disconnected',()=>{ try{pr.reconnect();}catch(e){} }); }
-        else if(pr){ try{pr.destroy();}catch(e){} }
-        res(r); };
-      const to=setTimeout(()=>fin('offline'),8000);
-      try{ pr=new Peer(nameId(name)); }catch(e){ return fin('offline'); }
-      pr.on('open',()=>fin('ok')); pr.on('error',e=>fin(e.type==='unavailable-id'?'taken':'offline'));
-    }).catch(()=>res('offline'));
-  });
-}
 function popup(text,then){
   mcard.innerHTML='<h3>提醒</h3><p>'+text+'</p><div class="row"><button class="btn main" id="pOk">知道了</button></div>';
   modal.hidden=false; $('#pOk').addEventListener('click',then); $('#pOk').focus();
 }
 function nameModal(force,draft){
   const first=!myName;
-  mcard.innerHTML='<h3>'+(first?'先取一個遊戲名字':'更改名字')+'</h3><p>名字會顯示在右上角和每一款遊戲裡，最多 8 個字，不能和別人重複。</p>'+
+  mcard.innerHTML='<h3>'+(first?'先取一個遊戲名字':'更改名字')+'</h3><p>名字會顯示在右上角和每一款遊戲裡，最多 8 個字。</p>'+
     '<div class="row"><input id="pName" maxlength="8" autocomplete="off" placeholder="你的名字"><button class="btn main" id="pGo">確定</button></div><p class="warn" id="pMsg"></p>'+
     (first||force?'':'<div class="row"><button class="btn" id="pCancel">取消</button></div>');
   modal.hidden=false;
   const inp=$('#pName'),msg=$('#pMsg'),go=$('#pGo'); inp.value=draft!=null?draft:(force?'':myName); inp.focus();
-  const submit=async()=>{
+  const submit=()=>{
     const v=cleanName(inp.value);
     if(!v){ msg.textContent='請輸入名字。'; return; }
     if(v===myName&&!force){ modal.hidden=true; return; }
-    go.disabled=true; msg.textContent='檢查名字有沒有重複…';
-    const r=await claim(v);
-    if(r==='taken'){ popup('「'+v+'」這個名字已經有人使用了，請換一個。',()=>nameModal(force,v)); return; }
     myName=v; save('arcade.name',v); modal.hidden=true; showName(); buildHub();
   };
   go.addEventListener('click',submit); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
   const c=$('#pCancel'); if(c) c.addEventListener('click',()=>{ modal.hidden=true; });
 }
-function holdName(){
-  // 同一台電腦開多個分頁時，只讓其中一個分頁去佔名字，免得自己擋到自己
-  const go=()=>claim(myName).then(r=>{ if(r==='taken'&&state==='hub') popup('「'+myName+'」現在有別人正在使用，請換一個名字。',()=>nameModal(true)); });
-  if(navigator.locks){ try{ navigator.locks.request('arcade-name',{ifAvailable:true},lock=>{ if(!lock) return; go(); return new Promise(()=>{}); }); }catch(e){ go(); } } else go();
-}
 $('#hubName').addEventListener('click',()=>nameModal());
 showName();
-if(myName) holdName(); else nameModal();
+if(!myName) nameModal();
 
 const STEP=1/120;
 function frame(ts){
