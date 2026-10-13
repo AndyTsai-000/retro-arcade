@@ -32,6 +32,43 @@ function load(){
   return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=THREE_URL; s.onload=()=>res(); s.onerror=()=>{s.remove();rej(new Error('three'));}; document.head.appendChild(s); });
 }
 
+/* ---- 進賽道前的預覽：左邊環境圖、右邊路線圖 ---- */
+const hex=n=>'#'+n.toString(16).padStart(6,'0');
+function routePts(pts){
+  const out=[],n=pts.length,f=(a,b,c,d,t)=>.5*(2*b+(c-a)*t+(2*a-5*b+4*c-d)*t*t+(3*b-a-3*c+d)*t*t*t);
+  for(let i=0;i<n;i++){ const a=pts[(i-1+n)%n],b=pts[i],c=pts[(i+1)%n],d=pts[(i+2)%n];
+    for(let k=0;k<14;k++){ const t=k/14; out.push([f(a[0],b[0],c[0],d[0],t),f(a[1],b[1],c[1],d[1],t)]); } }
+  return out;
+}
+function routeLen(si){ const r=routePts(STAGES[si].pts); let L=0; for(let i=0;i<r.length;i++){ const a=r[i],b=r[(i+1)%r.length]; L+=Math.hypot(b[0]-a[0],b[1]-a[1]); } return L; }
+function stagePreview(ctx,w,h,si){
+  const st=STAGES[si],hw=w/2-3,hz=h*.44;
+  ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,w,h);
+  // 環境
+  ctx.save(); ctx.beginPath(); ctx.rect(0,0,hw,h); ctx.clip();
+  ctx.fillStyle=hex(st.sky); ctx.fillRect(0,0,hw,hz); ctx.fillStyle=st.ground[0]; ctx.fillRect(0,hz,hw,h-hz);
+  ctx.fillStyle=st.ground[1]; for(let i=0;i<30;i++) ctx.fillRect((i*47)%hw,hz+8+(i*31)%(h-hz-10),10,3);
+  const tree=(x,y,k)=>{ ctx.fillStyle=hex(st.tree[1]); ctx.fillRect(x-2*k,y-6*k,4*k,7*k); ctx.fillStyle=hex(st.tree[0]); ctx.beginPath(); ctx.moveTo(x-9*k,y-5*k); ctx.lineTo(x,y-30*k); ctx.lineTo(x+9*k,y-5*k); ctx.fill(); };
+  for(let i=0;i<9;i++) tree(8+i*hw/8.2,hz+2,.55+((i*7)%3)*.12);
+  for(let i=0;i<40;i++){ const z0=i/40,z1=(i+1)/40,p0=z0*z0,p1=z1*z1,y0=hz+p0*(h-hz),y1=hz+p1*(h-hz),c0=hw*.5+38*(1-p0)*(1-p0),c1=hw*.5+38*(1-p1)*(1-p1),w0=5+p0*hw*.42,w1=5+p1*hw*.42,band=Math.floor(1/(z0+.06))%2;
+    ctx.fillStyle=band?'#e23b3b':'#f4f4f4'; ctx.beginPath(); ctx.moveTo(c0-w0*1.12,y0); ctx.lineTo(c0+w0*1.12,y0); ctx.lineTo(c1+w1*1.12,y1+1); ctx.lineTo(c1-w1*1.12,y1+1); ctx.fill();
+    ctx.fillStyle=st.road; ctx.beginPath(); ctx.moveTo(c0-w0,y0); ctx.lineTo(c0+w0,y0); ctx.lineTo(c1+w1,y1+1); ctx.lineTo(c1-w1,y1+1); ctx.fill(); }
+  tree(hw*.1,h*.86,1.7); tree(hw*.93,h*.8,1.4);
+  ctx.restore();
+  // 路線
+  const x0=w/2+3,r=routePts(st.pts); let a=1e9,b=-1e9,c=1e9,d=-1e9; for(const p of r){ a=Math.min(a,p[0]); b=Math.max(b,p[0]); c=Math.min(c,p[1]); d=Math.max(d,p[1]); }
+  ctx.fillStyle='#211e45'; ctx.fillRect(x0,0,hw,h);
+  const k=Math.min((hw-36)/(b-a),(h-44)/(d-c)),ox=x0+hw/2-(a+b)/2*k,oy=h/2+6-(c+d)/2*k,P=p=>[ox+p[0]*k,oy+p[1]*k];
+  const path=()=>{ ctx.beginPath(); r.forEach((p,i)=>{ const q=P(p); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); }); ctx.closePath(); };
+  ctx.lineJoin='round'; path(); ctx.strokeStyle='#0b0a1c'; ctx.lineWidth=11; ctx.stroke(); path(); ctx.strokeStyle=st.road; ctx.lineWidth=7; ctx.stroke(); path(); ctx.strokeStyle='#f4f0ff'; ctx.lineWidth=1.5; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
+  const s0=P(r[0]),s1=P(r[6]),ang=Math.atan2(s1[1]-s0[1],s1[0]-s0[0]);
+  ctx.save(); ctx.translate(s0[0],s0[1]); ctx.rotate(ang); ctx.fillStyle='#fff'; ctx.fillRect(-2,-8,4,16); ctx.fillStyle='#14122b'; ctx.fillRect(-2,-8,2,4); ctx.fillRect(0,-4,2,4); ctx.fillRect(-2,0,2,4); ctx.fillRect(0,4,2,4);
+  ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(10,-6); ctx.lineTo(22,0); ctx.lineTo(10,6); ctx.fill(); ctx.restore();
+  ctx.font='700 11px '+TC; ctx.textBaseline='top'; ctx.textAlign='left';
+  for(const [tx,ty,txt] of [[6,5,'環境'],[x0+6,5,'路線（黃色箭頭是起跑方向）']]){ ctx.fillStyle='rgba(11,10,28,.7)'; ctx.fillRect(tx-3,ty-2,ctx.measureText(txt).width+6,16); ctx.fillStyle='#fff'; ctx.fillText(txt,tx,ty); }
+}
+const stageInfo=si=>{ const st=STAGES[si]; return '難度 '+'★'.repeat(st.stars)+'　一圈約 '+Math.round(routeLen(si)*.83/10)*10+' 公尺，共 '+LAPS+' 圈　'+(st.grip<.7?'冰面很滑':st.grip<1?'路面略滑':'路面抓地力正常'); };
+
 /* ---- 車與人物的模型：遊戲裡和「我的造型」的預覽共用 ---- */
 function buildKart(T,L){
   const g=new T.Group(),PI=Math.PI;
@@ -584,6 +621,6 @@ function thumb(ctx,w,h,t){
     {key:'color',label:'車輛顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#ff7eb6']},
     {key:'part',label:'配件',opts:[{id:'none',label:'小尾翼'},{id:'wing',label:'大尾翼'},{id:'flag',label:'旗子'},{id:'exhaust',label:'排氣管'}]},
     {key:'driver',label:'人物',opts:[{id:'helmet',label:'賽車手'},{id:'cap',label:'棒球帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'}]}],
-  preview,viewer,thumb,load,create
+  stagePreview,stageInfo,preview,viewer,thumb,load,create
 };
 })();

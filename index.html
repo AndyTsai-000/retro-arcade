@@ -34,6 +34,7 @@ kbd{font-family:var(--pixel);font-size:10px;background:var(--ink);border:1px sol
 .warn{color:var(--pink)!important;font-weight:700;min-height:1.6em}
 .lk{width:100%;max-width:360px;aspect-ratio:9/5;margin:0 auto;display:block;background:var(--ink);border:2px solid #0b0a1c;border-radius:4px}
 .hint{font-size:13px}
+.lk.sp{aspect-ratio:24/11;max-width:none}
 .lkrow{display:grid;grid-template-columns:5em 1fr;gap:8px;align-items:center;text-align:left}
 .lkrow>span{color:var(--dim);font-weight:700}
 .lkrow .chips{justify-content:flex-start}
@@ -150,7 +151,7 @@ body.touch #pad{display:flex}
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=15; // 每次改版加一
+window.ARCADE_V=16; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -355,8 +356,17 @@ function startCard(){
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>');
   closeLook();
-  bindChips(); on('sGo',()=>start({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
-  card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>start({stage:stageSel,mode:b.dataset.m})));
+  bindChips(); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
+  card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
+}
+// 有賽道預覽的遊戲：選好關卡後先看環境圖和路線圖，再決定要不要進去
+function drawStage(id,i){ const cv=$('#'+id); if(!cv) return; const c=cv.getContext('2d'); c.setTransform(2,0,0,2,0,0); try{ cur.stagePreview(c,360,165,i); }catch(e){} }
+function enter(opts){
+  const g=cur; if(!g.stagePreview) return start(opts);
+  SFX.click(); closeLook(); state='ready'; const i=opts.stage||0;
+  showCard('<h3>第 '+(i+1)+' 關　'+g.stages[i]+'</h3><canvas id="spCv" width="720" height="330" class="lk sp"></canvas><p>'+g.stageInfo(i)+'</p>'+
+    '<div class="row"><button class="btn main" id="spGo">進入比賽</button><button class="btn" id="spBack">重新選擇</button></div>');
+  drawStage('spCv',i); on('spGo',()=>start(opts)); on('spBack',startCard);
 }
 async function start(opts){
   if(state==='loading'||!cur) return;
@@ -390,7 +400,7 @@ function finish(res){
   showCard('<h3>'+res.title+'</h3>'+(res.html||'')+(res.big?'<div class="big">'+res.big+'</div>':'')+(res.text?'<p>'+res.text+'</p>':'')+
     (Net.peer?'':'<p>'+(rec?'<b style="color:var(--green)">新紀錄！</b> ':'')+bestText(g)+'</p>')+
     '<div class="row">'+btn+'<button class="btn" id="rHub">'+(Net.peer?'離開':'回大廳')+'</button></div>');
-  on('rAgain',()=>start(lastOpts)); on('rNext',()=>{stageSel=lastOpts.stage+1;start({stage:stageSel,mode:lastOpts.mode,variant:lastOpts.variant});});
+  on('rAgain',()=>start(lastOpts)); on('rNext',()=>{stageSel=lastOpts.stage+1;enter({stage:stageSel,mode:lastOpts.mode,variant:lastOpts.variant});});
   on('rRoom',hostToRoom); on('rHub',back);
 }
 function togglePause(){
@@ -577,11 +587,12 @@ function roomCard(){
   if(Net.host) Net.names=allNames();
   showCard('<h3>房間</h3><div class="code">'+Net.code+'</div>'+
     '<ol class="who">'+Net.names.map((n,i)=>'<li'+(i===Net.me?' class="me"':'')+'>'+n+(i===0?'（房主）':'')+'</li>').join('')+'</ol>'+
+    (g.stagePreview?'<canvas id="rmCv" width="720" height="330" class="lk sp"></canvas>':'')+
     (Net.host?'<p>把房號告訴朋友。朋友要打開同一個網址、選同一款遊戲再輸入房號。</p>':(Net.hostConn&&Net.hostConn.relay?'<p>目前透過轉送連線，反應會比直接連線慢一點。</p>':''))+
     (Net.host?chipsHtml(g)+'<div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
       :(g.stages?'<p>關卡：第 '+(stageSel+1)+' 關　'+g.stages[stageSel]+(variantName(g)?'　'+variantName(g):'')+'</p>':'')+'<p>等房主按開始…</p>')+
     '<div class="row"><button class="btn" id="nLeave">離開房間</button></div>');
-  bindChips(()=>roster());
+  bindChips(()=>roster()); drawStage('rmCv',stageSel);
   on('nStart',()=>{
     Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1; Net.inGame=true; Net.seed=(Math.random()*2147483647)|0;
     Net.names=allNames();
