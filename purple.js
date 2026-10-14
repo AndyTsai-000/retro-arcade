@@ -397,6 +397,7 @@ function thumb(ctx,w,h,t){
   const u=(t%1.6)/1.6; drawKid(ctx,330,232,u>.45?Math.sin((u-.45)/.55*Math.PI)*46:0,-1,u>.45?P.air:P.wind,0,'kid','#e23b3b',1.1); drawKid(ctx,400,250,0,-1,P.walk,t*2,'fast','#3ddbd9',1); drawKid(ctx,120,256,0,1,P.down,0,'ball','#ffd23f',1);
   drawHero(ctx,250,238,0,1,u<.45?P.heavy:P.upper,u<.45?u/.45:(u-.45)/.55,'#8a5ad6',1.25,null);
   if(u>.45&&u<.7){ ctx.fillStyle='#ffd23f'; ctx.beginPath(); for(let i=0;i<16;i++){ const a=i*.3927,r=(i%2?10:22); ctx[i?'lineTo':'moveTo'](300+Math.cos(a)*r,196+Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.stroke(); }
+  if(u>.45){ const n=Math.min(5,1+Math.floor((u-.45)*12)); ctx.font='900 22px "Press Start 2P","Noto Sans TC",monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.lineWidth=6; ctx.strokeStyle=INK; ctx.strokeText(n+' HIT!',W-16,96); ctx.fillStyle='#ffd23f'; ctx.fillText(n+' HIT!',W-16,96); }
   ctx.restore();
 }
 

@@ -102,6 +102,13 @@ function drawCourt(ctx,c0,c1,court,bg){
     ctx.fillStyle='#7ec8f2'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#5aa0d0'; ctx.fillRect(0,96,W,26);
     for(let i=0;i<24;i++){ ctx.fillStyle=i%2?'#f4e2b8':'#e8d09a'; ctx.fillRect(i*20,104+((i*7)%3)*2,16,14); }
   }
+  // 場邊看台：一排觀眾和加油布條（熱血系列的招牌畫面）
+  ctx.save();
+  ctx.fillStyle=bg==='night'?'#2a2850':'#8a8fa8'; ctx.fillRect(0,100,W,22); ctx.fillStyle=bg==='night'?'#1c1a3a':'#6a6f88'; ctx.fillRect(0,100,W,2);
+  const crowd=['#ff5d4f','#ffd23f','#3ddbd9','#ffffff','#ff7eb6','#86dc4f','#4f9dff','#ff9d3d'],tt=(typeof performance!=='undefined'?performance.now():0)/1000;
+  for(let r=0;r<2;r++) for(let i=0;i<60;i++){ const x=i*8+(r%2)*4,j=Math.max(0,Math.sin(tt*5+i*.9+r*2))*1.6; ctx.fillStyle='#ffd9a8'; ctx.fillRect(x+1,104+r*8-j,4,3); ctx.fillStyle=crowd[(i*3+r*5)%8]; ctx.fillRect(x,107+r*8-j,6,4); }
+  ctx.fillStyle='#fff'; ctx.fillRect(40,111,120,10); ctx.fillRect(320,111,120,10); ctx.font='900 8px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#e23b3b'; ctx.fillText('熱血魂　必勝！',100,116.5); ctx.fillStyle='#1f5fc0'; ctx.fillText('全力投球　加油！',380,116.5);
+  ctx.restore();
   ctx.fillStyle=B.g; ctx.fillRect(0,120,W,H-120);
   ctx.fillStyle=B.d; for(let i=0;i<60;i++) ctx.fillRect((i*53)%W,126+(i*29)%170,8,2);
   if(court){ ctx.fillStyle=court; ctx.fillRect(X0,YB,X1-X0,YF-YB); }
@@ -437,11 +444,18 @@ function preview(ctx,w,h,L,t){
 function thumb(ctx,w,h,t){
   ctx.save(); ctx.scale(w/W,w/W); ctx.translate(0,-28);
   drawCourt(ctx,'#ff5d4f','#3d8bff');
-  const u=(t%1.6)/1.6,bx=150+220*Math.min(1,u*1.5);
-  drawGuy(ctx,120,200,0,1,'#ff5d4f',0,u<.25?2:0,t); drawGuy(ctx,90,236,0,1,'#ff5d4f',1,1,t); drawGuy(ctx,160,170,0,1,'#ff5d4f',2,0,t);
-  drawGuy(ctx,370,200,0,-1,'#3d8bff',1,u>.66?4:6,t); drawGuy(ctx,330,240,0,-1,'#3d8bff',0,1,t); drawGuy(ctx,400,168,0,-1,'#3d8bff',2,0,t);
+  const T=2.4,u=(t%T)/T,rel=.34,hitU=.62;
+  // 跳起來放超必殺：球變大、拖著火焰，打中對手飛出去
+  const jy=u<rel?Math.sin(u/rel*Math.PI)*34:0;
+  drawGuy(ctx,150,206,jy,1,'#ff5d4f',1,u<rel?(u>.2?2:1):0,t); drawGuy(ctx,96,240,0,1,'#ff5d4f',0,1,t); drawGuy(ctx,182,170,0,1,'#ff5d4f',2,0,t);
+  const hit=u>hitU; drawGuy(ctx,hit?370+Math.min(1,(u-hitU)*5)*50:370,200,hit?Math.sin(Math.min(1,(u-hitU)*4)*Math.PI)*30:0,-1,'#3d8bff',1,hit?(u-hitU>.2?7:3):6,t);
+  drawGuy(ctx,330,240,0,-1,'#3d8bff',0,1,t); drawGuy(ctx,404,168,0,-1,'#3d8bff',2,0,t);
   drawGuy(ctx,448,210,0,-1,'#ff5d4f',1,0,t); drawGuy(ctx,32,200,0,1,'#3d8bff',0,0,t);
-  if(u<.66) drawBall(ctx,bx,200,22,'fast',t);
+  if(u>=rel-.04&&u<hitU){ const k=(u-rel+.04)/(hitU-rel+.04),x=166+(366-166)*k,z=40-20*k;
+    for(let i=1;i<7;i++){ const kk=Math.max(0,k-i*.05); ctx.globalAlpha=.18*(7-i)/6; ctx.fillStyle=i%2?'#ffd23f':'#ff5d4f'; ctx.beginPath(); ctx.arc(166+200*kk,200-(40-20*kk),14-i,0,7); ctx.fill(); } ctx.globalAlpha=1;
+    drawBall(ctx,x,200,z,'ultra',t); }
+  if(u>hitU&&u<hitU+.1){ ctx.fillStyle='rgba(255,255,255,.95)'; ctx.beginPath(); for(let i=0;i<14;i++){ const a=i*.4488,r=i%2?12:34; ctx.lineTo(370+Math.cos(a)*r,178+Math.sin(a)*r); } ctx.fill(); }
+  if(u>.18&&u<.95){ ctx.save(); ctx.translate(W/2,150); const sc=1+Math.max(0,.1-(u-.18))*5; ctx.scale(sc,sc); ctx.font='900 30px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; ctx.strokeText('超必殺！',0,0); ctx.fillStyle='#ffd23f'; ctx.fillText('超必殺！',0,0); ctx.restore(); }
   ctx.restore();
 }
 

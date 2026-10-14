@@ -219,6 +219,9 @@ function thumb(ctx,w,h,t){
   const n=Math.floor(cam/60)+2, kx=40+((n*97)%7)*34+43, ky=n*60-cam+50;
   drawKid(ctx,kx,ky,1,t,false,0,SHIRT[0]);
   ctx.translate(0,-HUD); drawCeil(ctx);
+  ctx.translate(0,HUD); ctx.fillStyle='rgba(11,10,28,.85)'; ctx.fillRect(0,0,360,22); ctx.font='8px "Press Start 2P",monospace'; ctx.textBaseline='middle'; ctx.textAlign='left'; ctx.fillStyle='#aaa4d8'; ctx.fillText('LIFE',8,11);
+  const life=12-Math.floor((t*1.3)%5); for(let i=0;i<12;i++){ ctx.fillStyle=i<life?'#ffd23f':'#3a3670'; ctx.fillRect(46+i*8,6,6,10); }
+  ctx.textAlign='right'; ctx.font='900 12px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText('地下 '+String(Math.floor(cam/60)+1).padStart(3,'0')+' 階',352,11);
   ctx.restore();
 }
 

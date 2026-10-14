@@ -37,12 +37,34 @@ function drawBall(ctx,x,y,rot){
   ctx.restore();
 }
 function drawCourt(ctx,t){
-  const g=ctx.createLinearGradient(0,0,0,200); g.addColorStop(0,'#5ec8ff'); g.addColorStop(1,'#c9f0ff'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // 天空、太陽、雲
+  const g=ctx.createLinearGradient(0,0,0,200); g.addColorStop(0,'#3fb4f5'); g.addColorStop(1,'#c9f0ff'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const sg=ctx.createRadialGradient(406,46,6,406,46,60); sg.addColorStop(0,'rgba(255,250,200,1)'); sg.addColorStop(.35,'rgba(255,236,140,.9)'); sg.addColorStop(1,'rgba(255,236,140,0)'); ctx.fillStyle=sg; ctx.fillRect(330,0,150,120);
   ctx.fillStyle='#fff'; for(const [cx,cy,s] of [[70,50,1],[330,36,1.3],[430,78,.8]]){ const x=(cx+t*6*s)%(W+80)-40; ctx.beginPath(); ctx.arc(x,cy,14*s,0,7); ctx.arc(x+16*s,cy+4,11*s,0,7); ctx.arc(x-15*s,cy+5,10*s,0,7); ctx.fill(); }
+  // 遠方的島和帆船
+  ctx.fillStyle='#6aa8c8'; ctx.beginPath(); ctx.moveTo(150,197); ctx.quadraticCurveTo(205,168,262,197); ctx.fill();
+  const bx=(t*8)%(W+60)-30; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(bx,192); ctx.lineTo(bx,174); ctx.lineTo(bx+12,192); ctx.fill(); ctx.fillStyle='#c9573f'; ctx.fillRect(bx-8,192,22,3);
+  // 海
   ctx.fillStyle='#2f8fd6'; ctx.fillRect(0,196,W,40); ctx.fillStyle='#57b4ee'; for(let x=0;x<W;x+=40) ctx.fillRect((x+t*12)%W,204+((x/40)%2)*12,22,3);
+  ctx.fillStyle='rgba(255,255,255,.75)'; for(let x=0;x<W;x+=16){ const y=230+Math.sin(t*2+x*.08)*1.5; ctx.fillRect(x,y,12,3); }
+  // 沙灘
   ctx.fillStyle='#f3d892'; ctx.fillRect(0,232,W,H-232); ctx.fillStyle='#e6c676'; for(let i=0;i<40;i++) ctx.fillRect((i*53)%W,240+(i*29)%56,6,2);
-  ctx.fillStyle='#fff'; ctx.fillRect(0,GROUND-1,W,3);
-  ctx.fillStyle='#7a5a3a'; ctx.fillRect(NETX-NETW/2,NETTOP,NETW,GROUND-NETTOP); ctx.fillStyle='#f4f0ff'; ctx.fillRect(NETX-NETW/2-2,NETTOP-4,NETW+4,8);
+  // 椰子樹
+  const palm=(x,lean)=>{ ctx.strokeStyle='#8a5a2a'; ctx.lineWidth=7; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x,262); ctx.quadraticCurveTo(x+lean*.5,200,x+lean,150); ctx.stroke(); ctx.strokeStyle='#6a4520'; ctx.lineWidth=1.5; for(let k=0;k<7;k++){ const yy=250-k*15; ctx.beginPath(); ctx.moveTo(x+lean*(1-(yy-150)/112)*.9-4,yy); ctx.lineTo(x+lean*(1-(yy-150)/112)*.9+4,yy-2); ctx.stroke(); }
+    const tx=x+lean,ty=150; ctx.fillStyle='#2f9a4a'; for(let k=0;k<6;k++){ const a=-Math.PI*.95+k*Math.PI/5+Math.sin(t*1.5+k)*.05; ctx.beginPath(); ctx.moveTo(tx,ty); ctx.quadraticCurveTo(tx+Math.cos(a)*24,ty+Math.sin(a)*24-10,tx+Math.cos(a)*40,ty+Math.sin(a)*40+8); ctx.quadraticCurveTo(tx+Math.cos(a)*22,ty+Math.sin(a)*22,tx,ty); ctx.fill(); }
+    ctx.fillStyle='#6a4520'; ctx.beginPath(); ctx.arc(tx-3,ty+4,3.5,0,7); ctx.arc(tx+4,ty+5,3.5,0,7); ctx.fill(); };
+  palm(18,14); palm(462,-14);
+  // 遮陽傘與觀眾
+  const umb=(x,c)=>{ ctx.strokeStyle='#eee'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,250); ctx.lineTo(x,214); ctx.stroke(); for(let k=0;k<4;k++){ ctx.fillStyle=k%2?'#fff':c; ctx.beginPath(); ctx.moveTo(x,210); ctx.arc(x,218,22,Math.PI+k*Math.PI/4,Math.PI+(k+1)*Math.PI/4); ctx.fill(); } };
+  umb(62,'#ff5d4f'); umb(420,'#4f9dff');
+  for(const [x,c] of [[48,'#ffd23f'],[78,'#ff7eb6'],[404,'#86dc4f'],[436,'#ff9d3d']]){ const j=Math.max(0,Math.sin(t*4+x))*3; ctx.fillStyle=c; ctx.fillRect(x-4,236-j,8,10); ctx.fillStyle='#ffd9a8'; ctx.beginPath(); ctx.arc(x,232-j,4,0,7); ctx.fill(); }
+  // 場地線
+  ctx.fillStyle='#fff'; ctx.fillRect(0,GROUND-1,W,3); ctx.fillRect(40,GROUND-1,3,26); ctx.fillRect(W-43,GROUND-1,3,26);
+  // 球網：網柱、網格、白邊
+  ctx.fillStyle='#7a5a3a'; ctx.fillRect(NETX-NETW/2,NETTOP,NETW,GROUND-NETTOP);
+  ctx.strokeStyle='rgba(20,18,43,.45)'; ctx.lineWidth=1; for(let y=NETTOP+6;y<NETTOP+44;y+=6){ ctx.beginPath(); ctx.moveTo(NETX-NETW/2-6,y); ctx.lineTo(NETX+NETW/2+6,y); ctx.stroke(); }
+  for(let x=-6;x<=6;x+=4){ ctx.beginPath(); ctx.moveTo(NETX+x,NETTOP); ctx.lineTo(NETX+x,NETTOP+44); ctx.stroke(); }
+  ctx.fillStyle='#f4f0ff'; ctx.fillRect(NETX-NETW/2-6,NETTOP-4,NETW+12,7); ctx.fillStyle='#ff5d4f'; ctx.fillRect(NETX-1,NETTOP-22,2,18); ctx.fillStyle='#fff'; ctx.fillRect(NETX-1,NETTOP-22,2,4);
 }
 
 function create(env,opts){
@@ -181,10 +203,19 @@ function preview(ctx,w,h,L,t){
 function thumb(ctx,w,h,t){
   ctx.save(); ctx.scale(w/W,w/W); ctx.translate(0,-20);
   drawCourt(ctx,t);
-  const u=(t%2)/2,bx=120+240*(u<.5?u*2:2-u*2),by=150-Math.sin((u*2%1)*Math.PI)*110;
-  drawCat(ctx,125,GROUND-(u>.9||u<.08?30:0),1,COL[0],u>.9||u<.08,t,false);
-  drawCat(ctx,355,GROUND-(u>.42&&u<.58?30:0),-1,COL[1],u>.42&&u<.58,t,false);
-  drawBall(ctx,bx,by,t*5);
+  const T=2.2,u=(t%T)/T,hitU=.42;
+  // 左邊的貓起跳到最高點殺球
+  const jy=u<hitU?Math.sin(Math.min(1,u/hitU)*Math.PI/2)*104:Math.max(0,104-(u-hitU)*T*420);
+  drawCat(ctx,196,GROUND-jy,1,COL[0],jy>2,t,false);
+  drawCat(ctx,372+(u>hitU?Math.min(1,(u-hitU)*3)*-30:0),GROUND-(u>.55&&u<.75?24:0),-1,COL[1],u>.55&&u<.75,t,u>hitU);
+  let bx,by;
+  if(u<hitU){ const k=u/hitU; bx=120+(214-120)*k; by=40+(GROUND-104-58-40)*Math.sin(k*Math.PI/2); }
+  else { const k=Math.min(1,(u-hitU)/.28); bx=214+(400-214)*k; by=GROUND-162+(GROUND-BR-(GROUND-162))*k*k*.95; }
+  if(u>hitU&&u<hitU+.3){ for(let i=1;i<6;i++){ const k=Math.max(0,(u-hitU)/.28-i*.06); ctx.globalAlpha=.3*(6-i)/5; ctx.fillStyle='#ff5d8f'; ctx.beginPath(); ctx.arc(214+186*k,GROUND-162+(BR+145)*k*k*.95,BR,0,7); ctx.fill(); } ctx.globalAlpha=1; }
+  drawBall(ctx,bx,by,t*8);
+  if(u>hitU&&u<hitU+.12){ ctx.fillStyle='rgba(255,255,255,.95)'; ctx.beginPath(); for(let i=0;i<12;i++){ const a=i*.5236,r=i%2?10:26; ctx.lineTo(214+Math.cos(a)*r,GROUND-162+Math.sin(a)*r); } ctx.fill(); }
+  if(u>hitU+.05&&u<.95){ ctx.save(); ctx.translate(W/2,92); const sc=1+Math.max(0,.12-(u-hitU-.05))*4; ctx.scale(sc,sc); ctx.font='900 26px '+PIX; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=6; ctx.strokeStyle='#14122b'; ctx.strokeText('SPIKE!',0,0); ctx.fillStyle='#ffd23f'; ctx.fillText('SPIKE!',0,0); ctx.restore(); }
+  if(u>hitU+.28&&u<hitU+.45){ const k=(u-hitU-.28)/.17; ctx.fillStyle='rgba(230,198,118,'+(1-k)+')'; for(let i=0;i<10;i++){ const a=Math.PI+i*Math.PI/9; ctx.fillRect(400+Math.cos(a)*k*40,GROUND-4+Math.sin(a)*k*26,4,4); } }
   ctx.restore();
 }
 

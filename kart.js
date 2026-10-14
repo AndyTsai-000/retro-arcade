@@ -689,21 +689,35 @@ function preview(ctx,w,h,L,t){
 }
 
 function thumb(ctx,w,h,t){
-  const hz=h*.42;
-  ctx.fillStyle='#8fd3ff'; ctx.fillRect(0,0,w,hz); ctx.fillStyle='#4c9a3c'; ctx.fillRect(0,hz,w,h-hz);
-  ctx.fillStyle='#2f7d32'; for(let i=0;i<9;i++){ const x=i*62-20; ctx.beginPath(); ctx.moveTo(x,hz); ctx.lineTo(x+22,hz-46); ctx.lineTo(x+44,hz); ctx.fill(); }
-  const sway=Math.sin(t*.7)*60;
+  const hz=h*.4,g=ctx.createLinearGradient(0,0,0,hz); g.addColorStop(0,'#3fa8f0'); g.addColorStop(1,'#bfe8ff'); ctx.fillStyle=g; ctx.fillRect(0,0,w,hz);
+  ctx.fillStyle='rgba(255,255,255,.9)'; for(let i=0;i<3;i++){ const x=((i*180+t*10)%(w+120))-60; ctx.beginPath(); ctx.ellipse(x,26+i*12,30,8,0,0,7); ctx.ellipse(x+18,20+i*12,18,8,0,0,7); ctx.fill(); }
+  ctx.fillStyle='#8aa6c8'; ctx.beginPath(); ctx.moveTo(0,hz); for(let x=0;x<=w;x+=40) ctx.lineTo(x,hz-30-Math.abs(Math.sin(x*.013+1))*40); ctx.lineTo(w,hz); ctx.fill();
+  ctx.fillStyle='#4c9a3c'; ctx.fillRect(0,hz,w,h-hz);
+  ctx.fillStyle='#2f7d32'; for(let i=0;i<10;i++){ const x=i*56-20; ctx.beginPath(); ctx.moveTo(x,hz+2); ctx.lineTo(x+20,hz-38); ctx.lineTo(x+40,hz+2); ctx.fill(); }
+  const sway=Math.sin(t*.7)*80+40;
   for(let i=0;i<40;i++){ const z0=i/40,z1=(i+1)/40,p0=z0*z0,p1=z1*z1,y0=hz+p0*(h-hz),y1=hz+p1*(h-hz);
     const c0=w/2+sway*(1-p0)*(1-p0),c1=w/2+sway*(1-p1)*(1-p1),w0=12+p0*w*.5,w1=12+p1*w*.5,band=Math.floor((1/(z0+.06)+t*5))%2;
-    ctx.fillStyle=band?'#e23b3b':'#f4f4f4'; ctx.beginPath(); ctx.moveTo(c0-w0*1.1,y0); ctx.lineTo(c0+w0*1.1,y0); ctx.lineTo(c1+w1*1.1,y1+1); ctx.lineTo(c1-w1*1.1,y1+1); ctx.fill();
-    ctx.fillStyle=band?'#4a4a55':'#505060'; ctx.beginPath(); ctx.moveTo(c0-w0,y0); ctx.lineTo(c0+w0,y0); ctx.lineTo(c1+w1,y1+1); ctx.lineTo(c1-w1,y1+1); ctx.fill(); }
-  const kart=(x,y,s,col)=>{ ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x,y+3*s,26*s,6*s,0,0,7); ctx.fill();
-    ctx.fillStyle='#22222c'; ctx.fillRect(x-25*s,y-12*s,10*s,14*s); ctx.fillRect(x+15*s,y-12*s,10*s,14*s);
-    ctx.fillStyle=col; ctx.fillRect(x-18*s,y-18*s,36*s,16*s); ctx.fillStyle='#22222c'; ctx.fillRect(x-21*s,y-26*s,42*s,4*s);
-    ctx.fillStyle='#fff'; ctx.fillRect(x-7*s,y-30*s,14*s,12*s); ctx.fillStyle=col; ctx.beginPath(); ctx.arc(x,y-36*s,9*s,0,7); ctx.fill(); };
-  kart(w/2+70+Math.sin(t*1.3)*14,h*.66,.6,'#3d8bff'); kart(w/2-90+Math.sin(t*.9)*10,h*.74,.8,'#ffd23f');
-  const kx=w/2+Math.sin(t*1.7)*24; ctx.fillStyle='#ffa41a'; ctx.beginPath(); ctx.moveTo(kx-8,h*.9); ctx.lineTo(kx,h*.9+18+Math.sin(t*30)*5); ctx.lineTo(kx+8,h*.9); ctx.fill();
-  kart(kx,h*.9,1.25,'#ff4d4d');
+    ctx.fillStyle=band?'#e23b3b':'#f4f4f4'; ctx.beginPath(); ctx.moveTo(c0-w0*1.12,y0); ctx.lineTo(c0+w0*1.12,y0); ctx.lineTo(c1+w1*1.12,y1+1); ctx.lineTo(c1-w1*1.12,y1+1); ctx.fill();
+    ctx.fillStyle=band?'#4a4a55':'#525262'; ctx.beginPath(); ctx.moveTo(c0-w0,y0); ctx.lineTo(c0+w0,y0); ctx.lineTo(c1+w1,y1+1); ctx.lineTo(c1-w1,y1+1); ctx.fill();
+    if(band&&i%2===0){ ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fillRect(c0-1.5-p0*2,y0,3+p0*4,y1-y0+1); } }
+  // 終點拱門
+  { const p=.16,y=hz+p*(h-hz),c=w/2+sway*(1-p)*(1-p),ww=(12+p*w*.5)*1.3; ctx.fillStyle='#22222c'; ctx.fillRect(c-ww,y-46,5,46); ctx.fillRect(c+ww-5,y-46,5,46);
+    for(let i=0;i<10;i++){ ctx.fillStyle=i%2?'#fff':'#14122b'; ctx.fillRect(c-ww+i*ww/5,y-50,ww/5,6); ctx.fillStyle=i%2?'#14122b':'#fff'; ctx.fillRect(c-ww+i*ww/5,y-44,ww/5,6); } }
+  // 道具箱
+  for(const [p,dx] of [[.32,-.4],[.32,.4]]){ const y=hz+p*(h-hz),c=w/2+sway*(1-p)*(1-p)+dx*(12+p*w*.5),s=6+p*14,bob=Math.sin(t*4+dx)*2; ctx.save(); ctx.translate(c,y-s-bob); ctx.rotate(t*1.5); ctx.fillStyle='rgba(255,210,63,.9)'; ctx.fillRect(-s/2,-s/2,s,s); ctx.fillStyle='#14122b'; ctx.font='900 '+(s*.7)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('?',0,1); ctx.restore(); }
+  const kart=(x,y,s,col,tilt)=>{ ctx.save(); ctx.translate(x,y); ctx.rotate(tilt||0); ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,3*s,26*s,6*s,0,0,7); ctx.fill();
+    ctx.fillStyle='#22222c'; ctx.fillRect(-25*s,-12*s,10*s,14*s); ctx.fillRect(15*s,-12*s,10*s,14*s);
+    ctx.fillStyle=col; ctx.fillRect(-18*s,-18*s,36*s,16*s); ctx.fillStyle='#22222c'; ctx.fillRect(-21*s,-26*s,42*s,4*s);
+    ctx.fillStyle='#fff'; ctx.fillRect(-7*s,-30*s,14*s,12*s); ctx.fillStyle=col; ctx.beginPath(); ctx.arc(0,-36*s,9*s,0,7); ctx.fill(); ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillRect(-5*s,-40*s,10*s,3*s); ctx.restore(); };
+  kart(w/2+80+Math.sin(t*1.3)*14,h*.62,.55,'#3d8bff'); kart(w/2-100+Math.sin(t*.9)*10,h*.72,.75,'#ffd23f');
+  // 自己的車：甩尾中，後輪噴火花，放開後噴氮氣
+  const ph=(t%3)/3,drift=ph<.6,kx=w/2+(drift?-30:Math.sin(t*1.7)*20),ky=h*.88,tilt=drift?-.18:0;
+  if(drift){ for(let i=0;i<10;i++){ const a=Math.PI*.6+Math.random()*.8,r=8+Math.random()*16; ctx.fillStyle=ph>.35?(i%2?'#ffd23f':'#ff7a1a'):'#ffffff'; ctx.fillRect(kx+30+Math.cos(a)*r,ky+2+Math.sin(a)*r*.4,3,3); ctx.fillRect(kx-34+Math.cos(a)*r*.6,ky+2+Math.sin(a)*r*.4,3,3); }
+    ctx.strokeStyle='rgba(20,20,28,.5)'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(kx+30,ky+4); ctx.quadraticCurveTo(kx+40,h,kx+70,h); ctx.moveTo(kx-30,ky+4); ctx.quadraticCurveTo(kx-24,h,kx-4,h); ctx.stroke(); }
+  else { const fl=18+Math.sin(t*40)*6; for(const dx of [-10,10]){ const gg=ctx.createLinearGradient(0,ky,0,ky+fl+16); gg.addColorStop(0,'#ffffff'); gg.addColorStop(.3,'#3ddbd9'); gg.addColorStop(1,'rgba(79,157,255,0)'); ctx.fillStyle=gg; ctx.beginPath(); ctx.moveTo(kx+dx-7,ky); ctx.lineTo(kx+dx,ky+fl+16); ctx.lineTo(kx+dx+7,ky); ctx.fill(); }
+    ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=2; for(let i=0;i<8;i++){ const x=(i*67+t*900)%w,y=hz+20+(i*37)%(h-hz-30); ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+(x<w/2?-24:24),y+10); ctx.stroke(); } }
+  kart(kx,ky,1.25,'#ff4d4d',tilt);
+  ctx.font='900 '+(h*.08)+'px "Press Start 2P",monospace'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=5; ctx.strokeStyle='#14122b'; const lbl=drift?'DRIFT!':'BOOST!'; ctx.strokeText(lbl,w/2,h*.16); ctx.fillStyle=drift?'#ffd23f':'#3ddbd9'; ctx.fillText(lbl,w/2,h*.16);
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={

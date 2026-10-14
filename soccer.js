@@ -357,7 +357,10 @@ function thumb(ctx,w,h,t){
   const u=(t%1.8)/1.8;
   guy(ctx,250,216,0,1,'#ff5d4f',1,u<.2?2:1,t); guy(ctx,180,180,0,1,'#ff5d4f',0,1,t); guy(ctx,330,240,0,-1,'#3d8bff',2,u>.3?4:1,t); guy(ctx,X1-14-cam,210+Math.sin(t*3)*10,0,-1,'#f2d24a',3,0,t);
   if(u>.2) drawBall(ctx,262+(X1-cam-262)*Math.min(1,(u-.2)*1.6),216-(u-.2)*20,10,'fire',t,'#fff'); else drawBall(ctx,262,216,0,null,t,'#fff');
-  drawGoal(ctx,cam,1,true); ctx.restore();
+  drawGoal(ctx,cam,1,true);
+  if(u>.62){ const a=Math.min(1,(u-.62)*8); ctx.globalAlpha=a; ctx.save(); ctx.translate(W/2-40,120); const sc=1+Math.max(0,.1-(u-.62))*5; ctx.scale(sc,sc); ctx.font='900 30px "Press Start 2P","Noto Sans TC",monospace'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; ctx.strokeText('GOAL!',0,0); ctx.fillStyle='#ffd23f'; ctx.shadowColor='#ff5d4f'; ctx.shadowBlur=10; ctx.fillText('GOAL!',0,0); ctx.restore();
+    for(let i=0;i<16;i++){ const ang=i*.3927,r=(u-.62)*260; ctx.fillStyle=['#ffd23f','#ff5d8f','#3ddbd9','#fff'][i%4]; ctx.fillRect(W/2-40+Math.cos(ang)*r,120+Math.sin(ang)*r*.6,4,4); } ctx.globalAlpha=1; }
+  ctx.restore();
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).soccer={
