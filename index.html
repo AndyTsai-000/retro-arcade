@@ -204,7 +204,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=44; // 每次改版加一
+window.ARCADE_V=45; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -621,7 +621,7 @@ async function hostRoom(tries){
   let hasPeer=true; try{ await needPeer(); }catch(e){ hasPeer=false; }
   leaveNet();
   const code=String(1000+Math.floor(Math.random()*9000)),sid={},base=TOPIC+cur.id+'/'+code;
-  Net.sid=sid; Net.host=true; Net.code=code; Net.me=0; Net.count=1; Net.peer={destroy(){}};
+  Net.sid=sid; Net.host=true; Net.bots=0; Net.code=code; Net.me=0; Net.count=1; Net.peer={destroy(){}};
   let shown=false; const ready=()=>{ if(Net.sid!==sid||shown) return; shown=true; clearTimeout(Net.timer); roomCard(); };
   Net.timer=setTimeout(()=>{ if(Net.sid===sid&&!shown){ leaveNet(); netCard(NO_NET); } },CAN_NET?12000:5000);
   // 直連
@@ -646,7 +646,7 @@ async function hostRoom(tries){
 function roster(){
   Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1;
   Net.names=allNames();
-  Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'roster',n:Net.count,me:i+1,code:Net.code,stage:stageSel,variant:variantSel,names:Net.names});}catch(e){} });
+  Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'roster',bots:Net.bots||0,n:Net.count,me:i+1,code:Net.code,stage:stageSel,variant:variantSel,names:Net.names});}catch(e){} });
   if(!Net.inGame) roomCard();
 }
 async function joinRoom(code){
@@ -690,11 +690,19 @@ async function joinRoom(code){
 }
 function fromHost(d){
   if(!d) return;
-  if(d.t==='roster'){ Net.joined=true; clearTimeout(Net.timer); Net.me=d.me; Net.count=d.n; Net.names=d.names||[]; stageSel=d.stage; variantSel=d.variant; if(!Net.inGame) roomCard(); }
+  if(d.t==='roster'){ Net.bots=d.bots||0; Net.joined=true; clearTimeout(Net.timer); Net.me=d.me; Net.count=d.n; Net.names=d.names||[]; stageSel=d.stage; variantSel=d.variant; if(!Net.inGame) roomCard(); }
   else if(d.t==='full'){ leaveNet(); netCard('房間已滿，或遊戲正在進行中。'); }
-  else if(d.t==='start'){ Net.inGame=true; Net.me=d.me; Net.count=d.n; Net.seed=d.seed; Net.names=d.names||Net.names; Net.looks=(d.looks||[]).map(o=>normLook(cur,o)); stageSel=d.stage; variantSel=d.variant; state='ready'; start({stage:d.stage,net:true}); }
+  else if(d.t==='start'){ Net.bots=d.bots||0; Net.inGame=true; Net.me=d.me; Net.count=d.n; Net.seed=d.seed; Net.names=d.names||Net.names; Net.looks=(d.looks||[]).map(o=>normLook(cur,o)); stageSel=d.stage; variantSel=d.variant; state='ready'; start({stage:d.stage,net:true}); }
   else if(d.t==='room'){ Net.inGame=false; Net.game=null; killInst(); roomCard(); }
   else if(d.g!==undefined&&Net.game&&Net.game.onmsg) Net.game.onmsg(d.g,0);
+}
+function botsHtml(g){
+  if(!g.bots) return '';
+  const room=maxP()-Net.count; Net.bots=Math.max(0,Math.min(Net.bots||0,room));
+  if(!Net.host) return '<p>電腦玩家：'+(Net.bots?Net.bots+' 位':'不加')+'</p>';
+  let h='<div class="lkrow"><span>電腦玩家</span><div class="chips">';
+  for(let n=0;n<=room;n++) h+='<button class="chip'+(n===Net.bots?' sel':'')+'" data-b="'+n+'">'+(n?n+' 位':'不加')+'</button>';
+  return h+'</div></div>';
 }
 function roomCard(){
   state='ready'; const g=cur;
@@ -703,18 +711,20 @@ function roomCard(){
     '<ol class="who">'+Net.names.map((n,i)=>'<li'+(i===Net.me?' class="me"':'')+'>'+n+(i===0?'（房主）':'')+'</li>').join('')+'</ol>'+
     (g.stagePreview?stageHtml(!!g.stageViewer&&g.ready()):'')+
     (Net.host?'<p>把房號告訴朋友。朋友要打開同一個網址、選同一款遊戲再輸入房號。</p>':(Net.hostConn&&Net.hostConn.relay?'<p>目前透過轉送連線，反應會比直接連線慢一點。</p>':''))+
-    (Net.host?chipsHtml(g)+'<div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
+    botsHtml(g)+(Net.host?chipsHtml(g.netVariants===false?{stages:g.stages,stars:g.stars,stageBest:g.stageBest}:g)+'<p class="warn" id="nWarn"></p><div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
       :(g.stages?'<p>關卡：第 '+(stageSel+1)+' 關　'+g.stages[stageSel]+(variantName(g)?'　'+variantName(g):'')+'</p>':(variantName(g)?'<p>賽制：'+variantName(g)+'</p>':''))+'<p>等房主按開始…</p>')+
     '<div class="row"><button class="btn" id="nLeave">離開房間</button></div>');
   bindChips(()=>roster());
+  card.querySelectorAll('[data-b]').forEach(b=>b.addEventListener('click',()=>{ Net.bots=+b.dataset.b; SFX.click(); roster(); }));
   if(g.stagePreview){ const v3=!!g.stageViewer&&g.ready(); mountStage(stageSel,v3);
     // 3D 元件還沒下載時先顯示平面圖，下載好再換成 3D
     if(g.stageViewer&&!v3&&!stageWait){ stageWait=true; g.load().then(()=>{ stageWait=false; if(cur===g&&Net.sid&&!Net.inGame&&state==='ready'&&$('#nLeave')) roomCard(); }).catch(()=>{}); } }
   on('nStart',()=>{
-    Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1; Net.inGame=true; Net.seed=(Math.random()*2147483647)|0;
+    Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1;
+    if(g.minPlayers&&Net.count+(g.bots?Net.bots||0:0)<g.minPlayers){ $('#nWarn').textContent='至少要 '+g.minPlayers+' 位玩家才能開始，等朋友加入或加電腦。'; return; } Net.inGame=true; Net.seed=(Math.random()*2147483647)|0;
     Net.names=allNames();
     Net.looks=allLooks();
-    Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'start',stage:stageSel,variant:variantSel,me:i+1,n:Net.count,seed:Net.seed,names:Net.names,looks:Net.looks});}catch(e){} });
+    Net.conns.forEach((c,i)=>{ c.idx=i+1; try{c.send({t:'start',bots:Net.bots||0,stage:stageSel,variant:variantSel,me:i+1,n:Net.count,seed:Net.seed,names:Net.names,looks:Net.looks});}catch(e){} });
     start({stage:stageSel,net:true});
   });
   on('nLeave',()=>{leaveNet();netCard();});
@@ -726,7 +736,7 @@ function hostToRoom(){
 }
 function mkNet(){
   const host=Net.host;
-  Net.game={host,me:Net.me,count:Net.count,seed:Net.seed,names:Net.names.slice(),looks:(Net.looks||[]).slice(),onmsg:null,onleave:null,
+  Net.game={host,me:Net.me,count:Net.count,bots:cur&&cur.bots?Net.bots||0:0,seed:Net.seed,names:Net.names.slice(),looks:(Net.looks||[]).slice(),onmsg:null,onleave:null,
     send(p){ const m={g:p};
       if(host){ for(const c of Net.conns) if(!c.gone&&c.open){ try{c.send(m);}catch(e){} } }
       else if(Net.hostConn&&Net.hostConn.open){ try{Net.hostConn.send(m);}catch(e){} } }};

@@ -277,7 +277,8 @@ function stageViewer(host,si){
 }
 
 function create(env,opts){
-  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=opts.variant==='drift',DB_MIN=driftMode?.15:.25,humans=net?net.count:local2?2:1;
+  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=opts.variant==='drift',DB_MIN=driftMode?.15:.25,humans=net?net.count:local2?2:1,NK=net?Math.min(TOTAL,net.count+(net.bots||0)):TOTAL; // 連線時只有房間裡的人，加不加電腦由房主決定
+  const SLOTS=[...Array(NK).keys()].sort((a,b)=>Math.abs(a-(NK-1)/2)-Math.abs(b-(NK-1)/2)||a-b); // 真人排在中間
   const stage=env.stage,dpr=Math.min(window.devicePixelRatio||1,2);
   const renderer=new T.WebGLRenderer({antialias:true}); renderer.setPixelRatio(dpr); stage.appendChild(renderer.domElement);
   const hudC=document.createElement('canvas'); stage.appendChild(hudC); const hud=hudC.getContext('2d');
@@ -292,9 +293,9 @@ function create(env,opts){
   const BODIES=['std','sport','buggy'],PARTS=['none','wing','flag','exhaust'],DRIVERS=['helmet','bear','bunny','cap'];
   const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{body:BODIES[i%3],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4],wheel:Object.keys(WHEEL)[i%5],nitro:Object.keys(NITRO)[(i+2)%5]};
   const karts=[];
-  for(let i=0;i<TOTAL;i++){
-    const human=i<humans,slot=[2,3,1,4,0,5][i];       // 所有車排成一直線同時出發，真人排在中間
-    const si=N-6,lane=(slot-(TOTAL-1)/2)*4.2;
+  for(let i=0;i<NK;i++){
+    const human=i<humans,slot=SLOTS[i];       // 所有車排成一直線同時出發，真人排在中間
+    const si=N-6,lane=(slot-(NK-1)/2)*4.2;
     const look=lookFor(i,human);
     const k={i,human,color:look.color,look,bk:0,gripT:0,ss:0,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
       boostT:0,drifting:false,driftT:0,gauge:0,stock:0,items:[],toastT:0,toastText:'',spin:0,tumble:0,slowT:0,cloudT:0,shield:0,fin:null,wall:false,left:false,flags:0,
@@ -507,7 +508,7 @@ function create(env,opts){
         if(k.fin==null&&k.prog>=LAPS*N){ k.fin=t; if(k.local){ env.sfx('win'); k.ai={lane:0,skill:.6,nt:1e9}; } }
       }
       // 車與車互撞：只推自己算的車
-      for(let a=0;a<TOTAL;a++) for(let b=a+1;b<TOTAL;b++){ const A=karts[a],B=karts[b]; if(A.left||B.left||(A.remote&&B.remote)) continue;
+      for(let a=0;a<NK;a++) for(let b=a+1;b<NK;b++){ const A=karts[a],B=karts[b]; if(A.left||B.left||(A.remote&&B.remote)) continue;
         const dx=B.x-A.x,dz=B.z-A.z,d=Math.hypot(dx,dz); if(d>2.7||d<.001) continue; const p=(2.7-d)/d,wa=A.remote?0:(B.remote?1:.5),wb=B.remote?0:(A.remote?1:.5);
         A.x-=dx*p*wa; A.z-=dz*p*wa; B.x+=dx*p*wb; B.z+=dz*p*wb; }
       for(const k of locals){ const v=k.v,lap=clamp(Math.floor(k.prog/N)+1,1,LAPS); if(lap>v.lap&&k.fin==null){ v.lap=lap; env.sfx('lap'); }
@@ -706,7 +707,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
-  name:'跑跑卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,
+  name:'跑跑卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,bots:true,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 12 關，星星越多越難；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
   goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。甩噴賽：甩尾放開後馬上按一下 ↑ 就會噴氮氣，甩越久噴越久（手機按 ▲）。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),

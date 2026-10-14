@@ -34,7 +34,7 @@ const tilePenalty=t=>isJ(t)?30:t.n;
 
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
-  const humans=net?net.count:1,np=net&&net.count>1?net.count:1+(+(opts.variant||2)||2);
+  const humans=net?net.count:1,np=net?Math.min(4,net.count+(net.bots||0)):1+(+(opts.variant||2)||2); // 連線時電腦由房主決定
   const L=opts.look||{felt:'#1f6b4a'};
   const {ctx,canvas}=env.canvas2d(W,H);
   const names=[];
@@ -287,7 +287,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).rummy={
-  name:'拉密',tag:'RUMMIKUB',color:'#3fae8a',online:true,maxPlayers:4,
+  name:'拉密',tag:'RUMMIKUB',color:'#3fae8a',online:true,maxPlayers:4,bots:true,minPlayers:2,netVariants:false,
   desc:'數字牌的拉密（Rummikub）：組出同色連號或同數字不同色的牌組，先把手牌出完的人贏。可以和電腦玩，或開房間 2～4 人連線。',
   goal:'把手牌拖到桌上組成牌組：同顏色連號 3 張以上，或同數字不同顏色 3～4 張，鬼牌可以代替任何牌。第一次出牌要湊滿 30 分，之後可以拆開桌上的牌重新組合。出不了牌就按「摸牌」。',
   variants:[{id:'2',label:'對手 2 人'},{id:'1',label:'對手 1 人'},{id:'3',label:'對手 3 人'}],

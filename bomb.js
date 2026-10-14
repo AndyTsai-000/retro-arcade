@@ -99,7 +99,7 @@ function create(env,opts){
   const keep=new Set(); for(const [sx,sy] of SPAWN.slice(0,Math.max(4,humans))){ for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]) keep.add((sy+dy)*COLS+sx+dx); }
   if(!client) for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ const i=y*COLS+x;
     if(st.solid(x,y)) grid[i]=1; else if(!keep.has(i)&&Math.random()<st.box) grid[i]=2; }
-  const total=Math.max(4,humans); // 不足 4 人由電腦補滿，連線最多 6 人
+  const total=net?Math.min(6,humans+(net.bots||0)):Math.max(4,humans); // 單機不足 4 人由電腦補滿；連線只有房間裡的人，加不加電腦由房主決定
   const players=SPAWN.slice(0,total).map(([x,y],i)=>({id:i,x,y,rx:x,ry:y,dir:1,moving:false,state:'alive',trapT:0,inv:0,
     maxB:i<humans?1:D.maxB,power:i<humans?1:D.power,spd:0,needles:0,human:i<humans,
     name:local2&&i<2?(i+1)+'P':i===me?'你':i<humans?((net&&net.names&&net.names[i])||'玩家'+(i+1)).slice(0,5):'電腦',
@@ -375,7 +375,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={
-  name:'爆爆王',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,
+  name:'爆爆王',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
   desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。7 個場景、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
   goal:'放水球把對手困進水泡，再走過去碰破。自己被困住時，有針可以脫困；沒有針就會出局。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
