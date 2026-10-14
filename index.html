@@ -204,7 +204,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=45; // 每次改版加一
+window.ARCADE_V=46; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -494,7 +494,9 @@ function togglePause(){
 }
 function back(){
   const safe=f=>{ try{ f(); }catch(e){ console.error(e); } };
-  safe(leaveNet); safe(killInst); safe(closeLook); cur=null; state='hub'; inst=null; helpPaused=false;
+  safe(leaveNet); safe(killInst); safe(closeLook);
+  safe(()=>{ if(document.fullscreenElement||document.webkitFullscreenElement) (document.exitFullscreen||document.webkitExitFullscreen).call(document); }); // 回大廳就離開全螢幕
+  cur=null; state='hub'; inst=null; helpPaused=false;
   for(const k in keys) keys[k]=false; for(const k in hits) delete hits[k];
   ov.hidden=true; modal.hidden=true; document.body.classList.remove('playing');
   $('#play').hidden=true; $('#hub').hidden=false; safe(buildHub); scrollTo(0,0);
