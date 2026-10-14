@@ -25,6 +25,27 @@ function decomps(c,need,limit){
   for(let p=0;p<34&&out.length<limit;p++){ if(c[p]<2) continue; c[p]-=2; rec(c,0,[],need,s=>{ if(out.length<limit) out.push({pair:p,sets:s.map(x=>({t:x.t,k:x.k}))}); }); c[p]+=2; }
   return out;
 }
+const shMemo=new Map(); // 跨次共用，太大就清掉
+function shDfs(c,i,M,T,need){
+  while(i<34&&!c[i]) i++;
+  if(i>=34) return 2*need-2*M-Math.min(T,need-M);
+  const key=need+'|'+i+'|'+M+'|'+T+'|'+c.slice(i).join(''); if(shMemo.has(key)) return shMemo.get(key);
+  c[i]--; let best=shDfs(c,i,M,T,need); c[i]++; // 這張當孤張不用
+  if(c[i]>=3){ c[i]-=3; best=Math.min(best,shDfs(c,i,M+1,T,need)); c[i]+=3; }
+  if(i<27&&i%9<=6&&c[i+1]&&c[i+2]){ c[i]--; c[i+1]--; c[i+2]--; best=Math.min(best,shDfs(c,i,M+1,T,need)); c[i]++; c[i+1]++; c[i+2]++; }
+  if(M+T<need){
+    if(c[i]>=2){ c[i]-=2; best=Math.min(best,shDfs(c,i,M,T+1,need)); c[i]+=2; }
+    if(i<27&&i%9<=7&&c[i+1]){ c[i]--; c[i+1]--; best=Math.min(best,shDfs(c,i,M,T+1,need)); c[i]++; c[i+1]++; }
+    if(i<27&&i%9<=6&&c[i+2]){ c[i]--; c[i+2]--; best=Math.min(best,shDfs(c,i,M,T+1,need)); c[i]++; c[i+2]++; }
+  }
+  shMemo.set(key,best); return best;
+}
+function shanten(c,need){
+  if(shMemo.size>400000) shMemo.clear();
+  let best=shDfs(c,0,0,0,need);
+  for(let k=0;k<34;k++) if(c[k]>=2){ c[k]-=2; best=Math.min(best,shDfs(c,0,0,0,need)-1); c[k]+=2; }
+  return best;
+}
 const canWin=(ids,melds)=>{ const need=5-melds.length; return ids.length===need*3+2&&decomps(cnt(ids),need,1).length>0; };
 
 /* ---- 畫牌 ---- */
@@ -216,22 +237,44 @@ function create(env,opts){
     if(s>0&&c[k-1]) v+=6; if(s<8&&c[k+1]) v+=6; if(s>1&&c[k-2]) v+=3; if(s<7&&c[k+2]) v+=3;
     return v+(s===0||s===8?0:1.5);
   }
+  // 場上看得到的牌：自己手牌＋所有人打出的牌＋別人的吃碰槓
+  function seen(p){ const c=cnt(G.hands[p]); for(let q=0;q<np;q++){ for(const id of G.discards[q]){ const k=kindOf(id); if(k<34) c[k]++; } if(q!==p) for(const m of G.melds[q]) for(const id of m.ids) c[kindOf(id)]++; } return c; }
+  // 這手牌的向聽數，以及還能進幾張讓它更接近胡牌的牌
+  // 只有跟手牌同種或差兩張以內的牌才可能有用
+  const near=(c,k)=>{ if(c[k]) return true; if(k>=27) return false; const s=k%9; return s>0&&c[k-1]||s<8&&c[k+1]||s>1&&c[k-2]||s<7&&c[k+2]; };
+  function evalHand(c,need,vis){
+    const sh=shanten(c,need); let uke=0;
+    for(let k=0;k<34;k++){ const left=4-vis[k]; if(left<=0) continue; if(!near(c,k)) continue; c[k]++; if(shanten(c,need)<sh) uke+=left; c[k]--; }
+    return {sh,uke};
+  }
+  // 看起來快聽牌的對手（副露三組以上，或牌快摸完時副露兩組以上）
+  function threats(p){ const out=[]; for(let q=0;q<np;q++) if(q!==p&&(G.melds[q].length>=3||G.wall.length<RESERVE+12&&G.melds[q].length>=2)) out.push(q); return out; }
+  function danger(k,th,vis){ let d=0; for(const q of th){ if(G.discards[q].some(id=>kindOf(id)===k)) continue; d+=k>=27?(vis[k]>=3?0:vis[k]>=2?.3:1):(k%9===0||k%9===8?.7:1); } return d; }
+  const lexLess=(a,b)=>{ for(let i=0;i<a.length;i++) if(a[i]!==b[i]) return a[i]<b[i]; return false; };
   function aiDiscard(p){
-    const h=G.hands[p],c=cnt(h); let best=null,bv=1e9;
-    for(const id of h){ const v=keepScore(p,c,kindOf(id))+Math.random()*.5; if(v<bv){ bv=v; best=id; } }
-    return best;
+    const h=G.hands[p],c=cnt(h),need=5-G.melds[p].length,vis=seen(p),th=threats(p);
+    let best=-1,bk=null;
+    for(let k=0;k<34;k++){ if(!c[k]) continue; c[k]--; const e=evalHand(c,need,vis); c[k]++;
+      const dz=danger(k,th,vis),key=th.length&&e.sh>=2?[dz*3+e.sh,-e.uke]:[e.sh,-e.uke,dz,keepScore(p,c,k)];
+      if(!bk||lexLess(key,bk)){ bk=key; best=k; } }
+    return h.find(id=>kindOf(id)===best);
   }
   function aiClaim(p,o,k){
     if(o.some(x=>x.c==='hu')) return {c:'hu'};
-    const c=cnt(G.hands[p]);
-    if(o.some(x=>x.c==='kong')) return {c:'kong'};
-    if(o.some(x=>x.c==='pong')){ const lone=k>=27||!((k%9>0&&c[k-1])||(k%9<8&&c[k+1])); if(valuable(p,k)||lone&&Math.random()<.7) return {c:'pong'}; }
-    const ch=o.filter(x=>x.c==='chow').find(x=>x.k.every(q=>c[q]===1)); if(ch&&Math.random()<.55) return ch;
-    return {c:'pass'};
+    const c=cnt(G.hands[p]),need=5-G.melds[p].length,before=shanten(c,need);
+    // 吃碰之後還要打掉一張：看打完後最好的向聽數
+    const after=rm=>{ const d=c.slice(); for(const x of rm) d[x]--; let b=99; for(let j=0;j<34;j++){ if(!d[j]) continue; d[j]--; b=Math.min(b,shanten(d,need-1)); d[j]++; } return b; };
+    if(o.some(x=>x.c==='kong')){ const d=c.slice(); d[k]-=3; if(shanten(d,need-1)<=before) return {c:'kong'}; }
+    let pick={c:'pass'},bestSh=before;
+    if(o.some(x=>x.c==='pong')){ const a=after([k,k]); if(a<bestSh||a===bestSh&&valuable(p,k)){ bestSh=a; pick={c:'pong'}; } }
+    for(const x of o.filter(x=>x.c==='chow')){ const a=after(x.k); if(a<bestSh){ bestSh=a; pick=x; } }
+    return pick;
   }
   function aiPlay(p){
     if(canWin(G.hands[p],G.melds[p])){ tsumo(p); return; }
-    const kk=kongKinds(p); if(kk.length&&G.wall.length>RESERVE){ selfKong(p,kk[0]); return; }
+    const kk=kongKinds(p);
+    if(kk.length&&G.wall.length>RESERVE){ const c=cnt(G.hands[p]),need=5-G.melds[p].length,now=shanten(c,need);
+      for(const k of kk){ const d=c.slice(); let n2=need; if(d[k]===4){ d[k]=0; n2=need-1; } else d[k]--; if(shanten(d,n2)<=now){ selfKong(p,k); return; } } }
     discard(p,aiDiscard(p));
   }
 
@@ -362,7 +405,7 @@ function create(env,opts){
     if(!client) button(W/2-60,356,120,34,!(r.draw||r.w===G.dealer)&&G.moves+1>=TARGET?'看總成績':'下一局',()=>doAct({a:'next'}),true);
     else txt('等房主開下一局…',W/2,372,'#cfe8d8',13,'center');
   }
-  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); },_dbg:{G,canWin,decomps,cnt,tally,discard,respond,tsumo,selfKong,nextHand,aiPlay,kindOf,get me(){return me;}}};
+  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); },_dbg:{G,shanten,aiDiscard,canWin,decomps,cnt,tally,discard,respond,tsumo,selfKong,nextHand,aiPlay,kindOf,get me(){return me;}}};
 }
 
 /* ---- 示意圖：一手好牌，最後一張摸進來自摸 ---- */
