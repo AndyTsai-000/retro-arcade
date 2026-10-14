@@ -387,7 +387,9 @@ function create(env,opts){
     let fx=Math.sin(k.h),fz=Math.cos(k.h),vf=k.vx*fx+k.vz*fz;
     k.ss+=(inp.steer-k.ss)*Math.min(1,dt*(k.ai?40:11)); // 方向盤不是瞬間打到底
     if(!k.drifting&&inp.drift&&inp.steer&&vf>17){ k.drifting=true; k.driftT=0; }
-    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<9){ k.drifting=false; k.gripT=.45; if(k.driftT>(driftMode?.25:.6)){ k.boostT=Math.max(k.boostT,driftMode?Math.min(2.4,.5+k.driftT):.55); k.bk=1; burst(k.x,k.z,driftMode?0x4fd0ff:0xffd23f,driftMode?8:4,1,.45); if(mine){ env.sfx('boost'); if(driftMode){ toast(k,'甩噴！'); flashT=.12; } } } } }
+    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<9){ k.drifting=false; k.gripT=.45; if(k.driftT>(driftMode?.25:.6)){ k.dbT=.6; k.dbAmt=driftMode?Math.min(2.4,.5+k.driftT):.55; if(mine&&!k.ai&&!env.touch) toast(k,'按 '+(local2&&k.i===0?'W':'↑')+' 甩噴！'); } } }
+    // 甩尾結束後 0.6 秒內按一下出發鍵（↑）才會噴；手機沒有出發鍵，放開飄移就自動噴
+    if(k.dbT>0){ k.dbT-=dt; if(inp.tap){ k.dbT=0; k.boostT=Math.max(k.boostT,k.dbAmt); k.bk=1; burst(k.x,k.z,driftMode?0x4fd0ff:0xffd23f,driftMode?8:4,1,.45); if(mine){ env.sfx('boost'); if(driftMode){ toast(k,'甩噴！'); flashT=.12; } } } }
     k.h+=k.ss*1.9*Math.min(1,Math.abs(vf)/14)*(k.drifting?1.38:1)*(vf<0?-1:1)*dt;
     fx=Math.sin(k.h); fz=Math.cos(k.h); const lx=fz,lz=-fx;
     vf=k.vx*fx+k.vz*fz; let vl=k.vx*lx+k.vz*lz;
@@ -437,7 +439,7 @@ function create(env,opts){
     let lead=-1e9; for(const q of karts) if(q.human&&!q.left) lead=Math.max(lead,q.prog);
     const gap=k.prog-lead,band=gap>40?.93:gap<-40?1.07:1;
     const vt=Math.min(MAX*a.skill*band,1.75/Math.max(cmax,.001)*(st.grip<1?.75:1));
-    inp.steer=clamp(diff*3,-1,1); inp.gas=spd<vt; inp.brake=spd>vt+8; inp.drift=false; inp.nitro=false; inp.max=a.skill*band;
+    inp.steer=clamp(diff*3,-1,1); inp.gas=spd<vt; inp.brake=spd>vt+8; inp.drift=false; inp.nitro=false; inp.tap=Math.random()<dt*9; inp.max=a.skill*band;
     if(k.cloudT>0){ inp.steer=clamp(inp.steer+Math.sin(t*7+k.i)*.6,-1,1); inp.max*=.85; } // 電腦被烏雲遮住時會開得歪歪的
     a.nt-=dt; if(!itemMode&&a.nt<=0&&cmax<.008&&k.fin==null){ k.boostT=2; k.bk=2; a.nt=9+Math.random()*10; }
     if(itemMode&&k.items.length&&k.fin==null){ a.it=(a.it==null?1+Math.random()*3:a.it)-dt; if(a.it<=0){ inp.nitro=false; a.it=useItem(k)?null:1.5; } }
@@ -445,11 +447,12 @@ function create(env,opts){
   function humanInput(k){
     const K=env.keys; inp.max=1;
     if(local2){ // 1P 用 WASD（左半畫面），2P 用方向鍵（右半畫面）；不用 Ctrl，避免 Ctrl+W 關掉分頁
+      inp.tap=k.i===0?env.hit('KeyW'):env.hit('ArrowUp');
       if(k.i===0){ inp.steer=(K.KeyA?1:0)-(K.KeyD?1:0); inp.brake=!!K.KeyS; inp.gas=!!K.KeyW; inp.drift=!!K.ShiftLeft; inp.nitro=env.hit('KeyQ')||env.hit('KeyE'); }
       else { inp.steer=(K.ArrowLeft?1:0)-(K.ArrowRight?1:0); inp.brake=!!K.ArrowDown; inp.gas=!!K.ArrowUp; inp.drift=!!(K.ShiftRight||K.Slash); inp.nitro=env.hit('Enter')||env.hit('NumpadEnter'); }
       return; }
     inp.steer=(K.ArrowLeft?1:0)-(K.ArrowRight?1:0);
-    inp.brake=!!K.ArrowDown; inp.gas=env.touch?!inp.brake:!!K.ArrowUp;
+    inp.brake=!!K.ArrowDown; inp.gas=env.touch?!inp.brake:!!K.ArrowUp; inp.tap=env.touch?true:env.hit('ArrowUp');
     inp.drift=!!(K.ShiftLeft||K.ShiftRight||K.Space); inp.nitro=env.hit('ControlLeft')||env.hit('ControlRight')||env.hit('KeyX');
   }
   function pack(k){ return k.remote?[k.i,r2(k.tx),r2(k.tz),r2(k.th),r2(k.vx),r2(k.vz),Math.round(k.prog),k.flags,k.fin]
@@ -702,11 +705,11 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'跑跑卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 12 關，星星越多越難；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
-  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。甩噴賽：甩尾一放開就自動噴氮氣，甩越久噴越久。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
+  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。甩噴賽：甩尾放開後馬上按一下 ↑ 就會噴氮氣，甩越久噴越久（手機放開飄移就自動噴）。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'},{id:'drift',label:'甩噴賽'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  help:[['↑ ↓ ← →','油門、煞車、轉向'],['Shift','過彎時按住飄移'],['X','使用氮氣或道具'],['R','回到賽道中央'],['W A S D 左Shift Q','雙人 1P（左半畫面），Q 用氮氣或道具'],['↑ ↓ ← → 右Shift Enter','雙人 2P（右半畫面），Enter 用氮氣或道具']],
+  help:[['↑ ↓ ← →','油門、煞車、轉向'],['Shift','過彎時按住飄移，放開後按一下 ↑ 甩噴'],['X','使用氮氣或道具'],['R','回到賽道中央'],['W A S D 左Shift Q','雙人 1P（左半畫面），Q 用氮氣或道具'],['↑ ↓ ← → 右Shift Enter','雙人 2P（右半畫面），Enter 用氮氣或道具']],
   touchHelp:[['◀ ▶','轉向，自動踩油門'],['飄移','過彎時按住'],['使用','用氮氣或道具'],['煞','煞車']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'煞',c:'ArrowDown'},{l:'飄移',c:'ShiftLeft'},{l:'使用',c:'KeyX',act:true}]},
   best:{label:'已過關',fmt:v=>v+' / '+STAGES.length,lower:false},
