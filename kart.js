@@ -307,7 +307,7 @@ function create(env,opts){
   }
   const my=karts[me],locals=karts.filter(k=>k.local);
   let t=0,cd=3.4,lastBeep=4,endT=0,ended=false,sendT=0,remain=null,lastTick=99,pip=null,flashT=0;
-  let guard=0,intro={i:0,t:0,list:karts.filter(k=>k.human).concat(karts.filter(k=>!k.human))}; // 真人先介紹，再來是電腦
+  let guard=0,intro={t:0,dur:4.6};
 
   /* ---- 道具賽 ---- */
   const boxes=[],bananas=[],missiles=[]; let banN=0,banGeo,banMat,misGeo,misMat;
@@ -328,6 +328,10 @@ function create(env,opts){
   function addWater(id,x,z,h,owner,dist){ if(waters.some(w=>w.id===id)) return; const mesh=new T.Mesh(fxGeo,watMat); mesh.position.set(x,1.5,z); scene.add(mesh);
     waters.push({id,x0:x,z0:z,x,z,h,owner,dist,age:0,landed:false,mesh}); }
   const fx=[],fxGeo=new T.SphereGeometry(1,12,8);
+  const skidGeo=new T.PlaneGeometry(1,1),skidMat=new T.MeshBasicMaterial({color:0x17151c,transparent:true,opacity:.5,depthWrite:false}),skids=[]; let skidN=0;
+  function skid(x0,z0,x1,z1){ // 回收最舊的一段，最多留 700 段
+    let m=skids[skidN%700]; if(!m){ m=new T.Mesh(skidGeo,skidMat); m.rotation.order='YXZ'; m.rotation.x=-Math.PI/2; scene.add(m); skids.push(m); } skidN++;
+    const dx=x1-x0,dz=z1-z0; m.position.set((x0+x1)/2,.075,(z0+z1)/2); m.rotation.y=Math.atan2(dx,dz); m.scale.set(.42,Math.hypot(dx,dz)+.08,1); }
   const pool=[];
   function burst(x,z,color,size,y,life){
     let f=pool.pop(); if(!f){ if(fx.length>=110) f=fx.shift(); else f={m:new T.Mesh(fxGeo,new T.MeshBasicMaterial({transparent:true,opacity:.7,depthWrite:false}))}; }
@@ -471,9 +475,9 @@ function create(env,opts){
       eg=ac.createGain(); eg.gain.value=.022; osc.connect(lp); lp.connect(eg); eg.connect(out); osc.start(); }catch(e){ osc=null; } } }
 
   function update(dt){
-    if(intro){ // 開場：鏡頭輪流繞著每一台車和車手轉一圈
-      intro.t+=dt; const q=intro.list[intro.i]; if(intro.t>=(q.human?1.7:.95)){ intro.i++; intro.t=0; if(intro.i>=intro.list.length) intro=null; else env.sfx('click'); }
-      if(intro&&!net&&intro.i+intro.t>.4&&(env.hit('Space')||env.hit('Enter')||env.hit('KeyX'))) intro=null;
+    if(intro){ // 開場：鏡頭繞著整排起跑的車轉一圈，所有選手和名字一次看完
+      intro.t+=dt; if(intro.t>=intro.dur) intro=null;
+      if(intro&&!net&&intro.t>.4&&(env.hit('Space')||env.hit('Enter')||env.hit('KeyX'))) intro=null;
       if(!intro) guard=.3; }
     else if(cd>0){ cd-=dt; const c=Math.ceil(cd); if(c<lastBeep&&c>=1&&c<=3){ lastBeep=c; env.sfx('beep'); }
       if(cd<=0){ env.sfx('go'); for(const k of karts) if(!k.human&&!k.remote&&Math.random()<.2+st.ai*.25){ k.boostT=1.1; k.bk=2; } } }
@@ -541,6 +545,9 @@ function create(env,opts){
     if(flashT>0) flashT-=dt;
     if(pip){ pip.t-=dt; if(pip.t<=0) pip=null; }
     for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); { const fl=k.mesh.userData.flame; fl.visible=!!(k.flags&1)&&!(k.flags&256); if(fl.visible){ const q=1.5+Math.random()*.9,big=k.flags&128?1.9:1.4; fl.scale.set(big,q,big); fl.material.color.setHex(k.flags&128?nitroCol(k,Math.floor(t*12)):0xffa41a); } } { const sp=Math.hypot(k.vx,k.vz)*dt*2; for(const wl of k.mesh.userData.wheels) wl.rotation.x+=sp; } k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
+    for(const k of karts){ if(k.left||!(k.flags&2)||k.z>.5){ k.sk=null; continue; } // 甩尾中才留胎痕
+      const sx=Math.sin(k.h),cz=Math.cos(k.h),w=[[k.x-sx*1.1+cz*1.12,k.z-cz*1.1-sx*1.12],[k.x-sx*1.1-cz*1.12,k.z-cz*1.1+sx*1.12]];
+      if(!k.sk) k.sk=w; else if(Math.hypot(w[0][0]-k.sk[0][0],w[0][1]-k.sk[0][1])>.7){ for(let j=0;j<2;j++) skid(k.sk[j][0],k.sk[j][1],w[j][0],w[j][1]); k.sk=w; } }
     for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*(k.drifting?3.4:5)); v.fov+=((k.boostT>0?74:62)-v.fov)*Math.min(1,dt*4); }
   }
 
@@ -559,13 +566,19 @@ function create(env,opts){
   function draw(){
     const c=hud,n=locals.length,side=vw>=vh;
     c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,vw,vh);
-    if(intro){ const k=intro.list[intro.i],u=intro.t/(k.human?1.7:.95),a=k.h+2.4-u*2.2,R=7.2-u*1.2,s=clamp(vw/560,.62,1);
-      renderer.setScissorTest(false); renderer.setViewport(0,0,vw,vh); cam.aspect=vw/vh; cam.fov=48; cam.updateProjectionMatrix();
-      cam.position.set(k.x+Math.sin(a)*R,2.6+u*.8,k.z+Math.cos(a)*R); cam.lookAt(k.x,1.5,k.z); renderer.render(scene,cam);
-      c.fillStyle='rgba(11,10,28,.78)'; c.fillRect(0,vh-78*s,vw,58*s); c.fillStyle=k.color; c.fillRect(0,vh-78*s,10*s,58*s);
-      c.textBaseline='middle'; c.textAlign='left'; c.fillStyle='#ffd23f'; c.font=11*s+'px '+PIX; c.fillText((k.human?'PLAYER ':'CPU ')+(intro.i+1)+' / '+intro.list.length,24*s,vh-62*s);
-      c.fillStyle='#fff'; c.font='900 '+26*s+'px '+TC; c.fillText(k.name,24*s,vh-38*s);
-      c.textAlign='right'; c.fillStyle='#aaa4d8'; c.font='700 '+12*s+'px '+TC; c.fillText(STAGES[opts.stage||0].name+'　'+(itemMode?'道具賽':driftMode?'甩噴賽':'競速賽'),vw-16*s,vh-62*s); if(!net) c.fillText(env.touch?'按「使用」跳過':'按空白鍵跳過',vw-16*s,vh-38*s);
+    if(intro){ const u=intro.t/intro.dur,e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,s=clamp(vw/560,.62,1);
+      let cx=0,cz=0; for(const k of karts){ cx+=k.x; cz+=k.z; } cx/=karts.length; cz/=karts.length;
+      const h=karts[0].h,a=h+Math.PI+(1-e)*Math.PI*1.9,R=26-e*9;
+      renderer.setScissorTest(false); renderer.setViewport(0,0,vw,vh); cam.aspect=vw/vh; cam.fov=52; cam.updateProjectionMatrix();
+      cam.position.set(cx+Math.sin(a)*R,9-e*4,cz+Math.cos(a)*R); cam.lookAt(cx+Math.sin(h)*e*6,1.6,cz+Math.cos(h)*e*6); renderer.render(scene,cam);
+      // 下方列出所有參賽者
+      const list=karts.filter(k=>k.human).concat(karts.filter(k=>!k.human)),bh=(list.length>3&&vw<520?70:52)*s;
+      c.fillStyle='rgba(11,10,28,.8)'; c.fillRect(0,vh-bh-12*s,vw,bh+12*s); c.textBaseline='middle';
+      c.textAlign='left'; c.fillStyle='#ffd23f'; c.font=10*s+'px '+PIX; c.fillText('RACERS',12*s,vh-bh-2*s);
+      c.textAlign='right'; c.fillStyle='#aaa4d8'; c.font='700 '+11*s+'px '+TC; c.fillText(STAGES[opts.stage||0].name+'　'+(itemMode?'道具賽':driftMode?'甩噴賽':'競速賽')+(net?'':'　'+(env.touch?'按「使用」跳過':'按空白鍵跳過')),vw-12*s,vh-bh-2*s);
+      const per=Math.ceil(list.length/(bh>50*s?2:1)),cw=(vw-24*s)/per;
+      list.forEach((k,i)=>{ const row=Math.floor(i/per),x=12*s+(i%per)*cw,y=vh-bh+16*s+row*24*s; c.fillStyle=k.color; c.beginPath(); c.arc(x+6*s,y,5*s,0,7); c.fill();
+        c.textAlign='left'; c.fillStyle=k.human?'#fff':'#c9c6e6'; c.font=(k.human?'900 ':'700 ')+13*s+'px '+TC; c.fillText(k.name,x+16*s,y); });
       return; }
     renderer.setScissorTest(n>1);
     locals.forEach((k,i)=>{
