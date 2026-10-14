@@ -105,12 +105,12 @@ function tableArt(felt){
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
   const humans=net?net.count:1,np=net?Math.max(2,Math.min(4,net.count+(net.bots||0))):(opts.variant==='2'?2:4);
-  const LEN=(opts.options||{}).len||'c',TARGET=LEN==='q'?1:LEN==='j'?4*np:np,LENNAME={q:'1/4 圈',c:'1 圈',j:'1 將'}[LEN]||'1 圈',L=opts.look||{felt:'#1d5e45'};
+  const TL=(o=>o==null?20:+o)((opts.options||{}).time),AIL=(opts.options||{}).ai||'normal',LEN=(opts.options||{}).len||'c',TARGET=LEN==='q'?1:LEN==='j'?4*np:np,LENNAME={q:'1/4 圈',c:'1 圈',j:'1 將'}[LEN]||'1 圈',L=opts.look||{felt:'#1d5e45'};
   const {ctx,canvas}=env.canvas2d(W,H);
   const names=[]; for(let i=0;i<np;i++) names.push(i<humans?(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你')):'電腦 '+(i-humans+1));
   const isAI=p=>p>=humans;
   const sfx=n=>env.sfx(n);
-  let msg='',msgT=0,t=0,aiT=0,sel=-1,sendT=0,ended=false,claimT=0,playT=0,lastKey='';
+  let dispKey='',dispT=0,msg='',msgT=0,t=0,aiT=0,sel=-1,sendT=0,ended=false,claimT=0,playT=0,lastKey='';
   const say=(s,sec)=>{ msg=s; msgT=sec||1.8; };
   const G={wall:[],wallN:0,hands:[],melds:[],flowers:[],discards:[],turn:0,phase:'play',drawn:-1,last:null,claim:null,dealer:0,lian:0,moves:0,handNo:0,scores:new Array(np).fill(0),result:null,log:'',afterKong:false,ev:[]};
   const seatOf=p=>{ const r=(p-G.dealer+np)%np; return np===2?[0,2][r]:r; };
@@ -251,15 +251,21 @@ function create(env,opts){
   function threats(p){ const out=[]; for(let q=0;q<np;q++) if(q!==p&&(G.melds[q].length>=3||G.wall.length<RESERVE+12&&G.melds[q].length>=2)) out.push(q); return out; }
   function danger(k,th,vis){ let d=0; for(const q of th){ if(G.discards[q].some(id=>kindOf(id)===k)) continue; d+=k>=27?(vis[k]>=3?0:vis[k]>=2?.3:1):(k%9===0||k%9===8?.7:1); } return d; }
   const lexLess=(a,b)=>{ for(let i=0;i<a.length;i++) if(a[i]!==b[i]) return a[i]<b[i]; return false; };
+  function aiDiscardEasy(p){ const h=G.hands[p],c=cnt(h); let best=null,bv=1e9; for(const id of h){ const v=keepScore(p,c,kindOf(id))+Math.random()*.5; if(v<bv){ bv=v; best=id; } } return best; }
+  function aiClaimEasy(p,o,k){ if(o.some(x=>x.c==='hu')) return {c:'hu'}; const c=cnt(G.hands[p]); if(o.some(x=>x.c==='kong')) return {c:'kong'};
+    if(o.some(x=>x.c==='pong')){ const lone=k>=27||!((k%9>0&&c[k-1])||(k%9<8&&c[k+1])); if(valuable(p,k)||lone&&Math.random()<.7) return {c:'pong'}; }
+    const ch=o.filter(x=>x.c==='chow').find(x=>x.k.every(q=>c[q]===1)); if(ch&&Math.random()<.55) return ch; return {c:'pass'}; }
   function aiDiscard(p){
-    const h=G.hands[p],c=cnt(h),need=5-G.melds[p].length,vis=seen(p),th=threats(p);
+    if(AIL==='easy') return aiDiscardEasy(p);
+    const h=G.hands[p],c=cnt(h),need=5-G.melds[p].length,vis=seen(p),th=AIL==='hard'?threats(p):[];
     let best=-1,bk=null;
-    for(let k=0;k<34;k++){ if(!c[k]) continue; c[k]--; const e=evalHand(c,need,vis); c[k]++;
+    for(let k=0;k<34;k++){ if(!c[k]) continue; c[k]--; const e=AIL==='hard'?evalHand(c,need,vis):{sh:shanten(c,need),uke:0}; c[k]++;
       const dz=danger(k,th,vis),key=th.length&&e.sh>=2?[dz*3+e.sh,-e.uke]:[e.sh,-e.uke,dz,keepScore(p,c,k)];
       if(!bk||lexLess(key,bk)){ bk=key; best=k; } }
     return h.find(id=>kindOf(id)===best);
   }
   function aiClaim(p,o,k){
+    if(AIL==='easy') return aiClaimEasy(p,o,k);
     if(o.some(x=>x.c==='hu')) return {c:'hu'};
     const c=cnt(G.hands[p]),need=5-G.melds[p].length,before=shanten(c,need);
     // 吃碰之後還要打掉一張：看打完後最好的向聽數
@@ -273,6 +279,7 @@ function create(env,opts){
   function aiPlay(p){
     if(canWin(G.hands[p],G.melds[p])){ tsumo(p); return; }
     const kk=kongKinds(p);
+    if(kk.length&&G.wall.length>RESERVE&&AIL==='easy'){ selfKong(p,kk[0]); return; }
     if(kk.length&&G.wall.length>RESERVE){ const c=cnt(G.hands[p]),need=5-G.melds[p].length,now=shanten(c,need);
       for(const k of kk){ const d=c.slice(); let n2=need; if(d[k]===4){ d[k]=0; n2=need-1; } else d[k]--; if(shanten(d,n2)<=now){ selfKong(p,k); return; } } }
     discard(p,aiDiscard(p));
@@ -308,11 +315,12 @@ function create(env,opts){
 
   function update(dt){
     t+=dt; if(msgT>0) msgT-=dt;
+    const dk=G.phase+'|'+G.turn+'|'+(G.discards||[]).reduce((a,d)=>a+d.length,0)+'|'+(G.melds||[]).reduce((a,m)=>a+m.length,0); if(dk!==dispKey){ dispKey=dk; dispT=0; } else dispT+=dt;
     if(client||G.phase==='over') return;
     if(G.phase==='play'){ playT+=dt;
       if(isAI(G.turn)){ aiT+=dt; if(aiT>.75){ aiT=0; aiPlay(G.turn); broadcast(); } }
-      else if(net&&G.turn!==me&&playT>30){ const h=G.hands[G.turn]; discard(G.turn,G.drawn>=0?G.drawn:h[h.length-1]); broadcast(); } }
-    else if(G.phase==='claim'){ claimT+=dt; if(net&&claimT>12){ for(const q in G.claim.opts) if(G.claim.resp[q]===undefined) G.claim.resp[q]={c:'pass'}; tryResolve(); broadcast(); } }
+      else if(TL&&playT>TL){ const h=G.hands[G.turn]; if(G.turn===me) say('時間到，自動打出',1.4); discard(G.turn,G.drawn>=0&&h.includes(G.drawn)?G.drawn:h[h.length-1]); sel=-1; broadcast(); } }
+    else if(G.phase==='claim'){ claimT+=dt; if(TL&&claimT>TL){ for(const q in G.claim.opts) if(G.claim.resp[q]===undefined) G.claim.resp[q]={c:'pass'}; tryResolve(); broadcast(); } }
     else if(G.phase==='end'&&net&&!humansIn()) { /* 只有電腦時不會發生 */ }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1; broadcast(); } }
   }
@@ -378,17 +386,20 @@ function create(env,opts){
       if(sel>=0&&myH.includes(sel)) btn('打出',()=>doAct({a:'discard',id:sel}),true);
       for(const k of kongKinds(me).slice(0,2)) if(G.wallN==null||client?(G.wallN>RESERVE):(G.wall.length>RESERVE)) btn('槓 '+kname(k),()=>doAct({a:'kong',k}));
       if(canWin(myH,ms)) btn('自摸',()=>doAct({a:'tsumo'}),true);
-      if(sel<0) txt('點一張牌選起來，再點一次打出',W-14,370,'#ffe2a8',12,'right');
+      const hint=sel<0?'點一張牌選起來，再點一次打出':''; if(hint) txt(hint,W-14,370,'#ffe2a8',12,'right');
+      if(TL) countdown(hint,12);
     }
     if(G.phase==='claim'&&G.claim&&G.claim.opts[me]&&G.claim.resp[me]==null){
       btn('過',()=>doAct({a:'claim',r:{c:'pass'}}));
       for(const o of G.claim.opts[me].slice().reverse()){ if(o.c==='chow') btn('吃 '+o.k.concat([kindOf(G.claim.id)]).sort((a,b)=>a-b).map(k=>NUMS[k%9]).join(''),()=>doAct({a:'claim',r:o}));
         else btn(o.c==='hu'?'胡':o.c==='pong'?'碰':'槓',()=>doAct({a:'claim',r:{c:o.c}}),o.c==='hu'); }
-      txt('要 '+kname(kindOf(G.claim.id))+' 嗎？',W-14,370,'#ffe2a8',13,'right','900');
+      const q='要 '+kname(kindOf(G.claim.id))+' 嗎？'; txt(q,W-14,370,'#ffe2a8',13,'right','900');
+      if(TL) countdown(q,13);
     }
     if(G.phase==='end'&&G.result) drawResult();
     if(msgT>0&&msg){ ctx.font='900 22px '+TC; const w=ctx.measureText(msg).width+40; ctx.fillStyle='rgba(11,10,28,.85)'; rr(ctx,W/2-w/2,150,w,40,10); ctx.fill(); txt(msg,W/2,171,'#ffd23f',22,'center','900'); }
   }
+  function countdown(hint,size){ ctx.font='900 '+size+'px '+TC; const hw=hint?ctx.measureText(hint).width+14:0,left=Math.max(0,Math.ceil(TL-dispT)); txt('⏱ '+left+' 秒',W-14-hw,370,left<=5?'#ff6b6b':'#fff',left<=5?17:15,'right','900'); }
   function drawResult(){
     const r=G.result; ctx.fillStyle='rgba(8,6,20,.82)'; rr(ctx,130,70,540,330,16); ctx.fill(); ctx.strokeStyle='rgba(222,184,96,.7)'; ctx.lineWidth=1.5; ctx.stroke();
     if(r.draw){ txt('流局',W/2,120,'#ffd23f',30,'center','900'); txt('牌摸完了，沒有人胡牌，莊家連莊。',W/2,160,'#fff',14,'center'); }
@@ -435,7 +446,7 @@ function preview(ctx,w,h,L,t){
   desc:'台灣十六張麻將：吃、碰、槓、補花、自摸、放槍、算台。可選四人麻將或雙人麻將，也可開房間 2～4 人連線，房主可以加電腦。',
   goal:'每人 16 張，湊成 5 組（順子或刻子）加 1 對就胡牌。輪到你時先摸一張，再點兩下打出一張；別人打出的牌可以碰、槓、胡，上家打的還可以吃。牌牆剩 16 張時流局，莊家胡牌或流局連莊。',
   variants:[{id:'4',label:'四人麻將'},{id:'2',label:'雙人麻將'}],
-  options:[{key:'len',label:'打多久',def:'c',opts:[{id:'q',label:'1/4 圈'},{id:'c',label:'1 圈'},{id:'j',label:'1 將'}]}],
+  options:[{key:'time',label:'打牌秒數',def:'20',opts:[{id:'10',label:'10 秒'},{id:'15',label:'15 秒'},{id:'20',label:'20 秒'},{id:'30',label:'30 秒'},{id:'0',label:'不限'}]},{key:'ai',label:'電腦強度',def:'normal',opts:[{id:'easy',label:'簡單'},{id:'normal',label:'中等'},{id:'hard',label:'困難'}]},{key:'len',label:'打多久',def:'c',opts:[{id:'q',label:'1/4 圈'},{id:'c',label:'1 圈'},{id:'j',label:'1 將'}]}],
   help:[['點牌','選起來（往上浮），再點一次打出'],['打出','打出選起來的牌'],['吃 碰 槓 胡','別人打牌時跳出來的按鈕，不要就按「過」'],['自摸／槓','輪到自己時出現']],
   touchHelp:[['點牌','選起來，再點一次打出'],['吃 碰 槓 胡','別人打牌時出現的按鈕，不要就按「過」'],['自摸／槓','輪到自己時出現']],
   touch:null,
