@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="懷舊遊戲區">
 <title>懷舊遊戲區</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
 <style>
 /* 版面：大廳是三張「卡帶」並排；進遊戲後變成一個填滿畫面的機台（上方列、畫面、觸控按鈕）。 */
 :root{
@@ -206,7 +206,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=57; // 每次改版加一
+window.ARCADE_V=58; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>

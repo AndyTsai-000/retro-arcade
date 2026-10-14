@@ -48,36 +48,96 @@ function shanten(c,need){
 }
 const canWin=(ids,melds)=>{ const need=5-melds.length; return ids.length===need*3+2&&decomps(cnt(ids),need,1).length>0; };
 
-/* ---- 畫牌 ---- */
-const DP={1:[[.5,.5]],2:[[.5,.26],[.5,.74]],3:[[.22,.2],[.5,.5],[.78,.8]],4:[[.28,.27],[.72,.27],[.28,.73],[.72,.73]],5:[[.25,.22],[.75,.22],[.5,.5],[.25,.78],[.75,.78]],
-  6:[[.28,.18],[.72,.18],[.28,.5],[.72,.5],[.28,.82],[.72,.82]],7:[[.2,.13],[.5,.24],[.8,.35],[.28,.62],[.72,.62],[.28,.87],[.72,.87]],
-  8:[[.28,.13],[.72,.13],[.28,.38],[.72,.38],[.28,.62],[.72,.62],[.28,.87],[.72,.87]],9:[[.2,.17],[.5,.17],[.8,.17],[.2,.5],[.5,.5],[.8,.5],[.2,.83],[.5,.83],[.8,.83]]};
+/* ---- 畫牌：照實體麻將的樣子（楷書字、筒子花紋、竹節、雀鳥、花牌） ---- */
+const KAI='"BiauKai","DFKai-SB","標楷體","KaiTi","STKaiti","Noto Serif TC","Songti TC",serif';
+const BLUE='#1d4fae',GREEN='#1e7d3a',RED='#c62828',NAVY='#1a2a6c';
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+// 一顆筒子：外圈、白圈、花蕊
+function dot(c,cx,cy,r,col){
+  c.fillStyle=col; c.beginPath(); c.arc(cx,cy,r,0,7); c.fill();
+  c.fillStyle='#fffaf0'; c.beginPath(); c.arc(cx,cy,r*.74,0,7); c.fill();
+  c.fillStyle=col; c.beginPath(); c.arc(cx,cy,r*.52,0,7); c.fill();
+  if(r>3){ c.fillStyle='#fffaf0'; for(let i=0;i<8;i++){ const a=i*Math.PI/4; c.beginPath(); c.arc(cx+Math.cos(a)*r*.33,cy+Math.sin(a)*r*.33,r*.075,0,7); c.fill(); } }
+  c.fillStyle='#fffaf0'; c.beginPath(); c.arc(cx,cy,r*.14,0,7); c.fill();
+}
+// 一根竹子：上中下三個竹節、側邊反光
+function stick(c,cx,cy,sw,sh,col,rot){
+  c.save(); c.translate(cx,cy); if(rot) c.rotate(rot);
+  c.fillStyle=col; rr(c,-sw/2,-sh/2,sw,sh,sw*.45); c.fill();
+  c.fillStyle='rgba(0,0,0,.28)'; for(const v of [-.5,0,.5]) c.fillRect(-sw/2,v*sh-.7,sw,1.4);
+  c.fillStyle='#fffaf0'; for(const v of [-.5,0,.5]){ c.beginPath(); c.ellipse(0,v*sh,sw*.18,.9,0,0,7); c.fill(); }
+  c.fillStyle='rgba(255,255,255,.35)'; c.fillRect(-sw*.28,-sh/2+2,sw*.16,sh-4);
+  c.restore();
+}
+function bird(c,x,y,w,h){ // 一條：雀鳥
+  const cx=x+w*.52,cy=y+h*.5,k=w/40;
+  c.save(); c.translate(cx,cy); c.scale(k,k);
+  c.fillStyle=GREEN; for(let i=0;i<5;i++){ const a=Math.PI*.55+i*.16; c.beginPath(); c.ellipse(Math.cos(a)*14,Math.sin(a)*14+4,3.2,9,a-Math.PI/2,0,7); c.fill(); c.fillStyle=i%2?BLUE:RED; c.beginPath(); c.arc(Math.cos(a)*20,Math.sin(a)*20+4,2,0,7); c.fill(); c.fillStyle=GREEN; } // 尾羽
+  c.fillStyle='#2e9a4a'; c.beginPath(); c.ellipse(2,-2,9,11,-.3,0,7); c.fill();            // 身體
+  c.fillStyle=BLUE; c.beginPath(); c.ellipse(-2,0,5,8,-.5,0,7); c.fill();                    // 翅膀
+  c.fillStyle='#2e9a4a'; c.beginPath(); c.arc(6,-13,5.5,0,7); c.fill();                       // 頭
+  c.fillStyle=RED; c.beginPath(); c.moveTo(4,-18); c.lineTo(6,-24); c.lineTo(8,-18); c.fill(); // 冠羽
+  c.fillStyle='#e8a317'; c.beginPath(); c.moveTo(11,-13); c.lineTo(16,-11.5); c.lineTo(11,-10); c.fill(); // 嘴
+  c.fillStyle='#14122b'; c.beginPath(); c.arc(7.5,-14,1.2,0,7); c.fill();
+  c.strokeStyle='#8a5a2a'; c.lineWidth=1.4; c.beginPath(); c.moveTo(1,8); c.lineTo(0,14); c.moveTo(5,8); c.lineTo(6,14); c.stroke();
+  c.restore();
+}
+function blossom(c,cx,cy,r,col,mid){ c.fillStyle=col; for(let i=0;i<5;i++){ const a=i*1.2566-1.57; c.beginPath(); c.arc(cx+Math.cos(a)*r*.62,cy+Math.sin(a)*r*.62,r*.48,0,7); c.fill(); } c.fillStyle=mid||'#f2c230'; c.beginPath(); c.arc(cx,cy,r*.3,0,7); c.fill(); }
+// 筒子顏色（照實體牌的配色）
+const DOTC={2:[GREEN,BLUE],3:[BLUE,RED,GREEN],4:[BLUE,GREEN,GREEN,BLUE],5:[BLUE,GREEN,RED,GREEN,BLUE],6:[GREEN,GREEN,RED,RED,RED,RED],7:[GREEN,GREEN,GREEN,RED,RED,RED,RED],8:[BLUE,BLUE,BLUE,BLUE,BLUE,BLUE,BLUE,BLUE],9:[BLUE,BLUE,BLUE,RED,RED,RED,GREEN,GREEN,GREEN]};
+const DP={2:[[.5,.25],[.5,.75]],3:[[.22,.18],[.5,.5],[.78,.82]],4:[[.27,.26],[.73,.26],[.27,.74],[.73,.74]],5:[[.25,.2],[.75,.2],[.5,.5],[.25,.8],[.75,.8]],
+  6:[[.28,.16],[.72,.16],[.28,.52],[.72,.52],[.28,.84],[.72,.84]],7:[[.2,.11],[.5,.22],[.8,.33],[.28,.6],[.72,.6],[.28,.87],[.72,.87]],
+  8:[[.28,.12],[.72,.12],[.28,.37],[.72,.37],[.28,.63],[.72,.63],[.28,.88],[.72,.88]],9:[[.2,.16],[.5,.16],[.8,.16],[.2,.5],[.5,.5],[.8,.5],[.2,.84],[.5,.84],[.8,.84]]};
+// 條子：位置、顏色、斜度
+const BP={2:[[.5,.27,0,GREEN],[.5,.73,0,GREEN]],3:[[.5,.27,0,GREEN],[.27,.73,0,GREEN],[.73,.73,0,GREEN]],4:[[.3,.27,0,BLUE],[.7,.27,0,GREEN],[.3,.73,0,GREEN],[.7,.73,0,BLUE]],
+  5:[[.24,.27,0,GREEN],[.76,.27,0,BLUE],[.5,.5,0,RED],[.24,.73,0,BLUE],[.76,.73,0,GREEN]],6:[[.2,.27,0,GREEN],[.5,.27,0,GREEN],[.8,.27,0,GREEN],[.2,.73,0,BLUE],[.5,.73,0,BLUE],[.8,.73,0,BLUE]],
+  7:[[.5,.16,0,RED],[.2,.5,0,GREEN],[.5,.5,0,GREEN],[.8,.5,0,GREEN],[.2,.84,0,BLUE],[.5,.84,0,BLUE],[.8,.84,0,BLUE]],
+  8:[[.16,.27,0,GREEN],[.39,.27,.45,GREEN],[.61,.27,-.45,GREEN],[.84,.27,0,GREEN],[.16,.73,0,BLUE],[.39,.73,-.45,BLUE],[.61,.73,.45,BLUE],[.84,.73,0,BLUE]],
+  9:[[.2,.16,0,GREEN],[.5,.16,0,RED],[.8,.16,0,BLUE],[.2,.5,0,GREEN],[.5,.5,0,RED],[.8,.5,0,BLUE],[.2,.84,0,GREEN],[.5,.84,0,RED],[.8,.84,0,BLUE]]};
 function face(c,x,y,w,h,k){
   const fx=x+w*.12,fy=y+h*.09,fw=w*.76,fh=h*.82; c.textAlign='center'; c.textBaseline='middle';
-  if(k<9){ c.fillStyle='#1d2a6b'; c.font='900 '+h*.34+'px '+TC; c.fillText(NUMS[k],x+w/2,y+h*.3); c.fillStyle='#c62828'; c.font='900 '+h*.36+'px '+TC; c.fillText('萬',x+w/2,y+h*.7); return; }
-  if(k<18){ const n=k-8,pos=DP[n],r=n===1?fw*.36:n<=4?fw*.17:n<=6?fw*.14:fw*.12,cols=['#1d6fd1','#2e9a4a','#d63b3b'];
-    pos.forEach(([u,v],i)=>{ const cx=fx+u*fw,cy=fy+v*fh,col=n===1?'#d63b3b':n===2?'#2e9a4a':cols[(i+(n===3?0:1))%3]; c.fillStyle=col; c.beginPath(); c.arc(cx,cy,r,0,7); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(cx,cy,r*.55,0,7); c.fill(); c.fillStyle=col; c.beginPath(); c.arc(cx,cy,r*.28,0,7); c.fill(); });
-    return; }
-  if(k<27){ const n=k-17;
-    if(n===1){ const cx=x+w/2,cy=y+h/2; c.fillStyle='#2e9a4a'; c.beginPath(); c.ellipse(cx,cy+h*.05,w*.22,h*.2,0,0,7); c.fill(); c.fillStyle='#d63b3b'; c.beginPath(); c.arc(cx,cy-h*.2,w*.12,0,7); c.fill(); c.fillStyle='#1d6fd1'; c.beginPath(); c.moveTo(cx,cy+h*.1); c.lineTo(cx-w*.25,cy+h*.36); c.lineTo(cx+w*.25,cy+h*.36); c.fill(); c.fillStyle='#ffd23f'; c.beginPath(); c.moveTo(cx+w*.1,cy-h*.21); c.lineTo(cx+w*.24,cy-h*.18); c.lineTo(cx+w*.1,cy-h*.15); c.fill(); return; }
-    const pos=DP[n],sw=fw*.15,sh=fh*(n<=3?.3:n<=6?.26:.2);
-    pos.forEach(([u,v],i)=>{ const cx=fx+u*fw,cy=fy+v*fh,col=(n===7&&i===0)||(n===9&&i%3===1)||(n===5&&i===2)?'#d63b3b':'#2e8b3a'; c.fillStyle=col; rr(c,cx-sw/2,cy-sh/2,sw,sh,sw/2); c.fill(); c.fillStyle='rgba(255,255,255,.55)'; c.fillRect(cx-sw/2,cy-.6,sw,1.2); });
-    return; }
-  if(k<34){ if(k===33){ c.strokeStyle='#1d6fd1'; c.lineWidth=Math.max(1.2,w*.07); rr(c,x+w*.22,y+h*.2,w*.56,h*.6,w*.06); c.stroke(); return; }
-    c.fillStyle=k===31?'#c62828':k===32?'#1f8a3a':'#1b1b2a'; c.font='900 '+h*.56+'px '+TC; c.fillText(HON[k-27],x+w/2,y+h*.53); return; }
-  const f=k-34; c.fillStyle=f<4?'#c62828':'#1f6fb0'; c.font='900 '+h*.5+'px '+TC; c.fillText(FLW[f],x+w/2,y+h*.55); c.font='700 '+h*.2+'px '+TC; c.fillText(String(f%4+1),x+w*.24,y+h*.18);
+  if(k<9){ c.fillStyle=NAVY; c.font='900 '+h*.36+'px '+KAI; c.fillText(NUMS[k],x+w/2,y+h*.27); c.fillStyle=RED; c.font='900 '+h*.44+'px '+KAI; c.fillText('萬',x+w/2,y+h*.68); return; }
+  if(k<18){ const n=k-8;
+    if(n===1){ const cx=x+w/2,cy=y+h/2,r=fw*.47; dot(c,cx,cy,r,GREEN); c.strokeStyle=RED; c.lineWidth=r*.12; c.beginPath(); c.arc(cx,cy,r*.62,0,7); c.stroke();
+      c.fillStyle=BLUE; for(let i=0;i<12;i++){ const a=i*Math.PI/6; c.beginPath(); c.arc(cx+Math.cos(a)*r*.86,cy+Math.sin(a)*r*.86,r*.09,0,7); c.fill(); } blossom(c,cx,cy,r*.38,RED,'#f2c230'); return; }
+    const r=n<=3?fw*.2:n<=5?fw*.16:n<=6?fw*.15:fw*.135; DP[n].forEach(([u,v],i)=>dot(c,fx+u*fw,fy+v*fh,r,DOTC[n][i])); return; }
+  if(k<27){ const n=k-17; if(n===1){ bird(c,x,y,w,h); return; }
+    const sw=fw*(n>=6?.16:.19),sh=fh*(n<=5?.4:.27); BP[n].forEach(([u,v,rot,col])=>stick(c,fx+u*fw,fy+v*fh,sw,sh,col,rot)); return; }
+  if(k<34){ if(k===33){ c.strokeStyle=BLUE; c.lineWidth=Math.max(1.2,w*.07); rr(c,x+w*.2,y+h*.16,w*.6,h*.66,w*.06); c.stroke(); c.lineWidth=Math.max(.8,w*.03); rr(c,x+w*.28,y+h*.23,w*.44,h*.52,w*.04); c.stroke(); return; }
+    c.fillStyle=k===31?RED:k===32?GREEN:NAVY; c.font='900 '+h*.62+'px '+KAI; c.fillText(HON[k-27],x+w/2,y+h*.53); return; }
+  // 花牌：上面標字和號碼，下面是花草圖
+  const f=k-34,cx=x+w/2,cy=y+h*.62,r=w*.2;
+  if(f===0){ c.strokeStyle='#7a4a2a'; c.lineWidth=w*.05; c.beginPath(); c.moveTo(x+w*.2,y+h*.9); c.quadraticCurveTo(cx,cy,x+w*.8,y+h*.42); c.stroke(); blossom(c,cx-r*.5,cy-r*.3,r*.8,'#f28ab0'); blossom(c,cx+r*.9,cy-r*1,r*.6,'#f28ab0'); }
+  else if(f===1){ c.fillStyle=GREEN; c.beginPath(); c.ellipse(cx,cy+r*.6,r*1.5,r*.6,0,0,7); c.fill(); blossom(c,cx,cy-r*.3,r*.85,'#f6a5c0'); }
+  else if(f===2){ c.fillStyle='#e0702a'; c.beginPath(); for(let i=0;i<5;i++){ const a=-1.57+i*1.2566; c.lineTo(cx+Math.cos(a)*r*1.3,cy+Math.sin(a)*r*1.3); c.lineTo(cx+Math.cos(a+.63)*r*.5,cy+Math.sin(a+.63)*r*.5); } c.fill(); c.strokeStyle='#7a4a2a'; c.lineWidth=w*.04; c.beginPath(); c.moveTo(cx,cy); c.lineTo(cx,cy+r*1.6); c.stroke(); }
+  else if(f===3){ c.strokeStyle=BLUE; c.lineWidth=w*.05; for(let i=0;i<3;i++){ const a=i*Math.PI/3; c.beginPath(); c.moveTo(cx-Math.cos(a)*r*1.2,cy-Math.sin(a)*r*1.2); c.lineTo(cx+Math.cos(a)*r*1.2,cy+Math.sin(a)*r*1.2); c.stroke(); } }
+  else if(f===4){ c.strokeStyle='#5a3a2a'; c.lineWidth=w*.05; c.beginPath(); c.moveTo(x+w*.25,y+h*.92); c.lineTo(cx+r*.6,y+h*.4); c.stroke(); blossom(c,cx-r*.3,cy,r*.7,RED); blossom(c,cx+r*.8,cy-r*1.1,r*.55,RED); }
+  else if(f===5){ c.strokeStyle=GREEN; c.lineWidth=w*.045; for(const d of [-1,0,1]){ c.beginPath(); c.moveTo(cx,y+h*.92); c.quadraticCurveTo(cx+d*r*1.6,cy,cx+d*r*1.9,cy-r*1.1); c.stroke(); } blossom(c,cx+r*.4,cy-r*.6,r*.55,'#9b59b6','#fff'); }
+  else if(f===6){ stick(c,cx-r*.5,cy,w*.11,h*.42,GREEN,0); c.fillStyle=GREEN; for(const d of [-1,1]){ c.beginPath(); c.ellipse(cx+d*r*.8,cy-r*(d>0?.6:.1),r*.9,r*.28,d*.5,0,7); c.fill(); } }
+  else { blossom(c,cx,cy,r*1.15,'#f2c230','#e0702a'); c.fillStyle=GREEN; c.beginPath(); c.ellipse(cx-r,cy+r*1.2,r*.7,r*.25,-.5,0,7); c.fill(); }
+  c.fillStyle=f<4?RED:GREEN; c.font='900 '+h*.24+'px '+KAI; c.fillText(FLW[f],x+w*.3,y+h*.2); c.fillStyle=BLUE; c.font='700 '+h*.17+'px '+KAI; c.fillText(String(f%4+1),x+w*.76,y+h*.18);
 }
-// id<0 是牌背
+// id<0 是牌背；牌身是白色牌面＋象牙色夾層＋綠色牌背
 function drawTile(c,x,y,w,h,id,o){
-  o=o||{}; const d=Math.max(2,h*.09);
-  c.fillStyle='rgba(0,0,0,.3)'; rr(c,x+1,y+2,w,h+d,Math.max(2,w*.12)); c.fill();
-  c.fillStyle='#1f7a4c'; rr(c,x,y+d*.4,w,h+d*.6,Math.max(2,w*.12)); c.fill(); // 綠色牌背的厚度
-  if(id<0){ const g=c.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'#3fae74'); g.addColorStop(1,'#237d50'); c.fillStyle=g; rr(c,x,y,w,h,Math.max(2,w*.12)); c.fill(); c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(x+w*.15,y+h*.06,w*.7,Math.max(1,h*.03)); return; }
-  const g=c.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'#fffdf6'); g.addColorStop(1,'#efe4c9'); c.fillStyle=g; rr(c,x,y,w,h,Math.max(2,w*.12)); c.fill();
-  c.strokeStyle=o.sel?'#ffd23f':o.last?'#ff5d4f':'rgba(140,120,80,.55)'; c.lineWidth=o.sel||o.last?2:1; c.stroke();
+  o=o||{}; const d=Math.max(2,h*.1),R=Math.max(2,w*.13);
+  c.fillStyle='rgba(0,0,0,.32)'; rr(c,x+1.5,y+3,w,h+d,R); c.fill();
+  c.fillStyle='#17673f'; rr(c,x,y+d,w,h,R); c.fill();
+  c.fillStyle='#e3d7b8'; rr(c,x,y+d*.45,w,h,R); c.fill();
+  if(id<0){ const g=c.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'#3fae74'); g.addColorStop(1,'#1f7a4c'); c.fillStyle=g; rr(c,x,y,w,h,R); c.fill(); c.fillStyle='rgba(255,255,255,.2)'; c.fillRect(x+w*.15,y+h*.06,w*.7,Math.max(1,h*.03)); return; }
+  const g=c.createLinearGradient(x,y,x+w,y+h); g.addColorStop(0,'#ffffff'); g.addColorStop(.6,'#fbf6ea'); g.addColorStop(1,'#efe6cf'); c.fillStyle=g; rr(c,x,y,w,h,R); c.fill();
+  c.strokeStyle=o.sel?'#ffd23f':o.last?'#ff5d4f':'rgba(150,130,90,.5)'; c.lineWidth=o.sel||o.last?2:1; c.stroke();
+  c.fillStyle='rgba(255,255,255,.9)'; c.fillRect(x+R,y+1,w-R*2,Math.max(1,h*.02));
   face(c,x,y,w,h,kindOf(id));
-  if(o.dim){ c.fillStyle='rgba(0,0,0,.35)'; rr(c,x,y,w,h,Math.max(2,w*.12)); c.fill(); }
+  if(o.dim){ c.fillStyle='rgba(0,0,0,.35)'; rr(c,x,y,w,h,R); c.fill(); }
+}
+// 骰子：1 點和 4 點是紅色
+const PIPS={1:[[.5,.5]],2:[[.28,.28],[.72,.72]],3:[[.25,.25],[.5,.5],[.75,.75]],4:[[.28,.28],[.72,.28],[.28,.72],[.72,.72]],5:[[.26,.26],[.74,.26],[.5,.5],[.26,.74],[.74,.74]],6:[[.28,.22],[.72,.22],[.28,.5],[.72,.5],[.28,.78],[.72,.78]]};
+function drawDie(c,x,y,s,v,rot){
+  c.save(); c.translate(x+s/2,y+s/2); c.rotate(rot||0);
+  c.fillStyle='rgba(0,0,0,.35)'; rr(c,-s/2+2,-s/2+3,s,s,s*.2); c.fill();
+  const g=c.createLinearGradient(-s/2,-s/2,s/2,s/2); g.addColorStop(0,'#ffffff'); g.addColorStop(1,'#e6e0d2'); c.fillStyle=g; rr(c,-s/2,-s/2,s,s,s*.2); c.fill(); c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=1; c.stroke();
+  for(const [u,w] of PIPS[v]){ c.fillStyle=v===1||v===4?'#d32f2f':'#1b1b2a'; c.beginPath(); c.arc(-s/2+u*s,-s/2+w*s,s*(v===1?.15:.085),0,7); c.fill(); }
+  c.restore();
 }
 
 /* ---- 牌桌：木框＋絨布，畫一次存起來 ---- */
@@ -118,13 +178,24 @@ function create(env,opts){
   const windOf=()=>Math.floor(G.moves/np)%4;
 
   /* ---- 一局的流程（房主或單機才執行） ---- */
-  function startHand(){
+  const roll3=()=>[0,0,0].map(()=>1+Math.floor(Math.random()*6));
+  let diceT=0,dealI=0,dealT=0;
+  // 第一局：擲骰從自己（第 1 家）開始逆時針數，數到的人起莊
+  function rollDealer(){ const v=roll3(),tot=v[0]+v[1]+v[2],tg=(tot-1)%np; G.dice={id:(G.dice?G.dice.id:0)+1,kind:'dealer',vals:v,total:tot,who:0,target:tg}; G.phase='dice'; diceT=0; G.log=names[0]+' 擲骰決定起莊'; sfx('bump'); }
+  // 每一局：莊家擲骰，從莊家數起數到哪一家，就從那家牌牆的第幾墩開門拿牌
+  function rollBreak(){
     const w=[]; for(let i=0;i<144;i++) w.push(i); for(let i=w.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [w[i],w[j]]=[w[j],w[i]]; }
-    G.wall=w; G.hands=[]; G.melds=[]; G.flowers=[]; G.discards=[];
+    const v=roll3(),tot=v[0]+v[1]+v[2],owner=(G.dealer+tot-1)%np,per=144/np/2,off=Math.round(((owner*per+tot)*2)%144);
+    G.wall=w.slice(off).concat(w.slice(0,off)); G.hands=[]; G.melds=[]; G.flowers=[]; G.discards=[];
     for(let p=0;p<np;p++){ G.hands.push([]); G.melds.push([]); G.flowers.push([]); G.discards.push([]); }
-    for(let r=0;r<16;r++) for(let k=0;k<np;k++){ const p=(G.dealer+k)%np; G.hands[p].push(G.wall.shift()); }
+    G.dice={id:(G.dice?G.dice.id:0)+1,kind:'break',vals:v,total:tot,who:G.dealer,target:owner}; G.phase='dice'; diceT=0; G.turn=G.dealer; G.drawn=-1;
+    G.result=null; G.claim=null; G.last=null; G.afterKong=false; G.log=names[G.dealer]+' 當莊，擲骰開門'; sfx('bump');
+  }
+  // 發牌：從莊家開始，每人一次抓 4 張，抓 4 輪
+  function dealStep(){ const p=(G.dealer+dealI%np)%np; for(let i=0;i<4;i++) G.hands[p].push(G.wall.shift()); dealI++; sfx('click'); if(dealI>=4*np) startHand(); }
+  function startHand(){
     for(let k=0;k<np;k++){ const p=(G.dealer+k)%np; let f; while((f=G.hands[p].find(isFlower))!=null){ G.hands[p].splice(G.hands[p].indexOf(f),1); G.flowers[p].push(f); G.hands[p].push(G.wall.pop()); } }
-    G.result=null; G.claim=null; G.last=null; G.afterKong=false; G.log='第 '+(G.handNo+1)+' 局開始，'+names[G.dealer]+' 當莊';
+    G.log='發牌完畢，'+names[G.dealer]+' 先摸牌';
     drawFor(G.dealer,false);
   }
   function drawFor(p,back){
@@ -219,7 +290,7 @@ function create(env,opts){
     const r=G.result; G.handNo++;
     if(r.draw||r.w===G.dealer) G.lian++; else { G.dealer=next(G.dealer); G.lian=0; G.moves++; }
     if(G.moves>=TARGET||G.handNo>=60){ G.phase='over'; finish(); return; } // 莊家輪換次數到了就結束（連莊不算）
-    startHand();
+    rollBreak();
   }
   function finish(){
     if(ended) return; ended=true;
@@ -286,7 +357,7 @@ function create(env,opts){
   }
 
   /* ---- 連線 ---- */
-  function pub(){ return {hands:G.hands,melds:G.melds,flowers:G.flowers,discards:G.discards,wallN:G.wall.length,turn:G.turn,phase:G.phase,drawn:G.drawn,last:G.last,claim:G.claim,dealer:G.dealer,lian:G.lian,moves:G.moves,handNo:G.handNo,scores:G.scores,result:G.result,log:G.log}; }
+  function pub(){ return {dice:G.dice,hands:G.hands,melds:G.melds,flowers:G.flowers,discards:G.discards,wallN:G.wall.length,turn:G.turn,phase:G.phase,drawn:G.drawn,last:G.last,claim:G.claim,dealer:G.dealer,lian:G.lian,moves:G.moves,handNo:G.handNo,scores:G.scores,result:G.result,log:G.log}; }
   function broadcast(){ if(net&&net.host) net.send({st:pub()}); }
   function act(p,m){
     if(m.a==='discard') discard(p,m.id);
@@ -301,7 +372,7 @@ function create(env,opts){
     else net.onmsg=(m,from)=>{ if(m.a){ act(from,m); broadcast(); } };
     if(!client) net.onleave=()=>{};
   }
-  if(!client){ G.dealer=Math.floor(Math.random()*np); startHand(); broadcast(); }
+  if(!client){ rollDealer(); broadcast(); }
 
   /* ---- 操作 ---- */
   const layout={hand:[],btn:[]};
@@ -317,6 +388,8 @@ function create(env,opts){
     t+=dt; if(msgT>0) msgT-=dt;
     const dk=G.phase+'|'+G.turn+'|'+(G.discards||[]).reduce((a,d)=>a+d.length,0)+'|'+(G.melds||[]).reduce((a,m)=>a+m.length,0); if(dk!==dispKey){ dispKey=dk; dispT=0; } else dispT+=dt;
     if(client||G.phase==='over') return;
+    if(G.phase==='dice'){ diceT+=dt; if(diceT>2.8){ if(G.dice.kind==='dealer'){ G.dealer=G.dice.target; rollBreak(); } else { G.phase='deal'; dealI=0; dealT=0; } broadcast(); } return; }
+    if(G.phase==='deal'){ dealT+=dt; while(dealT>.12&&G.phase==='deal'){ dealT-=.12; dealStep(); } broadcast(); return; }
     if(G.phase==='play'){ playT+=dt;
       if(isAI(G.turn)){ aiT+=dt; if(aiT>.75){ aiT=0; aiPlay(G.turn); broadcast(); } }
       else if(TL&&playT>TL){ const h=G.hands[G.turn]; if(G.turn===me) say('時間到，自動打出',1.4); discard(G.turn,G.drawn>=0&&h.includes(G.drawn)?G.drawn:h[h.length-1]); sel=-1; broadcast(); } }
@@ -352,11 +425,12 @@ function create(env,opts){
   function draw(){
     layout.hand=[]; layout.btn=[];
     ctx.drawImage(tableArt(L.felt),0,0,W,H);
-    if(!G.hands.length) { txt('等待房主發牌…',W/2,H/2,'#fff',16,'center'); return; }
-    // 中央：圈風、局數、剩餘張數
+    if(!G.hands.length){ if(G.dice) drawDice(); else txt('等待房主擲骰…',W/2,H/2,'#fff',16,'center'); return; }
+    // 中央：擲骰或發牌時顯示骰子，其他時候是圈風、局數、剩餘張數
+    if(G.phase==='dice'||G.phase==='deal') drawDice(); else {
     const rw=HON[windOf()]; txt(rw+'風'+HON[np===2?[0,2][G.moves%np]:G.moves%np]+'局　'+LENNAME,W/2,214,'#ffe2a8',14,'center','900');
     txt('剩 '+Math.max(0,(G.wallN!=null&&client?G.wallN:G.wall.length)-RESERVE)+' 張'+(G.lian?'　連莊 '+G.lian:''),W/2,238,'#fff',13,'center');
-    if(G.log) txt(G.log,W/2,264,'#cfe8d8',11,'center');
+    if(G.log) txt(G.log,W/2,264,'#cfe8d8',11,'center'); }
     // 輪到誰的指示
     { const pp=posOf(G.turn),ax=[W/2,W/2+86,W/2,W/2-86][pp],ay=[284,240,196,240][pp]; ctx.fillStyle='rgba(255,210,63,'+(.55+.4*Math.sin(t*5))+')'; ctx.beginPath(); ctx.arc(ax,ay,5,0,7); ctx.fill(); }
     for(let p=0;p<np;p++){ const pos=posOf(p); discardsZone(p,pos); if(p===me) continue;
@@ -398,6 +472,16 @@ function create(env,opts){
     }
     if(G.phase==='end'&&G.result) drawResult();
     if(msgT>0&&msg){ ctx.font='900 22px '+TC; const w=ctx.measureText(msg).width+40; ctx.fillStyle='rgba(11,10,28,.85)'; rr(ctx,W/2-w/2,150,w,40,10); ctx.fill(); txt(msg,W/2,171,'#ffd23f',22,'center','900'); }
+  }
+  let diceId=-1,diceAt=0;
+  function drawDice(){
+    const D=G.dice; if(D.id!==diceId){ diceId=D.id; diceAt=t; }
+    const k=t-diceAt,rolling=k<1.3&&G.phase==='dice';
+    for(let i=0;i<3;i++){ const v=rolling?1+Math.floor((t*14+i*3.7)%6):D.vals[i],j=rolling?Math.sin(t*30+i*2)*4:0; drawDie(ctx,W/2-56+i*40,206+j,32,v,rolling?Math.sin(t*20+i)*.5:(i-1)*.08); }
+    if(rolling){ txt(names[D.who]+' 擲骰中…',W/2,262,'#ffe2a8',13,'center','900'); return; }
+    const sum=D.vals.join('＋')+'＝'+D.total+' 點';
+    if(D.kind==='dealer') txt(sum+'，數到 '+names[D.target]+' 起莊',W/2,262,'#ffe2a8',13,'center','900');
+    else { txt(sum+'，從 '+names[D.target]+' 的牌牆第 '+D.total+' 墩開門',W/2,262,'#ffe2a8',13,'center','900'); if(G.phase==='deal') txt('發牌中…',W/2,282,'#cfe8d8',12,'center'); }
   }
   function countdown(hint,size){ ctx.font='900 '+size+'px '+TC; const hw=hint?ctx.measureText(hint).width+14:0,left=Math.max(0,Math.ceil(TL-dispT)); txt('⏱ '+left+' 秒',W-14-hw,370,left<=5?'#ff6b6b':'#fff',left<=5?17:15,'right','900'); }
   function drawResult(){
@@ -452,6 +536,6 @@ function preview(ctx,w,h,L,t){
   touch:null,
   looks:[{key:'felt',label:'桌布顏色',type:'color',opts:['#1d5e45','#1f4f7a','#6b1f3a','#3a2d57','#5a4630','#2b2b33']}],
   best:{label:'最高得分',fmt:v=>'+'+v+' 分',lower:false},
-  preview,thumb,create,_canWin:canWin,_decomps:decomps
+  preview,thumb,create,_canWin:canWin,_decomps:decomps,_drawTile:drawTile
 };
 })();
