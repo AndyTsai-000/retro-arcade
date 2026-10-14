@@ -26,7 +26,8 @@ const STAGES=[
    g:['#5a4640','#52403a'],s:['#3a2a26','#ff7a3a'],b:['#8a6a5a','#5a3f33']}
 ];
 // 電腦強度：想多久出手一次、看到機會放水球的機率、一開始的水球威力與數量
-const DIFF={easy:{think:[.3,.52],bombP:.4,power:1,maxB:1},normal:{think:[.15,.28],bombP:.75,power:1,maxB:1},hard:{think:[.07,.14],bombP:.97,power:2,maxB:2}};
+// hunt：會不會瞄準玩家放水球、去刺破被困的人；itemR：多遠內的道具會去撿；cap：水球數與威力上限；slow：移動速度倍率；flee：看到危險後多久才反應
+const DIFF={easy:{think:[.55,.9],bombP:.3,power:1,maxB:1,hunt:0,itemR:3,cap:2,slow:.82,flee:.3},normal:{think:[.15,.28],bombP:.75,power:1,maxB:1,hunt:1,itemR:8,cap:7,slow:1,flee:.08},hard:{think:[.07,.14],bombP:.97,power:2,maxB:2,hunt:1,itemR:8,cap:7,slow:1,flee:.08}};
 const r2=v=>Math.round(v*100)/100;
 
 /* ---------- 畫圖 ---------- */
@@ -109,7 +110,7 @@ function create(env,opts){
     p.wc=Math.max(0,WATER.indexOf(p.look.water)); });
 
   const cellOf=p=>Math.round(p.y)*COLS+Math.round(p.x);
-  const speedOf=p=>p.state==='trapped'?.5:3.6+p.spd*.55;
+  const speedOf=p=>p.state==='trapped'?.5:(3.6+p.spd*.55)*(p.human?1:D.slow);
   const active=p=>{ let n=0; for(const b of bombs) if(b.owner===p.id) n++; return n; };
   function blocked(cx,cy){ if(cx<0||cy<0||cx>=COLS||cy>=ROWS) return true; const i=cy*COLS+cx; return grid[i]!==0||bombAt[i]===1; }
   function step(p,dir,dist){
@@ -180,12 +181,12 @@ function create(env,opts){
       a.path=best>=0?pathTo(r.prev,best):[]; a.flee=true; return;
     }
     const r=bfs(p,danger,true); let goal=-1,gd=99;
-    for(const q of players) if(q!==p&&q.state==='trapped'){ const c=cellOf(q); if(r.dist[c]>=0&&r.dist[c]<gd){ goal=c; gd=r.dist[c]; } }
-    if(goal<0) for(const i of items.keys()) if(r.dist[i]>=0&&r.dist[i]<Math.min(gd,8)){ goal=i; gd=r.dist[i]; }
+    if(D.hunt) for(const q of players) if(q!==p&&q.state==='trapped'){ const c=cellOf(q); if(r.dist[c]>=0&&r.dist[c]<gd){ goal=c; gd=r.dist[c]; } }
+    if(goal<0) for(const i of items.keys()) if(r.dist[i]>=0&&r.dist[i]<Math.min(gd,D.itemR)){ goal=i; gd=r.dist[i]; }
     if(goal>=0&&goal!==cur){ a.path=pathTo(r.prev,goal); return; }
     if(active(p)<p.maxB&&!bombAt[cur]){
       const b=blast(cx,cy,p.power); let value=b.boxes;
-      for(const q of players) if(q!==p&&q.state==='alive'&&b.cells.indexOf(cellOf(q))>=0) value+=3;
+      for(const q of players) if(D.hunt&&q!==p&&q.state==='alive'&&b.cells.indexOf(cellOf(q))>=0) value+=3;
       if(value>0){
         const d2=dangerMap({x:cx,y:cy,t:FUSE,power:p.power}),r2=bfs(p,d2,false),spd=speedOf(p); let best=-1;
         for(let i=0;i<N;i++) if(r2.dist[i]>0&&d2[i]===Infinity&&r2.dist[i]/spd<FUSE-.9&&(best<0||r2.dist[i]<r2.dist[best])) best=i;
@@ -196,7 +197,7 @@ function create(env,opts){
     let best=-1,bs=-1e9;
     for(let i=0;i<N;i++){ const d=r.dist[i]; if(d<=0||d>14) continue; if((a.avoid.get(i)||0)>t) continue;
       const x=i%COLS,y=(i/COLS)|0,bx=blast(x,y,p.power).boxes; let s;
-      if(bx>0) s=12+bx*2-d; else { let m=99; for(const q of players) if(q!==p&&q.state==='alive') m=Math.min(m,Math.abs(q.x-x)+Math.abs(q.y-y)); s=-m*.5-d*.1; }
+      if(bx>0) s=12+bx*2-d; else { let m=99; for(const q of players) if(q!==p&&q.state==='alive') m=Math.min(m,Math.abs(q.x-x)+Math.abs(q.y-y)); s=D.hunt?-m*.5-d*.1:-d*.3; }
       s+=Math.random()*1.5; if(s>bs){ bs=s; best=i; } }
     a.path=best>=0?pathTo(r.prev,best):[];
   }
@@ -271,7 +272,7 @@ function create(env,opts){
       if(p.inv>0) p.inv-=dt;
       let dir=-1,bomb=false;
       if(p.ai){ const a=p.ai; a.think-=dt;
-        if(p.state==='alive'){ if(a.think<=0||(!a.path.length&&a.think<D.think[0]*.5)){ think(p); a.think=a.flee?(opts.variant==='easy'?.16:.08):D.think[0]+Math.random()*(D.think[1]-D.think[0]); } dir=aiDir(p); }
+        if(p.state==='alive'){ if(a.think<=0||(!a.path.length&&a.think<D.think[0]*.5)){ think(p); a.think=a.flee?D.flee:D.think[0]+Math.random()*(D.think[1]-D.think[0]); } dir=aiDir(p); }
         else if(p.needles>0&&p.trapT<TRAP-1) bomb=true;
       } else { const inp=inputs[p.id]; dir=inp.dir; bomb=inp.bomb; inp.bomb=false; }
       if(p.state==='trapped'){
@@ -285,7 +286,7 @@ function create(env,opts){
       const c=cellOf(p);
       if(p.state==='alive'){
         const it=items.get(c);
-        if(it){ items.delete(c); sfx('item'); if(it==='b') p.maxB=Math.min(6,p.maxB+1); else if(it==='p') p.power=Math.min(7,p.power+1); else if(it==='s') p.spd=Math.min(5,p.spd+1); else p.needles=Math.min(3,p.needles+1); }
+        if(it){ items.delete(c); sfx('item'); const cap=p.human?99:D.cap; if(it==='b') p.maxB=Math.min(6,cap,p.maxB+1); else if(it==='p') p.power=Math.min(7,cap,p.power+1); else if(it==='s') p.spd=Math.min(5,p.spd+1); else p.needles=Math.min(3,p.needles+1); }
         if(flameT[c]>0&&p.inv<=0){ p.state='trapped'; p.trapT=TRAP; if(p.ai) p.ai.path=[]; sfx('trap'); }
       }
       p.rx=p.x; p.ry=p.y;

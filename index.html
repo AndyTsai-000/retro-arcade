@@ -141,7 +141,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 .dpad i.l{top:50%;left:12px;margin-top:-11px;border-right-color:var(--text);border-left-width:0}
 .dpad i.r{top:50%;right:12px;margin-top:-11px;border-left-color:var(--text);border-right-width:0}
 .dpad[data-d="u"] i.u,.dpad[data-d="d"] i.d,.dpad[data-d="l"] i.l,.dpad[data-d="r"] i.r{opacity:1;filter:drop-shadow(0 0 6px var(--yellow))}
-@media (max-width:440px){.bar h2{display:none}.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side.g4{display:grid;grid-template-columns:repeat(2,auto);gap:8px}.side.g4 .tb{width:56px;height:56px;font-size:14px}.tb.big{width:86px;height:86px;font-size:26px}#padL:has(.tb.big)~#padR .tb{width:52px;height:52px;font-size:13px}}
+@media (max-width:440px){.bar h2{display:none}.bar .lg,#barName{display:none}body .bar{gap:4px;padding-inline:6px}body .bar .btn{padding:4px 6px;font-size:12px}.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side.g4{display:grid;grid-template-columns:repeat(2,auto);gap:8px}.side.g4 .tb{width:56px;height:56px;font-size:14px}.tb.big{width:86px;height:86px;font-size:26px}#padL:has(.tb.big)~#padR .tb{width:52px;height:52px;font-size:13px}}
 /* ---------- 手機版 ---------- */
 @media (max-width:640px){
   #hub{padding-block:18px 28px;gap:18px}
@@ -190,6 +190,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
     <span class="me" id="barName"></span>
     <button class="btn" id="bSide" hidden>方向鍵：左</button>
     <button class="btn" id="bFull" hidden>全螢幕</button>
+    <button class="btn" id="bHelp"><span class="lg">遊戲</span>操作</button>
     <button class="btn" id="bPause">暫停</button>
     <button class="btn" id="bMute">聲音：開</button>
   </div>
@@ -203,7 +204,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=41; // 每次改版加一
+window.ARCADE_V=43; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -306,7 +307,7 @@ addEventListener('keydown',e=>{
   if(!cur||(e.target&&e.target.tagName==='INPUT')) return;
   if(BLOCK[e.code]) e.preventDefault();
   if(e.repeat) return;
-  if(e.code==='Escape'||e.code==='KeyP'){ togglePause(); return; }
+  if(e.code==='Escape'||e.code==='KeyP'){ if(!modal.hidden&&helpPaused){ closeHelp(); return; } togglePause(); return; }
   if(e.code==='Enter'&&state==='over'&&!Net.peer&&performance.now()>ovAt+500){ start(lastOpts); return; }
   press(e.code);
 });
@@ -480,15 +481,33 @@ function finish(res){
 function togglePause(){
   if(Net.peer) return;
   if(state==='running'){ state='paused'; if(inst.pause) inst.pause(true);
-    showCard('<h3>暫停</h3><div class="row"><button class="btn main" id="rGo">繼續</button><button class="btn" id="rHub">回大廳</button></div>');
-    on('rGo',togglePause); on('rHub',back); $('#bPause').textContent='繼續'; }
+    showCard('<h3>暫停</h3><div class="row"><button class="btn main" id="rGo">繼續</button><button class="btn" id="rHelp">遊戲操作</button><button class="btn" id="rHub">回大廳</button></div>');
+    on('rGo',togglePause); on('rHub',back); on('rHelp',showHelp); $('#bPause').textContent='繼續'; }
   else if(state==='paused'){ state='running'; if(inst.pause) inst.pause(false); ov.hidden=true; document.body.classList.add('playing'); acc=0; $('#bPause').textContent='暫停'; }
 }
 function back(){
-  leaveNet(); killInst(); cur=null; state='hub';
-  for(const k in keys) keys[k]=false; closeLook();
-  $('#play').hidden=true; $('#hub').hidden=false; buildHub();
+  const safe=f=>{ try{ f(); }catch(e){ console.error(e); } };
+  safe(leaveNet); safe(killInst); safe(closeLook); cur=null; state='hub'; inst=null; helpPaused=false;
+  for(const k in keys) keys[k]=false; for(const k in hits) delete hits[k];
+  ov.hidden=true; modal.hidden=true; document.body.classList.remove('playing');
+  $('#play').hidden=true; $('#hub').hidden=false; safe(buildHub); scrollTo(0,0);
 }
+// 遊戲操作：隨時打開這款遊戲的按鍵說明；單機遊戲中打開時先暫停，關掉後自動繼續
+let helpPaused=false;
+function showHelp(){
+  const g=cur; if(!g) return; SFX.click();
+  if(state==='running'&&!Net.peer){ state='paused'; helpPaused=true; if(inst&&inst.pause) inst.pause(true); }
+  mcard.innerHTML='<h3>'+g.name+'　遊戲操作</h3><p>'+g.goal+'</p>'+helpHtml(g)+
+    (isTouch&&g.touchHelp&&g.help?'<details><summary>接鍵盤時的按鍵</summary>'+helpHtml({help:g.help})+'</details>':'')+
+    '<div class="row"><button class="btn main" id="hOk">'+(helpPaused?'繼續遊戲':'知道了')+'</button></div>';
+  modal.hidden=false; $('#hOk').addEventListener('click',closeHelp); $('#hOk').focus();
+}
+function closeHelp(){
+  modal.hidden=true;
+  if(helpPaused&&state==='paused'){ helpPaused=false; state='running'; if(inst&&inst.pause) inst.pause(false); acc=0; for(const k in keys) keys[k]=false; }
+  helpPaused=false;
+}
+$('#bHelp').addEventListener('click',showHelp);
 $('#bBack').addEventListener('click',back);
 $('#play').addEventListener('contextmenu',e=>{ if(isTouch) e.preventDefault(); }); // 手機長按不要跳出選單
 $('#bPause').addEventListener('click',togglePause);
