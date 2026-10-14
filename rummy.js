@@ -216,42 +216,46 @@ function create(env,opts){
   function slide(id,x,y){ let p=dp.get(id); if(!p){ p={x,y}; dp.set(id,p); } p.x+=(x-p.x)*.32; p.y+=(y-p.y)*.32; if(Math.abs(x-p.x)<.4) p.x=x; if(Math.abs(y-p.y)<.4) p.y=y; return p; }
   function tile(x,y,id,opt){
     const tl=T(id),o=opt||{};
-    ctx.fillStyle='rgba(0,0,0,.3)'; ctx.fillRect(x+2,y+3,TW,TH);
-    ctx.fillStyle=o.ghost?'rgba(255,248,230,.5)':'#fff8e6'; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x,y,TW-2,TH,4):ctx.rect(x,y,TW-2,TH); ctx.fill();
-    ctx.strokeStyle=o.sel?'#ffd23f':o.newT?'#3ddbd9':'#c9b89a'; ctx.lineWidth=o.sel||o.newT?2:1; ctx.stroke();
-    ctx.fillStyle='#e9dcc0'; ctx.fillRect(x+3,y+TH-9,TW-8,5);
+    ctx.fillStyle='rgba(0,0,0,.32)'; rr(ctx,x+1.5,y+3,TW-1,TH,5); ctx.fill();
+    ctx.fillStyle=o.ghost?'rgba(190,170,130,.5)':'#cdb88e'; rr(ctx,x,y+2,TW-2,TH,5); ctx.fill(); // 牌的厚度
+    if(o.ghost) ctx.fillStyle='rgba(255,248,230,.5)'; else { const g=ctx.createLinearGradient(0,y,0,y+TH); g.addColorStop(0,'#fffdf6'); g.addColorStop(.7,'#f6ecd6'); g.addColorStop(1,'#eadcbc'); ctx.fillStyle=g; }
+    rr(ctx,x,y,TW-2,TH-1.5,5); ctx.fill();
+    ctx.strokeStyle=o.sel?'#ffd23f':o.newT?'#3ddbd9':'rgba(150,128,90,.7)'; ctx.lineWidth=o.sel||o.newT?2:1; ctx.stroke();
+    if(!o.ghost){ ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(x+4,y+2,TW-10,1.2); }
+    ctx.fillStyle='rgba(205,186,148,.55)'; ctx.fillRect(x+4,y+TH-9,TW-10,4);
     ctx.textAlign='center'; ctx.textBaseline='middle';
     if(isJ(tl)){ ctx.font='900 17px '+TC; ctx.fillStyle=tl.id===104?'#e23b3b':'#22222c'; ctx.fillText('☺',x+TW/2-1,y+15); ctx.font='700 8px '+TC; ctx.fillText('鬼',x+TW/2-1,y+28); }
     else { ctx.font='900 17px '+TC; ctx.fillStyle=COL[tl.c]; ctx.fillText(String(tl.n),x+TW/2-1,y+16); ctx.beginPath(); ctx.arc(x+TW/2-1,y+29,2.5,0,7); ctx.fill(); }
   }
-  function button(x,y,w,h,label,on,fn,hot){ ctx.fillStyle=on?(hot?'#ffd23f':'#3a3670'):'#2b2759'; ctx.fillRect(x,y,w,h); ctx.strokeStyle='#0b0a1c'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h);
+  function button(x,y,w,h,label,on,fn,hot){ ctx.fillStyle='rgba(0,0,0,.35)'; rr(ctx,x+1,y+3,w,h,7); ctx.fill(); ctx.fillStyle=on?(hot?'#ffd23f':'#3a3670'):'#2b2759'; rr(ctx,x,y,w,h,7); ctx.fill(); ctx.strokeStyle='rgba(11,10,28,.8)'; ctx.lineWidth=1.5; ctx.stroke(); if(on){ ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(x+6,y+2,w-12,1.5); }
     ctx.fillStyle=on?(hot?'#14122b':'#fff'):'#6b6799'; ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label,x+w/2,y+h/2+1); if(on) layout.btn.push({x,y,w,h,fn}); }
   function draw(){
     layout.table=[]; layout.rack=[]; layout.btn=[]; layout.sets=[];
-    ctx.fillStyle=L.felt; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='rgba(255,255,255,.04)'; for(let i=0;i<W;i+=8) ctx.fillRect(i,0,1,H);
+    ctx.drawImage(tableArt(L.felt),0,0,W,H);
     // 上方：每位玩家
     const pw=W/np; ctx.textBaseline='middle';
-    for(let i=0;i<np;i++){ const x=i*pw,act=G.turn===i&&!G.over; ctx.fillStyle=act?'rgba(255,210,63,.25)':'rgba(11,10,28,.55)'; ctx.fillRect(x+3,3,pw-6,30);
-      ctx.textAlign='left'; ctx.font='900 13px '+TC; ctx.fillStyle=G.gone[i]?'#6b6799':i===me?'#ffd23f':'#fff'; ctx.fillText((act?'▶ ':'')+names[i],x+10,14);
-      ctx.font='700 10px '+TC; ctx.fillStyle='#cfe8d8'; ctx.fillText((G.racks[i]?G.racks[i].length:0)+' 張'+(G.melded[i]?'':'　尚未破冰'),x+10,26);
-      if(act&&TURN_SEC&&i===me){ ctx.textAlign='right'; ctx.fillStyle=turnT<15?'#ff5d8f':'#fff'; ctx.font='11px '+PIX; ctx.fillText(Math.max(0,Math.ceil(turnT))+'',x+pw-10,18); } }
+    for(let i=0;i<np;i++){ const x=i*pw,act=G.turn===i&&!G.over; ctx.fillStyle=act?'rgba(255,210,63,.24)':'rgba(11,10,28,.5)'; rr(ctx,x+14,10,pw-28,30,8); ctx.fill(); if(act){ ctx.strokeStyle='rgba(255,210,63,.85)'; ctx.lineWidth=1.5; ctx.stroke(); }
+      ctx.textAlign='left'; ctx.font='900 13px '+TC; ctx.fillStyle=G.gone[i]?'#6b6799':i===me?'#ffd23f':'#fff'; ctx.fillText((act?'▶ ':'')+names[i],x+24,20);
+      ctx.font='700 10px '+TC; ctx.fillStyle='#cfe8d8'; ctx.fillText((G.racks[i]?G.racks[i].length:0)+' 張'+(G.melded[i]?'':'　尚未破冰'),x+24,32);
+      if(act&&TURN_SEC&&i===me){ ctx.textAlign='right'; ctx.fillStyle=turnT<15?'#ff5d8f':'#fff'; ctx.font='11px '+PIX; ctx.fillText(Math.max(0,Math.ceil(turnT))+'',x+pw-24,25); } }
     // 牌堆
-    const deckN=client?G.deckN:G.deck.length; ctx.fillStyle='#7a2a45'; ctx.fillRect(W-58,42,40,52); ctx.strokeStyle='#0b0a1c'; ctx.lineWidth=2; ctx.strokeRect(W-58,42,40,52); ctx.fillStyle='#fff'; ctx.font='900 13px '+TC; ctx.textAlign='center'; ctx.fillText(deckN,W-38,62); ctx.font='700 9px '+TC; ctx.fillText('牌堆',W-38,82);
-    ctx.fillStyle='#cfe8d8'; ctx.font='700 10px '+TC; ctx.textAlign='center'; ctx.fillText('思考時間',W-38,108);
-    ctx.fillStyle='#fff'; ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.fillText(TURN_SEC?TURN_SEC+' 秒':'不限',W-38,126);
+    const deckN=client?G.deckN:G.deck.length;
+    for(let k=3;k>=0;k--){ const dx=W-60+k*1.5,dy=48+k*-2.5; ctx.fillStyle='rgba(0,0,0,.3)'; rr(ctx,dx+1.5,dy+3,40,52,6); ctx.fill(); ctx.fillStyle=k?'#5e1f36':'#7a2a45'; rr(ctx,dx,dy,40,52,6); ctx.fill(); ctx.strokeStyle='rgba(255,210,150,.35)'; ctx.lineWidth=1; ctx.stroke(); }
+    ctx.strokeStyle='rgba(255,210,150,.45)'; rr(ctx,W-56,44,32,44,4); ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.fillText(deckN,W-40,62); ctx.font='700 9px '+TC; ctx.fillStyle='#ffd9b0'; ctx.fillText('牌堆',W-40,80);
+    ctx.fillStyle='#cfe8d8'; ctx.font='700 10px '+TC; ctx.textAlign='center'; ctx.fillText('思考時間',W-38,114);
+    ctx.fillStyle='#fff'; ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.fillText(TURN_SEC?TURN_SEC+' 秒':'不限',W-38,131);
     // 桌面
     const table=E?E.table:G.table,startSet=E?new Set(E.start.flat()):new Set();
     let x=14,y=46; const maxX=W-72;
     table.forEach((s,si)=>{ const w=s.length*TW; if(x+w>maxX&&x>14){ x=14; y+=TH+12; }
-      const ok=!!analyze(s.map(T)); ctx.strokeStyle=ok?'rgba(134,220,79,.7)':'rgba(255,93,143,.9)'; ctx.lineWidth=2; ctx.strokeRect(x-4,y-4,w+4,TH+8);
+      const ok=!!analyze(s.map(T)); ctx.fillStyle='rgba(0,0,0,.14)'; rr(ctx,x-5,y-5,w+6,TH+10,7); ctx.fill(); ctx.strokeStyle=ok?'rgba(134,220,79,.75)':'rgba(255,93,143,.95)'; ctx.lineWidth=2; ctx.stroke();
       layout.sets.push({s:si,x,y,w});
       s.forEach((id,i)=>{ const p=slide(id,x+i*TW,y); if(drag&&drag.moved&&drag.id===id){ tile(p.x,p.y,id,{ghost:true}); return; } tile(p.x,p.y,id,{newT:E&&!startSet.has(id)}); layout.table.push({s:si,i,id,x:x+i*TW,y}); });
       x+=w+16; });
     if(x+TW>maxX){ x=14; y+=TH+12; } const slot={x,y}; // 下一組會放的位置
     if(!table.length){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.font='700 15px '+TC; ctx.textAlign='center'; ctx.fillText(isMyTurn()?'把手牌拖到這裡組成牌組（點一下手牌也會放上來）':'桌面還是空的',W/2-30,180); }
     // 手牌
-    ctx.fillStyle='rgba(11,10,28,.6)'; ctx.fillRect(0,RACK_Y-10,W,H-RACK_Y+10);
     const rack=E?E.rack:(G.racks[me]||[]),perRow=Math.floor((W-150)/TW);
     rack.forEach((id,i)=>{ const rx=10+(i%perRow)*TW,ry=RACK_Y+Math.floor(i/perRow)*(TH+8),p=slide(id,rx,ry); if(drag&&drag.moved&&drag.id===id){ tile(p.x,p.y,id,{ghost:true}); return; } tile(p.x,p.y,id); layout.rack.push({i,id,x:rx,y:ry}); });
     // 按鈕
@@ -272,6 +276,35 @@ function create(env,opts){
     if(msgT>0&&msg){ ctx.textAlign='center'; ctx.font='900 16px '+TC; const w=ctx.measureText(msg).width+30; ctx.fillStyle='rgba(11,10,28,.88)'; ctx.fillRect(W/2-w/2-30,RACK_Y-64,w,30); ctx.fillStyle='#ffd23f'; ctx.fillText(msg,W/2-30,RACK_Y-48); }
   }
   return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); },_dbg:{autoSplit:ids=>autoSplit(ids),G,get E(){return E;},analyze:s=>analyze(s.map(T)),checkPlay,aiMove,T,doDone,doDraw}};
+}
+
+const tableCache={};
+function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function tableArt(felt){
+  if(tableCache[felt]) return tableCache[felt];
+  const cv=document.createElement('canvas'),S=2; cv.width=W*S; cv.height=H*S; const c=cv.getContext('2d'); c.scale(S,S);
+  let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  // 木框
+  let g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,'#6b3f1d'); g.addColorStop(.5,'#5a3418'); g.addColorStop(1,'#4a2a12'); c.fillStyle=g; c.fillRect(0,0,W,H);
+  c.lineWidth=1; for(let i=0;i<70;i++){ const y=rnd()*H; c.strokeStyle='rgba('+(rnd()<.5?'0,0,0':'255,220,170')+','+(.05+rnd()*.08)+')'; c.beginPath(); c.moveTo(0,y); for(let x=0;x<=W;x+=40) c.lineTo(x,y+Math.sin(x*.02+i)*2.5); c.stroke(); }
+  // 絨布
+  const fx=8,fy=6,fw=W-16,fh=RACK_Y-20; rr(c,fx,fy,fw,fh,14); c.save(); c.clip();
+  c.fillStyle=felt; c.fillRect(fx,fy,fw,fh);
+  g=c.createRadialGradient(W*.45,fh*.42,30,W*.45,fh*.42,W*.62); g.addColorStop(0,'rgba(255,255,255,.13)'); g.addColorStop(.55,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(0,0,0,.42)'); c.fillStyle=g; c.fillRect(fx,fy,fw,fh);
+  for(let i=0;i<9000;i++){ c.fillStyle=rnd()<.5?'rgba(255,255,255,.05)':'rgba(0,0,0,.07)'; c.fillRect(fx+rnd()*fw,fy+rnd()*fh,1,1); }
+  c.strokeStyle='rgba(255,255,255,.022)'; for(let k=-fh;k<fw;k+=4){ c.beginPath(); c.moveTo(fx+k,fy); c.lineTo(fx+k+fh,fy+fh); c.stroke(); }
+  c.font='900 54px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='rgba(255,255,255,.045)'; c.fillText('RUMMIKUB',W/2-30,fh/2+20);
+  c.lineWidth=1.5; c.strokeStyle='rgba(255,255,255,.04)'; c.beginPath(); c.ellipse(W/2-30,fh/2+20,190,62,0,0,7); c.stroke();
+  c.restore();
+  // 絨布邊的陰影與金色飾線
+  c.save(); rr(c,fx,fy,fw,fh,14); c.clip(); c.shadowColor='rgba(0,0,0,.6)'; c.shadowBlur=14; c.lineWidth=10; c.strokeStyle='rgba(0,0,0,.5)'; rr(c,fx-5,fy-5,fw+10,fh+10,18); c.stroke(); c.restore();
+  c.strokeStyle='rgba(222,184,96,.55)'; c.lineWidth=1.2; rr(c,fx+5,fy+5,fw-10,fh-10,10); c.stroke();
+  // 木製牌架
+  const ry=RACK_Y-12; g=c.createLinearGradient(0,ry,0,H); g.addColorStop(0,'#a06a36'); g.addColorStop(.12,'#8a5a2e'); g.addColorStop(1,'#5e3a1a'); c.fillStyle=g; c.fillRect(0,ry,W,H-ry);
+  for(let i=0;i<40;i++){ const y=ry+rnd()*(H-ry); c.strokeStyle='rgba(0,0,0,'+(.05+rnd()*.07)+')'; c.beginPath(); c.moveTo(0,y); for(let x=0;x<=W;x+=50) c.lineTo(x,y+Math.sin(x*.03+i)*1.5); c.stroke(); }
+  c.fillStyle='rgba(255,230,180,.35)'; c.fillRect(0,ry,W,1.5); c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(0,ry-3,W,3);
+  for(const gy of [RACK_Y+TH+1,RACK_Y+TH*2+9]){ c.fillStyle='rgba(0,0,0,.4)'; c.fillRect(0,gy,W-142,4); c.fillStyle='rgba(255,220,170,.25)'; c.fillRect(0,gy+4,W-142,1.5); }
+  return tableCache[felt]=cv;
 }
 
 function thumb(ctx,w,h,t){
