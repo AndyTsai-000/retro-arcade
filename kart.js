@@ -290,8 +290,8 @@ function create(env,opts){
   const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{body:BODIES[i%3],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4],wheel:Object.keys(WHEEL)[i%5],nitro:Object.keys(NITRO)[(i+2)%5]};
   const karts=[];
   for(let i=0;i<TOTAL;i++){
-    const human=i<humans,slot=human?(TOTAL-humans)+i:i-humans; // 電腦排前面，玩家排後面
-    const si=(N-6-Math.floor(slot/2)*6)%N,lane=(slot%2?-1:1)*5;
+    const human=i<humans,slot=[2,3,1,4,0,5][i];       // 所有車排成一直線同時出發，真人排在中間
+    const si=N-6,lane=(slot-(TOTAL-1)/2)*4.2;
     const look=lookFor(i,human);
     const k={i,human,color:look.color,look,bk:0,gripT:0,ss:0,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
       boostT:0,drifting:false,driftT:0,gauge:0,stock:0,items:[],toastT:0,toastText:'',spin:0,tumble:0,slowT:0,cloudT:0,shield:0,fin:null,wall:false,left:false,flags:0,
@@ -307,7 +307,7 @@ function create(env,opts){
   }
   const my=karts[me],locals=karts.filter(k=>k.local);
   let t=0,cd=3.4,lastBeep=4,endT=0,ended=false,sendT=0,remain=null,lastTick=99,pip=null,flashT=0;
-  let intro={i:0,t:0,list:karts.filter(k=>k.human).concat(karts.filter(k=>!k.human))}; // 真人先介紹，再來是電腦
+  let guard=0,intro={i:0,t:0,list:karts.filter(k=>k.human).concat(karts.filter(k=>!k.human))}; // 真人先介紹，再來是電腦
 
   /* ---- 道具賽 ---- */
   const boxes=[],bananas=[],missiles=[]; let banN=0,banGeo,banMat,misGeo,misMat;
@@ -473,8 +473,17 @@ function create(env,opts){
   function update(dt){
     if(intro){ // 開場：鏡頭輪流繞著每一台車和車手轉一圈
       intro.t+=dt; const q=intro.list[intro.i]; if(intro.t>=(q.human?1.7:.95)){ intro.i++; intro.t=0; if(intro.i>=intro.list.length) intro=null; else env.sfx('click'); }
-      if(intro&&!net&&intro.i+intro.t>.4&&(env.hit('Space')||env.hit('Enter')||env.hit('KeyX')||env.hit('ArrowUp')||env.hit('KeyW')||env.hit('KeyQ'))) intro=null; }
-    else if(cd>0){ cd-=dt; const c=Math.ceil(cd); if(c<lastBeep&&c>=1&&c<=3){ lastBeep=c; env.sfx('beep'); } if(cd<=0) env.sfx('go'); }
+      if(intro&&!net&&intro.i+intro.t>.4&&(env.hit('Space')||env.hit('Enter')||env.hit('KeyX'))) intro=null;
+      if(!intro) guard=.3; }
+    else if(cd>0){ cd-=dt; const c=Math.ceil(cd); if(c<lastBeep&&c>=1&&c<=3){ lastBeep=c; env.sfx('beep'); }
+      if(cd<=0){ env.sfx('go'); for(const k of karts) if(!k.human&&!k.remote&&Math.random()<.2+st.ai*.25){ k.boostT=1.1; k.bk=2; } } }
+    // 起步加速：GO 出現的那一瞬間按下油門（前 0.13 秒到後 0.28 秒），會有一小段氮氣；太早按就沒有
+    if(guard>0) guard-=dt; // 剛跳過開場的那一下不算
+    else if(!intro) for(const k of locals){ if(k.startDone||k.ai) continue; const rel=cd>0?-cd:t;
+      if(rel>.3){ k.startDone=true; continue; }
+      const hitGas=local2?(k.i===0?env.hit('KeyW'):env.hit('ArrowUp')):env.touch?(env.hit('KeyX')||env.hit('ShiftLeft')):env.hit('ArrowUp');
+      if(hitGas){ k.startDone=true; if(rel>=-.13) k.startOK=true; else toast(k,'太早按了，沒有起步加速'); } }
+    if(cd<=0) for(const k of locals) if(k.startOK){ k.startOK=false; k.boostT=1.3; k.bk=2; toast(k,'完美起步！'); burst(k.x-Math.sin(k.h)*2,k.z-Math.cos(k.h)*2,nitroCol(k,0),5); flashT=.1; env.sfx('boost'); }
     else {
       t+=dt;
       for(const k of karts){
@@ -618,7 +627,7 @@ function create(env,opts){
       for(let i=0;i<2;i++){ c.fillStyle=i<k.stock?'#ff9d3d':'#2b2759'; c.beginPath(); c.arc(gx+gw+16*s+i*22*s,by+21*s,8*s,0,7); c.fill(); } }
     c.textAlign='center';
     const big=(txt,col,size,font,yy,wt)=>{ c.fillStyle=col; c.strokeStyle='#0b0a1c'; c.lineWidth=8*s; c.font=(wt||'')+size*s+'px '+font; c.strokeText(txt,w/2,yy); c.fillText(txt,w/2,yy); };
-    if(cd>0) big(String(Math.min(3,Math.ceil(cd))),'#ffd23f',72,PIX,h*.38);
+    if(cd>0){ big(String(Math.min(3,Math.ceil(cd))),'#ffd23f',72,PIX,h*.38); if(!k.ai){ const tip=k.startDone&&!k.startOK?'':'GO 的瞬間按'+(env.touch?'「使用」':local2&&k.i===0?' W ':' ↑ ')+'可以起步加速'; c.font='700 '+13*s+'px '+TC; c.lineWidth=4; c.strokeStyle='#0b0a1c'; c.strokeText(tip,w/2,h*.38+52*s); c.fillStyle='#fff'; c.fillText(tip,w/2,h*.38+52*s); } }
     else if(t<.9) big('GO!','#86dc4f',60,PIX,h*.38);
     if(v.wrongT>1) big(local2?'逆向！':'逆向！按 R 回到賽道','#ff5d8f',30,TC,h*.3,'900 ');
     if(k.fin!=null) big('抵達終點','#ffd23f',50,TC,h*.36,'900 ');
