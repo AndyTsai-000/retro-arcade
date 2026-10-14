@@ -126,6 +126,7 @@ body.touch #pad{display:flex}
   font-weight:900;font-size:17px;touch-action:none;padding:0}
 .tb.on{background:var(--yellow);color:#14122b;transform:translateY(3px);box-shadow:0 1px 0 #0b0a1c}
 .tb.act{background:var(--pink);color:#14122b}
+.tb.big{width:100px;height:100px;font-size:28px}
 .dpad{width:138px;height:138px;border-radius:50%;background:var(--panel2);border:3px solid #0b0a1c;box-shadow:0 4px 0 #0b0a1c;position:relative;touch-action:none}
 .dpad i{position:absolute;width:0;height:0;border:11px solid transparent;opacity:.55}
 .dpad i.u{left:50%;top:12px;margin-left:-11px;border-bottom-color:var(--text);border-top-width:0}
@@ -133,7 +134,7 @@ body.touch #pad{display:flex}
 .dpad i.l{top:50%;left:12px;margin-top:-11px;border-right-color:var(--text);border-left-width:0}
 .dpad i.r{top:50%;right:12px;margin-top:-11px;border-left-color:var(--text);border-right-width:0}
 .dpad[data-d="u"] i.u,.dpad[data-d="d"] i.d,.dpad[data-d="l"] i.l,.dpad[data-d="r"] i.r{opacity:1;filter:drop-shadow(0 0 6px var(--yellow))}
-@media (max-width:440px){.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side:has(.tb:nth-child(4)) .tb{width:50px;height:50px;font-size:13px}}
+@media (max-width:440px){.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side:has(.tb:nth-child(4)) .tb{width:50px;height:50px;font-size:13px}.tb.big{width:86px;height:86px;font-size:26px}#padL:has(.tb.big)~#padR .tb{width:52px;height:52px;font-size:13px}}
 /* ---------- 手機版 ---------- */
 @media (max-width:640px){
   #hub{padding-block:18px 28px;gap:18px}
@@ -193,7 +194,7 @@ body.touch #pad{display:flex}
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=27; // 每次改版加一
+window.ARCADE_V=28; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -299,7 +300,7 @@ function buildPad(spec){
   const fill=(box,list)=>{
     if(list==='dpad'){ box.appendChild(makeDpad()); return; }
     (list||[]).forEach(b=>{
-      const t=el('button','tb'+(b.act?' act':''),b.l); t.type='button';
+      const t=el('button','tb'+(b.act?' act':'')+(b.big?' big':''),b.l); t.type='button';
       const down=e=>{e.preventDefault();t.classList.add('on');press(b.c);try{t.setPointerCapture(e.pointerId);}catch(_){}} ;
       const up=e=>{e.preventDefault();t.classList.remove('on');release(b.c);};
       t.addEventListener('pointerdown',down); t.addEventListener('pointerup',up); t.addEventListener('pointercancel',up);
