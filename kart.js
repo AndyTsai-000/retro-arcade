@@ -33,6 +33,9 @@ const STAGES=[
   {name:'冰河峽灣',stars:5,grip:.45,ai:.9,sky:0xa9d6f5,ground:['#e6f2fb','#d5e8f6'],road:'#7fa6c2',tree:[0xd6eef8,0x5f7f93],
    pts:[[0,0],[120,0],[200,-40],[180,-120],[250,-180],[190,-250],[100,-210],[95,-135],[30,-100],[-30,-170],[30,-250],[-50,-310],[-150,-270],[-130,-180],[-210,-130],[-180,-40],[-100,0]]}
 ];
+// 每條賽道各自記最快完賽時間（存在這台裝置）
+const recKey=i=>'arcade.kart.t.'+i,getRec=i=>{ try{ const v=parseFloat(localStorage.getItem(recKey(i))); return isFinite(v)?v:null; }catch(e){ return null; } };
+function recText(i,fin,mine){ if(fin==null||!mine) return ''; const old=getRec(i); if(old==null||fin<old){ try{ localStorage.setItem(recKey(i),String(fin)); localStorage.setItem('arcade.kart.last',String(i)); }catch(e){} return '新紀錄！'+STAGES[i].name+' '+fmtTime(fin)+(old!=null?'（原本 '+fmtTime(old)+'）':''); } return STAGES[i].name+' 最快紀錄 '+fmtTime(old); }
 const ITEMS=['nitro','banana','missile','shield','water','cloud','bolt'],INAME={nitro:'氮氣',banana:'香蕉',missile:'飛彈',shield:'護盾',water:'水球',cloud:'烏雲',bolt:'閃電'};
 const wrap=a=>{ while(a>Math.PI)a-=2*Math.PI; while(a<-Math.PI)a+=2*Math.PI; return a; };
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -562,8 +565,7 @@ function create(env,opts){
     const pod=[1,0,2].filter(n=>order[n]).map(n=>'<div class="pod p'+(n+1)+'"><b>'+esc(order[n].name)+'</b><span>'+time(order[n])+'</span><i style="background:'+order[n].color+'">'+(n+1)+'</i></div>').join('');
     const rest=order.slice(3).map((q,n)=>'<li>第 '+(n+4)+' 名　'+esc(q.name)+'　'+time(q)+'</li>').join('');
     env.end({title:'頒獎',html:'<div class="podium">'+pod+'</div>'+(rest?'<ul class="rest">'+rest+'</ul>':''),
-      text:local2?'':'你是第 '+r+' 名'+(single?(ok?'，過關！':'，跑進前 3 名才算過關。'):'。'),
-      score:single&&ok?stage+1:null,next:single&&ok&&stage<STAGES.length-1});
+      text:local2?'':'你是第 '+r+' 名。'+recText(stage,my.fin,!local2),score:null,next:single&&stage<STAGES.length-1});
   }
 
   function draw(){
@@ -712,7 +714,9 @@ function thumb(ctx,w,h,t){
   help:[['↑ ↓ ← →','油門、煞車、轉向'],['Shift','過彎時按住飄移，放開後按一下 ↑ 甩噴'],['X','使用氮氣或道具'],['R','回到賽道中央'],['W A S D 左Shift Q','雙人 1P（左半畫面），Q 用氮氣或道具'],['↑ ↓ ← → 右Shift Enter','雙人 2P（右半畫面），Enter 用氮氣或道具']],
   touchHelp:[['◀ ▶','轉向，自動踩油門'],['▲','出發鍵：GO 的瞬間按起步加速；甩尾放開後按一下甩噴'],['飄移','過彎時按住'],['使用','用氮氣或道具'],['煞','煞車']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'▲',c:'ArrowUp'},{l:'飄移',c:'ShiftLeft'},{l:'煞',c:'ArrowDown'},{l:'使用',c:'KeyX',act:true}]},
-  best:{label:'已過關',fmt:v=>v+' / '+STAGES.length,lower:false},
+  best:{label:'最快紀錄',fmt:v=>fmtTime(v),lower:true},
+  stageBest:i=>{ const v=getRec(i); return v==null?'':fmtTime(v); },
+  hubBest:()=>{ let i=0; try{ i=+localStorage.getItem('arcade.kart.last')||0; }catch(e){} const v=getRec(i); return v==null?'尚無紀錄':'最快紀錄 <b>'+STAGES[i].name+' '+fmtTime(v)+'</b>'; },
   looks:[{key:'body',label:'車輛',opts:[{id:'std',label:'標準車'},{id:'sport',label:'跑車'},{id:'buggy',label:'越野車'}]},
     {key:'color',label:'車輛顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#ff7eb6']},
     {key:'part',label:'配件',opts:[{id:'none',label:'小尾翼'},{id:'wing',label:'大尾翼'},{id:'flag',label:'旗子'},{id:'exhaust',label:'排氣管'}]},
