@@ -379,7 +379,7 @@ function thumb(ctx,w,h,t){
   desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。7 個場景、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
   goal:'放水球把對手困進水泡，再走過去碰破。自己被困住時，有針可以脫困；沒有針就會出局。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
-  variants:[{id:'normal',label:'電腦：中等'},{id:'easy',label:'電腦：簡單'},{id:'hard',label:'電腦：困難'}],
+  variants:[{id:'easy',label:'電腦：簡單'},{id:'normal',label:'電腦：中等',def:true},{id:'hard',label:'電腦：困難'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動'],['Space','放水球，被困時用針'],['W A S D Space','雙人 1P'],['↑ ↓ ← → Enter','雙人 2P']],
   touchHelp:[['方向盤','移動'],['水球','放水球，被困時用針']],
