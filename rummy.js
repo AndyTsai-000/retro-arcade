@@ -47,7 +47,7 @@ function create(env,opts){
   // 自己這一回合在畫面上的編輯狀態
   let E=null,drag=null,msg='',msgT=0,t=0,aiT=0,sortMode=0,turnT=0,ended=false,lastTurn=-1,hover=null,sendT=0;
   const TIMES=[60,90,120,180,0];
-  let TURN_SEC=(()=>{ let v=null; try{ v=localStorage.getItem('arcade.rummy.time'); }catch(_){} v=v==null?(net?90:0):+v; return TIMES.includes(v)?v:90; })();
+  let TURN_SEC=(()=>{ const v=+((opts.options||{}).time); return TIMES.includes(v)?v:(net?90:0); })(); // 開始前在主畫面或房間選好
   function setTime(v){ TURN_SEC=v; turnT=v; try{ localStorage.setItem('arcade.rummy.time',String(v)); }catch(_){} G.ts=v; broadcast(); }
   function cycleTime(){ if(client) return; setTime(TIMES[(TIMES.indexOf(TURN_SEC)+1)%TIMES.length]); say(TURN_SEC?'每回合思考時間 '+TURN_SEC+' 秒':'思考時間不限',1.4); sfx('click'); }
   const sfx=n=>env.sfx(n);
@@ -239,8 +239,7 @@ function create(env,opts){
     // 牌堆
     const deckN=client?G.deckN:G.deck.length; ctx.fillStyle='#7a2a45'; ctx.fillRect(W-58,42,40,52); ctx.strokeStyle='#0b0a1c'; ctx.lineWidth=2; ctx.strokeRect(W-58,42,40,52); ctx.fillStyle='#fff'; ctx.font='900 13px '+TC; ctx.textAlign='center'; ctx.fillText(deckN,W-38,62); ctx.font='700 9px '+TC; ctx.fillText('牌堆',W-38,82);
     ctx.fillStyle='#cfe8d8'; ctx.font='700 10px '+TC; ctx.textAlign='center'; ctx.fillText('思考時間',W-38,108);
-    button(W-66,116,56,26,TURN_SEC?TURN_SEC+'秒':'不限',!client,cycleTime);
-    if(client){ ctx.fillStyle='#cfe8d8'; ctx.font='700 13px '+TC; ctx.textAlign='center'; ctx.fillText(TURN_SEC?TURN_SEC+'秒':'不限',W-38,130); }
+    ctx.fillStyle='#fff'; ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.fillText(TURN_SEC?TURN_SEC+' 秒':'不限',W-38,126);
     // 桌面
     const table=E?E.table:G.table,startSet=E?new Set(E.start.flat()):new Set();
     let x=14,y=46; const maxX=W-72;
@@ -287,12 +286,13 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).rummy={
+  options:[{key:'time',label:'思考時間',def:'90',opts:[{id:'60',label:'60 秒'},{id:'90',label:'90 秒'},{id:'120',label:'120 秒'},{id:'180',label:'180 秒'},{id:'0',label:'不限'}]}],
   name:'拉密',tag:'RUMMIKUB',color:'#3fae8a',online:true,maxPlayers:4,bots:true,minPlayers:2,netVariants:false,
   desc:'數字牌的拉密（Rummikub）：組出同色連號或同數字不同色的牌組，先把手牌出完的人贏。可以和電腦玩，或開房間 2～4 人連線。',
   goal:'把手牌拖到桌上組成牌組：同顏色連號 3 張以上，或同數字不同顏色 3～4 張，鬼牌可以代替任何牌。第一次出牌要湊滿 30 分，之後可以拆開桌上的牌重新組合。出不了牌就按「摸牌」。',
   variants:[{id:'2',label:'對手 2 人'},{id:'1',label:'對手 1 人'},{id:'3',label:'對手 3 人'}],
-  help:[['拖曳','把牌拖到桌上、拖到別的牌組或拖回手牌'],['點一下手牌','直接放到桌上成為新的一組'],['完成','檢查桌面後結束這回合'],['摸牌','這回合不出牌，摸一張'],['復原','把這回合動過的牌放回原位'],['思考時間','牌堆下方的按鈕，切換每回合可以移動牌的秒數（60／90／120／180 秒或不限），時間到會自動摸一張牌；連線時由房主設定']],
-  touchHelp:[['拖曳','把牌拖到桌上、拖到別的牌組或拖回手牌'],['點一下手牌','直接放到桌上成為新的一組'],['完成／摸牌','結束這回合'],['思考時間','點牌堆下方的按鈕切換每回合秒數']],
+  help:[['拖曳','把牌拖到桌上、拖到別的牌組或拖回手牌'],['點一下手牌','直接放到桌上成為新的一組'],['完成','檢查桌面後結束這回合'],['摸牌','這回合不出牌，摸一張'],['復原','把這回合動過的牌放回原位'],['思考時間','開始前在主畫面選每回合的秒數（60／90／120／180 秒或不限），時間到會自動摸一張牌；連線時由房主在房間選']],
+  touchHelp:[['拖曳','把牌拖到桌上、拖到別的牌組或拖回手牌'],['點一下手牌','直接放到桌上成為新的一組'],['完成／摸牌','結束這回合'],['思考時間','開始前在主畫面選每回合秒數']],
   touch:null,
   looks:[{key:'felt',label:'桌布顏色',type:'color',opts:['#1f6b4a','#1f4f7a','#6b1f3a','#3a2d57','#5a4630','#2b2b33']}],
   best:{label:'最高得分',fmt:v=>v+' 分',lower:false},
