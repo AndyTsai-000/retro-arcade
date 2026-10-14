@@ -122,7 +122,7 @@ function create(env,opts){
     for(const p of ps){
       const i=inputOf(p.n);
       p.vx=i.dx*215; p.moving=!!i.dx;
-      if(i.jump&&p.y>=GROUND){ p.vy=-530; sfx('land'); }
+      if(i.jump&&p.y>=GROUND){ p.vy=-575; sfx('land'); }
       if(i.hit) p.power=.28; else if(p.power>0) p.power-=dt;
       p.dirY=i.down?1:i.up?-1:0;
       p.vy+=1350*dt; p.x+=p.vx*dt; p.y+=p.vy*dt;
@@ -138,15 +138,16 @@ function create(env,opts){
     // 球網
     const nx=Math.max(NETX-NETW/2,Math.min(NETX+NETW/2,b.x)),ny=Math.max(NETTOP,Math.min(GROUND,b.y)),ddx=b.x-nx,ddy=b.y-ny;
     if(ddx*ddx+ddy*ddy<BR*BR){
-      if(b.y<NETTOP&&Math.abs(ddy)>Math.abs(ddx)){ b.y=NETTOP-BR; b.vy=-Math.max(160,Math.abs(b.vy)*.7); }
+      if(b.y<NETTOP&&Math.abs(ddy)>Math.abs(ddx)){ b.y=NETTOP-BR; b.vy=-Math.max(160,Math.abs(b.vy)*.7); if(Math.abs(b.vx)<80) b.vx=(b.x<NETX?-1:b.x>NETX?1:(Math.random()<.5?-1:1))*120; }
       else { const s=b.x<NETX?-1:1; b.x=NETX+s*(NETW/2+BR); b.vx=s*Math.max(90,Math.abs(b.vx)*.8); }
     }
     for(const p of ps){
       const dx=b.x-p.x,dy=b.y-(p.y-28),d=Math.hypot(dx,dy);
       if(d<PR+BR&&b.cool<=0){
         const s=p.n?-1:1;
-        if(p.power>0&&p.y<GROUND){ b.vx=s*580; b.vy=p.dirY>0?430:p.dirY<0?-330:130; b.hot=.6; sfx('boom'); }
-        else { b.vx=Math.max(-420,Math.min(420,dx*8)); b.vy=-Math.max(370,Math.min(520,Math.abs(b.vy)*.9))+p.vy*.25; sfx('place'); }
+        if(p.power>0&&p.y<GROUND){ const want=p.dirY>0?430:p.dirY<0?-330:130,toNet=(NETX-b.x)*s,tn=Math.max(.02,(toNet-NETW/2)/580),lim=toNet>0?(NETTOP-BR-12-b.y-260*tn*tn)/tn:want;
+          b.vx=s*580; b.vy=Math.max(-620,Math.min(want,lim)); b.hot=.6; sfx('boom'); }
+        else { b.vx=Math.max(-420,Math.min(420,dx*7+s*110)); b.vy=-Math.max(370,Math.min(520,Math.abs(b.vy)*.9))+p.vy*.25; sfx('place'); }
         const k=(PR+BR)/(d||1); b.x=p.x+dx*k; b.y=p.y-28+dy*k; b.cool=.16;
       }
     }
