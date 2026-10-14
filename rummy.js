@@ -46,7 +46,10 @@ function create(env,opts){
   let G={deck:[],racks:[],table:[],melded:[],turn:0,passes:0,over:null,scores:new Array(np).fill(0),gone:new Array(np).fill(false),log:''};
   // 自己這一回合在畫面上的編輯狀態
   let E=null,drag=null,msg='',msgT=0,t=0,aiT=0,sortMode=0,turnT=0,ended=false,lastTurn=-1,hover=null,sendT=0;
-  const TURN_SEC=net?90:0;
+  const TIMES=[60,90,120,180,0];
+  let TURN_SEC=(()=>{ let v=null; try{ v=localStorage.getItem('arcade.rummy.time'); }catch(_){} v=v==null?(net?90:0):+v; return TIMES.includes(v)?v:90; })();
+  function setTime(v){ TURN_SEC=v; turnT=v; try{ localStorage.setItem('arcade.rummy.time',String(v)); }catch(_){} G.ts=v; broadcast(); }
+  function cycleTime(){ if(client) return; setTime(TIMES[(TIMES.indexOf(TURN_SEC)+1)%TIMES.length]); say(TURN_SEC?'每回合思考時間 '+TURN_SEC+' 秒':'思考時間不限',1.4); sfx('click'); }
   const sfx=n=>env.sfx(n);
   const say=(s,sec)=>{ msg=s; msgT=sec||2; };
 
@@ -120,10 +123,10 @@ function create(env,opts){
   }
 
   /* ---- 連線 ---- */
-  function pub(){ return {racks:G.racks,table:G.table,turn:G.turn,melded:G.melded,deckN:G.deck.length,over:G.over,scores:G.scores,gone:G.gone,log:G.log}; }
+  function pub(){ return {ts:TURN_SEC,racks:G.racks,table:G.table,turn:G.turn,melded:G.melded,deckN:G.deck.length,over:G.over,scores:G.scores,gone:G.gone,log:G.log}; }
   function broadcast(){ if(net&&net.host) net.send({st:pub()}); }
   if(net){
-    if(client) net.onmsg=m=>{ if(m.st){ const s=m.st; G.racks=s.racks; G.table=s.table; G.turn=s.turn; G.melded=s.melded; G.deckN=s.deckN; G.over=s.over; G.scores=s.scores; G.gone=s.gone; if(s.log&&s.log!==G.log){ G.log=s.log; } } if(m.bad&&m.bad[0]===me){ say(m.bad[1],3); sfx('bump'); if(E) E.sent=false; } };
+    if(client) net.onmsg=m=>{ if(m.st){ const s=m.st; G.racks=s.racks; G.table=s.table; G.turn=s.turn; G.melded=s.melded; G.deckN=s.deckN; G.over=s.over; G.scores=s.scores; G.gone=s.gone; if(s.ts!=null&&s.ts!==TURN_SEC){ TURN_SEC=s.ts; turnT=s.ts; } if(s.log&&s.log!==G.log){ G.log=s.log; } } if(m.bad&&m.bad[0]===me){ say(m.bad[1],3); sfx('bump'); if(E) E.sent=false; } };
     else { net.onmsg=(m,from)=>{ if(G.over||G.turn!==from) return;
         if(m.draw){ drawPass(from); broadcast(); }
         else if(m.play){ const err=checkPlay(from,m.play.table,m.play.rack); if(err){ net.send({bad:[from,err]}); } else { applyPlay(from,m.play.table,m.play.rack); } broadcast(); } };
@@ -135,30 +138,47 @@ function create(env,opts){
   const layout={table:[],rack:[],btn:[]};
   function toLogical(e){ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=(r.width-W*s)/2,oy=(r.height-H*s)/2; return [(e.clientX-r.left-ox)/s,(e.clientY-r.top-oy)/s]; }
   function hitTile(x,y){
-    for(const b of layout.rack) if(x>=b.x&&x<b.x+TW&&y>=b.y&&y<b.y+TH) return {from:'rack',i:b.i,id:b.id};
-    for(const b of layout.table) if(x>=b.x&&x<b.x+TW&&y>=b.y&&y<b.y+TH) return {from:'table',s:b.s,i:b.i,id:b.id};
+    for(const b of layout.rack) if(x>=b.x-1&&x<b.x+TW+1&&y>=b.y-4&&y<b.y+TH+4) return {from:'rack',i:b.i,id:b.id};
+    for(const b of layout.table) if(x>=b.x-1&&x<b.x+TW+1&&y>=b.y-5&&y<b.y+TH+5) return {from:'table',s:b.s,i:b.i,id:b.id};
     return null;
   }
   function onDown(e){ e.preventDefault(); const [x,y]=toLogical(e);
     for(const b of layout.btn) if(x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h){ b.fn(); return; }
     if(!E||G.over) return; const h=hitTile(x,y); if(!h) return;
     if(h.from==='table'&&!isMyTurn()) return;
-    drag={...h,x,y,ox:x,oy:y,moved:false}; try{ canvas.setPointerCapture(e.pointerId); }catch(_){} }
-  function onMove(e){ if(!drag) return; const [x,y]=toLogical(e); drag.x=x; drag.y=y; if(Math.hypot(x-drag.ox,y-drag.oy)>4) drag.moved=true; }
+    drag={...h,x,y,ox:x,oy:y,moved:false,lift:e.pointerType==='touch'?30:0}; try{ canvas.setPointerCapture(e.pointerId); }catch(_){} }
+  function onMove(e){ if(!drag) return; e.preventDefault(); const [x,y]=toLogical(e); drag.x=x; drag.y=y; if(Math.hypot(x-drag.ox,y-drag.oy)>5) drag.moved=true; }
   function onUp(e){
     if(!drag) return; const d=drag; drag=null; if(!d.moved){ // 輕點：手牌直接放到桌上新的一組（輪到自己時）
       if(d.from==='rack'&&isMyTurn()){ removeFrom(d); dropTo({kind:'newset'},d.id); } return; }
-    const [x,y]=toLogical(e); const tgt=dropTarget(x,y,d);
+    const [x,y0]=toLogical(e),y=y0-d.lift; const tgt=dropTarget(x,y,d);
     if(!tgt) return;
     if(tgt.kind==='rack'&&d.from==='table'&&!E.startRack.includes(d.id)){ say('桌上原本的牌不能收回手牌。'); return; }
     if(tgt.kind!=='rack'&&!isMyTurn()){ say('還沒輪到你。'); return; }
     removeFrom(d); dropTo(tgt,d.id); sfx('click');
   }
-  function removeFrom(d){ if(d.from==='rack') E.rack.splice(E.rack.indexOf(d.id),1); else { const s=E.table[d.s]; s.splice(s.indexOf(d.id),1); } E.table=E.table.filter(s=>s.length); }
+  function removeFrom(d){
+    if(d.from==='rack') E.rack.splice(E.rack.indexOf(d.id),1);
+    else { const s=E.table[d.s]; s.splice(s.indexOf(d.id),1);
+      // 從順子中間抽走一張時，在斷掉的地方自動分成兩段
+      const ts=s.map(T); if(s.length>=2&&!analyze(ts)&&ts.every(t=>!isJ(t)&&t.c===ts[0].c)){ const o=s.slice().sort((a,b)=>T(a).n-T(b).n),parts=[[o[0]]];
+        for(let i=1;i<o.length;i++){ if(T(o[i]).n===T(o[i-1]).n+1) parts[parts.length-1].push(o[i]); else parts.push([o[i]]); }
+        if(parts.length>1) E.table.splice(d.s,1,...parts); } }
+    E.table=E.table.filter(s=>s.length); }
   function dropTo(tgt,id){
     if(tgt.kind==='rack'){ E.rack.splice(clamp(tgt.i,0,E.rack.length),0,id); }
-    else if(tgt.kind==='set'){ const s=E.table[tgt.s]; if(s) s.splice(clamp(tgt.i,0,s.length),0,id); else E.table.push([id]); }
+    else if(tgt.kind==='set'){ const s=E.table[tgt.s]; if(!s){ E.table.push([id]); return; } s.splice(clamp(tgt.i,0,s.length),0,id);
+      if(!analyze(s.map(T))){ const sp=autoSplit(s); if(sp){ E.table.splice(tgt.s,1,sp[0],sp[1]); say('自動拆成兩組',1.4); } } }
     else E.table.push([id]);
+  }
+  // 放進去之後牌組不成立時，試著拆成兩組都成立的牌組（例如 3456789 放進一張 5 → 345 和 56789）
+  function autoSplit(ids){
+    const js=ids.filter(id=>isJ(T(id))),ns=ids.filter(id=>!isJ(T(id))).sort((a,b)=>T(a).n-T(b).n);
+    if(ns.length<2||!ns.every(id=>T(id).c===T(ns[0]).c)) return null;
+    for(let k=1;k<ns.length;k++) for(let m=0;m<=js.length;m++){ // 前段 k 張數字牌加上 m 張鬼牌，其餘給後段
+      const a=ns.slice(0,k).concat(js.slice(0,m)),b=ns.slice(k).concat(js.slice(m));
+      const A=analyze(a.map(T)),B=analyze(b.map(T)); if(A&&B) return [A.order.map(t=>t.id),B.order.map(t=>t.id)]; }
+    return null;
   }
   function dropTarget(x,y,d){
     if(y>=RACK_Y-6){ let best=E.rack.length,bd=1e9; for(const b of layout.rack){ if(b.id===d.id) continue; const dd=Math.abs(b.x+TW/2-x)+Math.abs(b.y+TH/2-y)*2; if(dd<bd){ bd=dd; best=b.i+(x>b.x+TW/2?1:0); } } return {kind:'rack',i:best}; }
@@ -192,6 +212,8 @@ function create(env,opts){
   }
 
   /* ---- 畫面 ---- */
+  const dp=new Map(); // 每張牌目前畫在哪裡，往目標位置滑過去
+  function slide(id,x,y){ let p=dp.get(id); if(!p){ p={x,y}; dp.set(id,p); } p.x+=(x-p.x)*.32; p.y+=(y-p.y)*.32; if(Math.abs(x-p.x)<.4) p.x=x; if(Math.abs(y-p.y)<.4) p.y=y; return p; }
   function tile(x,y,id,opt){
     const tl=T(id),o=opt||{};
     ctx.fillStyle='rgba(0,0,0,.3)'; ctx.fillRect(x+2,y+3,TW,TH);
@@ -216,19 +238,23 @@ function create(env,opts){
       if(act&&TURN_SEC&&i===me){ ctx.textAlign='right'; ctx.fillStyle=turnT<15?'#ff5d8f':'#fff'; ctx.font='11px '+PIX; ctx.fillText(Math.max(0,Math.ceil(turnT))+'',x+pw-10,18); } }
     // 牌堆
     const deckN=client?G.deckN:G.deck.length; ctx.fillStyle='#7a2a45'; ctx.fillRect(W-58,42,40,52); ctx.strokeStyle='#0b0a1c'; ctx.lineWidth=2; ctx.strokeRect(W-58,42,40,52); ctx.fillStyle='#fff'; ctx.font='900 13px '+TC; ctx.textAlign='center'; ctx.fillText(deckN,W-38,62); ctx.font='700 9px '+TC; ctx.fillText('牌堆',W-38,82);
+    ctx.fillStyle='#cfe8d8'; ctx.font='700 10px '+TC; ctx.textAlign='center'; ctx.fillText('思考時間',W-38,108);
+    button(W-66,116,56,26,TURN_SEC?TURN_SEC+'秒':'不限',!client,cycleTime);
+    if(client){ ctx.fillStyle='#cfe8d8'; ctx.font='700 13px '+TC; ctx.textAlign='center'; ctx.fillText(TURN_SEC?TURN_SEC+'秒':'不限',W-38,130); }
     // 桌面
     const table=E?E.table:G.table,startSet=E?new Set(E.start.flat()):new Set();
     let x=14,y=46; const maxX=W-72;
     table.forEach((s,si)=>{ const w=s.length*TW; if(x+w>maxX&&x>14){ x=14; y+=TH+12; }
       const ok=!!analyze(s.map(T)); ctx.strokeStyle=ok?'rgba(134,220,79,.7)':'rgba(255,93,143,.9)'; ctx.lineWidth=2; ctx.strokeRect(x-4,y-4,w+4,TH+8);
       layout.sets.push({s:si,x,y,w});
-      s.forEach((id,i)=>{ if(drag&&drag.id===id) { tile(x+i*TW,y,id,{ghost:true}); return; } tile(x+i*TW,y,id,{newT:E&&!startSet.has(id)}); layout.table.push({s:si,i,id,x:x+i*TW,y}); });
+      s.forEach((id,i)=>{ const p=slide(id,x+i*TW,y); if(drag&&drag.moved&&drag.id===id){ tile(p.x,p.y,id,{ghost:true}); return; } tile(p.x,p.y,id,{newT:E&&!startSet.has(id)}); layout.table.push({s:si,i,id,x:x+i*TW,y}); });
       x+=w+16; });
+    if(x+TW>maxX){ x=14; y+=TH+12; } const slot={x,y}; // 下一組會放的位置
     if(!table.length){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.font='700 15px '+TC; ctx.textAlign='center'; ctx.fillText(isMyTurn()?'把手牌拖到這裡組成牌組（點一下手牌也會放上來）':'桌面還是空的',W/2-30,180); }
     // 手牌
     ctx.fillStyle='rgba(11,10,28,.6)'; ctx.fillRect(0,RACK_Y-10,W,H-RACK_Y+10);
     const rack=E?E.rack:(G.racks[me]||[]),perRow=Math.floor((W-150)/TW);
-    rack.forEach((id,i)=>{ const rx=10+(i%perRow)*TW,ry=RACK_Y+Math.floor(i/perRow)*(TH+8); if(drag&&drag.id===id){ tile(rx,ry,id,{ghost:true}); return; } tile(rx,ry,id); layout.rack.push({i,id,x:rx,y:ry}); });
+    rack.forEach((id,i)=>{ const rx=10+(i%perRow)*TW,ry=RACK_Y+Math.floor(i/perRow)*(TH+8),p=slide(id,rx,ry); if(drag&&drag.moved&&drag.id===id){ tile(p.x,p.y,id,{ghost:true}); return; } tile(p.x,p.y,id); layout.rack.push({i,id,x:rx,y:ry}); });
     // 按鈕
     const bx=W-132,my=isMyTurn()&&E&&!E.sent;
     button(bx,RACK_Y-4,58,30,'完成',my,doDone,true); button(bx+64,RACK_Y-4,58,30,'摸牌',my,doDraw);
@@ -237,11 +263,16 @@ function create(env,opts){
       let info=isMyTurn()?'這回合出了 '+rest+' 張':'等 '+names[G.turn]+' 出牌…';
       if(isMyTurn()&&!G.melded[me]){ const key=s=>s.slice().sort((a,b)=>a-b).join(','),old=new Set(E.start.map(key)); const pts=E.table.filter(s=>!old.has(key(s))).reduce((a,s)=>a+setValue(s.map(T)),0); info+='　破冰分數 '+pts+' / 30'; }
       ctx.fillText(info,W-10,RACK_Y-20); }
-    if(drag&&drag.moved) tile(drag.x-TW/2,drag.y-TH/2,drag.id,{sel:true});
+    if(drag&&drag.moved){ // 標出放開後會落在哪裡
+      const gy=drag.y-drag.lift,tg=dropTarget(drag.x,gy,drag); ctx.fillStyle='#ffd23f';
+      if(tg.kind==='set'){ const g=layout.sets.find(q=>q.s===tg.s); if(g) ctx.fillRect(g.x+clamp(tg.i,0,99)*TW-3,g.y-6,4,TH+12); }
+      else if(tg.kind==='rack'){ const b=layout.rack.find(q=>q.i===tg.i)||layout.rack[layout.rack.length-1]; if(b) ctx.fillRect(b.i===tg.i?b.x-3:b.x+TW-1,b.y-4,4,TH+8); }
+      else if(isMyTurn()){ ctx.setLineDash([5,4]); ctx.strokeStyle='#ffd23f'; ctx.lineWidth=2; ctx.strokeRect(slot.x-2,slot.y-2,TW+2,TH+4); ctx.setLineDash([]); }
+      tile(drag.x-TW/2,gy-TH/2,drag.id,{sel:true}); }
     if(G.log){ ctx.textAlign='left'; ctx.font='700 11px '+TC; ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillText(G.log,14,RACK_Y-20); }
     if(msgT>0&&msg){ ctx.textAlign='center'; ctx.font='900 16px '+TC; const w=ctx.measureText(msg).width+30; ctx.fillStyle='rgba(11,10,28,.88)'; ctx.fillRect(W/2-w/2-30,RACK_Y-64,w,30); ctx.fillStyle='#ffd23f'; ctx.fillText(msg,W/2-30,RACK_Y-48); }
   }
-  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); },_dbg:{G,get E(){return E;},analyze:s=>analyze(s.map(T)),checkPlay,aiMove,T,doDone,doDraw}};
+  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); },_dbg:{autoSplit:ids=>autoSplit(ids),G,get E(){return E;},analyze:s=>analyze(s.map(T)),checkPlay,aiMove,T,doDone,doDraw}};
 }
 
 function thumb(ctx,w,h,t){
@@ -260,8 +291,8 @@ function thumb(ctx,w,h,t){
   desc:'數字牌的拉密（Rummikub）：組出同色連號或同數字不同色的牌組，先把手牌出完的人贏。可以和電腦玩，或開房間 2～4 人連線。',
   goal:'把手牌拖到桌上組成牌組：同顏色連號 3 張以上，或同數字不同顏色 3～4 張，鬼牌可以代替任何牌。第一次出牌要湊滿 30 分，之後可以拆開桌上的牌重新組合。出不了牌就按「摸牌」。',
   variants:[{id:'2',label:'對手 2 人'},{id:'1',label:'對手 1 人'},{id:'3',label:'對手 3 人'}],
-  help:[['拖曳','把牌拖到桌上、拖到別的牌組或拖回手牌'],['點一下手牌','直接放到桌上成為新的一組'],['完成','檢查桌面後結束這回合'],['摸牌','這回合不出牌，摸一張'],['復原','把這回合動過的牌放回原位']],
-  touchHelp:[['拖曳','把牌拖到桌上、拖到別的牌組或拖回手牌'],['點一下手牌','直接放到桌上成為新的一組'],['完成／摸牌','結束這回合']],
+  help:[['拖曳','把牌拖到桌上、拖到別的牌組或拖回手牌'],['點一下手牌','直接放到桌上成為新的一組'],['完成','檢查桌面後結束這回合'],['摸牌','這回合不出牌，摸一張'],['復原','把這回合動過的牌放回原位'],['思考時間','牌堆下方的按鈕，切換每回合可以移動牌的秒數（60／90／120／180 秒或不限），時間到會自動摸一張牌；連線時由房主設定']],
+  touchHelp:[['拖曳','把牌拖到桌上、拖到別的牌組或拖回手牌'],['點一下手牌','直接放到桌上成為新的一組'],['完成／摸牌','結束這回合'],['思考時間','點牌堆下方的按鈕切換每回合秒數']],
   touch:null,
   looks:[{key:'felt',label:'桌布顏色',type:'color',opts:['#1f6b4a','#1f4f7a','#6b1f3a','#3a2d57','#5a4630','#2b2b33']}],
   best:{label:'最高得分',fmt:v=>v+' 分',lower:false},
