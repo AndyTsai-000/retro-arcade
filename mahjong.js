@@ -420,7 +420,8 @@ function create(env,opts){
     let x0,y0,cols;
     if(pos===0||pos===2){ cols=np===2?20:14; x0=W/2-cols*tw/2; y0=pos===0?300:92; }
     else { cols=5; x0=pos===3?132:W-132-cols*tw; y0=150; }
-    ds.forEach((id,i)=>{ const r=Math.floor(i/cols),c=i%cols; drawTile(ctx,x0+c*tw,y0+r*(th+2),tw-1,th,id,{last:id===lastId&&i===ds.length-1}); });
+    ds.forEach((id,i)=>{ const r=Math.floor(i/cols),c=i%cols,lx=x0+c*tw,ly=y0+r*(th+2),isLast=id===lastId&&i===ds.length-1; drawTile(ctx,lx,ly,tw-1,th,id,{last:isLast});
+      if(isLast&&G.phase==='claim'){ ctx.strokeStyle='rgba(255,210,63,'+(.5+.5*Math.sin(t*8))+')'; ctx.lineWidth=3; rr(ctx,lx-3,ly-3,tw+5,th+6,5); ctx.stroke(); } });
   }
   function draw(){
     layout.hand=[]; layout.btn=[];
@@ -452,7 +453,9 @@ function create(env,opts){
     x+=6; const drawnShow=G.turn===me&&G.phase==='play'&&G.drawn>=0&&myH.includes(G.drawn);
     const list=sortIds(myH.filter(id=>!(drawnShow&&id===G.drawn))); if(drawnShow) list.push(G.drawn);
     const tw=Math.min(40,(W-x-20)/(list.length+.5));
-    list.forEach((id,i)=>{ const gx=x+i*tw+(drawnShow&&i===list.length-1?10:0),up=id===sel?12:0; drawTile(ctx,gx,436-up,tw-2,52,id,{sel:id===sel}); layout.hand.push({id,x:gx,y:436-up,w:tw-2,h:52}); });
+    const use=new Set(); if(myClaim()){ const k=kindOf(G.claim.id); for(const o of G.claim.opts[me]){ if(o.c==='pong'||o.c==='kong') use.add(k); if(o.c==='chow') o.k.forEach(x=>use.add(x)); } }
+    list.forEach((id,i)=>{ const gx=x+i*tw+(drawnShow&&i===list.length-1?10:0),up=id===sel?12:0; drawTile(ctx,gx,436-up,tw-2,52,id,{sel:id===sel}); layout.hand.push({id,x:gx,y:436-up,w:tw-2,h:52});
+      if(use.has(kindOf(id))){ const bob=Math.sin(t*6)*2; ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(gx+tw/2-1-6,424+bob); ctx.lineTo(gx+tw/2-1+6,424+bob); ctx.lineTo(gx+tw/2-1,432+bob); ctx.fill(); } });
     const ix=info(me,14,404,'left'); flowersRow(me,ix+8,394);
     // 按鈕
     let bx=W-14; const btn=(label,fn,hot)=>{ bx-=70; button(bx,388,64,34,label,fn,hot); };
@@ -463,13 +466,7 @@ function create(env,opts){
       const hint=sel<0?'點一張牌選起來，再點一次打出':''; if(hint) txt(hint,W-14,370,'#ffe2a8',12,'right');
       if(TL) countdown(hint,12);
     }
-    if(G.phase==='claim'&&G.claim&&G.claim.opts[me]&&G.claim.resp[me]==null){
-      btn('過',()=>doAct({a:'claim',r:{c:'pass'}}));
-      for(const o of G.claim.opts[me].slice().reverse()){ if(o.c==='chow') btn('吃 '+o.k.concat([kindOf(G.claim.id)]).sort((a,b)=>a-b).map(k=>NUMS[k%9]).join(''),()=>doAct({a:'claim',r:o}));
-        else btn(o.c==='hu'?'胡':o.c==='pong'?'碰':'槓',()=>doAct({a:'claim',r:{c:o.c}}),o.c==='hu'); }
-      const q='要 '+kname(kindOf(G.claim.id))+' 嗎？'; txt(q,W-14,370,'#ffe2a8',13,'right','900');
-      if(TL) countdown(q,13);
-    }
+    if(myClaim()) claimPanel();
     if(G.phase==='end'&&G.result) drawResult();
     if(msgT>0&&msg){ ctx.font='900 22px '+TC; const w=ctx.measureText(msg).width+40; ctx.fillStyle='rgba(11,10,28,.85)'; rr(ctx,W/2-w/2,150,w,40,10); ctx.fill(); txt(msg,W/2,171,'#ffd23f',22,'center','900'); }
   }
@@ -482,6 +479,27 @@ function create(env,opts){
     const sum=D.vals.join('＋')+'＝'+D.total+' 點';
     if(D.kind==='dealer') txt(sum+'，數到 '+names[D.target]+' 起莊',W/2,262,'#ffe2a8',13,'center','900');
     else { txt(sum+'，從 '+names[D.target]+' 的牌牆第 '+D.total+' 墩開門',W/2,262,'#ffe2a8',13,'center','900'); if(G.phase==='deal') txt('發牌中…',W/2,282,'#cfe8d8',12,'center'); }
+  }
+  const myClaim=()=>G.phase==='claim'&&G.claim&&G.claim.opts[me]&&G.claim.resp[me]==null;
+  // 每個選項畫出組成後的整組牌，被吃碰的那張用黃框標出來
+  function claimPanel(){
+    const C=G.claim,opts=C.opts[me],k=kindOf(C.id),cards=[];
+    for(const o of opts) if(o.c==='hu') cards.push({label:'胡',tiles:[C.id],hi:0,r:{c:'hu'},hot:1});
+    for(const o of opts) if(o.c==='kong') cards.push({label:'槓',tiles:[k*4,k*4+1,k*4+2,C.id],hi:3,r:{c:'kong'}});
+    for(const o of opts) if(o.c==='pong') cards.push({label:'碰',tiles:[k*4,k*4+1,C.id],hi:2,r:{c:'pong'}});
+    for(const o of opts) if(o.c==='chow'){ const ks=o.k.concat([k]).sort((a,b)=>a-b); cards.push({label:'吃',tiles:ks.map(x=>x===k?C.id:x*4),hi:ks.indexOf(k),r:o}); }
+    cards.push({label:'過',tiles:[],r:{c:'pass'}});
+    const tw=27,th=37,cw=c=>Math.max(60,c.tiles.length*(tw+1)+18),inner=cards.reduce((a,c)=>a+cw(c)+8,-8),pw=Math.max(inner,300)+24,px=W/2-pw/2,py=292,ph=108;
+    ctx.fillStyle='rgba(8,6,20,.9)'; rr(ctx,px,py,pw,ph,12); ctx.fill(); ctx.strokeStyle='rgba(255,210,63,.85)'; ctx.lineWidth=2; ctx.stroke();
+    const head=names[C.from]+' 打出'; txt(head,px+14,py+16,'#fff',14,'left','900'); ctx.font='900 14px '+TC; const hx=px+14+ctx.measureText(head).width+8;
+    drawTile(ctx,hx,py+4,19,25,C.id,{sel:true}); txt('要吃、碰、槓或胡嗎？',hx+26,py+16,'#ffe2a8',13,'left','900');
+    if(TL){ const left=Math.max(0,Math.ceil(TL-dispT)); txt('⏱ '+left+' 秒',px+pw-14,py+16,left<=5?'#ff6b6b':'#fff',left<=5?16:14,'right','900'); }
+    let x=W/2-inner/2; const y=py+32;
+    for(const c of cards){ const w=cw(c),hot=c.hot;
+      ctx.fillStyle=hot?'#7a1f2a':c.label==='過'?'#2b2759':'#24406a'; rr(ctx,x,y,w,68,9); ctx.fill(); ctx.strokeStyle=hot?'#ffd23f':'rgba(255,255,255,.35)'; ctx.lineWidth=hot?2:1.2; ctx.stroke();
+      if(c.tiles.length){ const tx=x+(w-c.tiles.length*(tw+1))/2; c.tiles.forEach((id,i)=>{ const gx=tx+i*(tw+1); if(i===c.hi){ ctx.fillStyle='rgba(255,210,63,'+(.45+.25*Math.sin(t*6))+')'; rr(ctx,gx-3,y+2,tw+6,th+9,6); ctx.fill(); } drawTile(ctx,gx,y+5,tw,th,id,{sel:i===c.hi}); }); txt(c.label,x+w/2,y+57,hot?'#ffd23f':'#fff',15,'center','900'); }
+      else txt(c.label,x+w/2,y+34,'#cfe8d8',18,'center','900');
+      layout.btn.push({x,y,w,h:68,fn:()=>doAct({a:'claim',r:c.r})}); x+=w+8; }
   }
   function countdown(hint,size){ ctx.font='900 '+size+'px '+TC; const hw=hint?ctx.measureText(hint).width+14:0,left=Math.max(0,Math.ceil(TL-dispT)); txt('⏱ '+left+' 秒',W-14-hw,370,left<=5?'#ff6b6b':'#fff',left<=5?17:15,'right','900'); }
   function drawResult(){
