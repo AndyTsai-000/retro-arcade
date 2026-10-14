@@ -194,7 +194,7 @@ body.touch #pad{display:flex}
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=30; // 每次改版加一
+window.ARCADE_V=31; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -403,10 +403,10 @@ function startCard(){
 let stagePrev=null,stageWait=false;
 function closeStage(){ if(stagePrev){ try{stagePrev.v.destroy();}catch(e){} stagePrev=null; } }
 const stageHtml=v3=>v3?'<div class="spRow"><div id="spBox" class="lk sq"></div><canvas id="spCv" width="720" height="540" class="lk sq"></canvas></div><p class="hint">左邊是實際賽道的 3D 畫面，鏡頭會沿著賽道飛一圈</p>'
-  :'<canvas id="spCv" width="720" height="330" class="lk sp"></canvas>';
+  :(()=>{ const z=cur.stageSize||[360,165]; return '<canvas id="spCv" width="'+z[0]*2+'" height="'+z[1]*2+'" class="lk" style="aspect-ratio:'+z[0]+'/'+z[1]+';max-width:'+(z[1]>200?'340px':'none')+'"></canvas>'; })();
 function mountStage(i,v3){
   const cv=$('#spCv'); if(!cv) return; const c=cv.getContext('2d'); c.setTransform(2,0,0,2,0,0);
-  try{ if(v3) cur.stagePreview(c,360,270,i,'route'); else cur.stagePreview(c,360,165,i); }catch(e){}
+  try{ if(v3) cur.stagePreview(c,360,270,i,'route'); else { const z=cur.stageSize||[360,165]; cur.stagePreview(c,z[0],z[1],i); } }catch(e){}
   if(v3){ let v=null; try{ v=cur.stageViewer($('#spBox'),i); }catch(e){} if(v) stagePrev={v}; else $('#spBox').textContent='這台裝置無法顯示 3D 畫面'; }
 }
 async function enter(opts){

@@ -10,13 +10,23 @@ const TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
 const COLORS=['#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d'];
 const SPAWN=[[0,0],[COLS-1,ROWS-1],[COLS-1,0],[0,ROWS-1],[7,0],[7,ROWS-1]];
 const STAGES=[
-  {name:'水球村',solid:(x,y)=>x%2===1&&y%2===1,box:.78,drop:.38,think:[.22,.42],bombP:.5,power:1,maxB:1,
+  {name:'水球村',info:'棋盤式的房子，箱子多，最標準的地圖。',solid:(x,y)=>x%2===1&&y%2===1,box:.78,drop:.38,
    g:['#8fd16a','#84c760'],s:['#c9573f','#f0e2c0'],b:['#e3a24a','#b9772a']},
-  {name:'沙漠綠洲',solid:(x,y)=>x%3===1&&y%3===1,box:.84,drop:.4,think:[.14,.26],bombP:.75,power:1,maxB:1,
+  {name:'沙漠綠洲',info:'柱子少、箱子最多，前期要先炸出路。',solid:(x,y)=>x%3===1&&y%3===1,box:.84,drop:.4,
    g:['#e8cf8e','#dfc481'],s:['#3f9a56','#2c7a40'],b:['#c98a55','#9b6234']},
-  {name:'冰原要塞',solid:(x,y)=>x%2===1&&y%2===1&&x!==7&&y!==6,box:.62,drop:.45,think:[.08,.16],bombP:.95,power:2,maxB:2,
-   g:['#dff1fb','#cfe6f4'],s:['#6fa9d6','#e9f7ff'],b:['#9fd0ea','#5f9cc0']}
+  {name:'冰原要塞',info:'中間有十字大道，箱子少，很快就會碰面。',solid:(x,y)=>x%2===1&&y%2===1&&x!==7&&y!==6,box:.62,drop:.45,
+   g:['#dff1fb','#cfe6f4'],s:['#6fa9d6','#e9f7ff'],b:['#9fd0ea','#5f9cc0']},
+  {name:'森林迷宮',info:'樹木交錯排列，走道彎彎曲曲。',solid:(x,y)=>(x%4===1&&y%2===1)||(x%4===3&&y%4===2),box:.74,drop:.4,
+   g:['#6fae5a','#66a352'],s:['#2f7d32','#7a5a36'],b:['#c9a45a','#8a6a3a']},
+  {name:'海盜船',info:'甲板上有兩排桅杆圍出內外兩圈。',solid:(x,y)=>((x===3||x===11)&&y%2===1&&y!==5&&y!==7)||((y===3||y===9)&&x%2===1&&x!==7),box:.7,drop:.42,
+   g:['#c9a06a','#bf955f'],s:['#3a3a4a','#8a8fa8'],b:['#b9783a','#7a4a1f']},
+  {name:'糖果屋',info:'柱子只有一半，視野開闊，水球容易連鎖。',solid:(x,y)=>x%2===1&&y%2===1&&(x+y)%4===2,box:.72,drop:.5,
+   g:['#ffe3ef','#ffd3e6'],s:['#ff7eb6','#fff3c8'],b:['#a8e0ff','#5fb8e8']},
+  {name:'火山口',info:'柱子最密，通道窄，很容易被自己的水球困住。',solid:(x,y)=>(x%2===1&&y%2===1)||(x%4===2&&y%4===2),box:.66,drop:.42,
+   g:['#5a4640','#52403a'],s:['#3a2a26','#ff7a3a'],b:['#8a6a5a','#5a3f33']}
 ];
+// 電腦強度：想多久出手一次、看到機會放水球的機率、一開始的水球威力與數量
+const DIFF={easy:{think:[.3,.52],bombP:.4,power:1,maxB:1},normal:{think:[.15,.28],bombP:.75,power:1,maxB:1},hard:{think:[.07,.14],bombP:.97,power:2,maxB:2}};
 const r2=v=>Math.round(v*100)/100;
 
 /* ---------- 畫圖 ---------- */
@@ -33,6 +43,10 @@ function drawChar(ctx,cx,cy,color,dir,moving,t,sc,style){
   ctx.fillStyle='#ffe0b8'; ctx.beginPath(); ctx.arc(cx,cy-7*s,11*s,0,7); ctx.fill();
   ctx.fillStyle=color;
   if(st==='cap'){ ctx.beginPath(); ctx.arc(cx,cy-9*s,11.5*s,Math.PI,0); ctx.fill(); ctx.fillRect(cx-12*s,cy-10*s,24*s,3*s); }
+  else if(st==='chef'){ ctx.fillStyle='#fff'; ctx.strokeStyle='#14122b'; ctx.lineWidth=1; ctx.fillRect(cx-8*s,cy-18*s,16*s,6*s); ctx.beginPath(); ctx.arc(cx-5*s,cy-22*s,6*s,0,7); ctx.arc(cx+5*s,cy-22*s,6*s,0,7); ctx.arc(cx,cy-25*s,6.5*s,0,7); ctx.fill(); ctx.fillStyle=color; ctx.fillRect(cx-8*s,cy-14*s,16*s,2*s); }
+  else if(st==='pirate'){ ctx.fillStyle='#22222c'; ctx.beginPath(); ctx.moveTo(cx-14*s,cy-13*s); ctx.quadraticCurveTo(cx,cy-30*s,cx+14*s,cy-13*s); ctx.quadraticCurveTo(cx,cy-17*s,cx-14*s,cy-13*s); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillRect(cx-2*s,cy-21*s,4*s,4*s); ctx.fillStyle='#22222c'; ctx.fillRect(cx-11*s,cy-9*s,22*s,1.5*s); if(dir!==0) ctx.fillRect(cx+(dir===2?-9:1)*s,cy-9*s,6*s,6*s); }
+  else if(st==='ninja'){ ctx.fillStyle='#2b2f55'; ctx.beginPath(); ctx.arc(cx,cy-7*s,11.6*s,Math.PI*.98,Math.PI*2.02); ctx.fill(); ctx.fillRect(cx-11.6*s,cy-2*s,23.2*s,6.5*s); ctx.fillStyle=color; ctx.fillRect(cx-12*s,cy-13*s,24*s,3*s); ctx.fillRect(cx+(dir===2?9:-14)*s,cy-13*s,5*s,7*s); }
+  else if(st==='bow'){ ctx.beginPath(); ctx.arc(cx,cy-10*s,10.5*s,Math.PI*1.08,Math.PI*1.92); ctx.fill(); ctx.fillStyle='#ff5d8f'; ctx.beginPath(); ctx.moveTo(cx,cy-18*s); ctx.lineTo(cx-10*s,cy-25*s); ctx.lineTo(cx-10*s,cy-12*s); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(cx,cy-18*s); ctx.lineTo(cx+10*s,cy-25*s); ctx.lineTo(cx+10*s,cy-12*s); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.arc(cx,cy-18*s,3*s,0,7); ctx.fill(); }
   else if(st==='crown'){ ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(cx-10*s,cy-13*s); ctx.lineTo(cx-10*s,cy-23*s); ctx.lineTo(cx-5*s,cy-17*s); ctx.lineTo(cx,cy-25*s); ctx.lineTo(cx+5*s,cy-17*s); ctx.lineTo(cx+10*s,cy-23*s); ctx.lineTo(cx+10*s,cy-13*s); ctx.fill(); ctx.fillStyle=color; ctx.fillRect(cx-10*s,cy-15*s,20*s,3*s); }
   else { ctx.beginPath(); ctx.arc(cx,cy-10*s,10.5*s,Math.PI*1.08,Math.PI*1.92); ctx.fill(); }
   ctx.fillStyle='#14122b';
@@ -73,7 +87,7 @@ function drawTile(ctx,st,v,x,y,gx,gy){
 }
 
 function create(env,opts){
-  const st=STAGES[opts.stage||0],net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p',single=!net&&!local2,me=net?net.me:0,humans=net?net.count:local2?2:1;
+  const st=STAGES[opts.stage||0],D=DIFF[opts.variant]||DIFF.normal,net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p',single=!net&&!local2,me=net?net.me:0,humans=net?net.count:local2?2:1;
   const {ctx}=env.canvas2d(W,H);
   const grid=new Uint8Array(N),flameT=new Float32Array(N),bombAt=new Uint8Array(N),flameC=new Uint8Array(N);
   let items=new Map(),bombs=[],pending=[],time=180,t=0,overT=0,ended=false,evq=[],sendT=0,lastSent='';
@@ -86,12 +100,12 @@ function create(env,opts){
     if(st.solid(x,y)) grid[i]=1; else if(!keep.has(i)&&Math.random()<st.box) grid[i]=2; }
   const total=Math.max(4,humans); // 不足 4 人由電腦補滿，連線最多 6 人
   const players=SPAWN.slice(0,total).map(([x,y],i)=>({id:i,x,y,rx:x,ry:y,dir:1,moving:false,state:'alive',trapT:0,inv:0,
-    maxB:i<humans?1:st.maxB,power:i<humans?1:st.power,spd:0,needles:0,human:i<humans,
+    maxB:i<humans?1:D.maxB,power:i<humans?1:D.power,spd:0,needles:0,human:i<humans,
     name:local2&&i<2?(i+1)+'P':i===me?'你':i<humans?((net&&net.names&&net.names[i])||'玩家'+(i+1)).slice(0,5):'電腦',
     ai:i<humans?null:{think:Math.random()*.5,path:[],flee:false,avoid:new Map()}}));
   for(let i=0;i<total;i++) inputs.push({dir:-1,bomb:false});
-  const CH=['cap','cat','bunny','crown'],SHP=['ball','star','melon'];
-  players.forEach((p,i)=>{ p.look=(p.human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{char:CH[(i+1)%4],bomb:SHP[i%3],water:WATER[i%WATER.length]};
+  const CH=['cap','cat','bunny','crown','chef','pirate','ninja','bow'],SHP=['ball','star','melon'];
+  players.forEach((p,i)=>{ p.look=(p.human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{char:CH[(i*3+1)%CH.length],bomb:SHP[i%3],water:WATER[i%WATER.length]};
     p.wc=Math.max(0,WATER.indexOf(p.look.water)); });
 
   const cellOf=p=>Math.round(p.y)*COLS+Math.round(p.x);
@@ -175,7 +189,7 @@ function create(env,opts){
       if(value>0){
         const d2=dangerMap({x:cx,y:cy,t:FUSE,power:p.power}),r2=bfs(p,d2,false),spd=speedOf(p); let best=-1;
         for(let i=0;i<N;i++) if(r2.dist[i]>0&&d2[i]===Infinity&&r2.dist[i]/spd<FUSE-.9&&(best<0||r2.dist[i]<r2.dist[best])) best=i;
-        if(best>=0){ if(Math.random()<st.bombP){ placeBomb(p); a.path=pathTo(r2.prev,best); a.flee=true; } return; }
+        if(best>=0){ if(Math.random()<D.bombP){ placeBomb(p); a.path=pathTo(r2.prev,best); a.flee=true; } return; }
         a.avoid.set(cur,t+4);
       }
     }
@@ -257,7 +271,7 @@ function create(env,opts){
       if(p.inv>0) p.inv-=dt;
       let dir=-1,bomb=false;
       if(p.ai){ const a=p.ai; a.think-=dt;
-        if(p.state==='alive'){ if(a.think<=0||(!a.path.length&&a.think<st.think[0]*.5)){ think(p); a.think=a.flee?.08:st.think[0]+Math.random()*(st.think[1]-st.think[0]); } dir=aiDir(p); }
+        if(p.state==='alive'){ if(a.think<=0||(!a.path.length&&a.think<D.think[0]*.5)){ think(p); a.think=a.flee?(opts.variant==='easy'?.16:.08):D.think[0]+Math.random()*(D.think[1]-D.think[0]); } dir=aiDir(p); }
         else if(p.needles>0&&p.trapT<TRAP-1) bomb=true;
       } else { const inp=inputs[p.id]; dir=inp.dir; bomb=inp.bomb; inp.bomb=false; }
       if(p.state==='trapped'){
@@ -328,6 +342,22 @@ function preview(ctx,w,h,L,t){
     ctx.fillStyle='rgba(255,255,255,'+.7*k+')'; ctx.fillRect(w*.72-58,h*.52-10,116,20); ctx.fillRect(w*.72-10,h*.52-58,20,116); }
 }
 
+// 用這個場景的地形和配色畫一張實際的遊戲畫面（箱子位置固定，方便每次看到一樣的圖）
+function stagePreview(ctx,w,h,si){
+  const st=STAGES[si],k=w/W; let seed=si*7919+13; const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
+  const keep=new Set(); for(const [sx,sy] of SPAWN.slice(0,4)) for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]) keep.add((sy+dy)*COLS+sx+dx);
+  ctx.save(); ctx.scale(k,k); ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,W,ROWS*T);
+  const open=new Set([3*COLS+2,3*COLS+3,2*COLS+2,9*COLS+12,9*COLS+11,10*COLS+12,6*COLS+7,6*COLS+6,6*COLS+8,5*COLS+6]);
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ const i=y*COLS+x,v=st.solid(x,y)?1:(!keep.has(i)&&!open.has(i)&&rnd()<st.box?2:0); drawTile(ctx,st,v,x*T,y*T,x,y); }
+  const flame=(x,y,c)=>{ if(st.solid(x,y)) return; ctx.fillStyle='rgba('+rgb(c).join(',')+',.9)'; ctx.fillRect(x*T+3,y*T+3,T-6,T-6); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(x*T+11,y*T+11,T-22,T-22); };
+  for(const [x,y] of [[6,6],[7,6],[8,6],[6,5]]) flame(x,y,WATER[1]);
+  drawBalloon(ctx,2*T+20,3*T+20,0,15,'ball',WATER[0]); drawBalloon(ctx,12*T+20,9*T+20,0,15,'star',WATER[3]);
+  drawItem(ctx,3*T,3*T,'p',0); drawItem(ctx,11*T,9*T,'s',0);
+  [[0,0,'cap',3],[14,12,'ninja',2],[14,0,'pirate',1],[0,12,'chef',0],[2,2,'bow',1]].forEach((a,n)=>drawChar(ctx,a[0]*T+20,a[1]*T+16,COLORS[n],a[3],false,0,1,a[2]));
+  ctx.restore();
+}
+const stageInfo=si=>STAGES[si].info;
+
 function thumb(ctx,w,h,t){
   const st=STAGES[0],ox=0,oy=-10;
   ctx.save(); ctx.scale(w/480,w/480);
@@ -345,17 +375,18 @@ function thumb(ctx,w,h,t){
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={
   name:'爆爆王',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,
-  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。共 3 關，可單人、兩人同一台，或開房間連線對戰。',
+  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。7 個場景、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
   goal:'放水球把對手困進水泡，再走過去碰破。自己被困住時，有針可以脫困；沒有針就會出局。',
-  stages:STAGES.map(s=>s.name),
+  stages:STAGES.map(s=>s.name),stageSize:[360,312],
+  variants:[{id:'normal',label:'電腦：中等'},{id:'easy',label:'電腦：簡單'},{id:'hard',label:'電腦：困難'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動'],['Space','放水球，被困時用針'],['W A S D Space','雙人 1P'],['↑ ↓ ← → Enter','雙人 2P']],
   touchHelp:[['方向盤','移動'],['水球','放水球，被困時用針']],
   touch:{left:'dpad',right:[{l:'水球',c:'Space',act:true}]},
   best:{label:'已過關',fmt:v=>v+' / '+STAGES.length,lower:false},
-  looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'}]},
+  looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'},{id:'chef',label:'廚師'},{id:'pirate',label:'海盜'},{id:'ninja',label:'忍者'},{id:'bow',label:'蝴蝶結'}]},
     {key:'bomb',label:'炸彈造型',opts:[{id:'ball',label:'水球'},{id:'star',label:'星星'},{id:'melon',label:'西瓜紋'}]},
     {key:'water',label:'水球顏色',type:'color',opts:['#57a8ff','#ff7eb6','#5fd068','#ff9d3d','#b98cff','#3ddbd9']}],
-  preview,thumb,create
+  stagePreview,stageInfo,preview,thumb,create
 };
 })();
