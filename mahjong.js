@@ -165,12 +165,12 @@ function tableArt(felt){
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
   const humans=net?net.count:1,np=net?Math.max(2,Math.min(4,net.count+(net.bots||0))):(opts.variant==='2'?2:4);
-  const TL=(o=>o==null?20:+o)((opts.options||{}).time),AIL=(opts.options||{}).ai||'normal',LEN=(opts.options||{}).len||'c',TARGET=LEN==='q'?1:LEN==='j'?4*np:np,LENNAME={q:'1/4 圈',c:'1 圈',j:'1 將'}[LEN]||'1 圈',L=opts.look||{felt:'#1d5e45'};
+  const SPD={slow:2.6,normal:1.6,fast:.8}[(opts.options||{}).speed]||1.6,TL=(o=>o==null?20:+o)((opts.options||{}).time),AIL=(opts.options||{}).ai||'normal',LEN=(opts.options||{}).len||'c',TARGET=LEN==='q'?1:LEN==='j'?4*np:np,LENNAME={q:'1/4 圈',c:'1 圈',j:'1 將'}[LEN]||'1 圈',L=opts.look||{felt:'#1d5e45'};
   const {ctx,canvas}=env.canvas2d(W,H);
   const names=[]; for(let i=0;i<np;i++) names.push(i<humans?(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你')):'電腦 '+(i-humans+1));
   const isAI=p=>p>=humans;
   const sfx=n=>env.sfx(n);
-  let dispKey='',dispT=0,msg='',msgT=0,t=0,aiT=0,sel=-1,sendT=0,ended=false,claimT=0,playT=0,lastKey='';
+  let aiNeed=1.6,waitT=0,waitP=0,dispKey='',dispT=0,msg='',msgT=0,t=0,aiT=0,sel=-1,sendT=0,ended=false,claimT=0,playT=0,lastKey='';
   const say=(s,sec)=>{ msg=s; msgT=sec||1.8; };
   const G={wall:[],wallN:0,hands:[],melds:[],flowers:[],discards:[],turn:0,phase:'play',drawn:-1,last:null,claim:null,dealer:0,lian:0,moves:0,handNo:0,scores:new Array(np).fill(0),result:null,log:'',afterKong:false,ev:[]};
   const seatOf=p=>{ const r=(p-G.dealer+np)%np; return np===2?[0,2][r]:r; };
@@ -203,7 +203,7 @@ function create(env,opts){
     let id=back?G.wall.pop():G.wall.shift(),fl=0;
     while(isFlower(id)){ G.flowers[p].push(id); fl++; if(G.wall.length<=RESERVE){ endDraw(); return; } id=G.wall.pop(); }
     if(fl) { G.log=names[p]+' 補花 '+fl+' 張'; sfx('item'); }
-    G.hands[p].push(id); G.drawn=id; G.turn=p; G.phase='play'; G.claim=null; G.afterKong=!!back; playT=0; aiT=0;
+    G.hands[p].push(id); G.drawn=id; G.turn=p; G.phase='play'; G.claim=null; G.afterKong=!!back; playT=0; aiT=0; aiNeed=SPD*(.7+Math.random()*.6);
   }
   function discard(p,id){
     const h=G.hands[p],i=h.indexOf(id); if(i<0||G.phase!=='play'||G.turn!==p) return;
@@ -214,7 +214,7 @@ function create(env,opts){
       if(G.wall.length>RESERVE){ if(c>=3) o.push({c:'kong'}); if(c>=2) o.push({c:'pong'});
         if(q===next(p)&&k<27){ const s=k%9,have=x=>hq.some(t=>kindOf(t)===x); for(const pr of [[-2,-1],[-1,1],[1,2]]){ const a=k+pr[0],b=k+pr[1]; if(s+pr[0]>=0&&s+pr[1]<=8&&have(a)&&have(b)) o.push({c:'chow',k:[a,b]}); } } }
       if(o.length) opts[q]=o; }
-    if(!Object.keys(opts).length){ drawFor(next(p),false); return; }
+    if(!Object.keys(opts).length){ pauseThen(next(p)); return; }
     G.phase='claim'; G.claim={from:p,id,opts,resp:{}}; claimT=0;
     for(const q in opts) if(isAI(+q)) G.claim.resp[q]=aiClaim(+q,opts[q],k);
     tryResolve();
@@ -229,12 +229,13 @@ function create(env,opts){
     const k=kindOf(C.id),take=()=>{ const d=G.discards[C.from]; d.splice(d.lastIndexOf(C.id),1); };
     const pull=(p,kind,n)=>{ const out=[]; for(let i=0;i<n;i++){ const h=G.hands[p],j=h.findIndex(t=>kindOf(t)===kind); out.push(h.splice(j,1)[0]); } return out; };
     if(q!=null){ const kong=C.resp[q].c==='kong',ids=pull(q,k,kong?3:2).concat([C.id]); take(); G.melds[q].push({t:kong?'kong':'pong',ids,k,from:C.from}); G.log=names[q]+(kong?' 槓！':' 碰！'); say(names[q]+(kong?'　槓！':'　碰！'),1.2); sfx('boom');
-      if(kong) drawFor(q,true); else { G.turn=q; G.phase='play'; G.drawn=-1; G.claim=null; playT=0; aiT=0; } return; }
+      if(kong) drawFor(q,true); else { G.turn=q; G.phase='play'; G.drawn=-1; G.claim=null; playT=0; aiT=0; aiNeed=SPD*(.7+Math.random()*.6); } return; }
     q=pick('chow');
     if(q!=null){ const ks=C.resp[q].k,ids=[pull(q,ks[0],1)[0],pull(q,ks[1],1)[0],C.id]; take(); G.melds[q].push({t:'chow',ids:sortIds(ids),k:Math.min(k,ks[0],ks[1]),from:C.from}); G.log=names[q]+' 吃！'; say(names[q]+'　吃！',1.2); sfx('item');
-      G.turn=q; G.phase='play'; G.drawn=-1; G.claim=null; playT=0; aiT=0; return; }
-    drawFor(next(C.from),false);
+      G.turn=q; G.phase='play'; G.drawn=-1; G.claim=null; playT=0; aiT=0; aiNeed=SPD*(.7+Math.random()*.6); return; }
+    pauseThen(next(C.from));
   }
+  function pauseThen(p){ G.phase='wait'; G.claim=null; waitP=p; waitT=0; }
   function selfKong(p,k){
     if(G.phase!=='play'||G.turn!==p||G.wall.length<=RESERVE) return;
     const h=G.hands[p],c=cnt(h)[k];
@@ -390,8 +391,9 @@ function create(env,opts){
     if(client||G.phase==='over') return;
     if(G.phase==='dice'){ diceT+=dt; if(diceT>2.8){ if(G.dice.kind==='dealer'){ G.dealer=G.dice.target; rollBreak(); } else { G.phase='deal'; dealI=0; dealT=0; } broadcast(); } return; }
     if(G.phase==='deal'){ dealT+=dt; while(dealT>.12&&G.phase==='deal'){ dealT-=.12; dealStep(); } broadcast(); return; }
+    if(G.phase==='wait'){ waitT+=dt; if(waitT>Math.min(.6,SPD*.35)){ drawFor(waitP,false); broadcast(); } return; }
     if(G.phase==='play'){ playT+=dt;
-      if(isAI(G.turn)){ aiT+=dt; if(aiT>.75){ aiT=0; aiPlay(G.turn); broadcast(); } }
+      if(isAI(G.turn)){ aiT+=dt; if(aiT>aiNeed){ aiT=0; aiPlay(G.turn); broadcast(); } }
       else if(TL&&playT>TL){ const h=G.hands[G.turn]; if(G.turn===me) say('時間到，自動打出',1.4); discard(G.turn,G.drawn>=0&&h.includes(G.drawn)?G.drawn:h[h.length-1]); sel=-1; broadcast(); } }
     else if(G.phase==='claim'){ claimT+=dt; if(TL&&claimT>TL){ for(const q in G.claim.opts) if(G.claim.resp[q]===undefined) G.claim.resp[q]={c:'pass'}; tryResolve(); broadcast(); } }
     else if(G.phase==='end'&&net&&!humansIn()) { /* 只有電腦時不會發生 */ }
@@ -548,7 +550,7 @@ function preview(ctx,w,h,L,t){
   desc:'台灣十六張麻將：吃、碰、槓、補花、自摸、放槍、算台。可選四人麻將或雙人麻將，也可開房間 2～4 人連線，房主可以加電腦。',
   goal:'每人 16 張，湊成 5 組（順子或刻子）加 1 對就胡牌。輪到你時先摸一張，再點兩下打出一張；別人打出的牌可以碰、槓、胡，上家打的還可以吃。牌牆剩 16 張時流局，莊家胡牌或流局連莊。',
   variants:[{id:'4',label:'四人麻將'},{id:'2',label:'雙人麻將'}],
-  options:[{key:'time',label:'打牌秒數',def:'20',opts:[{id:'10',label:'10 秒'},{id:'15',label:'15 秒'},{id:'20',label:'20 秒'},{id:'30',label:'30 秒'},{id:'0',label:'不限'}]},{key:'ai',label:'電腦強度',def:'normal',opts:[{id:'easy',label:'簡單'},{id:'normal',label:'中等'},{id:'hard',label:'困難'}]},{key:'len',label:'打多久',def:'c',opts:[{id:'q',label:'1/4 圈'},{id:'c',label:'1 圈'},{id:'j',label:'1 將'}]}],
+  options:[{key:'speed',label:'電腦速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]},{key:'time',label:'打牌秒數',def:'20',opts:[{id:'10',label:'10 秒'},{id:'15',label:'15 秒'},{id:'20',label:'20 秒'},{id:'30',label:'30 秒'},{id:'0',label:'不限'}]},{key:'ai',label:'電腦強度',def:'normal',opts:[{id:'easy',label:'簡單'},{id:'normal',label:'中等'},{id:'hard',label:'困難'}]},{key:'len',label:'打多久',def:'c',opts:[{id:'q',label:'1/4 圈'},{id:'c',label:'1 圈'},{id:'j',label:'1 將'}]}],
   help:[['點牌','選起來（往上浮），再點一次打出'],['打出','打出選起來的牌'],['吃 碰 槓 胡','別人打牌時跳出來的按鈕，不要就按「過」'],['自摸／槓','輪到自己時出現']],
   touchHelp:[['點牌','選起來，再點一次打出'],['吃 碰 槓 胡','別人打牌時出現的按鈕，不要就按「過」'],['自摸／槓','輪到自己時出現']],
   touch:null,
