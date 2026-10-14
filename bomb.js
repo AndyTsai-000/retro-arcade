@@ -238,13 +238,13 @@ function create(env,opts){
   function apply(m){
     for(let i=0;i<N;i++){ grid[i]=m.g.charCodeAt(i)-48; flameT[i]=0; bombAt[i]=0; }
     for(let k=0;k<m.f.length;k+=3){ flameT[m.f[k]]=m.f[k+1]; flameC[m.f[k]]=m.f[k+2]; }
-    items=new Map(m.i); bombs=m.b.map(b=>({x:b[0],y:b[1],t:b[2],owner:b[3]})); time=m.tm;
-    m.p.forEach((a,i)=>{ const p=players[i]; p.x=a[0]; p.y=a[1]; p.dir=a[2]; p.state=a[3]===0?'alive':a[3]===1?'trapped':'dead'; p.trapT=a[4]; p.maxB=a[5]; p.power=a[6]; p.spd=a[7]; p.needles=a[8]; p.moving=!!a[9]; });
+    items=new Map(m.i); bombs=m.b.map(b=>({x:b[0],y:b[1],t:b[2],owner:b[3]})); time=m.tm; for(const b of bombs) bombAt[b.y*COLS+b.x]=1;
+    m.p.forEach((a,i)=>{ const p=players[i],keep=i===me&&a[3]===0&&p.state==='alive'&&Math.abs(p.x-a[0])+Math.abs(p.y-a[1])<1.6; if(!keep){ p.x=a[0]; p.y=a[1]; p.dir=a[2]; } p.state=a[3]===0?'alive':a[3]===1?'trapped':'dead'; p.trapT=a[4]; p.maxB=a[5]; p.power=a[6]; p.spd=a[7]; p.needles=a[8]; p.moving=!!a[9]; });
     for(const n of m.e) env.sfx(n);
   }
   if(net){
     if(client) net.onmsg=m=>{ if(m.s) apply(m); else if(m.end!==undefined) conclude(m.end); };
-    else { net.onmsg=(m,from)=>{ const inp=inputs[from]; if(!inp) return; if(m.d!==undefined) inp.dir=m.d; if(m.b) inp.bomb=true; };
+    else { net.onmsg=(m,from)=>{ const inp=inputs[from]; if(!inp) return; if(m.d!==undefined) inp.dir=m.d; if(m.b) inp.bomb=true; const p=players[from]; if(m.x!=null&&p&&p.state==='alive'&&Math.abs(p.x-m.x)+Math.abs(p.y-m.y)<2.5){ p.x=m.x; p.y=m.y; } };
       net.onleave=i=>{ const p=players[i]; if(p&&p.state!=='dead'){ p.state='dead'; sfx('pop'); } }; }
   }
 
@@ -252,8 +252,9 @@ function create(env,opts){
     t+=dt;
     const myDir=local2?dirFrom([1],pressT[0]):dirFrom([0,1],pressT[0]),myBomb=local2?env.hit('Space'):env.hit('Space')||env.hit('Enter');
     if(client){
-      const key=myDir+(myBomb?'b':''); if(key!==lastSent||myBomb){ net.send(myBomb?{d:myDir,b:1}:{d:myDir}); lastSent=''+myDir; }
-      for(const p of players){ const f=Math.min(1,dt*20); if(Math.abs(p.x-p.rx)+Math.abs(p.y-p.ry)>2){ p.rx=p.x; p.ry=p.y; } else { p.rx+=(p.x-p.rx)*f; p.ry+=(p.y-p.ry)*f; } if(p.trapT>0) p.trapT-=dt; }
+      const P=players[me]; if(P.state==='alive'){ P.moving=myDir>=0; if(myDir>=0){ P.dir=myDir; step(P,myDir,speedOf(P)*dt); } P.rx=P.x; P.ry=P.y; }
+      sendT-=dt; const key=myDir+(myBomb?'b':''); if(key!==lastSent||myBomb||sendT<=0){ sendT=.05; const o={d:myDir,x:r2(P.x),y:r2(P.y)}; if(myBomb) o.b=1; net.send(o); lastSent=key; }
+      for(const p of players){ if(p===P&&P.state==='alive') continue; const f=Math.min(1,dt*20); if(Math.abs(p.x-p.rx)+Math.abs(p.y-p.ry)>2){ p.rx=p.x; p.ry=p.y; } else { p.rx+=(p.x-p.rx)*f; p.ry+=(p.y-p.ry)*f; } if(p.trapT>0) p.trapT-=dt; }
       for(let i=0;i<N;i++) if(flameT[i]>0) flameT[i]-=dt;
       for(const b of bombs) b.t-=dt;
       return;

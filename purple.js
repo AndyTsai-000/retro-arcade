@@ -314,21 +314,34 @@ function create(env,opts){
   }
   function snapshot(){
     const m={s:1,c:Math.round(cam),w:wave,g:goT>0?1:0,lk:lock?1:0,
-      e:E.filter(e=>!e.gone).map(e=>{ const p=poseOf(e); return [e.id,e.hero?0:['kid','fast','big','ball','boss'].indexOf(e.kind)+1,Math.round(e.x),Math.round(e.y),Math.round(e.z),e.face,p[0],Math.round(p[1]*100)/100,Math.max(0,Math.ceil(e.hp)),Math.round(e.max),e.hero?(e.weapon||''):e.tint,e.hero?e.combo:Math.round(e.sc*100),e.state==='dead'?Math.round(e.fade*10):0,e.hero?(e.dead?1:0):(e.boss?e.name:'')]; }),
+      e:E.filter(e=>!e.gone).map(e=>{ const p=poseOf(e); return [e.id,e.hero?0:['kid','fast','big','ball','boss'].indexOf(e.kind)+1,Math.round(e.x),Math.round(e.y),Math.round(e.z),e.face,p[0],Math.round(p[1]*100)/100,Math.max(0,Math.ceil(e.hp)),Math.round(e.max),e.hero?(e.weapon||''):e.tint,e.hero?e.combo:Math.round(e.sc*100),e.state==='dead'?Math.round(e.fade*10):0,e.hero&&e.state==='idle'&&!e.dead?2:0,e.hero?(e.dead?1:0):(e.boss?e.name:'')]; }),
       i:items.filter(i=>!i.gone||i.fly).map(i=>[i.id,i.type,Math.round(i.x),Math.round(i.y),Math.round(i.z)]),v:ev};
     ev=[]; return m;
   }
-  let view=null; // 另一邊收到的畫面
+  let view=null,viewAt=0,prevView=null; // 另一邊收到的畫面
+  const sm=new Map(),mine={x:0,y:0,ok:false,face:1};
   if(net){
-    if(client) net.onmsg=m=>{ if(m.s){ view=m; for(const n of m.v){ if(n[0]==='#') fxEvent(n,true); else env.sfx(n); } } else if(m.end) conclude(!!m.end[0],m.end[1]); };
-    else { net.onmsg=(m,from)=>{ if(from!==1||!m.i) return; const o=inp[1]; o.mx=m.i[0]; o.my=m.i[1]; o.run=!!m.i[2]; o.up=m.i[1]<0; if(m.i[3]) o.a=true; if(m.i[4]) o.s=true; };
+    if(client) net.onmsg=m=>{ if(m.s){ prevView=view; view=m; viewAt=t; onView(m); for(const n of m.v){ if(n[0]==='#') fxEvent(n,true); else env.sfx(n); } } else if(m.end) conclude(!!m.end[0],m.end[1]); };
+    else { net.onmsg=(m,from)=>{ if(from!==1||!m.i) return; const o=inp[1]; o.mx=m.i[0]; o.my=m.i[1]; o.run=!!m.i[2]; o.up=m.i[1]<0; if(m.i[3]) o.a=true; if(m.i[4]) o.s=true;
+        const h=E.find(e=>e.hero&&e.id===1); if(m.q&&h&&h.state==='idle'&&!h.dead&&Math.hypot(h.x-m.q[0],h.y-m.q[1])<50){ h.x=m.q[0]; h.y=m.q[1]; } };
       net.onleave=i=>{ const h=E[1]; if(i===1&&h&&h.hero){ h.dead=true; h.state='dead'; } }; }
   }
 
+  // 收到新畫面：更新每個物體的速度估計；自己的主角能自由走動時保留本機位置
+  function onView(m){
+    const gap=prevView?Math.max(.02,t-(sm.lastT||t)):.04; sm.lastT=t;
+    for(const a of m.e){ const id=a[0],o=sm.get(id); if(o){ o.vx=(a[2]-o.sx)/gap; o.vy=(a[3]-o.sy)/gap; o.vz=(a[4]-o.sz)/gap; o.sx=a[2]; o.sy=a[3]; o.sz=a[4]; } else sm.set(id,{x:a[2],y:a[3],z:a[4],sx:a[2],sy:a[3],sz:a[4],vx:0,vy:0,vz:0}); }
+    const h=m.e.find(a=>a[0]===me&&a[1]===0);
+    if(h){ const free=h[13]===2; if(!free||!mine.ok||Math.hypot(mine.x-h[2],mine.y-h[3])>40){ mine.x=h[2]; mine.y=h[3]; } mine.ok=free; mine.face=h[5]; }
+  }
   function update(dt){
     t+=dt; stepFx(dt);
+    if(client&&view){ // 其他物體依速度往前推（最多推 0.12 秒），再平滑靠過去
+      const k=Math.min(t-viewAt,.12),f=Math.min(1,dt*18);
+      for(const a of view.e){ const o=sm.get(a[0]); if(!o) continue; const px=o.sx+o.vx*k,py=o.sy+o.vy*k,pz=Math.max(0,o.sz+o.vz*k); if(Math.abs(px-o.x)>80){ o.x=px; o.y=py; o.z=pz; } else { o.x+=(px-o.x)*f; o.y+=(py-o.y)*f; o.z+=(pz-o.z)*f; } }
+      if(mine.ok){ const o=inp[0],run=o.run&&!!o.mx,sp=run?150:78; mine.x+=o.mx*sp*dt; mine.y+=o.my*52*dt; if(o.mx) mine.face=o.mx; mine.x=clamp(mine.x,view.c+12,view.c+W-12); mine.y=clamp(mine.y,YB+6,YF-2); } }
     if(client){ const o=inp[0]; read(0,0); const key=''+o.mx+o.my+(+o.run);
-      if(key!==lastIn||o.a||o.s){ lastIn=key; net.send({i:[o.mx,o.my,+o.run,+o.a,+o.s]}); } o.a=o.s=false; return; }
+      sendT-=dt; if(key!==lastIn||o.a||o.s||sendT<=0){ lastIn=key; sendT=1/30; const msg={i:[o.mx,o.my,+o.run,+o.a,+o.s]}; if(mine.ok) msg.q=[Math.round(mine.x),Math.round(mine.y)]; net.send(msg); } o.a=o.s=false; return; }
     if(ended) return;
     if(two){ read(0,1); read(1,2); } else read(0,0);
     const push=()=>{ if(net){ sendT-=dt; if(sendT<=0){ sendT=1/24; net.send(snapshot()); } } };
@@ -354,7 +367,7 @@ function create(env,opts){
     ctx.save(); if(shake>0) ctx.translate((rnd()-.5)*shake*20,(rnd()-.5)*shake*14);
     drawScene(ctx,ST.bg,camX,t);
     const list=[];
-    if(V){ for(const a of V.e) list.push({hero:a[1]===0,kind:['','kid','fast','big','ball','boss'][a[1]],id:a[0],x:a[2],y:a[3],z:a[4],face:a[5],pose:a[6],ph:a[7],hp:a[8],max:a[9],w:a[10],k:a[11],fade:a[12],nm:a[13]});
+    if(V){ for(const a of V.e){ const o=sm.get(a[0]),own=a[1]===0&&a[0]===me&&mine.ok; list.push({hero:a[1]===0,kind:['','kid','fast','big','ball','boss'][a[1]],id:a[0],x:own?mine.x:o?o.x:a[2],y:own?mine.y:o?o.y:a[3],z:o?o.z:a[4],face:a[5],pose:a[6],ph:a[7],hp:a[8],max:a[9],w:a[10],k:a[11],fade:a[12],mv:a[13]===2,nm:a[14]}); }
       for(const i of V.i) list.push({item:i[1],x:i[2],y:i[3],z:i[4]}); }
     else { for(const e of E){ if(e.gone) continue; const p=poseOf(e); list.push({hero:e.hero,kind:e.kind,id:e.id,x:e.x,y:e.y,z:e.z,face:e.face,pose:p[0],ph:p[1],hp:e.hp,max:e.max,w:e.hero?e.weapon:e.tint,k:e.hero?e.combo:e.sc*100,fade:e.state==='dead'?e.fade*10:0,nm:e.hero?(e.dead?1:0):(e.boss?e.name:''),inv:e.inv}); }
       for(const i of items) if(!i.gone||i.fly) list.push({item:i.type,x:i.x,y:i.y,z:i.z}); }
@@ -385,7 +398,7 @@ function create(env,opts){
     if((V?V.g:goT>0)&&Math.floor(t*4)%2){ ctx.textAlign='right'; ctx.font='20px '+PIX; ctx.lineWidth=6; ctx.strokeStyle=INK; ctx.strokeText('GO →',W-14,150); ctx.fillStyle='#ffd23f'; ctx.fillText('GO →',W-14,150); }
     if(intro>0){ ctx.textAlign='center'; ctx.font='900 30px '+TC; ctx.lineWidth=7; ctx.strokeStyle=INK; const s='第 '+(si+1)+' 關　'+ST.name; ctx.strokeText(s,W/2,120); ctx.fillStyle='#ffd23f'; ctx.fillText(s,W/2,120); }
   }
-  return {update,draw,destroy(){},_dbg:{E,items,inp,get wave(){return wave;},get cam(){return cam;},spawn,hurt,foes}};
+  return {update,draw,destroy(){},_dbg:{E,items,inp,get mine(){return mine;},get wave(){return wave;},get cam(){return cam;},spawn,hurt,foes}};
 }
 
 function preview(ctx,w,h,L,t){

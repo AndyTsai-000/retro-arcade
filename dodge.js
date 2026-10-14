@@ -316,7 +316,10 @@ function create(env,opts){
       if(has){ if(o.x&&p.role==='in'&&gauge[p.team]>=100) throwAt(p,true); else if(o.a) throwAt(p); else if(o.b) passFrom(p); }
       else if(o.a&&p.role==='in'){ p.catchT=.3; }
     }
-    // 活動範圍
+    clampP(p);
+  }
+  // 活動範圍（房主和非房主的本機預測共用）
+  function clampP(p){
     const tm=p.team;
     if(p.role==='in'){ const lo=tm?MID+9:X0+8,hi=tm?X1-8:MID-9; p.x=Math.max(lo,Math.min(hi,p.x)); p.y=Math.max(YB+6,Math.min(YF-4,p.y)); }
     else if(p.lane==='back'){ const bx=tm?X0-20:X1+20; p.x=Math.max(bx-14,Math.min(bx+14,p.x)); p.y=Math.max(YB-8,Math.min(YF+8,p.y)); }
@@ -333,19 +336,20 @@ function create(env,opts){
   const ST={held:0,shot:1,pass:2,loose:3},STN=['held','shot','pass','loose'];
   function snapshot(){
     const m={s:1,p:P.map(p=>[Math.round(p.x),Math.round(p.y),Math.round(p.z),p.face,p.state,Math.ceil(p.hp),(p.duck?1:0)|(p.run?2:0)|(p.throwT>0?4:0)|(p.catchT>0?8:0)|(p.moving?16:0)|(p.inv>0?32:0),r1(p.st)]),
-      b:[Math.round(ball.x),Math.round(ball.y),Math.round(ball.z),ST[ball.st],ball.holder,ball.type?KINDS.indexOf(ball.type):-1,Math.round(ball.ghost)],c:ctrl,g:[Math.round(gauge[0]),Math.round(gauge[1])],e:ev};
+      b:[Math.round(ball.x),Math.round(ball.y),Math.round(ball.z),ST[ball.st],ball.holder,ball.type?KINDS.indexOf(ball.type):-1,Math.round(ball.ghost),Math.round(ball.vx||0),Math.round(ball.vy||0),Math.round(ball.vz||0)],c:ctrl,g:[Math.round(gauge[0]),Math.round(gauge[1])],e:ev};
     ev=[]; return m;
   }
   if(net){
     if(client) net.onmsg=m=>{
       if(m.s){ m.p.forEach((a,i)=>{ const p=P[i]; p.tx=a[0]; p.ty=a[1]; p.tz=a[2]; p.face=a[3]; p.state=a[4]; p.hp=a[5]; p.duck=!!(a[6]&1); p.run=!!(a[6]&2); p.throwT=a[6]&4?.1:0; p.catchT=a[6]&8?.1:0; p.moving=!!(a[6]&16); p.inv=a[6]&32?.1:0; p.st=a[7]; });
-        const b=m.b; ball.tx=b[0]; ball.ty=b[1]; ball.tz=b[2]; ball.st=STN[b[3]]; ball.holder=b[4]; ball.type=b[5]>=0?KINDS[b[5]]:null; ball.ghost=b[6]; ctrl[0]=m.c[0]; ctrl[1]=m.c[1];
+        const b=m.b; ball.tx=b[0]; ball.ty=b[1]; ball.tz=b[2]; ball.st=STN[b[3]]; ball.holder=b[4]; ball.type=b[5]>=0?KINDS[b[5]]:null; ball.ghost=b[6]; ball.rvx=b[7]||0; ball.rvy=b[8]||0; ball.rvz=b[9]||0; ctrl[0]=m.c[0]; ctrl[1]=m.c[1];
         if(m.g){ gauge[0]=m.g[0]; gauge[1]=m.g[1]; }
         for(const n of m.e){ if(n[0]==='!'){ msg=n.slice(1); msgT=1; } else if(n[0]==='#') fxEvent(n,true); else env.sfx(n); } }
       else if(m.end) conclude(m.end[0],m.end[1]);
     };
     else {
-      net.onmsg=(m,from)=>{ if(from!==1||!m.i) return; const o=inp[1]; o.mx=m.i[0]; o.my=m.i[1]; o.run=!!m.i[2]; o.bh=!!m.i[3]; if(m.i[4]) o.a=true; if(m.i[5]) o.b=true; if(m.i[6]) o.j=true; if(m.i[7]) o.x=true; };
+      net.onmsg=(m,from)=>{ if(from!==1||!m.i) return; const o=inp[1]; o.mx=m.i[0]; o.my=m.i[1]; o.run=!!m.i[2]; o.bh=!!m.i[3]; if(m.i[4]) o.a=true; if(m.i[5]) o.b=true; if(m.i[6]) o.j=true; if(m.i[7]) o.x=true;
+        if(m.q&&m.q[0]===ctrl[1]){ const p=P[m.q[0]]; if(p&&p.state!==4&&p.state!==5&&Math.hypot(p.x-m.q[1],p.y-m.q[2])<60){ p.x=m.q[1]; p.y=m.q[2]; } } };
       net.onleave=i=>{ if(i===1&&!ended){ if(net.count>1) net.send({end:[0,'對手離開了。']}); conclude(0,'對手離開了。'); } };
     }
   }
@@ -353,11 +357,19 @@ function create(env,opts){
   function update(dt){
     t+=dt; if(msgT>0) msgT-=dt; stepFx(dt);
     if(client){
-      const o=inp[0]; read(0,0); const key=''+o.mx+o.my+(+o.run)+(+o.bh);
-      if(key!==lastIn||o.a||o.b||o.j||o.x){ lastIn=key; net.send({i:[o.mx,o.my,+o.run,+o.bh,+o.a,+o.b,+o.j,+o.x]}); }
+      const o=inp[0]; read(0,0); const key=''+o.mx+o.my+(+o.run)+(+o.bh),C=P[ctrl[me]],mine=!!C&&C.state!==4&&C.state!==5&&C.tx!=null;
+      if(mine){ const p=C,has=ball.st==='held'&&ball.holder===p.id,duck=!has&&o.bh&&p.z===0&&p.role==='in'; let vx=0,vy=0;
+        if(!duck&&!(p.throwT>0)){ if(p.role==='in'){ const run=o.run&&!!o.mx; vx=o.mx*(run?138:72)*p.s.spd; vy=o.my*58*p.s.spd; } else if(p.lane==='back'){ vy=o.my*95; vx=o.mx*40; } else { vx=o.mx*95; vy=o.my*40; } }
+        if(Math.hypot(p.tx-p.x,p.ty-p.y)>60){ p.x=p.tx; p.y=p.ty; }
+        p.x+=vx*dt; p.y+=vy*dt; clampP(p); p.moving=!!(vx||vy);
+        if(o.j&&p.z<=0&&p.role==='in') p.lvz=235; p.lvz=(p.lvz||0)-700*dt; p.z=Math.max(0,p.z+p.lvz*dt); if(p.z<=0) p.lvz=0; }
+      sendT-=dt;
+      if(key!==lastIn||o.a||o.b||o.j||o.x||sendT<=0){ lastIn=key; sendT=1/30; const msg={i:[o.mx,o.my,+o.run,+o.bh,+o.a,+o.b,+o.j,+o.x]}; if(mine) msg.q=[C.id,Math.round(C.x),Math.round(C.y)]; net.send(msg); }
       o.a=o.b=o.j=o.x=false; const f=Math.min(1,dt*20);
-      for(const p of P){ if(p.tx==null) continue; p.x+=(p.tx-p.x)*f; p.y+=(p.ty-p.y)*f; p.z+=(p.tz-p.z)*f; if(p.state===5) p.st+=dt; }
+      if(ball.tx!=null&&ball.st!=='held'){ ball.tx+=(ball.rvx||0)*dt; ball.ty+=(ball.rvy||0)*dt; ball.tz=Math.max(0,ball.tz+(ball.rvz||0)*dt); }
+      for(const p of P){ if(p.tx==null||mine&&p===C) continue; p.x+=(p.tx-p.x)*f; p.y+=(p.ty-p.y)*f; p.z+=(p.tz-p.z)*f; if(p.state===5) p.st+=dt; }
       if(ball.tx!=null){ if(Math.abs(ball.tx-ball.x)+Math.abs(ball.ty-ball.y)>90){ ball.x=ball.tx; ball.y=ball.ty; ball.z=ball.tz; } else { ball.x+=(ball.tx-ball.x)*f*1.4; ball.y+=(ball.ty-ball.y)*f*1.4; ball.z+=(ball.tz-ball.z)*f*1.4; } }
+      if(mine&&ball.st==='held'&&ball.holder===C.id){ ball.x=ball.tx+(C.x-C.tx); ball.y=ball.ty+(C.y-C.ty); ball.z=ball.tz+(C.z-(C.tz||0)); } // 球跟著本機的隊員走
       return;
     }
     if(ended) return;

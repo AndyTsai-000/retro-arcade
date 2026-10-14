@@ -237,6 +237,10 @@ function create(env,opts){
         else if(o.b&&isHuman) pickCtrl(p.team,true);
       }
     }
+    clampP(p);
+  }
+  // 活動範圍（房主和非房主的本機預測共用）
+  function clampP(p){
     if(p.gk){ const bx=p.team?X1-14:X0+14; p.x=clamp(p.x,bx-16,bx+16); p.y=clamp(p.y,GY0-18,GY1+18); }
     else { p.x=clamp(p.x,X0+4,X1-4); p.y=clamp(p.y,YB+4,YF-2); }
   }
@@ -249,18 +253,19 @@ function create(env,opts){
   }
   function snapshot(){
     const m={s:1,p:P.map(p=>[Math.round(p.x),Math.round(p.y),Math.round(p.z),p.face,p.state,(p.run?1:0)|(p.kickT>0?2:0)|(p.slideT>0?4:0)|(p.moving?8:0)]),
-      b:[Math.round(ball.x),Math.round(ball.y),Math.round(ball.z),ball.owner,ball.type?KINDS.indexOf(ball.type):-1,Math.round(ball.ghost)],c:ctrl,g:[Math.round(gauge[0]),Math.round(gauge[1])],sc:score,tm:Math.ceil(time),x:extra?1:0,e:ev};
+      b:[Math.round(ball.x),Math.round(ball.y),Math.round(ball.z),ball.owner,ball.type?KINDS.indexOf(ball.type):-1,Math.round(ball.ghost),Math.round(ball.vx||0),Math.round(ball.vy||0),Math.round(ball.vz||0)],c:ctrl,g:[Math.round(gauge[0]),Math.round(gauge[1])],sc:score,tm:Math.ceil(time),x:extra?1:0,e:ev};
     ev=[]; return m;
   }
   if(net){
     if(client) net.onmsg=m=>{
       if(m.s){ m.p.forEach((a,i)=>{ const p=P[i]; p.tx=a[0]; p.ty=a[1]; p.tz=a[2]; p.face=a[3]; p.state=a[4]; p.run=!!(a[5]&1); p.kickT=a[5]&2?.1:0; p.slideT=a[5]&4?.1:0; p.moving=!!(a[5]&8); });
-        const b=m.b; ball.tx=b[0]; ball.ty=b[1]; ball.tz=b[2]; ball.owner=b[3]; ball.type=b[4]>=0?KINDS[b[4]]:null; ball.ghost=b[5]; ctrl[0]=m.c[0]; ctrl[1]=m.c[1]; gauge[0]=m.g[0]; gauge[1]=m.g[1]; score[0]=m.sc[0]; score[1]=m.sc[1]; time=m.tm; extra=!!m.x;
+        const b=m.b; ball.tx=b[0]; ball.ty=b[1]; ball.tz=b[2]; ball.owner=b[3]; ball.type=b[4]>=0?KINDS[b[4]]:null; ball.ghost=b[5]; ball.rvx=b[6]||0; ball.rvy=b[7]||0; ball.rvz=b[8]||0; ctrl[0]=m.c[0]; ctrl[1]=m.c[1]; gauge[0]=m.g[0]; gauge[1]=m.g[1]; score[0]=m.sc[0]; score[1]=m.sc[1]; time=m.tm; extra=!!m.x;
         for(const n of m.e){ if(n[0]==='!'){ msg=n.slice(1); msgT=1; } else if(n[0]==='#') fxEvent(n,true); else env.sfx(n); } }
       else if(m.end) conclude(m.end[0],m.end[1]);
     };
     else {
-      net.onmsg=(m,from)=>{ if(from!==1||!m.i) return; const o=inp[1]; o.mx=m.i[0]; o.my=m.i[1]; o.run=!!m.i[2]; if(m.i[3]) o.a=true; if(m.i[4]) o.b=true; if(m.i[5]) o.j=true; if(m.i[6]) o.x=true; };
+      net.onmsg=(m,from)=>{ if(from!==1||!m.i) return; const o=inp[1]; o.mx=m.i[0]; o.my=m.i[1]; o.run=!!m.i[2]; if(m.i[3]) o.a=true; if(m.i[4]) o.b=true; if(m.i[5]) o.j=true; if(m.i[6]) o.x=true;
+        if(m.q&&m.q[0]===ctrl[1]){ const p=P[m.q[0]]; if(p&&p.state!==4&&!(p.slideT>0)&&Math.hypot(p.x-m.q[1],p.y-m.q[2])<60){ p.x=m.q[1]; p.y=m.q[2]; } } };
       net.onleave=i=>{ if(i===1&&!ended){ conclude(0,'對手離開了。'); } };
     }
   }
@@ -268,11 +273,18 @@ function create(env,opts){
   function update(dt){
     t+=dt; if(msgT>0) msgT-=dt; stepFx(dt);
     if(client){
-      const o=inp[0]; read(0,0); const key=''+o.mx+o.my+(+o.run);
-      if(key!==lastIn||o.a||o.b||o.j||o.x){ lastIn=key; net.send({i:[o.mx,o.my,+o.run,+o.a,+o.b,+o.j,+o.x]}); }
+      const o=inp[0]; read(0,0); const key=''+o.mx+o.my+(+o.run),C=P[ctrl[me]],mine=!!C&&C.state!==4&&!(C.slideT>0)&&C.tx!=null&&!(C.gk&&ball.owner===C.id);
+      if(mine){ const p=C,has=ball.owner===p.id,sp=(o.run&&!!o.mx?132:74)*p.s.spd*(has?.92:1),vx=o.mx*sp,vy=o.my*60*p.s.spd;
+        if(Math.hypot(p.tx-p.x,p.ty-p.y)>60){ p.x=p.tx; p.y=p.ty; }
+        p.x+=vx*dt; p.y+=vy*dt; clampP(p); p.moving=!!(vx||vy); if(o.mx) p.face=o.mx;
+        if(o.j&&p.z<=0) p.lvz=225; p.lvz=(p.lvz||0)-700*dt; p.z=Math.max(0,p.z+p.lvz*dt); if(p.z<=0) p.lvz=0; }
+      sendT-=dt;
+      if(key!==lastIn||o.a||o.b||o.j||o.x||sendT<=0){ lastIn=key; sendT=1/30; const msg={i:[o.mx,o.my,+o.run,+o.a,+o.b,+o.j,+o.x]}; if(mine) msg.q=[C.id,Math.round(C.x),Math.round(C.y)]; net.send(msg); }
       o.a=o.b=o.j=o.x=false; const f=Math.min(1,dt*20);
-      for(const p of P){ if(p.tx==null) continue; p.x+=(p.tx-p.x)*f; p.y+=(p.ty-p.y)*f; p.z+=(p.tz-p.z)*f; }
+      if(ball.tx!=null&&ball.owner<0){ ball.tx+=(ball.rvx||0)*dt; ball.ty+=(ball.rvy||0)*dt; ball.tz=Math.max(0,ball.tz+(ball.rvz||0)*dt); }
+      for(const p of P){ if(p.tx==null||mine&&p===C) continue; p.x+=(p.tx-p.x)*f; p.y+=(p.ty-p.y)*f; p.z+=(p.tz-p.z)*f; }
       if(ball.tx!=null){ if(Math.abs(ball.tx-ball.x)>120){ ball.x=ball.tx; ball.y=ball.ty; ball.z=ball.tz; } else { ball.x+=(ball.tx-ball.x)*f*1.5; ball.y+=(ball.ty-ball.y)*f*1.5; ball.z+=(ball.tz-ball.z)*f*1.5; } }
+      if(mine&&ball.owner===C.id){ ball.x=ball.tx+(C.x-C.tx); ball.y=ball.ty+(C.y-C.ty); } // 帶球時球跟著本機的球員走
       return;
     }
     if(ended) return;

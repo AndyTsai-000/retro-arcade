@@ -72,10 +72,10 @@ function create(env,opts){
   const {ctx}=env.canvas2d(W,H);
   const mk=n=>({n,x:n?360:120,y:GROUND,tx:n?360:120,ty:GROUND,vx:0,vy:0,face:n?-1:1,power:0,moving:false,score:0});
   const ps=[mk(0),mk(1)],ball={x:120,y:70,tx:120,ty:70,vx:0,vy:0,rot:0,cool:0,hot:0};
-  let t=0,wait=1,lastW=-1,over=0,ended=false,aiErr=0,aiSide=false,aiTick=0,aiX=372,ev=[],sendT=0,lastIn='';
+  let srvN=0,srvSeen=-1,t=0,wait=1,lastW=-1,over=0,ended=false,aiErr=0,aiSide=false,aiTick=0,aiX=372,ev=[],sendT=0,lastIn='';
   const rin={dx:0,jump:false,down:false,up:false,hit:false};
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
-  function serve(to){ for(const p of ps){ p.x=p.n?360:120; p.y=GROUND; p.vx=p.vy=0; } ball.x=to?360:120; ball.y=70; ball.vx=ball.vy=0; ball.hot=0; wait=.9; }
+  function serve(to){ srvN++; for(const p of ps){ p.x=p.n?360:120; p.y=GROUND; p.vx=p.vy=0; } ball.x=to?360:120; ball.y=70; ball.vx=ball.vy=0; ball.hot=0; wait=.9; }
   serve(0);
 
   const ALT=[{animal:'cat',color:'#ff9d3d'},{animal:'bear',color:'#4f9dff'}];
@@ -113,18 +113,19 @@ function create(env,opts){
     env.end({title:two?(w?'右邊':'左邊')+'玩家獲勝':mine?'你贏了！':'你輸了',big:a+' : '+b,text:note||'',score:!two&&!net&&w===0?a-b:null});
   }
   function snapshot(){
-    const m={s:[r1(ps[0].x),r1(ps[0].y),ps[0].score,r1(ps[1].x),r1(ps[1].y),ps[1].score,r1(ball.x),r1(ball.y),r1(ball.rot),ball.hot>0?1:0,wait>0?1:0,lastW],e:ev};
+    const m={s:[r1(ps[0].x),r1(ps[0].y),ps[0].score,r1(ps[1].x),r1(ps[1].y),ps[1].score,r1(ball.x),r1(ball.y),r1(ball.rot),ball.hot>0?1:0,wait>0?1:0,lastW,srvN,r1(ball.vx),r1(ball.vy)],e:ev};
     ev=[]; return m;
   }
   if(net){
     if(client) net.onmsg=m=>{
       if(m.s){ const s=m.s; ps[0].tx=s[0]; ps[0].ty=s[1]; ps[0].score=s[2]; ps[1].tx=s[3]; ps[1].ty=s[4]; ps[1].score=s[5];
-        ball.tx=s[6]; ball.ty=s[7]; ball.rot=s[8]; ball.hot=s[9]?.3:0; wait=s[10]?.5:0; lastW=s[11];
+        ball.tx=s[6]; ball.ty=s[7]; ball.rot=s[8]; ball.hot=s[9]?.3:0; wait=s[10]?.5:0; lastW=s[11]; ball.srv=s[12]; ball.vx=s[13]||0; ball.vy=s[14]||0;
         for(const n of m.e){ if(n==='p0'||n==='p1') env.sfx(+n[1]===me?'item':'hurt'); else env.sfx(n); } }
       else if(m.end) conclude(m.end[0],m.end[1],m.end[2]);
     };
     else {
-      net.onmsg=(m,from)=>{ if(from===1&&m.i){ rin.dx=m.i[0]; rin.jump=!!m.i[1]; rin.down=!!m.i[2]; rin.up=!!m.i[3]; if(m.i[4]) rin.hit=true; } };
+      net.onmsg=(m,from)=>{ if(from===1&&m.i){ rin.dx=m.i[0]; rin.jump=!!m.i[1]; rin.down=!!m.i[2]; rin.up=!!m.i[3]; if(m.i[4]) rin.hit=true; }
+        if(from===1&&m.p&&m.p[3]===srvN){ const p=ps[1]; p.x=m.p[0]; p.y=m.p[1]; p.vy=m.p[2]; } };
       net.onleave=i=>{ if(i===1&&!ended){ const a=Math.max(ps[0].score,ps[1].score+1); conclude(a,ps[1].score,'對手離開了。'); } };
     }
   }
@@ -132,10 +133,15 @@ function create(env,opts){
   function update(dt){
     t+=dt;
     if(client){
-      const i=keysA(),key=''+i.dx+(+i.jump)+(+i.down)+(+i.up);
-      if(key!==lastIn||i.hit){ lastIn=key; net.send({i:[i.dx,+i.jump,+i.down,+i.up,+i.hit]}); }
+      const i=keysA(),key=''+i.dx+(+i.jump)+(+i.down)+(+i.up),P=ps[me];
+      if(ball.srv!=null&&ball.srv!==srvSeen){ srvSeen=ball.srv; P.x=P.tx; P.y=P.ty; P.vy=0; } // 新的一球：位置跟房主對齊
+      P.vx=i.dx*215; P.moving=!!i.dx; if(i.jump&&P.y>=GROUND){ P.vy=-575; env.sfx('land'); }
+      P.vy+=1350*dt; P.x+=P.vx*dt; P.y+=P.vy*dt; if(P.y>=GROUND){ P.y=GROUND; P.vy=0; }
+      { const lo=me?NETX+NETW/2+PR:PR,hi=me?W-PR:NETX-NETW/2-PR; P.x=Math.max(lo,Math.min(hi,P.x)); }
+      sendT-=dt; if(key!==lastIn||i.hit||sendT<=0){ lastIn=key; sendT=1/30; net.send({i:[i.dx,+i.jump,+i.down,+i.up,+i.hit],p:[r1(P.x),r1(P.y),r1(P.vy),srvSeen]}); }
       const f=Math.min(1,dt*22);
-      for(const p of ps){ p.moving=Math.abs(p.tx-p.x)>.6; p.x+=(p.tx-p.x)*f; p.y+=(p.ty-p.y)*f; if(p.ty>=GROUND&&GROUND-p.y<1) p.y=GROUND; }
+      if(wait<=0&&ball.vx!=null){ ball.tx+=ball.vx*dt; ball.ty+=ball.vy*dt; ball.vy+=520*dt; }
+      for(const p of ps){ if(p===P) continue; p.moving=Math.abs(p.tx-p.x)>.6; p.x+=(p.tx-p.x)*f; p.y+=(p.ty-p.y)*f; if(p.ty>=GROUND&&GROUND-p.y<1) p.y=GROUND; }
       if(Math.abs(ball.tx-ball.x)+Math.abs(ball.ty-ball.y)>120){ ball.x=ball.tx; ball.y=ball.ty; } else { ball.x+=(ball.tx-ball.x)*f; ball.y+=(ball.ty-ball.y)*f; }
       return;
     }

@@ -157,8 +157,8 @@ function tableArt(felt){
   c.save(); rr(c,fx,fy,fw,fh,16); c.clip(); c.shadowColor='rgba(0,0,0,.65)'; c.shadowBlur=16; c.lineWidth=12; c.strokeStyle='rgba(0,0,0,.5)'; rr(c,fx-6,fy-6,fw+12,fh+12,20); c.stroke(); c.restore();
   c.strokeStyle='rgba(222,184,96,.5)'; c.lineWidth=1.2; rr(c,fx+6,fy+6,fw-12,fh-12,11); c.stroke();
   // 中央的骰盤
-  c.save(); c.translate(W/2,240); g=c.createLinearGradient(0,-58,0,58); g.addColorStop(0,'rgba(20,14,8,.55)'); g.addColorStop(1,'rgba(20,14,8,.35)'); c.fillStyle=g; rr(c,-96,-56,192,112,16); c.fill();
-  c.strokeStyle='rgba(222,184,96,.55)'; c.lineWidth=1.5; rr(c,-96,-56,192,112,16); c.stroke(); rr(c,-90,-50,180,100,12); c.strokeStyle='rgba(222,184,96,.22)'; c.stroke(); c.restore();
+  c.save(); c.translate(W/2,240); g=c.createLinearGradient(0,-58,0,58); g.addColorStop(0,'rgba(20,14,8,.55)'); g.addColorStop(1,'rgba(20,14,8,.35)'); c.fillStyle=g; rr(c,-96,-42,192,84,16); c.fill();
+  c.strokeStyle='rgba(222,184,96,.55)'; c.lineWidth=1.5; rr(c,-96,-42,192,84,16); c.stroke(); rr(c,-90,-36,180,72,12); c.strokeStyle='rgba(222,184,96,.22)'; c.stroke(); c.restore();
   return tableCache[felt]=cv;
 }
 
@@ -418,10 +418,10 @@ function create(env,opts){
   function flowersRow(p,x,y){ G.flowers[p].forEach((id,i)=>drawTile(ctx,x+i*15,y,14,19,id)); }
   function meldTiles(p,m){ return m.t==='ankong'&&p!==me&&G.phase!=='end'?[-1,m.ids[1],m.ids[2],-1]:m.ids; }
   function discardsZone(p,pos){
-    const ds=G.discards[p],tw=22,th=29,lastId=G.last&&G.last.p===p?G.last.id:-1;
+    const ds=G.discards[p],tw=27,th=36,lastId=G.last&&G.last.p===p?G.last.id:-1;
     let x0,y0,cols;
-    if(pos===0||pos===2){ cols=np===2?20:14; x0=W/2-cols*tw/2; y0=pos===0?300:92; }
-    else { cols=5; x0=pos===3?132:W-132-cols*tw; y0=150; }
+    if(pos===0||pos===2){ cols=np===2?20:12; x0=W/2-cols*tw/2; y0=pos===0?294:88; }
+    else { cols=4; x0=pos===3?124:W-124-cols*tw; y0=140; }
     ds.forEach((id,i)=>{ const r=Math.floor(i/cols),c=i%cols,lx=x0+c*tw,ly=y0+r*(th+2),isLast=id===lastId&&i===ds.length-1; drawTile(ctx,lx,ly,tw-1,th,id,{last:isLast});
       if(isLast&&G.phase==='claim'){ ctx.strokeStyle='rgba(255,210,63,'+(.5+.5*Math.sin(t*8))+')'; ctx.lineWidth=3; rr(ctx,lx-3,ly-3,tw+5,th+6,5); ctx.stroke(); } });
   }
@@ -435,7 +435,7 @@ function create(env,opts){
     txt('剩 '+Math.max(0,(G.wallN!=null&&client?G.wallN:G.wall.length)-RESERVE)+' 張'+(G.lian?'　連莊 '+G.lian:''),W/2,238,'#fff',13,'center');
     if(G.log) txt(G.log,W/2,264,'#cfe8d8',11,'center'); }
     // 輪到誰的指示
-    { const pp=posOf(G.turn),ax=[W/2,W/2+86,W/2,W/2-86][pp],ay=[284,240,196,240][pp]; ctx.fillStyle='rgba(255,210,63,'+(.55+.4*Math.sin(t*5))+')'; ctx.beginPath(); ctx.arc(ax,ay,5,0,7); ctx.fill(); }
+    { const pp=posOf(G.turn),ax=[W/2,W/2+86,W/2,W/2-86][pp],ay=[276,240,204,240][pp]; ctx.fillStyle='rgba(255,210,63,'+(.55+.4*Math.sin(t*5))+')'; ctx.beginPath(); ctx.arc(ax,ay,5,0,7); ctx.fill(); }
     for(let p=0;p<np;p++){ const pos=posOf(p); discardsZone(p,pos); if(p===me) continue;
       const n=G.hands[p].length,show=G.phase==='end';
       if(pos===2){ const tw=22,th=30,ms=G.melds[p],mw=ms.reduce((a,m)=>a+meldTiles(p,m).length*20+6,0),x0=W/2-(n*tw+mw)/2;
@@ -458,7 +458,7 @@ function create(env,opts){
     const use=new Set(); if(myClaim()){ const k=kindOf(G.claim.id); for(const o of G.claim.opts[me]){ if(o.c==='pong'||o.c==='kong') use.add(k); if(o.c==='chow') o.k.forEach(x=>use.add(x)); } }
     list.forEach((id,i)=>{ const gx=x+i*tw+(drawnShow&&i===list.length-1?10:0),up=id===sel?12:0; drawTile(ctx,gx,436-up,tw-2,52,id,{sel:id===sel}); layout.hand.push({id,x:gx,y:436-up,w:tw-2,h:52});
       if(use.has(kindOf(id))){ const bob=Math.sin(t*6)*2; ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(gx+tw/2-1-6,424+bob); ctx.lineTo(gx+tw/2-1+6,424+bob); ctx.lineTo(gx+tw/2-1,432+bob); ctx.fill(); } });
-    const ix=info(me,14,404,'left'); flowersRow(me,ix+8,394);
+    const ix=info(me,14,404,'left'); flowersRow(me,ix+8,394); drawWaits(ix+12+G.flowers[me].length*15,404);
     // 按鈕
     let bx=W-14; const btn=(label,fn,hot)=>{ bx-=70; button(bx,388,64,34,label,fn,hot); };
     if(G.phase==='play'&&G.turn===me&&myH.length%3===2){
@@ -480,7 +480,7 @@ function create(env,opts){
     if(rolling){ txt(names[D.who]+' 擲骰中…',W/2,262,'#ffe2a8',13,'center','900'); return; }
     const sum=D.vals.join('＋')+'＝'+D.total+' 點';
     if(D.kind==='dealer') txt(sum+'，數到 '+names[D.target]+' 起莊',W/2,262,'#ffe2a8',13,'center','900');
-    else { txt(sum+'，從 '+names[D.target]+' 的牌牆第 '+D.total+' 墩開門',W/2,262,'#ffe2a8',13,'center','900'); if(G.phase==='deal') txt('發牌中…',W/2,282,'#cfe8d8',12,'center'); }
+    else { txt(sum+'，從 '+names[D.target]+' 的牌牆第 '+D.total+' 墩開門',W/2,262,'#ffe2a8',13,'center','900'); if(G.phase==='deal') txt('發牌中…',W/2,276,'#cfe8d8',12,'center'); }
   }
   const myClaim=()=>G.phase==='claim'&&G.claim&&G.claim.opts[me]&&G.claim.resp[me]==null;
   // 每個選項畫出組成後的整組牌，被吃碰的那張用黃框標出來
@@ -502,6 +502,19 @@ function create(env,opts){
       if(c.tiles.length){ const tx=x+(w-c.tiles.length*(tw+1))/2; c.tiles.forEach((id,i)=>{ const gx=tx+i*(tw+1); if(i===c.hi){ ctx.fillStyle='rgba(255,210,63,'+(.45+.25*Math.sin(t*6))+')'; rr(ctx,gx-3,y+2,tw+6,th+9,6); ctx.fill(); } drawTile(ctx,gx,y+5,tw,th,id,{sel:i===c.hi}); }); txt(c.label,x+w/2,y+57,hot?'#ffd23f':'#fff',15,'center','900'); }
       else txt(c.label,x+w/2,y+34,'#cfe8d8',18,'center','900');
       layout.btn.push({x,y,w,h:68,fn:()=>doAct({a:'claim',r:c.r})}); x+=w+8; }
+  }
+  function waitsOf(ids,melds){ const out=[]; for(let k=0;k<34;k++) if(canWin(ids.concat([k*4]),melds)) out.push(k); return out; }
+  function leftOf(k){ let n=0; const add=id=>{ if(kindOf(id)===k) n++; }; (G.hands[me]||[]).forEach(add); G.discards.forEach(d=>d.forEach(add)); G.melds.forEach(ms=>ms.forEach(m=>{ if(m.t==='ankong'&&G.melds.indexOf(ms)!==me) return; m.ids.forEach(add); })); return Math.max(0,4-n); }
+  function drawWaits(x,y){
+    if(!G.hands[me]||G.phase==='end'||G.phase==='dice'||G.phase==='deal') return;
+    const h=G.hands[me],ms=G.melds[me]; let ws=null,label='';
+    if(h.length%3===1){ ws=waitsOf(h,ms); label='聽：'; }
+    else if(myPlay()&&sel>=0&&h.includes(sel)){ ws=waitsOf(h.filter(id=>id!==sel),ms); label='打這張聽：'; }
+    if(!ws||!ws.length) return;
+    ctx.font='900 13px '+TC; const lw=ctx.measureText(label).width,w=lw+ws.length*48+12;
+    ctx.fillStyle='rgba(120,20,30,.85)'; rr(ctx,x,y-14,w,44,8); ctx.fill(); ctx.strokeStyle='rgba(255,210,63,.9)'; ctx.lineWidth=1.5; ctx.stroke();
+    txt(label,x+8,y+8,'#ffd23f',13,'left','900');
+    ws.forEach((k,i)=>{ const tx=x+8+lw+i*48,n=leftOf(k); drawTile(ctx,tx,y-10,22,30,k*4,{dim:n===0}); txt('剩'+n,tx+24,y+16,n?'#fff':'#ff8a8a',9,'left','900'); });
   }
   function countdown(hint,size){ ctx.font='900 '+size+'px '+TC; const hw=hint?ctx.measureText(hint).width+14:0,left=Math.max(0,Math.ceil(TL-dispT)); txt('⏱ '+left+' 秒',W-14-hw,370,left<=5?'#ff6b6b':'#fff',left<=5?17:15,'right','900'); }
   function drawResult(){
