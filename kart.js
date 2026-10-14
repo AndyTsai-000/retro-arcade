@@ -307,6 +307,7 @@ function create(env,opts){
   }
   const my=karts[me],locals=karts.filter(k=>k.local);
   let t=0,cd=3.4,lastBeep=4,endT=0,ended=false,sendT=0,remain=null,lastTick=99,pip=null,flashT=0;
+  let intro={i:0,t:0,list:karts.filter(k=>k.human).concat(karts.filter(k=>!k.human))}; // 真人先介紹，再來是電腦
 
   /* ---- 道具賽 ---- */
   const boxes=[],bananas=[],missiles=[]; let banN=0,banGeo,banMat,misGeo,misMat;
@@ -470,7 +471,10 @@ function create(env,opts){
       eg=ac.createGain(); eg.gain.value=.022; osc.connect(lp); lp.connect(eg); eg.connect(out); osc.start(); }catch(e){ osc=null; } } }
 
   function update(dt){
-    if(cd>0){ cd-=dt; const c=Math.ceil(cd); if(c<lastBeep&&c>=1&&c<=3){ lastBeep=c; env.sfx('beep'); } if(cd<=0) env.sfx('go'); }
+    if(intro){ // 開場：鏡頭輪流繞著每一台車和車手轉一圈
+      intro.t+=dt; const q=intro.list[intro.i]; if(intro.t>=(q.human?1.7:.95)){ intro.i++; intro.t=0; if(intro.i>=intro.list.length) intro=null; else env.sfx('click'); }
+      if(intro&&!net&&intro.i+intro.t>.4&&(env.hit('Space')||env.hit('Enter')||env.hit('KeyX')||env.hit('ArrowUp')||env.hit('KeyW')||env.hit('KeyQ'))) intro=null; }
+    else if(cd>0){ cd-=dt; const c=Math.ceil(cd); if(c<lastBeep&&c>=1&&c<=3){ lastBeep=c; env.sfx('beep'); } if(cd<=0) env.sfx('go'); }
     else {
       t+=dt;
       for(const k of karts){
@@ -546,6 +550,14 @@ function create(env,opts){
   function draw(){
     const c=hud,n=locals.length,side=vw>=vh;
     c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,vw,vh);
+    if(intro){ const k=intro.list[intro.i],u=intro.t/(k.human?1.7:.95),a=k.h+2.4-u*2.2,R=7.2-u*1.2,s=clamp(vw/560,.62,1);
+      renderer.setScissorTest(false); renderer.setViewport(0,0,vw,vh); cam.aspect=vw/vh; cam.fov=48; cam.updateProjectionMatrix();
+      cam.position.set(k.x+Math.sin(a)*R,2.6+u*.8,k.z+Math.cos(a)*R); cam.lookAt(k.x,1.5,k.z); renderer.render(scene,cam);
+      c.fillStyle='rgba(11,10,28,.78)'; c.fillRect(0,vh-78*s,vw,58*s); c.fillStyle=k.color; c.fillRect(0,vh-78*s,10*s,58*s);
+      c.textBaseline='middle'; c.textAlign='left'; c.fillStyle='#ffd23f'; c.font=11*s+'px '+PIX; c.fillText((k.human?'PLAYER ':'CPU ')+(intro.i+1)+' / '+intro.list.length,24*s,vh-62*s);
+      c.fillStyle='#fff'; c.font='900 '+26*s+'px '+TC; c.fillText(k.name,24*s,vh-38*s);
+      c.textAlign='right'; c.fillStyle='#aaa4d8'; c.font='700 '+12*s+'px '+TC; c.fillText(STAGES[opts.stage||0].name+'　'+(itemMode?'道具賽':driftMode?'甩噴賽':'競速賽'),vw-16*s,vh-62*s); if(!net) c.fillText(env.touch?'按「使用」跳過':'按空白鍵跳過',vw-16*s,vh-38*s);
+      return; }
     renderer.setScissorTest(n>1);
     locals.forEach((k,i)=>{
       // 分割畫面：橫向時左右各半，直向時上下各半
