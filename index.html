@@ -121,6 +121,7 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 #pad{display:none;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
   background:var(--panel);border-top:3px solid #0b0a1c;touch-action:none;user-select:none;-webkit-user-select:none}
 body.touch #pad{display:flex}
+body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 .side{display:flex;gap:12px;align-items:center}
 .tb{width:72px;height:72px;border-radius:50%;background:var(--panel2);border:3px solid #0b0a1c;box-shadow:0 4px 0 #0b0a1c;
   font-weight:900;font-size:17px;touch-action:none;padding:0}
@@ -134,7 +135,7 @@ body.touch #pad{display:flex}
 .dpad i.l{top:50%;left:12px;margin-top:-11px;border-right-color:var(--text);border-left-width:0}
 .dpad i.r{top:50%;right:12px;margin-top:-11px;border-left-color:var(--text);border-right-width:0}
 .dpad[data-d="u"] i.u,.dpad[data-d="d"] i.d,.dpad[data-d="l"] i.l,.dpad[data-d="r"] i.r{opacity:1;filter:drop-shadow(0 0 6px var(--yellow))}
-@media (max-width:440px){.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side:has(.tb:nth-child(4)) .tb{width:50px;height:50px;font-size:13px}.tb.big{width:86px;height:86px;font-size:26px}#padL:has(.tb.big)~#padR .tb{width:52px;height:52px;font-size:13px}}
+@media (max-width:440px){.bar h2{display:none}.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side.g4{display:grid;grid-template-columns:repeat(2,auto);gap:8px}.side.g4 .tb{width:56px;height:56px;font-size:14px}.tb.big{width:86px;height:86px;font-size:26px}#padL:has(.tb.big)~#padR .tb{width:52px;height:52px;font-size:13px}}
 /* ---------- 手機版 ---------- */
 @media (max-width:640px){
   #hub{padding-block:18px 28px;gap:18px}
@@ -180,6 +181,7 @@ body.touch #pad{display:flex}
     <button class="btn" id="bBack">&larr; 大廳</button>
     <h2 id="gName"></h2>
     <span class="me" id="barName"></span>
+    <button class="btn" id="bSide" hidden>方向鍵：左</button>
     <button class="btn" id="bFull" hidden>全螢幕</button>
     <button class="btn" id="bPause">暫停</button>
     <button class="btn" id="bMute">聲音：開</button>
@@ -194,7 +196,7 @@ body.touch #pad{display:flex}
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=35; // 每次改版加一
+window.ARCADE_V=37; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -309,6 +311,7 @@ function buildPad(spec){
     });
   };
   fill(L,spec.left); fill(R,spec.right);
+  [L,R].forEach(b=>b.classList.toggle('g4',b.children.length===4)); // 四顆鍵在直向手機排成兩排
 }
 function makeDpad(){
   const d=el('div','dpad','<i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i>');
@@ -471,6 +474,9 @@ $('#bPause').addEventListener('click',togglePause);
 function muteLabel(){ $('#bMute').textContent='聲音：'+(muted?'關':'開'); }
 $('#bMute').addEventListener('click',()=>{ muted=!muted; save('arcade.mute',muted?'1':'0'); audio(); if(master) master.gain.value=muted?0:1; muteLabel(); });
 muteLabel();
+// 手機：方向鍵要放左邊還是右邊，記在這台裝置
+{ const sb=$('#bSide'); let sw=load('arcade.padSide')==='right'; const show=()=>{ document.body.classList.toggle('padswap',sw); sb.textContent='方向鍵：'+(sw?'右':'左'); };
+  if(isTouch){ sb.hidden=false; show(); sb.addEventListener('click',()=>{ sw=!sw; save('arcade.padSide',sw?'right':'left'); show(); SFX.click(); }); } }
 // 全螢幕：手機上才顯示，順便試著鎖成橫向（iPhone 的 Safari 不支援，按了沒反應是正常的）
 { const fb=$('#bFull'),root=document.documentElement,can=root.requestFullscreen||root.webkitRequestFullscreen;
   if(isTouch&&can){ fb.hidden=false; fb.addEventListener('click',()=>{
