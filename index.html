@@ -51,9 +51,19 @@ kbd{font-family:var(--pixel);font-size:10px;background:var(--ink);border:1px sol
 .spRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .card:has(.spRow){max-width:660px}
 .lk.sq{aspect-ratio:4/3;max-width:none;overflow:hidden}
-.lkrow{display:grid;grid-template-columns:5em 1fr;gap:8px;align-items:center;text-align:left}
+.lkrow{display:grid;grid-template-columns:6em 1fr;gap:8px;align-items:center;text-align:left}
 .lkrow>span{color:var(--dim);font-weight:700}
 .lkrow .chips{justify-content:flex-start}
+.lklist{display:flex;flex-direction:column}
+.lklist>.lkrow,.lklist>.lkhead{border-top:1px solid var(--line);padding:8px 0}
+.lklist>.lkrow:first-child{border-top:0}
+.lklist>.hint{margin:-4px 0 8px}
+.lkhead{text-align:left;color:var(--yellow);font-weight:700}.lkhead small{color:var(--dim);font-weight:400;font-size:12px;margin-left:8px}
+.lkhead~.lkf{border-top-style:dashed}.lkhead~.lkf>.lkt{padding-left:.6em}
+.lkt{cursor:pointer;user-select:none}.lkt::before{content:'▼';display:inline-block;width:1.3em;font-size:.8em;color:var(--cyan)}
+.lkrow.fold .lkt::before{content:'▶'}
+.lkrow.fold .chips,.lkrow:not(.fold) .lksum{display:none}
+.lksum{cursor:pointer;font-weight:700;min-height:30px;line-height:30px}
 .sw{width:30px;height:30px;border-radius:50%;border:3px solid #0b0a1c;padding:0}
 .sw.sel{outline:3px solid var(--text);outline-offset:2px}
 .coin{font-family:var(--pixel);font-size:11px;letter-spacing:.12em;color:var(--cyan)}
@@ -155,7 +165,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
   .card{padding:16px 14px;gap:12px}.card h3{font-size:23px}
   .help{font-size:13px;gap:6px 10px}.chip{padding:5px 10px;font-size:13px}
   .btn.main{font-size:16px;padding:10px 18px}
-  .lkrow{grid-template-columns:4.2em 1fr}
+  .lkrow{grid-template-columns:5.2em 1fr}
 }
 /* 手機橫放：畫面讓給遊戲，按鈕半透明疊在畫面兩側 */
 @media (orientation:landscape) and (max-height:540px){
@@ -207,7 +217,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=73; // 每次改版加一
+window.ARCADE_V=74; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -457,32 +467,43 @@ function bindPhoto(g,look){
     photoToFace(file,(v,found)=>{ if(!v){ if(m) m.textContent='這個檔案讀不出來，換一張照片試試。'; return; } phNote=found?'已自動把整顆頭剪下來換到角色身上。':'照片裡沒有找到臉，先用照片中間的部分；可以換一張正面、清楚的照片。'; apply(v); }); });
   on('phDel',()=>apply(''));
 }
+// 造型的每一類：按標題的箭頭可以收起來，收起來時只顯示目前選的
+let lkFold={};
+function foldRow(id,label,chips,def){
+  const f=id in lkFold?lkFold[id]:!!def;
+  return '<div class="lkrow lkf'+(f?' fold':'')+'" data-fid="'+id+'"><span class="lkt">'+label+'</span><div><div class="chips">'+chips+'</div><div class="lksum"></div></div></div>';
+}
+function lkSum(row){ const s=row.querySelector('.chips .sel'),m=row.querySelector('.lksum'); if(!m) return;
+  m.innerHTML=s?(s.classList.contains('sw')?'<i class="sw" style="background:'+s.style.background+';display:inline-block;width:18px;height:18px;vertical-align:middle"></i>':s.textContent):'未選'; }
+// 複選：每一組自成一類（例如擺飾的頭飾、娃娃…），每一組可以選一個
 function multiRow(L,look){
   const on=String(look[L.key]||'').split(','),grps=[...new Set(L.opts.map(x=>x.grp))];
-  return '<div class="lkrow"><span>'+L.label+'</span><div>'+grps.map(gp=>'<div class="chips" style="margin-bottom:4px"><span class="olbl">'+gp+'</span>'+
-    L.opts.filter(x=>x.grp===gp).map(o=>'<button class="chip'+(on.includes(o.id)?' sel':'')+'" data-mk="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join('')+'</div>').join('')+'</div></div>'+(L.hint?'<p class="hint">'+L.hint+'</p>':'');
+  return '<div class="lkhead">'+L.label+(L.hint?'<small>'+L.hint+'</small>':'')+'</div>'+grps.map(gp=>foldRow(L.key+'.'+gp,gp,
+    L.opts.filter(x=>x.grp===gp).map(o=>'<button class="chip'+(on.includes(o.id)?' sel':'')+'" data-mk="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join(''),true)).join('');
 }
 async function lookCard(){
-  const g=cur,look=lookOf(g); let use3d=!!g.viewer;
+  const g=cur,look=lookOf(g); let use3d=!!g.viewer; try{ lkFold=JSON.parse(load('arcade.lkfold.'+g.id)||'{}')||{}; }catch(e){ lkFold={}; }
   if(use3d&&g.load){ showCard('<h3>我的造型</h3><p>載入 3D 預覽中…</p>'); try{ await g.load(); }catch(e){ use3d=false; } if(cur!==g||state!=='ready') return; }
   closeLook();
   showCard('<h3>我的造型</h3>'+(use3d?'<div id="lkBox" class="lk"></div><p class="hint">按住拖曳可以旋轉，滾輪可以拉近拉遠</p>':'<canvas id="lkCv" width="720" height="400" class="lk"></canvas>')+
-    g.looks.map(L=>L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):'<div class="lkrow"><span>'+L.label+'</span><div class="chips">'+L.opts.map(o=>L.type==='color'
+    '<div class="lklist">'+g.looks.map(L=>L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):foldRow(L.key,L.label,L.opts.map(o=>L.type==='color'
       ?'<button class="sw'+(look[L.key]===o?' sel':'')+'" data-k="'+L.key+'" data-o="'+o+'" style="background:'+o+'" aria-label="顏色 '+o+'"></button>'
-      :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join('')+'</div></div>').join('')+
+      :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join(''))).join('')+'</div>'+
     '<p>選好就會自動記住，下次打開還在。</p><div class="row"><button class="btn main" id="lkOk">完成</button></div>');
   if(use3d){ let v=null; try{ v=g.viewer($('#lkBox'),look); }catch(e){} lookPrev={g,look,v}; if(!v) $('#lkBox').textContent='這台裝置無法顯示 3D 預覽'; }
   else { const ctx=$('#lkCv').getContext('2d'); ctx.scale(2,2); lookPrev={g,ctx,look}; }
+  const sums=()=>card.querySelectorAll('.lkf').forEach(lkSum); sums();
+  card.querySelectorAll('.lkt,.lksum').forEach(t=>t.addEventListener('click',()=>{ const row=t.closest('.lkf'),f=row.classList.toggle('fold'); lkFold[row.dataset.fid]=f; save('arcade.lkfold.'+g.id,JSON.stringify(lkFold)); SFX.click(); }));
   card.querySelectorAll('[data-mk]').forEach(b=>b.addEventListener('click',()=>{ // 複選：同一組只留一個，再按一次取下
     const L=g.looks.find(x=>x.key===b.dataset.mk),op=L.opts.find(x=>x.id===b.dataset.o),on=new Set(String(look[L.key]||'').split(',').filter(Boolean));
     if(on.has(op.id)) on.delete(op.id); else { for(const x of L.opts) if(x.grp===op.grp) on.delete(x.id); on.add(op.id); }
     look[L.key]=L.opts.filter(x=>on.has(x.id)).map(x=>x.id).join(','); save('arcade.look.'+g.id,JSON.stringify(look)); SFX.click();
-    card.querySelectorAll('[data-mk="'+L.key+'"]').forEach(x=>x.classList.toggle('sel',on.has(x.dataset.o)));
+    card.querySelectorAll('[data-mk="'+L.key+'"]').forEach(x=>x.classList.toggle('sel',on.has(x.dataset.o))); sums();
     if(lookPrev&&lookPrev.v) lookPrev.v.set(look);
   }));
   card.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>{
     look[b.dataset.k]=b.dataset.o; save('arcade.look.'+g.id,JSON.stringify(look)); SFX.click();
-    card.querySelectorAll('[data-k="'+b.dataset.k+'"]').forEach(x=>x.classList.toggle('sel',x===b));
+    card.querySelectorAll('[data-k="'+b.dataset.k+'"]').forEach(x=>x.classList.toggle('sel',x===b)); sums();
     if(lookPrev&&lookPrev.v) lookPrev.v.set(look);
   }));
   bindPhoto(g,look);
