@@ -110,6 +110,12 @@ const NITRO={
 // 輪子：輪框顏色、輪框佔比、寬度倍率、直徑倍率
 const WHEEL={std:[0xc8ccd6,.62,1,1],gold:[0xffc928,.62,1,1],race:[0xe23b3b,.76,1.28,1],offroad:[0x6b7686,.5,1.18,1.12],neon:[0x3ddbd9,.66,1,1]};
 
+// 設定噴焰：顏色、長度、粗細（每格都會抖動，看起來像在噴）
+function setFlame(fl,col,len,w){
+  fl.visible=true;
+  for(const p of fl.userData.parts){ const j=.82+Math.random()*.36; p.o.scale.set(w,len*j,w); p.o.material.color.setHex(col); p.i.scale.set(w*.9,len*j*.78,w*.9); }
+  const gl=fl.userData.glow; gl.material.color.setHex(col); gl.scale.setScalar(w*(1+Math.random()*.25));
+}
 /* ---- 車與人物的模型：遊戲裡和「我的造型」的預覽共用 ---- */
 function buildKart(T,L){
   const g=new T.Group(),PI=Math.PI;
@@ -247,7 +253,12 @@ function buildKart(T,L){
     add(new T.TorusGeometry(.47,.03,6,24),lam(0xffffff),0,hy,hz,0,0,0); box(.5,.1,.3,dark,0,hy-.36,hz+.22); }
   const dv=new T.Group(); for(const c of g.children.slice(n0)){ c.position.z-=hz; dv.add(c); } dv.position.z=hz; g.add(dv);
   // 特效用的零件
-  const flame=add(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:(NITRO[L.nitro]||NITRO.fire).cols[0]}),0,moto?(heavy?.85:.7):by+.05,moto?(heavy?-2.4:-2.1):(sport?-2.9:-2.6),-PI/2); flame.visible=false;
+  const flame=new T.Group(),fy=moto?(heavy?.85:.7):by+.12,fz=moto?(heavy?-1.95:-1.65):buggy?-1.75:(sport?-2.1:-1.7),parts=[];
+  const glowMat=c=>new T.MeshBasicMaterial({color:c,transparent:true,opacity:.85,blending:T.AdditiveBlending,depthWrite:false});
+  for(const x of (moto?[0]:[-.42,.42])){ const og=new T.ConeGeometry(.36,2.6,14,1,true); og.translate(0,1.3,0); const ig=new T.ConeGeometry(.17,1.7,10,1,true); ig.translate(0,.85,0);
+    const o=new T.Mesh(og,glowMat(0xffa41a)),i=new T.Mesh(ig,glowMat(0xffffff)); o.rotation.x=i.rotation.x=-PI/2; o.position.set(x,0,0); i.position.set(x,0,0); flame.add(o); flame.add(i); parts.push({o,i}); }
+  const glow=new T.Mesh(new T.SphereGeometry(.55,12,10),new T.MeshBasicMaterial({color:0xffa41a,transparent:true,opacity:.45,blending:T.AdditiveBlending,depthWrite:false})); flame.add(glow);
+  flame.position.set(0,fy,fz); flame.userData={parts,glow}; flame.visible=false; g.add(flame);
   const shadowM=add(new T.CircleGeometry(moto?1.5:sport?2.3:2,18),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.3}),0,.1,0,-PI/2);
   const sd=add(new T.SphereGeometry(2.7,14,10),new T.MeshBasicMaterial({color:0x66e0ff,transparent:true,opacity:.3}),0,1.1,0); sd.visible=false;
   const cl=new T.Group(),cm=new T.MeshBasicMaterial({color:0x3a3d4d});
@@ -276,7 +287,7 @@ function viewer(host,look){
   return {
     set(L){ look=L; scene.remove(model); kill(model); model=buildKart(T,L); scene.add(model); },
     draw(){ if(auto) yaw+=.007; for(const wl of model.userData.wheels) wl.rotation.x+=auto?.05:0;
-      { const fl=model.userData.flame,st=NITRO[look.nitro]||NITRO.fire; fl.visible=true; fl.scale.set(1.6,1.3+Math.random()*.9,1.6); fl.material.color.setHex(st.cols[Math.floor(performance.now()/90)%st.cols.length]); } // 預覽氮氣特效
+      { const st=NITRO[look.nitro]||NITRO.fire; setFlame(model.userData.flame,st.cols[Math.floor(performance.now()/90)%st.cols.length],1.3,1.15); } // 預覽氮氣特效
       cam.position.set(Math.sin(yaw)*Math.cos(pitch)*dist,Math.sin(pitch)*dist+1,Math.cos(yaw)*Math.cos(pitch)*dist); cam.lookAt(0,1,0); r.render(scene,cam); },
     destroy(){ kill(scene); r.dispose(); try{ r.forceContextLoss(); }catch(e){} cv.remove(); }
   };
@@ -486,7 +497,7 @@ function create(env,opts){
     if(!inp.gas&&!inp.brake) vf-=vf*.6*dt;
     if(vf>max) vf-=Math.min(vf-max,(off?60:25)*dt);
     const slide=Math.abs(vl);
-    if(k.drifting){ vf-=slide*.045*dt; k.gauge+=itemMode||driftMode?0:slide*dt*.024;
+    if(k.drifting){ vf-=slide*.045*dt; k.gauge+=itemMode||driftMode?0:slide*dt*.031;
       if(k.gauge>=1){ if(k.stock<2){ k.stock++; k.gauge=0; if(mine) env.sfx('item'); } else k.gauge=1; } }
     if(driftMode) k.gauge=k.drifting?Math.min(1,k.driftT/1.9):0; // 甩噴賽：集氣條顯示這次甩尾能噴多久
     // 放開甩尾後 0.45 秒內抓地力漸漸恢復，並把一部分側滑的速度轉回前進，不會突然頓一下
@@ -628,12 +639,12 @@ function create(env,opts){
       if(k.flags&1){
         if(k.flags&256){ for(const d of [-1,1]) burst(k.x-sx*2+cz*d*1.1,k.z-cz*2-sx*d*1.1,k.fxN%2?0xffffff:0x4fd0ff,.85,.45,.24); }      // 甩噴：兩個後輪各拖一道青白色的光
         else { const st=NITRO[k.look.nitro]||NITRO.fire,nit=k.flags&128;                                                                  // 氮氣：從車尾中間噴出，樣式看造型
-          for(let q=0;q<(nit?st.n:1);q++){ const j=(Math.random()-.5)*(nit?st.jit:.3)*2; burst(k.x-sx*2.9+cz*j,k.z-cz*2.9-sx*j,nit?nitroCol(k,k.fxN+q):0xffa41a,nit?st.size:1.5,.8+Math.random()*(nit?st.jit:.2),nit?st.life:.28); } }
+          for(let q=0;q<(nit?st.n*2:1);q++){ const j=(Math.random()-.5)*(nit?st.jit:.3)*2,b=3.2+Math.random()*1.4; burst(k.x-sx*b+cz*j,k.z-cz*b-sx*j,nit?nitroCol(k,k.fxN+q):0xffa41a,nit?st.size*1.45:1.5,.8+Math.random()*(nit?st.jit:.2),nit?st.life*1.25:.28); } }
       } }
     for(const k of locals){ if(k.toastT>0) k.toastT-=dt; if(k.rollT>0) k.rollT-=dt; }
     if(flashT>0) flashT-=dt;
     if(pip){ pip.t-=dt; if(pip.t<=0) pip=null; }
-    for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); { const fl=k.mesh.userData.flame; fl.visible=!!(k.flags&1)&&!(k.flags&256); if(fl.visible){ const q=1.5+Math.random()*.9,big=k.flags&128?1.9:1.4; fl.scale.set(big,q,big); fl.material.color.setHex(k.flags&128?nitroCol(k,Math.floor(t*12)):0xffa41a); } } { const sp=Math.hypot(k.vx,k.vz)*dt*2; for(const wl of k.mesh.userData.wheels) wl.rotation.x+=sp; } k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
+    for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); { const fl=k.mesh.userData.flame; if((k.flags&1)&&!(k.flags&256)){ const nit=k.flags&128; setFlame(fl,nit?nitroCol(k,Math.floor(t*12)):0xffa41a,nit?1.55:.95,nit?1.35:.95); } else fl.visible=false; } { const sp=Math.hypot(k.vx,k.vz)*dt*2; for(const wl of k.mesh.userData.wheels) wl.rotation.x+=sp; } k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
     for(const k of karts){ if(!k.mesh.userData.moto||(k.flags&512)) continue; // 機車過彎壓車
       const dh=wrap(k.h-(k.ph==null?k.h:k.ph)); k.ph=k.h; const tg=clamp(-dh/Math.max(dt,1e-3)*.22,-.55,.55); k.lean=(k.lean||0)+(tg-(k.lean||0))*Math.min(1,dt*7); k.mesh.rotation.z=k.lean;
       const sh=k.mesh.userData.shadow; if(sh){ sh.rotation.set(0,0,0); sh.rotateZ(-k.lean); sh.rotateX(-Math.PI/2); sh.position.set(Math.sin(k.lean)*.1,.1*Math.cos(k.lean)-Math.sin(Math.abs(k.lean))*.0,0); } } // 影子保持平貼地面
@@ -644,7 +655,7 @@ function create(env,opts){
     for(const k of karts){ if(k.left||!(k.flags&2)||k.z>.5){ k.sk=null; continue; } // 甩尾中才留胎痕
       const sx=Math.sin(k.h),cz=Math.cos(k.h),w=[[k.x-sx*1.1+cz*1.12,k.z-cz*1.1-sx*1.12],[k.x-sx*1.1-cz*1.12,k.z-cz*1.1+sx*1.12]];
       if(!k.sk) k.sk=w; else if(Math.hypot(w[0][0]-k.sk[0][0],w[0][1]-k.sk[0][1])>.7){ for(let j=0;j<2;j++) skid(k.sk[j][0],k.sk[j][1],w[j][0],w[j][1]); k.sk=w; } }
-    for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*(k.drifting?3.4:5)); v.fov+=((k.boostT>0?74:62)-v.fov)*Math.min(1,dt*4); }
+    for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*(k.drifting?3.4:5)); v.fov+=((k.boostT>0?(k.bk===2?84:74):62)-v.fov)*Math.min(1,dt*4); }
   }
 
   const rankSort=(a,b)=>(a.fin!=null?a.fin-1e6:-a.prog)-(b.fin!=null?b.fin-1e6:-b.prog);
@@ -737,7 +748,8 @@ function create(env,opts){
       renderer.setViewport(x,vh-y-h,w,h); if(n>1) renderer.setScissor(x,vh-y-h,w,h);
       const sx=Math.sin(v.camH),cz=Math.cos(v.camH);
       cam.aspect=w/h; cam.fov=v.fov; cam.updateProjectionMatrix();
-      cam.position.set(k.x-sx*10.5,5.4,k.z-cz*10.5); cam.lookAt(k.x+sx*6,1.6,k.z+cz*6);
+      const sh=k.boostT>0&&k.bk===2?.09:0,jx=(Math.random()-.5)*sh,jy=(Math.random()-.5)*sh; // 噴氮氣時鏡頭輕微震動
+      cam.position.set(k.x-sx*10.5+jx,5.4+jy,k.z-cz*10.5); cam.lookAt(k.x+sx*6,1.6,k.z+cz*6);
       renderer.render(scene,cam);
       c.save(); c.translate(x,y); c.beginPath(); c.rect(0,0,w,h); c.clip(); drawHud(k,w,h); c.restore();
     });
@@ -799,6 +811,11 @@ function create(env,opts){
       for(let i=0;i<14;i++){ const a=i*1.7,cx=w*(.14+.72*((i*37)%14)/13)+Math.sin(t*1.3+a)*14,cy=h*(.2+.36*((i*5)%7)/6)+Math.cos(t+a)*8; c.beginPath(); c.arc(cx,cy,Math.min(w,h)*(.13+.03*(i%3)),0,7); c.fill(); }
       c.globalAlpha=1; }
     if(k.slowT>0){ c.strokeStyle='rgba(255,225,74,'+(.5+.3*Math.sin(t*20))+')'; c.lineWidth=10; c.strokeRect(5,5,w-10,h-10); }
+    if(k.boostT>0&&(k.bk===2||k.bk===1)){ // 噴氮氣：邊緣泛出氮氣顏色、四周的速度線往中心衝
+      const col=k.bk===2?nitroCol(k,Math.floor(t*10)):0x4fd0ff,r=col>>16&255,gg=col>>8&255,b=col&255,a=Math.min(1,k.boostT*2)*(k.bk===2?1:.6);
+      const vg=c.createRadialGradient(w/2,h*.55,Math.min(w,h)*.28,w/2,h*.55,Math.max(w,h)*.72); vg.addColorStop(0,'rgba('+r+','+gg+','+b+',0)'); vg.addColorStop(1,'rgba('+r+','+gg+','+b+','+(.58*a)+')'); c.fillStyle=vg; c.fillRect(0,0,w,h);
+      c.lineCap='round'; for(let i=0;i<34;i++){ const ang=Math.random()*Math.PI*2,r0=Math.max(w,h)*(.3+Math.random()*.25),len=Math.max(w,h)*(.12+Math.random()*.2),cx=w/2,cy=h*.55;
+        c.strokeStyle=i%3?'rgba(255,255,255,'+(.75*a)+')':'rgba('+r+','+gg+','+b+','+(.7*a)+')'; c.lineWidth=1.5+Math.random()*3; c.beginPath(); c.moveTo(cx+Math.cos(ang)*r0,cy+Math.sin(ang)*r0); c.lineTo(cx+Math.cos(ang)*(r0+len),cy+Math.sin(ang)*(r0+len)); c.stroke(); } }
     if(flashT>0){ c.fillStyle='rgba(255,255,220,'+Math.min(.8,flashT*3)+')'; c.fillRect(0,0,w,h); }
     if(remain!=null&&!ended){ const tw=190*s; c.fillStyle='rgba(226,59,59,.88)'; c.fillRect(w/2-tw/2,8,tw,30*s); c.fillStyle='#fff'; c.font='900 '+15*s+'px '+TC; c.fillText('比賽結束倒數 '+Math.ceil(remain)+' 秒',w/2,8+16*s); }
     if(itemMode){ const bs=58*s,gp=10*s,x0=w/2-bs-gp/2,y0=8*s;
