@@ -115,7 +115,9 @@ const cleared=()=>{ let n=0; for(let i=0;i<LEVELS;i++) if(getRec(i)!=null) n++; 
 const autoKey='arcade.meow.auto',getAuto=()=>{ try{ return localStorage.getItem(autoKey)!=='0'; }catch(e){ return true; } };
 
 function create(env,opts){
-  const L=opts.look||{cat:'tuxedo',theme:'classic'},lv=clamp(opts.stage||0,0,LEVELS-1),P=genLevel(lv),N=P.N;
+  const L=opts.look||{cat:'tuxedo',theme:'classic'};
+  let lv=clamp(opts.stage||0,0,LEVELS-1); while(lv>0&&getRec(lv-1)==null) lv--; // 還沒解鎖的關卡就退回最新可以玩的那關
+  const P=genLevel(lv),N=P.N;
   const GAP=Math.max(4,BS*.016),CS=(BS-GAP*(N+1))/N; // 每格是一塊獨立的圓角色塊
   const pal=PALETTE[L.theme]||PALETTE.classic,regCol=g=>pal[P.colors[g]%pal.length];
   const {ctx:c,canvas}=env.canvas2d(W,H);
@@ -267,10 +269,11 @@ const preview=(c,w,h,L,t)=>demo(c,w,h,t,L);
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).meow={
   name:'貓咪數獨',tag:'MEOW PUZZLE',color:'#ffc845',
-  desc:'為每隻高冷的小貓找到專屬領地：每種顏色、每一行、每一列都剛好一隻貓，而且貓咪不能相鄰，連斜角都不行。不用算數，全靠邏輯推理。共 50 關，從 5×5 到 9×9。',
+  desc:'為每隻高冷的小貓找到專屬領地：每種顏色、每一行、每一列都剛好一隻貓，而且貓咪不能相鄰，連斜角都不行。不用算數，全靠邏輯推理。共 50 關，從 5×5 到 9×9，過了一關才會解鎖下一關。',
   goal:'點一下格子打叉，再點一下（或快速點兩下）放貓，點貓可以拿掉；按住拖曳可以連續打叉。放錯貓會失去一顆愛心，3 顆用完就失敗。「自動」會幫你把放好的貓管到的格子打叉，「提示」會在一定有貓的格子打上問號（每關 3 次）。',
   stages:Array.from({length:LEVELS},(_,i)=>sizeOf(i)+'×'+sizeOf(i)),stars:Array.from({length:LEVELS},(_,i)=>sizeOf(i)-4),
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+fmt(v); },
+  stageLocked:i=>i>0&&getRec(i-1)==null, // 過了前一關才解鎖下一關
   hubBest:()=>{ const n=cleared(); return n?'已過關 <b>'+n+' / '+LEVELS+'</b>':'尚無紀錄'; },
   help:[['點一下','空格打叉'],['再點一下','叉叉變成貓（快速點兩下也可以）'],['點貓','拿掉貓'],['按住拖曳','連續打叉或清除叉叉'],['↑ ↓ ← →','移動選取框'],['空白鍵','打叉／取消叉叉'],['Enter','放貓'],['H','提示'],['A','自動打叉開關'],['Z','復原']],
   touchHelp:[['點一下','空格打叉'],['再點一下','叉叉變成貓（快速點兩下也可以）'],['點貓','拿掉貓'],['按住拖曳','連續打叉或清除叉叉'],['自動','放好貓後自動把不可能的格子打叉'],['提示','在一定有貓的格子打問號（每關 3 次）']],
