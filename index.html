@@ -55,6 +55,13 @@ kbd{font-family:var(--pixel);font-size:10px;background:var(--ink);border:1px sol
 .lkrow>span{color:var(--dim);font-weight:700}
 .lkrow .chips{justify-content:flex-start}
 .lklist{display:flex;flex-direction:column}
+/* 我的造型：左邊車子和人物、右邊選項 */
+.card:has(.lkSplit){max-width:980px}
+.lkSplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px;align-items:start}
+.lkL{position:sticky;top:0;display:flex;flex-direction:column;gap:8px}
+.lkL .lk{max-width:none;aspect-ratio:auto;height:min(460px,calc(100vh - 330px));min-height:240px}.lkL canvas.lk{height:auto;min-height:0;aspect-ratio:9/5}
+.lkSplit .lklist{max-height:max(280px,calc(100vh - 300px));overflow-y:auto;padding-right:8px;scrollbar-width:thin}
+@media (max-width:720px){.lkSplit{grid-template-columns:minmax(0,1fr);gap:10px}.lkL{z-index:2;background:var(--panel);padding-bottom:6px}.lkL .lk{height:auto;min-height:0;aspect-ratio:16/9}.lkL .hint{display:none}.lkSplit .lklist{max-height:none;overflow:visible}}
 .lklist>.lkrow,.lklist>.lkhead{border-top:1px solid var(--line);padding:8px 0}
 .lklist>.lkrow:first-child{border-top:0}
 .lklist>.hint{margin:-4px 0 8px}
@@ -217,7 +224,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=74; // 每次改版加一
+window.ARCADE_V=75; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -485,10 +492,10 @@ async function lookCard(){
   const g=cur,look=lookOf(g); let use3d=!!g.viewer; try{ lkFold=JSON.parse(load('arcade.lkfold.'+g.id)||'{}')||{}; }catch(e){ lkFold={}; }
   if(use3d&&g.load){ showCard('<h3>我的造型</h3><p>載入 3D 預覽中…</p>'); try{ await g.load(); }catch(e){ use3d=false; } if(cur!==g||state!=='ready') return; }
   closeLook();
-  showCard('<h3>我的造型</h3>'+(use3d?'<div id="lkBox" class="lk"></div><p class="hint">按住拖曳可以旋轉，滾輪可以拉近拉遠</p>':'<canvas id="lkCv" width="720" height="400" class="lk"></canvas>')+
-    '<div class="lklist">'+g.looks.map(L=>L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):foldRow(L.key,L.label,L.opts.map(o=>L.type==='color'
+  showCard('<h3>我的造型</h3><div class="lkSplit"><div class="lkL">'+(use3d?'<div id="lkBox" class="lk"></div><p class="hint">按住拖曳可以旋轉，滾輪可以拉近拉遠</p>':'<canvas id="lkCv" width="720" height="400" class="lk"></canvas>')+
+    '</div><div class="lklist">'+g.looks.map(L=>L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):foldRow(L.key,L.label,L.opts.map(o=>L.type==='color'
       ?'<button class="sw'+(look[L.key]===o?' sel':'')+'" data-k="'+L.key+'" data-o="'+o+'" style="background:'+o+'" aria-label="顏色 '+o+'"></button>'
-      :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join(''))).join('')+'</div>'+
+      :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join(''))).join('')+'</div></div>'+
     '<p>選好就會自動記住，下次打開還在。</p><div class="row"><button class="btn main" id="lkOk">完成</button></div>');
   if(use3d){ let v=null; try{ v=g.viewer($('#lkBox'),look); }catch(e){} lookPrev={g,look,v}; if(!v) $('#lkBox').textContent='這台裝置無法顯示 3D 預覽'; }
   else { const ctx=$('#lkCv').getContext('2d'); ctx.scale(2,2); lookPrev={g,ctx,look}; }

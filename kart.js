@@ -374,7 +374,7 @@ function buildKart(T,L){
 // 「我的造型」裡可以拖曳旋轉的 3D 預覽
 function viewer(host,look){
   const T=window.THREE,r=new T.WebGLRenderer({antialias:true}),dpr=Math.min(window.devicePixelRatio||1,2);
-  const w=host.clientWidth||360,h=host.clientHeight||200; r.setPixelRatio(dpr); r.setSize(w,h,false);
+  const w=host.clientWidth||360,h=host.clientHeight||200; let cw=w,ch=h; r.setPixelRatio(dpr); r.setSize(w,h,false);
   const cv=r.domElement; cv.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab'; host.appendChild(cv);
   const scene=new T.Scene(); scene.background=new T.Color(0x2b2759);
   scene.add(new T.HemisphereLight(0xffffff,0x554a88,.9)); const d1=new T.DirectionalLight(0xffffff,.75); d1.position.set(5,9,6); scene.add(d1); const d2=new T.DirectionalLight(0x9fd8ff,.35); d2.position.set(-6,4,-5); scene.add(d2);
@@ -389,7 +389,8 @@ function viewer(host,look){
   cv.addEventListener('wheel',e=>{ e.preventDefault(); dist=Math.max(5,Math.min(16,dist+e.deltaY*.01)); },{passive:false});
   return {
     set(L){ look=L; scene.remove(model); kill(model); model=buildKart(T,L); scene.add(model); },
-    draw(){ if(auto) yaw+=.007; for(const wl of model.userData.wheels) wl.rotation.x+=auto?.05:0; for(const f of model.userData.anim) f(performance.now()/1000,0);
+    draw(){ const W=host.clientWidth,H=host.clientHeight; if(W&&H&&(W!==cw||H!==ch)){ cw=W; ch=H; r.setSize(W,H,false); cam.aspect=W/H; cam.updateProjectionMatrix(); } // 版面改變時跟著調整大小
+      if(auto) yaw+=.007; for(const wl of model.userData.wheels) wl.rotation.x+=auto?.05:0; for(const f of model.userData.anim) f(performance.now()/1000,0);
       { const st=NITRO[look.nitro]||NITRO.fire; setFlame(model.userData.flame,st.cols[Math.floor(performance.now()/90)%st.cols.length],1.3,1.15); } // 預覽氮氣特效
       cam.position.set(Math.sin(yaw)*Math.cos(pitch)*dist,Math.sin(pitch)*dist+1,Math.cos(yaw)*Math.cos(pitch)*dist); cam.lookAt(0,1,0); r.render(scene,cam); },
     destroy(){ kill(scene); r.dispose(); try{ r.forceContextLoss(); }catch(e){} cv.remove(); }
