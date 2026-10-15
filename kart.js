@@ -215,7 +215,8 @@ function buildKart(T,L){
   else if(L.part==='flag'){ tube(.035,2.4,metal,-.62,ry+1.2,rz); const f=add(new T.PlaneGeometry(.95,.55),new T.MeshLambertMaterial({color:0xffd23f,side:T.DoubleSide}),-.14,ry+2.1,rz,0,0,0); f.rotation.y=.25; ball(.07,metal,-.62,ry+2.42,rz); }
   else if(L.part==='exhaust'){ for(const x of [-.42,.42]){ add(new T.CylinderGeometry(.13,.16,1.1,12),metal,x,ry+.05,rz-.3,1.15); add(new T.CylinderGeometry(.16,.16,.16,12),dark,x,ry+.28,rz-.82,1.15); } }
   else { box(1.7,.07,.4,dark,0,ry+.32,rz); tube(.04,.34,metal,-.5,ry+.15,rz); tube(.04,.34,metal,.5,ry+.15,rz); }
-  // 駕駛：身體、手臂握方向盤、頭
+  // 駕駛：身體、手臂握方向盤、頭（全部收成一組，頒獎時人物可以自己跳）
+  const n0=g.children.length;
   if(moto){ const H=RH.hip,tp=[0,H[1]+Math.cos(RH.lean)*.8,H[2]+Math.sin(RH.lean)*.8];
     limb(H,tp,.34,suit); add(new T.CylinderGeometry(.35,.35,.12,14),paint,0,H[1]+.12,H[2]+.06,RH.lean);
     for(const sx of [-1,1]){ const sh=[sx*.36,tp[1]-.08,tp[2]-.02],gp=[sx*RH.grip[0],RH.grip[1],RH.grip[2]],el=[(sh[0]+gp[0])/2+sx*.1,(sh[1]+gp[1])/2+.06,(sh[2]+gp[2])/2];
@@ -244,6 +245,7 @@ function buildKart(T,L){
     add(new T.SphereGeometry(.43,16,8,PI,PI,PI/2,.6),lam(0x3a2a20),0,hy,hz); eye(-.16); eye(.16); ball(.05,lam(0xe0a882),0,hy-.05,hz+.42); box(.16,.025,.02,lam(0x9a4a3a),0,hy-.17,hz+.38); }
   else { ball(.47,paint,0,hy,hz); add(new T.SphereGeometry(.485,20,8,PI/2-.95,1.9,1.12,.6),new T.MeshPhongMaterial({color:0x10121c,shininess:160,specular:0xaaccff}),0,hy,hz);
     add(new T.TorusGeometry(.47,.03,6,24),lam(0xffffff),0,hy,hz,0,0,0); box(.5,.1,.3,dark,0,hy-.36,hz+.22); }
+  const dv=new T.Group(); for(const c of g.children.slice(n0)){ c.position.z-=hz; dv.add(c); } dv.position.z=hz; g.add(dv);
   // 特效用的零件
   const flame=add(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:(NITRO[L.nitro]||NITRO.fire).cols[0]}),0,moto?(heavy?.85:.7):by+.05,moto?(heavy?-2.4:-2.1):(sport?-2.9:-2.6),-PI/2); flame.visible=false;
   const shadowM=add(new T.CircleGeometry(moto?1.5:sport?2.3:2,18),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.3}),0,.1,0,-PI/2);
@@ -252,7 +254,7 @@ function buildKart(T,L){
   for(const [x,y,z,r] of [[0,0,0,1.5],[1.3,-.2,.2,1.1],[-1.3,-.2,-.1,1.2],[.4,.5,-.3,1]]) add(new T.SphereGeometry(r,10,8),cm,x,y,z,0,0,0,cl);
   cl.position.set(0,5,1.2); cl.visible=false; g.add(cl);
   const bolt=add(new T.ConeGeometry(.5,2.2,4),new T.MeshBasicMaterial({color:0xffe14a}),0,4.8,0,PI); bolt.visible=false;
-  g.userData={flame,shield:sd,cloud:cl,bolt,wheels,moto,shadow:shadowM};
+  g.userData={flame,shield:sd,cloud:cl,bolt,wheels,moto,shadow:shadowM,driver:dv};
   return g;
 }
 // 「我的造型」裡可以拖曳旋轉的 3D 預覽
@@ -686,8 +688,9 @@ function create(env,opts){
   function stepCeremony(dt){
     const C=cer; C.t+=dt;
     for(const o of C.meshes){ const n=o.n,ph=C.t*(n===0?5:4)+n*1.7; // 跳上跳下、轉圈、左右搖
-      o.m.position.y=o.top+Math.abs(Math.sin(ph))*(n===0?1.6:1.1); o.m.rotation.y=(C.t*(n===0?2.4:1.8)+n)*(n===1?-1:1); o.m.rotation.z=Math.sin(ph*1.3)*.18;
-      if(o.m.userData.wheels) for(const wl of o.m.userData.wheels) wl.rotation.x+=dt*8; }
+      o.m.position.y=o.top; o.m.rotation.y=Math.sin(C.t*.6+n)*.35; o.m.rotation.z=0; // 車子停在頒獎台上，只有人物跳
+      const dv=o.m.userData.driver; if(dv){ dv.position.y=Math.abs(Math.sin(ph))*(n===0?1.5:1.0); dv.rotation.y=(C.t*(n===0?3:2.2)+n)*(n===1?-1:1); dv.rotation.z=Math.sin(ph*1.3)*.15; }
+    }
     for(const f of C.conf){ f.m.position.y-=f.vy*dt; f.m.position.x+=Math.sin(C.t*2+f.r[0])*f.sx*dt; f.m.rotation.x+=dt*f.r[0]; f.m.rotation.y+=dt*f.r[1]; if(f.m.position.y<0){ f.m.position.y=22+Math.random()*4; } }
     C.beam.material.opacity=.14+.08*Math.sin(C.t*6);
     if(C.t>C.dur||C.t>1.2&&(C.skip||env.hit('Space')||env.hit('Enter'))) endCeremony();
