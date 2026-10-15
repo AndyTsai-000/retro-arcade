@@ -7,35 +7,52 @@ const PIX='"Press Start 2P","Noto Sans TC","Microsoft JhengHei",monospace';
 const TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
 const HALF=13,SHOULDER=7,MAX=62,MAXB=86,LAPS=3,TOTAL=6;
 const COLORS=['#ff4d4d','#3d8bff','#ffd23f','#5fd068','#c56bff','#ff9d3d'];
+// cut：捷徑（從第幾個路線點切到第幾個路線點，碎石路、路窄又有石頭）；hw：路面半寬
 const STAGES=[
-  {name:'森林小徑',stars:1,grip:1,ai:.82,sky:0x8fd3ff,ground:['#4c9a3c','#448c36'],road:'#4a4a55',tree:[0x2f7d32,0x6b4a2a],
-   pts:[[0,0],[120,0],[200,-40],[220,-130],[150,-190],[40,-180],[-40,-230],[-150,-220],[-200,-140],[-190,-50],[-100,0]]},
-  {name:'海濱大道',stars:2,grip:1,ai:.85,sky:0x7fdcf5,ground:['#f0dc9c','#e6cf88'],road:'#55556a',tree:[0x3fae6a,0x8a6a3a],
-   pts:[[0,0],[150,0],[250,-30],[290,-120],[230,-200],[110,-220],[0,-190],[-110,-230],[-220,-190],[-250,-100],[-180,-30],[-100,0]]},
-  {name:'沙漠峽谷',stars:3,grip:1,ai:.88,sky:0xffd9a0,ground:['#d9b36a','#cfa75e'],road:'#5a4f48',tree:[0x4f9a4a,0x4f9a4a],
-   pts:[[0,0],[140,0],[220,-40],[240,-130],[170,-190],[90,-150],[20,-190],[-50,-260],[-150,-250],[-200,-170],[-140,-110],[-200,-50],[-100,0]]},
-  {name:'城鎮夜路',stars:3,grip:1,ai:.9,sky:0x232a5c,ground:['#2f3b4f','#293447'],road:'#3c3c48',tree:[0x2a5a4a,0x3a3028],
-   pts:[[0,0],[130,0],[190,-20],[200,-90],[140,-120],[130,-190],[190,-230],[120,-270],[0,-250],[-40,-170],[-120,-150],[-200,-200],[-240,-120],[-190,-40],[-100,0]]},
-  {name:'櫻花公園',stars:3,grip:1,ai:.9,sky:0xffe3ef,ground:['#9ed68a','#93cc80'],road:'#5b5560',tree:[0xff9ec4,0x6b4a3a],
-   pts:[[0,0],[130,0],[210,-30],[230,-110],[160,-150],[170,-230],[90,-270],[10,-230],[30,-150],[-50,-120],[-130,-170],[-210,-140],[-220,-50],[-100,0]]},
-  {name:'楓葉山道',stars:3,grip:1,ai:.9,sky:0xffe8c2,ground:['#c9a45a','#bd974e'],road:'#55504e',tree:[0xe2622a,0x5a3a26],
-   pts:[[0,0],[140,0],[230,-20],[270,-100],[200,-150],[230,-230],[150,-280],[60,-240],[-10,-280],[-90,-230],[-60,-150],[-140,-110],[-230,-150],[-250,-60],[-180,-10],[-100,0]]},
-  {name:'冰原彎道',stars:4,grip:.5,ai:.86,sky:0xcfe9ff,ground:['#eef6ff','#dfeefa'],road:'#8fb4c9',tree:[0xbfe3f2,0x6f8fa3],
-   pts:[[0,0],[100,0],[170,-50],[110,-110],[180,-170],[100,-230],[10,-180],[-60,-240],[-150,-250],[-210,-180],[-130,-130],[-210,-70],[-100,0]]},
-  {name:'海盜港灣',stars:4,grip:1,ai:.91,sky:0xffb37a,ground:['#e9cf8f','#dcbf7c'],road:'#4f4a52',tree:[0x2f8f6a,0x7a5a36],
-   pts:[[0,0],[120,0],[190,-50],[130,-110],[200,-170],[260,-110],[300,-190],[230,-260],[120,-240],[40,-280],[-40,-220],[20,-140],[-60,-90],[-150,-150],[-230,-90],[-180,-10],[-100,0]]},
-  {name:'叢林遺跡',stars:4,grip:.9,ai:.91,sky:0xb7e0c0,ground:['#2f7a3c','#286e35'],road:'#5a5446',tree:[0x1f6a2c,0x4a3a22],
-   pts:[[0,0],[110,0],[180,-30],[200,-100],[140,-140],[70,-100],[10,-140],[60,-210],[150,-220],[210,-280],[110,-330],[0,-300],[-70,-230],[-150,-270],[-230,-210],[-190,-130],[-240,-60],[-170,-10],[-100,0]]},
-  {name:'火山環道',stars:5,grip:.9,ai:.93,sky:0x4a2030,ground:['#4a332e','#3f2a26'],road:'#2e2a30',tree:[0x8a3a22,0x3a2a22],
-   pts:[[0,0],[110,0],[170,-40],[120,-90],[190,-130],[130,-180],[200,-230],[110,-280],[20,-240],[40,-160],[-40,-110],[-100,-180],[-60,-260],[-160,-280],[-230,-210],[-170,-140],[-240,-80],[-180,-20],[-100,0]]},
-  {name:'太空站',stars:5,grip:.8,ai:.94,sky:0x0c0c22,ground:['#3a3d52','#33364a'],road:'#5a3f8a',tree:[0x3ddbd9,0x8a8fa8],
-   pts:[[0,0],[100,0],[160,-40],[110,-90],[170,-140],[110,-190],[180,-240],[240,-190],[240,-110],[320,-50],[365,-150],[335,-260],[235,-315],[120,-290],[40,-240],[-20,-290],[-100,-250],[-70,-170],[-10,-120],[-90,-80],[-170,-130],[-240,-80],[-190,-10],[-100,0]]},
-  {name:'冰河峽灣',stars:5,grip:.45,ai:.9,sky:0xa9d6f5,ground:['#e6f2fb','#d5e8f6'],road:'#7fa6c2',tree:[0xd6eef8,0x5f7f93],
-   pts:[[0,0],[120,0],[200,-40],[180,-120],[250,-180],[190,-250],[100,-210],[95,-135],[30,-100],[-30,-170],[30,-250],[-50,-310],[-150,-270],[-130,-180],[-210,-130],[-180,-40],[-100,0]]}
+  {name:'森林小徑',stars:1,ai:.82,sky:0x8fd3ff,ground:['#4c9a3c','#448c36'],road:'#4a4a55',tree:[0x2f7d32,0x6b4a2a],
+   pts:[[0,0],[160,0],[280,-40],[330,-140],[290,-240],[170,-280],[60,-230],[-40,-180],[-150,-220],[-250,-180],[-270,-80],[-190,-10],[-100,0]]},
+  {name:'花田牧場',stars:1,ai:.84,sky:0x9fdcff,ground:['#7cc45a','#70b84f'],road:'#4d4a55',tree:[0x3f9a3a,0x7a5230],flowers:1,
+   pts:[[0,0],[150,0],[300,10],[380,-40],[360,-130],[260,-230],[160,-320],[60,-330],[-20,-260],[-90,-160],[-160,-100],[-210,-40],[-170,0],[-80,0]]},
+  {name:'海濱大道',stars:2,ai:.86,sky:0x7fdcf5,ground:['#f0dc9c','#e6cf88'],road:'#55556a',tree:[0x3fae6a,0x8a6a3a],
+   pts:[[0,0],[160,0],[320,0],[440,-30],[480,-110],[420,-170],[300,-150],[200,-190],[90,-160],[-20,-200],[-140,-180],[-260,-210],[-360,-170],[-380,-80],[-300,-20],[-180,0],[-100,0]]},
+  {name:'湖畔小鎮',stars:2,ai:.87,sky:0x8fd0ff,ground:['#5aa84a','#4f9b40'],road:'#505260',tree:[0x2f8a4a,0x6b4a2a],
+   pts:[[0,0],[140,0],[250,-30],[300,-110],[280,-200],[200,-260],[90,-250],[40,-190],[-30,-150],[-90,-200],[-130,-280],[-220,-300],[-300,-240],[-310,-140],[-250,-50],[-100,0]]},
+  {name:'沙漠峽谷',stars:3,ai:.89,sky:0xffd9a0,ground:['#d9b36a','#cfa75e'],road:'#5a4f48',tree:[0x4f9a4a,0x4f9a4a],
+   pts:[[0,0],[130,0],[220,-20],[250,-80],[190,-120],[120,-110],[90,-160],[150,-210],[240,-220],[270,-280],[210,-340],[90,-350],[-20,-320],[-120,-350],[-220,-310],[-260,-220],[-200,-150],[-250,-80],[-190,-15],[-100,0]]},
+  {name:'城鎮夜路',stars:3,ai:.9,sky:0x232a5c,ground:['#2f3b4f','#293447'],road:'#3c3c48',tree:[0x2a5a4a,0x3a3028],night:1,
+   pts:[[0,0],[150,0],[200,-10],[210,-60],[210,-110],[260,-130],[320,-140],[330,-190],[320,-260],[270,-280],[150,-280],[100,-270],[90,-220],[80,-170],[30,-160],[-60,-160],[-110,-180],[-120,-240],[-170,-280],[-240,-270],[-260,-200],[-260,-60],[-230,-10],[-100,0]]},
+  {name:'櫻花公園',stars:3,ai:.9,sky:0xffe3ef,ground:['#9ed68a','#93cc80'],road:'#5b5560',tree:[0xff9ec4,0x6b4a3a],
+   pts:[[0,0],[130,0],[230,-30],[260,-110],[210,-170],[230,-250],[160,-310],[90,-270],[30,-200],[-50,-270],[-130,-310],[-210,-260],[-200,-180],[-140,-130],[-220,-80],[-200,-10],[-100,0]]},
+  {name:'楓葉山道',stars:3,ai:.9,sky:0xffe8c2,ground:['#c9a45a','#bd974e'],road:'#55504e',tree:[0xe2622a,0x5a3a26],
+   pts:[[0,0],[150,0],[260,-30],[300,-110],[260,-190],[160,-210],[60,-190],[-20,-220],[-40,-290],[30,-340],[130,-360],[200,-410],[150,-470],[30,-470],[-80,-430],[-150,-360],[-170,-280],[-140,-200],[-200,-140],[-260,-90],[-220,-20],[-100,0]]},
+  {name:'古城石道',stars:3,ai:.91,sky:0xd9e4f0,ground:['#8a9a6a','#7f8f60'],road:'#6a625a',tree:[0x4a7a3a,0x5a4030],
+   pts:[[0,0],[200,0],[300,-20],[330,-90],[280,-150],[180,-160],[150,-210],[190,-280],[170,-350],[80,-370],[-30,-340],[-60,-260],[-140,-240],[-250,-270],[-320,-210],[-300,-120],[-220,-90],[-200,-30],[-100,0]]},
+  {name:'竹林溪谷',stars:3,ai:.91,sky:0xcdeedd,ground:['#4f8f4a','#478543'],road:'#55584f',tree:[0x6fbf4a,0x4a7a2a],
+   pts:[[0,0],[120,0],[220,-30],[250,-100],[200,-160],[220,-230],[300,-270],[360,-340],[300,-410],[200,-400],[120,-350],[50,-390],[-30,-440],[-130,-420],[-170,-340],[-120,-270],[-170,-200],[-250,-180],[-310,-110],[-260,-40],[-180,-20],[-100,0]]},
+  {name:'冰原彎道',stars:4,ai:.93,hw:12,cut:[12,16],sky:0xcfe9ff,ground:['#eef6ff','#dfeefa'],road:'#6f8ea3',tree:[0xbfe3f2,0x6f8fa3],snow:1,
+   pts:[[0,0],[130,0],[210,-40],[200,-110],[130,-140],[110,-200],[170,-250],[260,-240],[330,-290],[310,-380],[220,-410],[130,-380],[60,-420],[-30,-450],[-120,-410],[-130,-330],[-70,-280],[-120,-220],[-200,-250],[-270,-200],[-260,-120],[-180,-90],[-200,-30],[-100,0]]},
+  {name:'海盜港灣',stars:4,ai:.94,hw:12,cut:[5,8],sky:0xffb37a,ground:['#e9cf8f','#dcbf7c'],road:'#4f4a52',tree:[0x2f8f6a,0x7a5a36],
+   pts:[[0,0],[140,0],[220,-30],[240,-100],[200,-160],[200,-260],[230,-340],[290,-350],[320,-290],[300,-190],[320,-110],[390,-80],[450,-130],[440,-230],[460,-330],[420,-410],[320,-450],[200,-430],[110,-460],[20,-420],[30,-330],[60,-250],[20,-180],[-60,-150],[-150,-200],[-230,-160],[-250,-80],[-180,-20],[-100,0]]},
+  {name:'叢林遺跡',stars:4,ai:.94,hw:12,cut:[15,19],sky:0xb7e0c0,ground:['#2f7a3c','#286e35'],road:'#5a5446',tree:[0x1f6a2c,0x4a3a22],
+   pts:[[0,0],[130,0],[230,-30],[270,-110],[230,-190],[140,-200],[80,-160],[10,-190],[0,-260],[60,-310],[160,-300],[250,-330],[300,-410],[240,-480],[130,-490],[30,-460],[-60,-480],[-150,-450],[-170,-370],[-110,-320],[-130,-250],[-210,-230],[-280,-170],[-270,-90],[-190,-40],[-100,0]]},
+  {name:'冰河峽灣',stars:4,ai:.94,hw:12,cut:[18,21],sky:0xa9d6f5,ground:['#e6f2fb','#d5e8f6'],road:'#6a8aa3',tree:[0xd6eef8,0x5f7f93],snow:1,
+   pts:[[0,0],[120,0],[200,-40],[190,-120],[120,-150],[50,-130],[-20,-170],[-10,-250],[70,-280],[170,-260],[250,-220],[320,-260],[330,-350],[260,-410],[160,-400],[80,-440],[-10,-470],[-110,-440],[-140,-360],[-100,-300],[-170,-250],[-250,-280],[-310,-220],[-290,-140],[-220,-100],[-240,-30],[-100,0]]},
+  {name:'黃金礦山',stars:4,ai:.95,hw:12,cut:[8,12],sky:0xf4d49a,ground:['#a8784a','#9a6c40'],road:'#4a3f38',tree:[0x6a8a3a,0x5a3a22],
+   pts:[[0,0],[110,0],[170,-30],[230,0],[300,-20],[330,-90],[280,-140],[300,-200],[250,-250],[280,-310],[230,-370],[140,-380],[90,-330],[20,-360],[-50,-330],[-120,-370],[-200,-350],[-240,-280],[-200,-220],[-250,-160],[-200,-100],[-240,-40],[-170,-10],[-100,0]]},
+  {name:'雷雨高原',stars:4,ai:.95,hw:12,cut:[3,7],sky:0x5a6478,ground:['#5f7a4f','#566f47'],road:'#3a3c44',tree:[0x3f6a3a,0x3a2e26],storm:1,
+   pts:[[0,0],[200,0],[280,-30],[320,-20],[400,-40],[450,-110],[420,-180],[340,-200],[300,-250],[340,-310],[420,-340],[440,-420],[370,-480],[250,-470],[150,-490],[60,-450],[30,-380],[-40,-340],[-140,-360],[-230,-330],[-260,-250],[-200,-200],[-240,-130],[-300,-80],[-260,-20],[-100,0]]},
+  {name:'火山環道',stars:5,ai:.97,hw:11,cut:[7,10],sky:0x4a2030,ground:['#4a332e','#3f2a26'],road:'#2e2a30',tree:[0x8a3a22,0x3a2a22],lava:1,
+   pts:[[0,0],[120,0],[180,-30],[170,-90],[100,-110],[80,-170],[150,-200],[240,-190],[300,-230],[290,-300],[210,-320],[200,-380],[270,-420],[360,-400],[400,-460],[350,-530],[240,-540],[140,-510],[60,-540],[-30,-520],[-60,-450],[0,-400],[-10,-330],[-80,-300],[-150,-340],[-230,-310],[-240,-230],[-170,-190],[-220,-130],[-280,-90],[-240,-20],[-100,0]]},
+  {name:'太空站',stars:5,ai:.97,hw:11,cut:[17,21],sky:0x0c0c22,ground:['#3a3d52','#33364a'],road:'#5a3f8a',tree:[0x3ddbd9,0x8a8fa8],night:1,
+   pts:[[0,0],[100,0],[150,-30],[110,-70],[160,-110],[230,-90],[290,-130],[280,-200],[200,-220],[160,-270],[220,-320],[310,-310],[380,-350],[370,-440],[290,-480],[190,-450],[110,-490],[30,-460],[40,-380],[-20,-330],[-100,-360],[-150,-430],[-240,-430],[-290,-360],[-240,-290],[-280,-220],[-230,-150],[-280,-90],[-220,-20],[-100,0]]},
+  {name:'極光雪原',stars:5,ai:.98,hw:11,cut:[22,26],sky:0x1a2a4a,ground:['#dfeaf5','#cfdcea'],road:'#55708a',tree:[0xe8f4ff,0x55697a],snow:1,night:1,
+   pts:[[0,0],[140,0],[240,-30],[280,-100],[350,-130],[430,-100],[490,-150],[470,-240],[390,-270],[330,-330],[380,-400],[470,-430],[480,-520],[400,-570],[290,-550],[200,-590],[100,-570],[70,-490],[130,-430],[100,-360],[20,-330],[-60,-370],[-80,-460],[-160,-500],[-260,-470],[-300,-390],[-240,-330],[-280,-250],[-350,-200],[-330,-110],[-250,-60],[-180,-10],[-100,0]]},
+  {name:'霓虹都會',stars:5,ai:.98,hw:11,cut:[29,35],sky:0x150f2e,ground:['#2a2440','#231e38'],road:'#2e2a3a',tree:[0xff3bd4,0x3ddbd9],night:1,
+   pts:[[0,0],[130,0],[160,-10],[170,-40],[170,-100],[180,-130],[210,-140],[290,-140],[320,-150],[330,-180],[330,-260],[320,-290],[290,-300],[200,-300],[170,-310],[160,-340],[160,-400],[150,-430],[120,-440],[20,-440],[-10,-430],[-20,-400],[-20,-330],[-30,-300],[-60,-290],[-150,-290],[-180,-280],[-190,-250],[-190,-190],[-200,-160],[-230,-150],[-270,-140],[-290,-110],[-290,-40],[-270,-10],[-200,0],[-100,0]]}
 ];
 // 每條賽道各自記最快完賽時間（存在這台裝置）
-const recKey=i=>'arcade.kart.t.'+i,getRec=i=>{ try{ const v=parseFloat(localStorage.getItem(recKey(i))); return isFinite(v)?v:null; }catch(e){ return null; } };
-function recText(i,fin,mine){ if(fin==null||!mine) return ''; const old=getRec(i); if(old==null||fin<old){ try{ localStorage.setItem(recKey(i),String(fin)); localStorage.setItem('arcade.kart.last',String(i)); }catch(e){} return '新紀錄！'+STAGES[i].name+' '+fmtTime(fin)+(old!=null?'（原本 '+fmtTime(old)+'）':''); } return STAGES[i].name+' 最快紀錄 '+fmtTime(old); }
+const recKey=i=>'arcade.kart.t2.'+i,getRec=i=>{ try{ const v=parseFloat(localStorage.getItem(recKey(i))); return isFinite(v)?v:null; }catch(e){ return null; } };
+function recText(i,fin,mine){ if(fin==null||!mine) return ''; const old=getRec(i); if(old==null||fin<old){ try{ localStorage.setItem(recKey(i),String(fin)); localStorage.setItem('arcade.kart.last2',String(i)); }catch(e){} return '新紀錄！'+STAGES[i].name+' '+fmtTime(fin)+(old!=null?'（原本 '+fmtTime(old)+'）':''); } return STAGES[i].name+' 最快紀錄 '+fmtTime(old); }
 // 道具圖示（2D）
 function itemIcon(c,x,y,r,it){
   c.save(); c.translate(x,y); c.lineJoin='round'; c.lineCap='round';
@@ -91,13 +108,14 @@ function stagePreview(ctx,w,h,si,mode){
   const k=Math.min((hw-36)/(b-a),(h-44)/(d-c)),ox=x0+hw/2-(a+b)/2*k,oy=h/2+6-(c+d)/2*k,P=p=>[ox+p[0]*k,oy+p[1]*k];
   const path=()=>{ ctx.beginPath(); r.forEach((p,i)=>{ const q=P(p); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); }); ctx.closePath(); };
   ctx.lineJoin='round'; path(); ctx.strokeStyle='#0b0a1c'; ctx.lineWidth=11; ctx.stroke(); path(); ctx.strokeStyle=st.road; ctx.lineWidth=7; ctx.stroke(); path(); ctx.strokeStyle='#f4f0ff'; ctx.lineWidth=1.5; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
+  if(st.cut){ const A=P(st.pts[st.cut[0]]),B=P(st.pts[st.cut[1]]); ctx.strokeStyle='#c88a3a'; ctx.lineWidth=4; ctx.setLineDash([4,3]); ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); ctx.stroke(); ctx.setLineDash([]); }
   const s0=P(r[0]),s1=P(r[6]),ang=Math.atan2(s1[1]-s0[1],s1[0]-s0[0]);
   ctx.save(); ctx.translate(s0[0],s0[1]); ctx.rotate(ang); ctx.fillStyle='#fff'; ctx.fillRect(-2,-8,4,16); ctx.fillStyle='#14122b'; ctx.fillRect(-2,-8,2,4); ctx.fillRect(0,-4,2,4); ctx.fillRect(-2,0,2,4); ctx.fillRect(0,4,2,4);
   ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(10,-6); ctx.lineTo(22,0); ctx.lineTo(10,6); ctx.fill(); ctx.restore();
   ctx.font='700 11px '+TC; ctx.textBaseline='top'; ctx.textAlign='left';
-  for(const [tx,ty,txt] of (solo?[[6,5,'路線（黃色箭頭是起跑方向）']]:[[6,5,'環境'],[x0+6,5,'路線（黃色箭頭是起跑方向）']])){ ctx.fillStyle='rgba(11,10,28,.7)'; ctx.fillRect(tx-3,ty-2,ctx.measureText(txt).width+6,16); ctx.fillStyle='#fff'; ctx.fillText(txt,tx,ty); }
+  for(const [tx,ty,txt] of (solo?[[6,5,'路線（黃色箭頭是起跑方向'+(st.cut?'，橘色虛線是捷徑':'')+'）']]:[[6,5,'環境'],[x0+6,5,'路線（黃色箭頭是起跑方向'+(st.cut?'，橘色虛線是捷徑':'')+'）']])){ ctx.fillStyle='rgba(11,10,28,.7)'; ctx.fillRect(tx-3,ty-2,ctx.measureText(txt).width+6,16); ctx.fillStyle='#fff'; ctx.fillText(txt,tx,ty); }
 }
-const stageInfo=si=>{ const st=STAGES[si]; return '難度 '+'★'.repeat(st.stars)+'　一圈約 '+Math.round(routeLen(si)*.83/10)*10+' 公尺，共 '+LAPS+' 圈　'+(st.grip<.7?'冰面很滑':st.grip<1?'路面略滑':'路面抓地力正常'); };
+const stageInfo=si=>{ const st=STAGES[si]; return '難度 '+'★'.repeat(st.stars)+'　一圈約 '+Math.round(routeLen(si)*.83/10)*10+' 公尺，共 '+LAPS+' 圈'+(st.cut?'　有一條不好走的捷徑':''); };
 
 // 氮氣特效：顏色、粒子大小、存活秒數、左右抖動量、每次噴幾顆
 const NITRO={
@@ -398,11 +416,12 @@ function viewer(host,look){
 }
 
 /* ---- 賽道場景：路面、護欄、地面、起跑拱門、加速板、樹 ---- */
-function buildWorld(T,st){
-  const scene=new T.Scene(); scene.background=new T.Color(st.sky); scene.fog=new T.Fog(st.sky,140,560);
+function buildWorld(T,st,o){
+  o=o||{}; const HW=st.hw||HALF;
+  const scene=new T.Scene(); scene.background=new T.Color(st.sky); scene.fog=new T.Fog(st.sky,160,620);
   scene.add(new T.HemisphereLight(0xffffff,0x667755,.95)); const sun=new T.DirectionalLight(0xffffff,.55); sun.position.set(60,120,40); scene.add(sun);
   function tex(w,h,draw,rx,ry){ const c=document.createElement('canvas'); c.width=w;c.height=h; draw(c.getContext('2d'),w,h);
-    const t=new T.CanvasTexture(c); t.wrapS=t.wrapT=T.RepeatWrapping; if(rx) t.repeat.set(rx,ry); return t; }
+    const t=new T.CanvasTexture(c); t.wrapS=t.wrapT=T.RepeatWrapping; t.anisotropy=8; if(rx) t.repeat.set(rx,ry); return t; }
 
   /* ---- 賽道 ---- */
   const curve=new T.CatmullRomCurve3(st.pts.map(p=>new T.Vector3(p[0],0,p[1])),true,'centripetal');
@@ -414,48 +433,94 @@ function buildWorld(T,st){
   let minX=1e9,maxX=-1e9,minZ=1e9,maxZ=-1e9;
   for(let i=0;i<N;i++){ minX=Math.min(minX,px[i]);maxX=Math.max(maxX,px[i]);minZ=Math.min(minZ,pz[i]);maxZ=Math.max(maxZ,pz[i]); }
 
-  function ribbon(offA,yA,offB,yB,vRep,mat){
+  function ribbon(offA,yA,offB,yB,vRep,mat,skip){
     const pos=[],uv=[],idx=[];
     for(let i=0;i<=N;i++){ const j=i%N;
       pos.push(px[j]+nx[j]*offA,yA,pz[j]+nz[j]*offA, px[j]+nx[j]*offB,yB,pz[j]+nz[j]*offB);
       const v=i/N*vRep; uv.push(0,v,1,v);
-      if(i<N){ const a=i*2; idx.push(a,a+1,a+2,a+1,a+3,a+2); } }
+      if(i<N&&!(skip&&skip(j))){ const a=i*2; idx.push(a,a+1,a+2,a+1,a+3,a+2); } }
     const g=new T.BufferGeometry(); g.setAttribute('position',new T.Float32BufferAttribute(pos,3)); g.setAttribute('uv',new T.Float32BufferAttribute(uv,2)); g.setIndex(idx); g.computeVertexNormals();
     const m=new T.Mesh(g,mat); scene.add(m); return m;
   }
-  const roadTex=tex(64,64,(c,w,h)=>{
+  // 柏油路：細碎顆粒、行車線較深的胎痕、白色邊線、中央虛線
+  const roadTex=tex(256,256,(c,w,h)=>{
     c.fillStyle=st.road; c.fillRect(0,0,w,h);
-    for(let i=0;i<260;i++){ c.fillStyle='rgba('+(Math.random()<.5?'255,255,255':'0,0,0')+',.06)'; c.fillRect(Math.random()*w,Math.random()*h,2,2); }
-    c.fillStyle='#e23b3b'; c.fillRect(0,0,5,32); c.fillRect(w-5,0,5,32); c.fillStyle='#f4f4f4'; c.fillRect(0,32,5,32); c.fillRect(w-5,32,5,32);
-    c.fillRect(6,0,1.5,h); c.fillRect(w-7.5,0,1.5,h); c.fillStyle='#ffd23f'; c.fillRect(31,4,2,26);
+    for(let i=0;i<5200;i++){ const v=Math.random(); c.fillStyle=v<.5?'rgba(255,255,255,'+(.03+Math.random()*.06)+')':'rgba(0,0,0,'+(.04+Math.random()*.08)+')'; c.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*1.6,1+Math.random()*1.6); }
+    for(const x of [.3,.7]){ const g=c.createLinearGradient(w*(x-.12),0,w*(x+.12),0); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(.5,'rgba(0,0,0,.13)'); g.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=g; c.fillRect(w*(x-.12),0,w*.24,h); }
+    for(let i=0;i<6;i++){ c.strokeStyle='rgba(0,0,0,.12)'; c.lineWidth=1; c.beginPath(); let x=Math.random()*w,y=Math.random()*h; c.moveTo(x,y); for(let k=0;k<5;k++){ x+=(Math.random()-.5)*30; y+=Math.random()*20; c.lineTo(x,y); } c.stroke(); } // 裂縫
+    c.fillStyle='rgba(250,250,245,.92)'; c.fillRect(10,0,6,h); c.fillRect(w-16,0,6,h);
+    c.fillStyle='rgba(255,255,255,.75)'; c.fillRect(w/2-3,0,6,h*.45);
   });
-  ribbon(HALF,.05,-HALF,.05,Math.round(len/10),new T.MeshLambertMaterial({map:roadTex,side:T.DoubleSide}));
+  ribbon(HW,.05,-HW,.05,Math.round(len/14),new T.MeshLambertMaterial({map:roadTex,side:T.DoubleSide}));
+  // 彎道的紅白路肩
+  const curbTex=tex(16,64,(c,w,h)=>{ c.fillStyle='#e23b3b'; c.fillRect(0,0,w,32); c.fillStyle='#f4f4f4'; c.fillRect(0,32,w,32); });
+  const curbMat=new T.MeshLambertMaterial({map:curbTex,side:T.DoubleSide}),curvy=j=>{ for(let d=-3;d<=3;d++) if(Math.abs(curv[(j+d+N)%N])>.011) return false; return true; };
+  ribbon(HW+1.7,.06,HW-.3,.06,Math.round(len/3),curbMat,curvy); ribbon(-HW+.3,.06,-HW-1.7,.06,Math.round(len/3),curbMat,curvy);
   const wallTex=tex(8,32,(c,w,h)=>{ c.fillStyle='#e23b3b'; c.fillRect(0,0,w,16); c.fillStyle='#f4f4f4'; c.fillRect(0,16,w,16); });
   const wallMat=new T.MeshLambertMaterial({map:wallTex,side:T.DoubleSide});
-  const LIM=HALF+SHOULDER;
-  ribbon(LIM+.6,0,LIM+.6,1.5,Math.round(len/8),wallMat); ribbon(-LIM-.6,0,-LIM-.6,1.5,Math.round(len/8),wallMat);
+  const LIM=HW+SHOULDER;
+  // 捷徑：碎石小路，兩旁有石頭，中間也有幾顆擋路
+  let cut=null; const cut_pad=6;
+  if(st.cut){ const A=st.pts[st.cut[0]],B=st.pts[st.cut[1]],near=p=>{ let b=0,bd=1e9; for(let i=0;i<N;i++){ const d=Math.hypot(px[i]-p[0],pz[i]-p[1]); if(d<bd){ bd=d; b=i; } } return b; };
+    const ia=near(A),ib=near(B),span=(ib-ia+N)%N,L=Math.hypot(B[0]-A[0],B[1]-A[1]),M=Math.max(8,Math.round(L/2)),cx=[],cz=[],mi=[];
+    const TL=L*.55; for(let k=0;k<=M;k++){ const u=k/M,u2=u*u,u3=u2*u,h00=2*u3-3*u2+1,h10=u3-2*u2+u,h01=-2*u3+3*u2,h11=u3-u2; // 從入口順著賽道方向彎出去，出口也順著賽道方向接回來
+      cx.push(h00*px[ia]+h10*tx[ia]*TL+h01*px[ib]+h11*tx[ib]*TL); cz.push(h00*pz[ia]+h10*tz[ia]*TL+h01*pz[ib]+h11*tz[ib]*TL); mi.push((ia+Math.round(span*u))%N); }
+    // 擋路的石頭只放在離開主賽道的那一段
+    const outK=[]; for(let k=0;k<=M;k++){ let dm=1e9; for(let i=0;i<N;i+=2) dm=Math.min(dm,Math.hypot(cx[k]-px[i],cz[k]-pz[i])); if(dm>LIM+cut_pad) outK.push(k); }
+    const rocks=outK.length<6?[]:[[.2,2.6],[.5,-2.8],[.8,2.3]].map(([u,o])=>{ const k=outK[Math.round(u*(outK.length-1))],a=Math.min(M,k+1),b2=Math.max(0,k-1),dx=cx[a]-cx[b2],dz=cz[a]-cz[b2],l=Math.hypot(dx,dz)||1; return {x:cx[k]+dz/l*o,z:cz[k]-dx/l*o,r:1.7}; });
+    cut={cx,cz,mi,M,W:5.5,rocks};
+    // 碎石路面
+    const dirtTex=tex(64,64,(c,w,h)=>{ c.fillStyle='#8a6a48'; c.fillRect(0,0,w,h); for(let i=0;i<500;i++){ c.fillStyle=['#6f5238','#a38260','#5a4330','#b8977a'][i%4]; c.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2.5,1+Math.random()*2.5); } });
+    { const pos=[],uv=[],idx=[]; for(let k=0;k<=M;k++){ const a=Math.min(M,k+1),b=Math.max(0,k-1),dx=cx[a]-cx[b],dz=cz[a]-cz[b],l=Math.hypot(dx,dz)||1,nx_=dz/l,nz_=-dx/l;
+        pos.push(cx[k]+nx_*(cut.W+1),.04,cz[k]+nz_*(cut.W+1),cx[k]-nx_*(cut.W+1),.04,cz[k]-nz_*(cut.W+1)); uv.push(0,k/3,1,k/3); if(k<M){ const q=k*2; idx.push(q,q+1,q+2,q+1,q+3,q+2); } }
+      const g=new T.BufferGeometry(); g.setAttribute('position',new T.Float32BufferAttribute(pos,3)); g.setAttribute('uv',new T.Float32BufferAttribute(uv,2)); g.setIndex(idx); g.computeVertexNormals();
+      scene.add(new T.Mesh(g,new T.MeshLambertMaterial({map:dirtTex,side:T.DoubleSide}))); }
+    // 兩旁的石頭、路中間擋路的大石頭
+    { const rg=new T.DodecahedronGeometry(1,0),rm=new T.MeshLambertMaterial({color:0x7a7068}),edge=[];
+      for(let k=0;k<=M;k+=2){ const a=Math.min(M,k+1),b=Math.max(0,k-1),dx=cx[a]-cx[b],dz=cz[a]-cz[b],l=Math.hypot(dx,dz)||1; for(const sd of [-1,1]){ const x=cx[k]+dz/l*sd*(cut.W+1.6),z=cz[k]-dx/l*sd*(cut.W+1.6); let ok=true; for(let i=0;i<N;i+=2) if(Math.hypot(x-px[i],z-pz[i])<LIM+1.5){ ok=false; break; } if(ok) edge.push([x,z,.9+Math.random()*.7]); } }
+      const all=edge.concat(rocks.map(r=>[r.x,r.z,r.r])),im=new T.InstancedMesh(rg,rm,all.length),d=new T.Object3D();
+      all.forEach((r,i)=>{ d.position.set(r[0],r[2]*.5,r[1]); d.rotation.set(Math.random()*3,Math.random()*3,0); d.scale.set(r[2],r[2]*.8,r[2]); d.updateMatrix(); im.setMatrixAt(i,d.matrix); }); scene.add(im); }
+    // 入口的「捷徑」箭頭看板
+    { const sg=tex(128,64,(c,w,h)=>{ c.fillStyle='#ffd23f'; c.fillRect(0,0,w,h); c.fillStyle='#14122b'; c.fillRect(4,4,w-8,h-8); c.fillStyle='#ffd23f'; c.font='900 30px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('捷徑 ▶',w/2,h/2+2); });
+      const k=Math.round(M*.12),sp=new T.Sprite(new T.SpriteMaterial({map:sg})); sp.scale.set(6,3,1); sp.position.set(cx[k],4.2,cz[k]); scene.add(sp); }
+  }
+  const cut_W=()=>cut?cut.W:0;
+  // 點到捷徑中心線的距離，以及最近的那一點
+  function cutDist(x,z){ if(!cut) return [1e9,0]; let bd=1e9,bk=0; for(let k=0;k<=cut.M;k++){ const d=(x-cut.cx[k])**2+(z-cut.cz[k])**2; if(d<bd){ bd=d; bk=k; } } return [Math.sqrt(bd),bk]; }
+  const gap=s=>j=>cutDist(px[j]+nx[j]*s*(LIM+.6),pz[j]+nz[j]*s*(LIM+.6))[0]<cut.W+6; // 入口開寬一點，斜斜切進去也進得去
+  ribbon(LIM+.6,0,LIM+.6,1.5,Math.round(len/8),wallMat,cut?gap(1):null); ribbon(-LIM-.6,0,-LIM-.6,1.5,Math.round(len/8),wallMat,cut?gap(-1):null);
   const groundTex=tex(64,64,(c,w,h)=>{ c.fillStyle=st.ground[0]; c.fillRect(0,0,w,h); c.fillStyle=st.ground[1]; for(let i=0;i<90;i++) c.fillRect(Math.random()*w,Math.random()*h,4,4); },220,220);
   const ground=new T.Mesh(new T.PlaneGeometry(2400,2400),new T.MeshLambertMaterial({map:groundTex})); ground.rotation.x=-Math.PI/2; ground.position.set((minX+maxX)/2,0,(minZ+maxZ)/2); scene.add(ground);
   const h0=Math.atan2(tx[0],tz[0]);
   function flat(w,d,mat,i,y){ const m=new T.Mesh(new T.PlaneGeometry(w,d),mat); m.rotation.order='YXZ'; m.rotation.y=Math.atan2(tx[i],tz[i]); m.rotation.x=-Math.PI/2; m.position.set(px[i],y,pz[i]); scene.add(m); return m; }
   const checker=tex(64,16,(c,w,h)=>{ for(let x=0;x<8;x++) for(let y=0;y<2;y++){ c.fillStyle=(x+y)%2?'#111':'#fff'; c.fillRect(x*8,y*8,8,8); } });
-  flat(HALF*2,3,new T.MeshBasicMaterial({map:checker}),0,.08);
+  flat(HW*2,3,new T.MeshBasicMaterial({map:checker}),0,.08);
   { const mat=new T.MeshLambertMaterial({color:0x33334a});
-    for(const s of [-1,1]){ const p=new T.Mesh(new T.BoxGeometry(1,10,1),mat); p.position.set(px[0]+nx[0]*s*(HALF+2),5,pz[0]+nz[0]*s*(HALF+2)); scene.add(p); }
-    const bar=new T.Mesh(new T.BoxGeometry(HALF*2+5,2.4,.8),new T.MeshBasicMaterial({map:checker})); bar.position.set(px[0],10,pz[0]); bar.rotation.y=h0; scene.add(bar); }
+    for(const s of [-1,1]){ const p=new T.Mesh(new T.BoxGeometry(1,10,1),mat); p.position.set(px[0]+nx[0]*s*(HW+2),5,pz[0]+nz[0]*s*(HW+2)); scene.add(p); }
+    const bar=new T.Mesh(new T.BoxGeometry(HW*2+5,2.4,.8),new T.MeshBasicMaterial({map:checker})); bar.position.set(px[0],10,pz[0]); bar.rotation.y=h0; scene.add(bar); }
   const padTex=tex(64,64,(c,w,h)=>{ c.fillStyle='#ff9d3d'; c.fillRect(0,0,w,h); c.strokeStyle='#fff8d0'; c.lineWidth=8; c.lineJoin='miter';
     for(const y of [8,30]){ c.beginPath(); c.moveTo(10,y); c.lineTo(32,y+20); c.lineTo(54,y); c.stroke(); } });
-  const pads=[.14,.47,.78].map(f=>{ const i=Math.floor(f*N); flat(9,7,new T.MeshBasicMaterial({map:padTex}),i,.09); return i; });
-  { const M=260,trunk=new T.InstancedMesh(new T.CylinderGeometry(.5,.8,3,6),new T.MeshLambertMaterial({color:st.tree[1]}),M),
-      crown=new T.InstancedMesh(new T.ConeGeometry(3.2,8,7),new T.MeshLambertMaterial({color:st.tree[0]}),M),d=new T.Object3D(); let n=0;
-    for(let k=0;k<4000&&n<M;k++){ const x=minX-120+Math.random()*(maxX-minX+240),z=minZ-120+Math.random()*(maxZ-minZ+240); let ok=true;
+  const pads=o.pads?[.14,.47,.78].map(f=>{ const i=Math.floor(f*N); flat(9,7,new T.MeshBasicMaterial({map:padTex}),i,.09); return i; }):[]; // 加速板只在道具賽
+  { const M=320,trunk=new T.InstancedMesh(new T.CylinderGeometry(.5,.8,3,6),new T.MeshLambertMaterial({color:st.tree[1]}),M),
+      crown=new T.InstancedMesh(new T.ConeGeometry(3.2,8,8),new T.MeshLambertMaterial({color:0xffffff}),M),top=new T.InstancedMesh(new T.ConeGeometry(2.3,5.5,8),new T.MeshLambertMaterial({color:0xffffff}),M),d=new T.Object3D(),col=new T.Color(),base=new T.Color(st.tree[0]); let n=0;
+    for(let k=0;k<5000&&n<M;k++){ const x=minX-160+Math.random()*(maxX-minX+320),z=minZ-160+Math.random()*(maxZ-minZ+320); let ok=true;
       for(let i=0;i<N;i+=3){ const dx=x-px[i],dz=z-pz[i]; if(dx*dx+dz*dz<(LIM+7)*(LIM+7)){ ok=false; break; } }
-      if(!ok) continue; const s=.7+Math.random()*.9;
-      d.position.set(x,1.5*s,z); d.scale.set(s,s,s); d.rotation.y=Math.random()*6; d.updateMatrix(); trunk.setMatrixAt(n,d.matrix);
-      d.position.set(x,6.5*s,z); d.updateMatrix(); crown.setMatrixAt(n,d.matrix); n++; }
-    trunk.count=crown.count=n; scene.add(trunk); scene.add(crown); }
+      if(!ok||cutDist(x,z)[0]<cut_W()+8) continue; const s=.7+Math.random()*1;
+      d.position.set(x,1.5*s,z); d.scale.set(s,s,s); d.rotation.set(0,Math.random()*6,0); d.updateMatrix(); trunk.setMatrixAt(n,d.matrix);
+      d.position.set(x,6.5*s,z); d.updateMatrix(); crown.setMatrixAt(n,d.matrix); d.position.set(x,10.2*s,z); d.updateMatrix(); top.setMatrixAt(n,d.matrix);
+      const v=.82+Math.random()*.3; col.copy(base).multiplyScalar(v); crown.setColorAt(n,col); col.copy(base).multiplyScalar(v*1.12); top.setColorAt(n,col); n++; }
+    trunk.count=crown.count=top.count=n; scene.add(trunk); scene.add(crown); scene.add(top); }
+  // 天空漸層、遠方山脈（不受霧影響）
+  { const sky=new T.Color(st.sky),mixc=(a,b,k)=>a.clone().lerp(new T.Color(b),k),hexs=c=>'#'+c.getHexString(),dark=!!st.night;
+    const dome=new T.Mesh(new T.SphereGeometry(900,24,12),new T.MeshBasicMaterial({side:T.BackSide,fog:false,depthWrite:false,map:tex(4,256,(c,w,h)=>{ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,hexs(mixc(sky,dark?0x000010:0x2a6fd6,dark?.5:.35))); g.addColorStop(.48,hexs(sky)); g.addColorStop(.52,hexs(mixc(sky,0xffffff,dark?.05:.3))); g.addColorStop(1,hexs(sky)); c.fillStyle=g; c.fillRect(0,0,w,h);
+        if(dark) for(let i=0;i<60;i++){ c.fillStyle='rgba(255,255,255,'+Math.random()+')'; c.fillRect(Math.random()*w,Math.random()*h*.45,1,1); } })}));
+    dome.position.set((minX+maxX)/2,0,(minZ+maxZ)/2); dome.renderOrder=-2; scene.add(dome);
+    const R=Math.max(maxX-minX,maxZ-minZ)/2+460,mc=mixc(new T.Color(st.ground[1]),st.sky,dark?.35:.55),mc2=mixc(mc,st.sky,.35);
+    const mt=tex(1024,128,(c,w,h)=>{ c.clearRect(0,0,w,h); for(const [col,amp,base,fr] of [[mc2,.55,.55,7],[mc,.45,.25,11]]){ c.fillStyle=hexs(col); c.beginPath(); c.moveTo(0,h); for(let x=0;x<=w;x+=8){ const y=h*base+Math.sin(x/w*Math.PI*2*fr)*h*.12*amp+Math.sin(x/w*Math.PI*2*fr*2.7+1)*h*.1*amp+Math.abs(Math.sin(x/w*Math.PI*2*fr*.5))*h*.18*amp; c.lineTo(x,y); } c.lineTo(w,h); c.fill(); } });
+    mt.wrapT=T.ClampToEdgeWrapping; const ring=new T.Mesh(new T.CylinderGeometry(R,R,140,64,1,true),new T.MeshBasicMaterial({map:mt,transparent:true,side:T.BackSide,fog:false,depthWrite:false}));
+    ring.position.set((minX+maxX)/2,50,(minZ+maxZ)/2); ring.renderOrder=-1; scene.add(ring); }
 
-  return {scene,tex,px,pz,tx,tz,nx,nz,curv,N,minX,maxX,minZ,maxZ,LIM,pads};
+  return {scene,tex,px,pz,tx,tz,nx,nz,curv,N,minX,maxX,minZ,maxZ,LIM,HW,pads,cut,cutDist};
 }
 // 進場前的 3D 預覽：鏡頭沿著賽道低空飛一圈
 function stageViewer(host,si){
@@ -471,12 +536,12 @@ function stageViewer(host,si){
 }
 
 function create(env,opts){
-  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=opts.variant==='drift',DB_MIN=driftMode?.15:.25,humans=net?net.count:local2?2:1,NK=net?Math.min(TOTAL,net.count+(net.bots||0)):TOTAL; // 連線時只有房間裡的人，加不加電腦由房主決定
+  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=false,DB_MIN=driftMode?.15:.25,humans=net?net.count:local2?2:1,NK=net?Math.min(TOTAL,net.count+(net.bots||0)):TOTAL; // 連線時只有房間裡的人，加不加電腦由房主決定
   const SLOTS=[...Array(NK).keys()].sort((a,b)=>Math.abs(a-(NK-1)/2)-Math.abs(b-(NK-1)/2)||a-b); // 真人排在中間
   const stage=env.stage,dpr=Math.min(window.devicePixelRatio||1,2);
-  const renderer=new T.WebGLRenderer({antialias:true}); renderer.setPixelRatio(dpr); stage.appendChild(renderer.domElement);
+  const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); let pr=dpr; renderer.setPixelRatio(pr); stage.appendChild(renderer.domElement);
   const hudC=document.createElement('canvas'); stage.appendChild(hudC); const hud=hudC.getContext('2d');
-  const {scene,tex,px,pz,tx,tz,nx,nz,curv,N,minX,maxX,minZ,maxZ,LIM,pads}=buildWorld(T,st);
+  const {scene,tex,px,pz,tx,tz,nx,nz,curv,N,minX,maxX,minZ,maxZ,LIM,HW,pads,cut,cutDist}=buildWorld(T,st,{pads:itemMode});
   const cam=new T.PerspectiveCamera(62,1,.5,1000);
   let vw=1,vh=1;
   function resize(){ vw=Math.max(1,stage.clientWidth); vh=Math.max(1,stage.clientHeight); renderer.setSize(vw,vh,false); cam.aspect=vw/vh; cam.updateProjectionMatrix(); hudC.width=vw*dpr; hudC.height=vh*dpr; }
@@ -582,7 +647,7 @@ function create(env,opts){
     k.prog+=delta; k.idx=best; k.d=(k.x-px[best])*nx[best]+(k.z-pz[best])*nz[best];
   }
   function drive(k,inp,dt){
-    const mine=k.local,g0=9*st.grip;
+    const mine=k.local,g0=9;
     let fx=Math.sin(k.h),fz=Math.cos(k.h),vf=k.vx*fx+k.vz*fz;
     k.ss+=(inp.steer-k.ss)*Math.min(1,dt*(k.ai?40:11)); // 方向盤不是瞬間打到底
     k.stA=inp.steer?0:(k.stA||0)+dt;
@@ -593,12 +658,13 @@ function create(env,opts){
     k.h+=k.ss*1.9*Math.min(1,Math.abs(vf)/14)*(k.drifting?1.38:1)*(vf<0?-1:1)*dt;
     fx=Math.sin(k.h); fz=Math.cos(k.h); const lx=fz,lz=-fx;
     vf=k.vx*fx+k.vz*fz; let vl=k.vx*lx+k.vz*lz;
-    const off=Math.abs(k.d)>HALF+.5;
-    let max=(k.boostT>0?MAXB:MAX)*(inp.max||1)*(k.slowT>0?.5:1); if(off) max=Math.min(max,30);
+    const off=Math.abs(k.d)>HW+.5&&!k.rough;
+    let max=(k.boostT>0?MAXB:MAX)*(inp.max||1)*(k.slowT>0?.5:1); if(off) max=Math.min(max,30); if(k.rough) max=Math.min(max,k.boostT>0?50:42); // 捷徑的碎石路開不快
     if(k.slowT>0) k.slowT-=dt; if(k.cloudT>0) k.cloudT-=dt;
     if(inp.gas&&vf<max) vf=Math.min(max,vf+(k.boostT>0?80:36)*dt);
     if(inp.brake){ vf-=(vf>0?70:26)*dt; if(vf<-16) vf=-16; }
     if(!inp.gas&&!inp.brake) vf-=vf*.6*dt;
+    if(k.rough&&Math.abs(vf)>8){ k.ss+=(Math.random()-.5)*dt*9; k.bumpT=(k.bumpT||0)+dt; } // 碎石路顛簸，方向盤會被晃一下
     if(vf>max) vf-=Math.min(vf-max,(off?60:25)*dt);
     const slide=Math.abs(vl);
     if(k.drifting){ vf-=slide*.045*dt; k.gauge+=itemMode||driftMode||k.dBad?0:slide*dt*.031;
@@ -611,7 +677,19 @@ function create(env,opts){
     if(k.boostT>0) k.boostT-=dt;
     if(inp.nitro&&k.stock>0&&k.boostT<=.3){ k.stock--; k.boostT=2.8; k.bk=2; burst(k.x-fx*2,k.z-fz*2,nitroCol(k,0),4.5); if(mine) env.sfx('boost'); }
     locate(k);
-    if(Math.abs(k.d)>LIM){ const s=Math.sign(k.d),j=k.idx,over=Math.abs(k.d)-LIM;
+    // 捷徑：離開主賽道、進到碎石小路時不撞主護欄，改用小路兩旁的石頭當邊界；進度照小路對應到主賽道的位置算
+    k.rough=false;
+    if(cut){ const [dc,kc]=cutDist(k.x,k.z),inCorr=dc<cut.W+1.2||Math.abs(k.d)<=LIM+1&&dc<cut.W+5;
+      if(Math.abs(k.d)>HW+.5&&(inCorr||k.inCut&&Math.abs(k.d)>LIM)){ k.rough=true;
+        if(Math.abs(k.d)>LIM){ k.inCut=true; const mi=cut.mi[kc]; let delta=mi-k.idx; if(delta>N/2) delta-=N; if(delta<-N/2) delta+=N; k.prog+=delta; k.idx=mi;
+          if(dc>cut.W+1.2){ const ox=k.x-cut.cx[kc],oz=k.z-cut.cz[kc],l=Math.hypot(ox,oz)||1,over=dc-(cut.W+1.2); k.x-=ox/l*over; k.z-=oz/l*over;
+            const vn=(k.vx*ox+k.vz*oz)/l; if(vn>0){ k.vx-=ox/l*vn; k.vz-=oz/l*vn; } if(!k.wall){ k.vx*=.65; k.vz*=.65; if(mine) env.sfx('bump'); } k.wall=true; if(k.drifting) k.dBad=true; }
+          else k.wall=false;
+          for(const r of cut.rocks){ const dx=k.x-r.x,dz=k.z-r.z,d=Math.hypot(dx,dz),m=r.r+1.3; if(d<m&&d>.01){ k.x+=dx/d*(m-d); k.z+=dz/d*(m-d); const vn=(k.vx*dx+k.vz*dz)/d; if(vn<0){ k.vx-=dx/d*vn; k.vz-=dz/d*vn; } if(!k.rockHit){ k.vx*=.45; k.vz*=.45; if(mine) env.sfx('bump'); } k.rockHit=true; } else if(d>m+.5) k.rockHit=false; }
+        } }
+      else if(Math.abs(k.d)<=LIM) k.inCut=false; }
+    if(k.inCut&&Math.abs(k.d)>LIM){ /* 在捷徑裡，不用主賽道護欄 */ }
+    else if(Math.abs(k.d)>LIM){ const s=Math.sign(k.d),j=k.idx,over=Math.abs(k.d)-LIM;
       k.x-=nx[j]*over*s; k.z-=nz[j]*over*s; k.d=LIM*s;
       const vn=k.vx*nx[j]+k.vz*nz[j]; if(vn*s>0){ k.vx-=nx[j]*vn; k.vz-=nz[j]*vn; }
       if(!k.wall){ k.vx*=.7; k.vz*=.7; if(mine) env.sfx('bump'); } k.wall=true;
@@ -639,7 +717,7 @@ function create(env,opts){
     let cmax=0; for(let s=4;s<36;s+=3){ const c=Math.abs(curv[(k.idx+s)%N]); if(c>cmax) cmax=c; }
     let lead=-1e9; for(const q of karts) if(q.human&&!q.left) lead=Math.max(lead,q.prog);
     const gap=k.prog-lead,band=gap>40?.93:gap<-40?1.07:1;
-    const vt=Math.min(MAX*a.skill*band,1.75/Math.max(cmax,.001)*(st.grip<1?.75:1));
+    const vt=Math.min(MAX*a.skill*band,1.75/Math.max(cmax,.001));
     inp.steer=clamp(diff*3,-1,1); inp.gas=spd<vt; inp.brake=spd>vt+8; inp.drift=false; inp.nitro=false; inp.tap=Math.random()<dt*9; inp.max=a.skill*band;
     if(k.cloudT>0){ inp.steer=clamp(inp.steer+Math.sin(t*7+k.i)*.6,-1,1); inp.max*=.85; } // 電腦被烏雲遮住時會開得歪歪的
     a.nt-=dt; if(!itemMode&&a.nt<=0&&cmax<.008&&k.fin==null){ k.boostT=2; k.bk=2; a.nt=9+Math.random()*10; }
@@ -711,7 +789,7 @@ function create(env,opts){
         A.x-=dx*p*wa; A.z-=dz*p*wa; B.x+=dx*p*wb; B.z+=dz*p*wb; }
       for(const k of locals){ const v=k.v,lap=clamp(Math.floor(k.prog/N)+1,1,LAPS); if(lap>v.lap&&k.fin==null){ v.lap=lap; env.sfx('lap'); }
         const dot=Math.sin(k.h)*tx[k.idx]+Math.cos(k.h)*tz[k.idx]; v.wrongT=dot<-.3&&Math.hypot(k.vx,k.vz)>8?v.wrongT+dt:0; }
-      if(!local2&&env.hit('KeyR')&&my.fin==null){ const j=my.idx; my.x=px[j]; my.z=pz[j]; my.h=Math.atan2(tx[j],tz[j]); my.vx=my.vz=0; }
+      if(!local2&&env.hit('KeyR')&&my.fin==null){ const j=my.idx; my.x=px[j]; my.z=pz[j]; my.h=Math.atan2(tx[j],tz[j]); my.vx=my.vz=0; my.inCut=false; }
       let first=null; for(const k of karts) if(!k.left&&k.fin!=null&&(first==null||k.fin<first)) first=k.fin;
       if(first!=null&&!ended){
         remain=Math.max(0,15-(t-first));
@@ -833,8 +911,12 @@ function create(env,opts){
       c.font='700 '+11*s+'px '+TC; c.fillStyle='#cfe8d8'; c.fillText(o.q.fin!=null?fmtTime(o.q.fin):'未完賽',x,y+24*s); }
     if(C.t>1.2){ c.font='700 '+12*s+'px '+TC; c.fillStyle='rgba(255,255,255,.75)'; c.fillText(env.touch?'點畫面看完整名次':'按空白鍵看完整名次',vw/2,vh-18*s); }
   }
+  // 畫面太慢時自動降低解析度，保持流暢（每 1.5 秒看一次平均每格的時間）
+  let fpsT=0,fpsN=0,fpsLast=0;
+  function adapt(){ const now=performance.now(); if(fpsLast){ const d=now-fpsLast; if(d<200){ fpsT+=d; fpsN++; } } fpsLast=now;
+    if(fpsT>1500){ const avg=fpsT/fpsN; fpsT=fpsN=0; const want=avg>24?Math.max(1,pr-.25):avg<15&&pr<dpr?Math.min(dpr,pr+.25):pr; if(want!==pr){ pr=want; renderer.setPixelRatio(pr); renderer.setSize(vw,vh,false); } } }
   function draw(){
-    const c=hud,n=locals.length,side=vw>=vh;
+    const c=hud,n=locals.length,side=vw>=vh; adapt();
     c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,vw,vh);
     if(cer){ drawCeremony(c); return; }
     if(intro){ const u=intro.t/intro.dur,e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,s=clamp(vw/560,.62,1);
@@ -846,7 +928,7 @@ function create(env,opts){
       const list=karts.filter(k=>k.human).concat(karts.filter(k=>!k.human)),bh=(list.length>3&&vw<520?70:52)*s;
       c.fillStyle='rgba(11,10,28,.8)'; c.fillRect(0,vh-bh-12*s,vw,bh+12*s); c.textBaseline='middle';
       c.textAlign='left'; c.fillStyle='#ffd23f'; c.font=10*s+'px '+PIX; c.fillText('RACERS',12*s,vh-bh-2*s);
-      c.textAlign='right'; c.fillStyle='#aaa4d8'; c.font='700 '+11*s+'px '+TC; c.fillText(STAGES[opts.stage||0].name+'　'+(itemMode?'道具賽':driftMode?'甩噴賽':'競速賽')+(net?'':'　'+(env.touch?'按「使用」跳過':'按空白鍵跳過')),vw-12*s,vh-bh-2*s);
+      c.textAlign='right'; c.fillStyle='#aaa4d8'; c.font='700 '+11*s+'px '+TC; c.fillText(STAGES[opts.stage||0].name+'　'+(itemMode?'道具賽':'競速賽')+(net?'':'　'+(env.touch?'按「使用」跳過':'按空白鍵跳過')),vw-12*s,vh-bh-2*s);
       const per=Math.ceil(list.length/(bh>50*s?2:1)),cw=(vw-24*s)/per;
       list.forEach((k,i)=>{ const row=Math.floor(i/per),x=12*s+(i%per)*cw,y=vh-bh+16*s+row*24*s; c.fillStyle=k.color; c.beginPath(); c.arc(x+6*s,y,5*s,0,7); c.fill();
         c.textAlign='left'; c.fillStyle=k.human?'#fff':'#c9c6e6'; c.font=(k.human?'900 ':'700 ')+13*s+'px '+TC; c.fillText(k.name,x+16*s,y); });
@@ -858,7 +940,7 @@ function create(env,opts){
       renderer.setViewport(x,vh-y-h,w,h); if(n>1) renderer.setScissor(x,vh-y-h,w,h);
       const sx=Math.sin(v.camH),cz=Math.cos(v.camH);
       cam.aspect=w/h; cam.fov=v.fov; cam.updateProjectionMatrix();
-      const sh=k.boostT>0&&k.bk===2?.09:0,jx=(Math.random()-.5)*sh,jy=(Math.random()-.5)*sh; // 噴氮氣時鏡頭輕微震動
+      const sh=k.boostT>0&&k.bk===2?.09:k.rough&&Math.hypot(k.vx,k.vz)>10?.22:0,jx=(Math.random()-.5)*sh,jy=(Math.random()-.5)*sh; // 噴氮氣時鏡頭輕微震動
       if(k.fin!=null){ const oa=v.camH+Math.PI+(t-k.fin)*.45,R=Math.max(7,10.5-(t-k.fin)*2); cam.position.set(k.x+Math.sin(oa)*R,3.6,k.z+Math.cos(oa)*R); cam.lookAt(k.x,1.3,k.z); } // 跑完：鏡頭繞著停下來的車轉
       else { cam.position.set(k.x-sx*10.5+jx,5.4+jy,k.z-cz*10.5); cam.lookAt(k.x+sx*6,1.6,k.z+cz*6); }
       renderer.render(scene,cam);
@@ -899,6 +981,7 @@ function create(env,opts){
     const mw=118*s; panel(w-10-mw,10,mw,26*s+mw); c.textAlign='center'; c.fillStyle='#fff'; c.font=11*s+'px '+PIX; c.fillText(fmtTime(k.fin!=null?k.fin:t),w-10-mw/2,10+14*s);
     const sc=(mw-16)/Math.max(maxX-minX,maxZ-minZ),ox=w-10-mw/2-(minX+maxX)/2*sc,oy=10+26*s+mw/2-(minZ+maxZ)/2*sc;
     c.strokeStyle='#f4f0ff'; c.lineWidth=3; c.beginPath(); for(let i=0;i<=N;i+=3){ const j=i%N; if(i) c.lineTo(ox+px[j]*sc,oy+pz[j]*sc); else c.moveTo(ox+px[j]*sc,oy+pz[j]*sc); } c.closePath(); c.stroke();
+    if(cut){ c.strokeStyle='#d99a50'; c.lineWidth=2; c.setLineDash([3,2]); c.beginPath(); c.moveTo(ox+cut.cx[0]*sc,oy+cut.cz[0]*sc); c.lineTo(ox+cut.cx[cut.M]*sc,oy+cut.cz[cut.M]*sc); c.stroke(); c.setLineDash([]); }
     for(const q of karts){ if(q.left||q===k) continue; c.fillStyle=q.color; c.beginPath(); c.arc(ox+q.x*sc,oy+q.z*sc,3,0,7); c.fill(); }
     c.fillStyle=k.color; c.strokeStyle='#fff'; c.lineWidth=2; c.beginPath(); c.arc(ox+k.x*sc,oy+k.z*sc,4.5,0,7); c.fill(); c.stroke();
     // 下方：時速與氮氣
@@ -946,7 +1029,7 @@ function create(env,opts){
   return {update,draw,bg:!!net,
     pause(p){ if(eg) eg.gain.value=p?0:.022; },
     destroy(){ ro.disconnect(); if(osc){ try{osc.stop();}catch(e){} } scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); } }); renderer.dispose(); },
-    _dbg:{awards:()=>{ ended=true; awards(); },hit:(k,s,o,kind)=>hit(k,s,o,kind),karts,my,N,px,pz}};
+    _dbg:{awards:()=>{ ended=true; awards(); },hit:(k,s,o,kind)=>hit(k,s,o,kind),karts,my,N,px,pz,tx,tz,cut,skip:()=>{ intro=null; cd=0; }}};
 }
 
 function preview(ctx,w,h,L,t){
@@ -1014,17 +1097,17 @@ function thumb(ctx,w,h,t){
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'跑跑卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,bots:true,
-  desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 12 關，星星越多越難；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
-  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣。甩噴賽：甩尾放開後馬上按一下 ↑ 就會噴氮氣，甩越久噴越久（手機按 ▲）。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
+  desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 20 關，星星越多越難，4、5 星路比較窄、彎比較急，還有不好走的捷徑；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
+  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣，甩尾放開後馬上按一下 ↑ 可以甩噴（手機按 ▲）。4、5 星賽道有碎石捷徑，路短但開不快又有石頭擋路。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
-  variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'},{id:'drift',label:'甩噴賽'}],
+  variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','油門、煞車、轉向'],['Shift','過彎時按住飄移，放開後按一下 ↑ 甩噴'],['X','使用氮氣或道具'],['R','回到賽道中央'],['W A S D 左Shift Q','雙人 1P（左半畫面），Q 用氮氣或道具'],['↑ ↓ ← → 右Shift Enter','雙人 2P（右半畫面），Enter 用氮氣或道具']],
   touchHelp:[['◀ ▶','轉向，自動踩油門'],['▲','出發鍵：GO 的瞬間按起步加速；甩尾放開後按一下甩噴'],['飄移','過彎時按住'],['使用','用氮氣或道具'],['煞','煞車']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'▲',c:'ArrowUp'},{l:'飄移',c:'ShiftLeft'},{l:'煞',c:'ArrowDown'},{l:'使用',c:'KeyX',act:true}]},
   best:{label:'最快紀錄',fmt:v=>fmtTime(v),lower:true},
   stageBest:i=>{ const v=getRec(i); return v==null?'':fmtTime(v); },
-  hubBest:()=>{ let i=0; try{ i=+localStorage.getItem('arcade.kart.last')||0; }catch(e){} const v=getRec(i); return v==null?'尚無紀錄':'最快紀錄 <b>'+STAGES[i].name+' '+fmtTime(v)+'</b>'; },
+  hubBest:()=>{ let i=0; try{ i=+localStorage.getItem('arcade.kart.last2')||0; }catch(e){} const v=getRec(i); return v==null?'尚無紀錄':'最快紀錄 <b>'+STAGES[i].name+' '+fmtTime(v)+'</b>'; },
   looks:[{key:'body',label:'車輛',opts:[{id:'std',label:'標準車'},{id:'sport',label:'跑車'},{id:'buggy',label:'越野車'},{id:'scooter',label:'機車'},{id:'bike',label:'重型機車'}]},
     {key:'color',label:'車輛顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#ff7eb6']},
     {key:'driver',label:'人物',opts:[{id:'helmet',label:'賽車手'},{id:'cap',label:'棒球帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'},{id:'photo',label:'我的照片'}]},
@@ -1033,6 +1116,6 @@ function thumb(ctx,w,h,t){
     {key:'deco',label:'擺飾',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'halo',label:'天使光環',grp:'頭飾'},{id:'horns',label:'惡魔角',grp:'頭飾'},{id:'crown',label:'皇冠',grp:'頭飾'},{id:'propeller',label:'竹蜻蜓',grp:'頭飾'},{id:'catears',label:'貓耳',grp:'頭飾'},{id:'party',label:'派對帽',grp:'頭飾'},{id:'bow',label:'蝴蝶結',grp:'頭飾'},{id:'antenna',label:'外星天線',grp:'頭飾'},{id:'wizard',label:'魔法帽',grp:'頭飾'},{id:'flower',label:'向日葵',grp:'頭飾'},{id:'shades',label:'墨鏡',grp:'臉部'},{id:'hearts',label:'愛心眼鏡',grp:'臉部'},{id:'mustache',label:'八字鬍',grp:'臉部'},{id:'charm',label:'娃娃吊飾',grp:'娃娃'},{id:'bear',label:'小熊娃娃',grp:'娃娃'},{id:'duck',label:'小鴨',grp:'娃娃'},{id:'penguin',label:'企鵝',grp:'娃娃'},{id:'chick',label:'小雞',grp:'娃娃'},{id:'bunnydoll',label:'兔兔娃娃',grp:'娃娃'},{id:'catdoll',label:'橘貓娃娃',grp:'娃娃'},{id:'balloon',label:'愛心氣球',grp:'背後'},{id:'wings',label:'天使翅膀',grp:'背後'},{id:'batwings',label:'惡魔翅膀',grp:'背後'},{id:'butterfly',label:'蝴蝶翅膀',grp:'背後'},{id:'starballoon',label:'星星氣球',grp:'背後'},{id:'underglow',label:'霓虹底燈',grp:'車身'},{id:'foxtail',label:'狐狸尾巴',grp:'車身'},{id:'cans',label:'拖罐罐',grp:'車身'},{id:'orbit',label:'環繞星星',grp:'車身'}]},
     {key:'wheel',label:'輪子',opts:[{id:'std',label:'銀框'},{id:'gold',label:'金框'},{id:'race',label:'紅框寬胎'},{id:'offroad',label:'越野胎'},{id:'neon',label:'霓虹'}]},
     {key:'nitro',label:'氮氣特效',opts:[{id:'fire',label:'火焰'},{id:'ice',label:'冰晶'},{id:'rainbow',label:'彩虹'},{id:'bolt',label:'閃電'},{id:'star',label:'星光'}]}],
-  stagePreview,stageInfo,stageViewer,ready:()=>!!window.THREE,preview,viewer,thumb,load,create,_buildKart:buildKart
+  stagePreview,stageInfo,stageViewer,ready:()=>!!window.THREE,preview,viewer,thumb,load,create,_buildKart:buildKart,_buildWorld:buildWorld,_stages:STAGES
 };
 })();
