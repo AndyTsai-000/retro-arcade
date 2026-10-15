@@ -70,7 +70,7 @@ function drawCourt(ctx,t){
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',me=net?Math.min(1,net.me):0,vsHuman=!!net&&net.count>1;
   const {ctx}=env.canvas2d(W,H);
-  const GOAL=[5,10,15].includes(+((opts.options||{}).win))?+opts.options.win:10; // 開始前選的勝利分數
+  const GOAL=[5,11,15].includes(+((opts.options||{}).win))?+opts.options.win:11; // 開始前選的勝利分數
   const mk=n=>({n,x:n?360:120,y:GROUND,tx:n?360:120,ty:GROUND,vx:0,vy:0,face:n?-1:1,power:0,moving:false,score:0});
   const ps=[mk(0),mk(1)],ball={x:120,y:70,tx:120,ty:70,vx:0,vy:0,rot:0,cool:0,hot:0};
   let srvN=0,srvSeen=-1,t=0,wait=1,lastW=-1,over=0,ended=false,aiErr=0,aiSide=false,aiTick=0,aiX=372,ev=[],sendT=0,lastIn='';
@@ -230,8 +230,8 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).volley={
   name:'海灘排球',tag:'BEACH VOLLEY',color:'#3ddbd9',online:true,maxPlayers:2,
   desc:'一對一打排球，跳起來殺球讓對手接不到。玩法類似皮卡丘打排球，可單人對電腦、兩人同一台對打，或開房間連線。',
-  options:[{key:'win',label:'打幾分',def:'10',opts:[{id:'5',label:'5 分'},{id:'10',label:'10 分'},{id:'15',label:'15 分'}]}],
-  goal:'球落在對方場地就得 1 分，先拿到開始前選的分數（5、10 或 15 分）就獲勝。跳到空中按殺球會用力扣殺，同時按住 ↓ 會往下扣。',
+  options:[{key:'win',label:'打幾分',def:'11',opts:[{id:'5',label:'5 分'},{id:'11',label:'11 分'},{id:'15',label:'15 分'}]}],
+  goal:'球落在對方場地就得 1 分，先拿到開始前選的分數（5、11 或 15 分）就獲勝。跳到空中按殺球會用力扣殺，同時按住 ↓ 會往下扣。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['← → ↑ Space','單人與連線：移動、跳、殺球'],['A D W Space','雙人左邊'],['← → ↑ Enter','雙人右邊']],
   touchHelp:[['◀ ▶','移動'],['跳','跳起來'],['殺球','在空中按']],
