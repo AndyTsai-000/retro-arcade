@@ -536,7 +536,14 @@ function stageViewer(host,si){
 }
 
 function create(env,opts){
-  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=false,DB_MIN=driftMode?.15:.25,humans=net?net.count:local2?2:1,NK=net?Math.min(TOTAL,net.count+(net.bots||0)):TOTAL; // 連線時只有房間裡的人，加不加電腦由房主決定
+  const T=window.THREE,st=STAGES[opts.stage||0],net=opts.net,host=!net||net.host,me=net?net.me:0,local2=!net&&opts.mode==='2p',itemMode=opts.variant==='item',driftMode=false,DB_MIN=driftMode?.15:.25,humans=net?net.count:local2?2:1; // 連線時只有房間裡的人，加不加電腦由房主決定
+  // 玩法：各自分開（ffa）／分隊對戰（vs，兩隊人數一樣）／玩家同隊打電腦（coop，電腦和玩家一樣多）；分隊時照名次算隊伍積分
+  let mode=(opts.options&&opts.options.team)||'ffa'; if(!net&&!local2) mode='ffa'; if(mode==='coop'&&humans>3) mode='vs';
+  let NK=net?Math.min(TOTAL,net.count+(net.bots||0)):TOTAL;
+  if(mode==='coop') NK=humans*2; else if(mode==='vs'){ if(NK%2) NK=Math.min(TOTAL,NK+1); if(NK<2) NK=2; }
+  const TEAMS=mode==='coop'?[{name:'玩家隊',col:'#ffd23f'},{name:'電腦隊',col:'#a8adc0'}]:[{name:'紅隊',col:'#ff4d4d'},{name:'藍隊',col:'#3d8bff'}];
+  const teamOf=(()=>{ const out=[],cnt=[0,0]; for(let i=0;i<NK;i++){ let tm=null; if(mode==='coop') tm=i<humans?0:1; else if(mode==='vs') tm=i<humans?i%2:(cnt[0]<=cnt[1]?0:1); if(tm!=null) cnt[tm]++; out.push(tm); } return out; })();
+  const POINTS=[10,8,6,5,4,3];
   const SLOTS=[...Array(NK).keys()].sort((a,b)=>Math.abs(a-(NK-1)/2)-Math.abs(b-(NK-1)/2)||a-b); // 真人排在中間
   const stage=env.stage,dpr=Math.min(window.devicePixelRatio||1,2);
   const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); let pr=dpr; renderer.setPixelRatio(pr); stage.appendChild(renderer.domElement);
@@ -559,11 +566,11 @@ function create(env,opts){
     const k={i,human,color:look.color,look,bk:0,gripT:0,ss:0,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
       boostT:0,drifting:false,driftT:0,gauge:0,stock:0,items:[],toastT:0,toastText:'',spin:0,tumble:0,slowT:0,cloudT:0,shield:0,fin:null,wall:false,left:false,flags:0,
       ai:human?null:{lane:lane*.8,skill:st.ai+(i-humans)*.022,nt:6+Math.random()*8},mesh:makeKart(look)};
-    k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1);
+    k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1); k.team=teamOf[i];
     { // 車頂名牌
       const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const c=cv.getContext('2d');
       c.font='900 36px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=8; c.strokeStyle='#0b0a1c'; c.lineJoin='round';
-      c.strokeText(k.name,128,34); c.fillStyle=human?'#fff':'#c9c6e6'; c.fillText(k.name,128,34);
+      c.strokeText(k.name,128,34); c.fillStyle=k.team!=null?TEAMS[k.team].col:human?'#fff':'#c9c6e6'; c.fillText(k.name,128,34);
       const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true,depthWrite:false,fog:false})); sp.scale.set(5,1.25,1); sp.position.y=4.3; k.mesh.add(sp);
     }
     k.tx=k.x; k.tz=k.z; k.th=k.h; k.v={camH:k.h,fov:62,wrongT:0,lap:1}; karts.push(k);
@@ -851,8 +858,15 @@ function create(env,opts){
     env.sfx(local2||ok?'win':'lose');
     const pod=[1,0,2].filter(n=>order[n]).map(n=>'<div class="pod p'+(n+1)+'"><b>'+esc(order[n].name)+'</b><span>'+time(order[n])+'</span><i style="background:'+order[n].color+'">'+(n+1)+'</i></div>').join('');
     const rest=order.slice(3).map((q,n)=>'<li>第 '+(n+4)+' 名　'+esc(q.name)+'　'+time(q)+'</li>').join('');
-    env.end({title:'頒獎',html:'<div class="podium">'+pod+'</div>'+(rest?'<ul class="rest">'+rest+'</ul>':''),
-      text:local2?'':'你是第 '+r+' 名。'+recText(stage,my.fin,!local2),score:null,next:single&&stage<STAGES.length-1});
+    let title='頒獎',teamHtml='',teamTxt='';
+    if(mode!=='ffa'){ // 照名次給分：第 1 名 10 分、第 2 名 8 分、6、5、4、3
+      const pts=[0,0],best=[99,99]; order.forEach((q,n)=>{ if(q.team==null) return; pts[q.team]+=POINTS[n]||0; best[q.team]=Math.min(best[q.team],n); });
+      const wt=pts[0]!==pts[1]?(pts[0]>pts[1]?0:1):(best[0]<best[1]?0:1),mine=local2?(karts[0].team===wt||karts[1].team===wt):my.team===wt,both=local2&&karts[0].team===karts[1].team;
+      title=local2&&!both?TEAMS[wt].name+' 獲勝':mine?(mode==='coop'||both?'你們贏了！':'你的隊伍贏了！'):'你們輸了';
+      teamHtml='<p style="font-weight:700">'+TEAMS.map((T,n)=>'<span style="color:'+T.col+'">'+T.name+' '+pts[n]+' 分</span>').join('　')+'</p>';
+      teamTxt='名次積分：第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分，加起來多的隊伍獲勝。'+(pts[0]===pts[1]?'這次同分，'+TEAMS[wt].name+'有人跑得最前面，所以獲勝。':''); env.sfx(mine?'win':'lose'); }
+    env.end({title,html:teamHtml+'<div class="podium">'+pod+'</div>'+(rest?'<ul class="rest">'+rest+'</ul>':''),
+      text:(local2?'':'你是第 '+r+' 名。'+recText(stage,my.fin,!local2))+teamTxt,score:null,next:single&&stage<STAGES.length-1});
   }
 
   function startCeremony(){
@@ -974,6 +988,7 @@ function create(env,opts){
     const order=karts.filter(q=>!q.left).sort((a,b)=>(a.fin!=null?a.fin-1e6:-a.prog)-(b.fin!=null?b.fin-1e6:-b.prog)),rh=20*s,ly=10+66*s;
     order.forEach((q,n)=>{ const y=ly+n*(rh+2*s); c.fillStyle=q===k?'rgba(255,210,63,.9)':'rgba(11,10,28,.62)'; c.fillRect(10,y,150*s,rh);
       c.textAlign='left'; c.fillStyle=q===k?'#14122b':'#fff'; c.font=10*s+'px '+PIX; c.fillText(String(n+1),16,y+rh/2+1);
+      if(q.team!=null){ c.fillStyle=TEAMS[q.team].col; c.fillRect(10,y,4*s,rh); } // 分隊：名次表左邊有隊伍顏色
       c.fillStyle=q.color; c.beginPath(); c.arc(16+22*s,y+rh/2,5*s,0,7); c.fill();
       c.fillStyle=q===k?'#14122b':'#fff'; c.font='700 '+13*s+'px '+TC; c.fillText(q.name,16+32*s,y+rh/2+1);
       if(q.fin!=null){ c.textAlign='right'; c.font='700 '+11*s+'px '+TC; c.fillText('完賽',10+146*s,y+rh/2+1); } });
@@ -1098,9 +1113,10 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'極速大亂鬥',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,bots:true,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 20 關，星星越多越難，4、5 星路比較窄、彎比較急，還有不好走的捷徑；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
-  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣，甩尾放開後馬上按一下 ↑ 可以甩噴（手機按 ▲）。4、5 星賽道有碎石捷徑，路短但開不快又有石頭擋路。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
+  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣，甩尾放開後馬上按一下 ↑ 可以甩噴（手機按 ▲）。4、5 星賽道有碎石捷徑，路短但開不快又有石頭擋路。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）或「玩家同隊打電腦」（電腦和玩家一樣多），分隊時照名次算積分（第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分），總分高的隊伍獲勝。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'}],
+  options:[{key:'team',label:'雙人／連線玩法',def:'ffa',opts:[{id:'ffa',label:'各自分開'},{id:'vs',label:'分隊對戰'},{id:'coop',label:'玩家同隊打電腦'}]}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','油門、煞車、轉向'],['Shift','過彎時按住飄移，放開後按一下 ↑ 甩噴'],['X','使用氮氣或道具'],['R','回到賽道中央'],['W A S D 左Shift Q','雙人 1P（左半畫面），Q 用氮氣或道具'],['↑ ↓ ← → 右Shift Enter','雙人 2P（右半畫面），Enter 用氮氣或道具']],
   touchHelp:[['◀ ▶','轉向，自動踩油門'],['▲','出發鍵：GO 的瞬間按起步加速；甩尾放開後按一下甩噴'],['飄移','過彎時按住'],['使用','用氮氣或道具'],['煞','煞車']],
