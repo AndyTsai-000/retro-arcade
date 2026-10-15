@@ -1,4 +1,4 @@
-// 熱血棒球：九人制，可選 3、5、7、9 局。投打自己操作，守備和跑壘由電腦依規則處理。
+// 鬥魂棒球：九人制，可選 3、5、7、9 局。投打自己操作，守備和跑壘由電腦依規則處理。
 // 規則：三好球三振、四壞球保送、兩好球後界外不計、三出局攻守交換、封殺與觸殺、高飛接殺與回壘待跑、
 //       全壘打、後攻領先時最後半局不打、再見得分、平手延長（最多加 3 局）。
 // 距離單位是英呎：本壘 (0,0)，一壘 (63.6,63.6)，二壘 (0,127.3)，三壘 (-63.6,63.6)。
@@ -579,7 +579,7 @@ const preview=(ctx,w,h,L,t)=>scene(ctx,w,h,L,t);
 const thumb=(ctx,w,h,t)=>{ ctx.save(); ctx.translate(0,-16); scene(ctx,w,h,{color:'#ff5d4f',hair:'1',grass:'#4c9a3c',bg:'stadium'},t); ctx.restore(); };
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).baseball={
-  name:'熱血棒球',tag:'BASEBALL',color:'#ff7eb6',online:true,maxPlayers:2,
+  name:'鬥魂棒球',tag:'BASEBALL',color:'#ff7eb6',online:true,maxPlayers:2,
   desc:'九人制棒球，投打自己來，守備和跑壘自動進行。六種常見球種，照正式規則打 3、5、7 或 9 局。可單人、兩人同一台，或開房間連線。',
   goal:'投球：方向鍵一按移一格選位置，換球種後丟球。打擊：球旁邊的圈圈變綠時，按一下 ↑ 打高飛（打得準有機會全壘打），按一下 ↓ 打平飛或滾地。守備會自己判斷傳哪一壘，有機會雙殺、三殺。',
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],

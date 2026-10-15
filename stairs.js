@@ -1,4 +1,4 @@
-// 小朋友下樓梯：世界座標固定，鏡頭一直往下捲；天花板的尖刺跟著鏡頭走。
+// 樓梯大逃亡：世界座標固定，鏡頭一直往下捲；天花板的尖刺跟著鏡頭走。
 (function(){
 'use strict';
 const W=360,H=540,WALL=14,PW=20,PH=26,PLW=86,PLH=14,GAP=60,HUD=36,TOP=HUD+16,MAXLIFE=12;
@@ -226,7 +226,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).stairs={
-  name:'小朋友下樓梯',tag:'NS-SHAFT',color:'#86dc4f',online:true,wide:false,
+  name:'樓梯大逃亡',tag:'STAIR ESCAPE',color:'#86dc4f',online:true,wide:false,
   desc:'天花板一直壓下來，踩著平台往下逃。小心尖刺、會翻的假板和輸送帶。可單人、兩人同一台，或開房間連線比誰撐得久。',
   goal:'踩平台往下走，別被天花板的尖刺刺到，也別掉出畫面。踩到新的平台會補血。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人'}],

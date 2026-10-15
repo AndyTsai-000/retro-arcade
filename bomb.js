@@ -1,4 +1,4 @@
-// 爆爆王：格子地圖、水球十字爆炸、被炸到會困在水泡裡。
+// 水球炸翻天：格子地圖、水球十字爆炸、被炸到會困在水泡裡。
 // 連線時房主負責全部運算，每秒 20 次把畫面狀態傳給其他人；其他人只送出方向和放水球。
 (function(){
 'use strict';
@@ -397,7 +397,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={
-  name:'爆爆王',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
+  name:'水球炸翻天',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
   desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。7 個場景、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
   goal:'放水球把對手困進水泡，再走過去碰破。自己被困住時，有針可以脫困；沒有針就會出局。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],

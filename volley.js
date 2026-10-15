@@ -228,8 +228,8 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).volley={
-  name:'海灘排球',tag:'BEACH VOLLEY',color:'#3ddbd9',online:true,maxPlayers:2,
-  desc:'一對一打排球，跳起來殺球讓對手接不到。玩法類似皮卡丘打排球，可單人對電腦、兩人同一台對打，或開房間連線。',
+  name:'椰林沙灘排球',tag:'BEACH VOLLEY',color:'#3ddbd9',online:true,maxPlayers:2,
+  desc:'一對一打排球，跳起來殺球讓對手接不到。可單人對電腦、兩人同一台對打，或開房間連線。',
   options:[{key:'win',label:'打幾分',def:'11',opts:[{id:'5',label:'5 分'},{id:'11',label:'11 分'},{id:'15',label:'15 分'}]}],
   goal:'球落在對方場地就得 1 分，先拿到開始前選的分數（5、11 或 15 分）就獲勝。跳到空中按殺球會用力扣殺，同時按住 ↓ 會往下扣。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],

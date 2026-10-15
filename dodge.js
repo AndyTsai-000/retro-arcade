@@ -473,7 +473,7 @@ function thumb(ctx,w,h,t){
 
 window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).dodge={
-  name:'熱血躲避球',tag:'DODGE BALL',color:'#ff9d3d',online:true,maxPlayers:2,
+  name:'鬥魂躲避球',tag:'DODGE BALL',color:'#ff9d3d',online:true,maxPlayers:2,
   desc:'三對三躲避球，丟球打倒對方內野。助跑丟、跳起來丟會變成必殺球，共 7 種；集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'丟球打對方內野的人扣體力，三個人都倒下就贏了。連按兩下 ← 或 → 助跑後丟、或跳起來丟，會丟出必殺球。打中人或接到球會累積氣力，集滿後拿球按「必殺」放出接不住的超必殺。球飛過來時按「丟」可以接住。',
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],

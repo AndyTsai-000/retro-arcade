@@ -1,4 +1,4 @@
-// 熱血足球：五對五（四名球員加守門員），沒有犯規，可以鏟人。助跑射門是必殺射門，集滿氣可以放超必殺。
+// 鬥魂足球：五對五（四名球員加守門員），沒有犯規，可以鏟人。助跑射門是必殺射門，集滿氣可以放超必殺。
 // 人物畫法沿用躲避球的二頭身。連線時房主負責運算（左隊），加入的人是右隊，只送出按鍵。
 (function(){
 'use strict';
@@ -376,8 +376,8 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).soccer={
-  name:'熱血足球',tag:'SOCCER',color:'#5fd068',online:true,maxPlayers:2,
-  desc:'五對五的熱血足球，沒有犯規，可以鏟人搶球。助跑射門是必殺射門，集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
+  name:'鬥魂足球',tag:'SOCCER',color:'#5fd068',online:true,maxPlayers:2,
+  desc:'五對五的鬥魂足球，沒有犯規，可以鏟人搶球。助跑射門是必殺射門，集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'2 分鐘內進球多的贏，平手打延長賽。連按兩下 ← 或 → 助跑後射門，會踢出必殺射門；沒球時按「射」是鏟球。守門員會自己守。',
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
