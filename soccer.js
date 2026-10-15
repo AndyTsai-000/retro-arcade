@@ -142,6 +142,7 @@ function create(env,opts){
     for(const p of P){ p.x=p.hx; p.y=p.hy; p.z=0; p.vz=0; p.state=0; p.st=0; p.run=false; p.slideT=0; p.face=p.team?-1:1; }
     const k=P[tm*5+4]; k.x=MIDX-(tm?-1:1)*8; k.y=MIDY; Object.assign(ball,{x:k.x,y:k.y,z:0,vx:0,vy:0,vz:0,owner:k.id,type:null,last:tm,noPick:-1}); start=.9;
   }
+  if(opts.first!=null){ kick=opts.first; kickoff(kick); } // 擲硬幣決定誰先開球
   function stepBall(dt){
     const b=ball; b.t+=dt; if(b.npT>0){ b.npT-=dt; if(b.npT<=0) b.noPick=-1; }
     if(b.owner>=0){ const h=P[b.owner]; if(h.state===4){ loose(b,h.id); return; } b.x=h.x+h.face*(h.gk?6:9); b.y=h.y+.5; b.z=h.gk?h.z+16:h.z+(h.moving?Math.abs(Math.sin(t*14))*3:0); b.vx=b.vy=b.vz=0; return; }
@@ -376,6 +377,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).soccer={
+  coin:o=>({verb:'先開球',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}),
   name:'鬥魂足球',tag:'SOCCER',color:'#5fd068',online:true,maxPlayers:2,
   desc:'五對五的鬥魂足球，沒有犯規，可以鏟人搶球。助跑射門是必殺射門，集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'2 分鐘內進球多的贏，平手打延長賽。連按兩下 ← 或 → 助跑後射門，會踢出必殺射門；沒球時按「射」是鏟球。守門員會自己守。',

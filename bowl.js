@@ -103,7 +103,7 @@ function create(env,opts){
   const PL=[]; for(let i=0;i<np;i++) PL.push({name:net?(net.names&&net.names[i])||'玩家'+(i+1):np===1?(opts.name||'你'):'玩家 '+(i+1),frames:[],f:0,gone:false,
     col:net?((net.looks&&net.looks[i]&&net.looks[i].ball)||BALLS[i]):i===0?L.ball:BALLS[i]});
   if(!net) for(let i=1;i<np;i++) if(PL[i].col===PL[0].col) PL[i].col=BALLS.find(c=>!PL.some(p=>p.col===c))||BALLS[i];
-  let cur=0,phase='aim',step=0,pos=0,ang=0,pow=0,spin=0,ptype=0,charging=false,prevHeld=false,t=0,mt=0,stand=1023,pins=[],ball=null,camY=0,rollT=0,doneT=0,banner='',banT=0,pending=null,waitRes=false,ended=false,fx=[];
+  let cur=opts.first===1&&np===2?1:0,phase='aim',step=0,pos=0,ang=0,pow=0,spin=0,ptype=0,charging=false,prevHeld=false,t=0,mt=0,stand=1023,pins=[],ball=null,camY=0,rollT=0,doneT=0,banner='',banT=0,pending=null,waitRes=false,ended=false,fx=[];
   const local=i=>!net||i===me;
   const sfx=n=>env.sfx(n);
   function setPins(mask){ pins=SPOTS.map((s,i)=>({i,x:s[0],y:s[1],vx:0,vy:0,up:!!(mask>>i&1),down:false,rot:0,out:!(mask>>i&1)})); }
@@ -306,6 +306,7 @@ const preview=(ctx,w,h,L,t)=>scene(ctx,w,h,L,t);
 const thumb=(ctx,w,h,t)=>scene(ctx,w,h,{ball:'#ff5d4f',lane:'#d9a45c',bg:'alley'},t);
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bowl={
+  coin:o=>{ const n=o.net?o.net.count:Math.max(1,Math.min(4,+(o.mode||1)||1)); return n===2?{verb:'先打',names:o.net?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:['玩家 1','玩家 2']}:null; }, // 兩個人時擲硬幣決定誰先打
   name:'保齡球大賽',tag:'BOWLING',color:'#b98cff',online:true,maxPlayers:4,
   desc:'先選球種（含飛碟球），再選站位，看著路徑圖長按蓄力把球丟出去。可選 3、5、7、9 局，照正式規則計分。同一台可 1～4 人輪流，也可開房間連線，最多 4 人。',
   goal:'每局有兩球把 10 支球瓶打倒。全倒（X）加後面兩球的分數，補中（/）加後面一球；最後一局全倒或補中可以加投。',

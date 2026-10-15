@@ -137,6 +137,7 @@ function create(env,opts){
   const ball={x:MID,y:(YB+YF)/2,z:60,vx:0,vy:0,vz:0,st:'loose',holder:-1,team:-1,type:null,dmg:0,t:0,target:-1,hit:{},base:0,idle:0,ghost:0};
   const ctrl=[1,7],human=[true,vs],inp=[blank(),blank()],tap=[{d:0,t:-9,run:0},{d:0,t:-9,run:0}],prev=[{},{}];
   let t=0,over=0,ended=false,msg='',msgT=0,ev=[],sendT=0,lastIn='',start=1.2,freeze=0,shake=0,flash=0,cut=null;
+  if(opts.first!=null) ball.x=MID+(opts.first?70:-70); // 擲硬幣贏的一方先拿到球
   const gauge=[0,0],fx=[],rings=[];
   function blank(){ return {mx:0,my:0,run:false,a:false,b:false,j:false,x:false,bh:false}; }
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
@@ -473,6 +474,7 @@ function thumb(ctx,w,h,t){
 
 window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).dodge={
+  coin:o=>({verb:'先拿球',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}),
   name:'鬥魂躲避球',tag:'DODGE BALL',color:'#ff9d3d',online:true,maxPlayers:2,
   desc:'三對三躲避球，丟球打倒對方內野。助跑丟、跳起來丟會變成必殺球，共 7 種；集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'丟球打對方內野的人扣體力，三個人都倒下就贏了。連按兩下 ← 或 → 助跑後丟、或跳起來丟，會丟出必殺球。打中人或接到球會累積氣力，集滿後拿球按「必殺」放出接不住的超必殺。球飛過來時按「丟」可以接住。',

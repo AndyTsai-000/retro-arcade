@@ -2,16 +2,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#14122b">
-<meta property="og:title" content="懷舊遊戲區">
+<meta property="og:title" content="跨界遊戲區">
 <meta property="og:description" content="樓梯大逃亡、卡丁車、水球炸翻天、躲避球、足球、棒球、保齡球…打開就能玩，還能開房間連線。">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://andytsai-000.github.io/retro-arcade/icon-512.png">
-<meta name="description" content="九款懷舊小遊戲，電腦手機都能玩，可開房間和朋友連線。">
+<meta name="description" content="十二款小遊戲，從動作、賽車、球類到益智都有，電腦手機都能玩，可開房間和朋友連線。">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="懷舊遊戲區">
-<title>懷舊遊戲區</title>
+<meta name="apple-mobile-web-app-title" content="跨界遊戲區">
+<title>跨界遊戲區</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
 <style>
 /* 版面：大廳是三張「卡帶」並排；進遊戲後變成一個填滿畫面的機台（上方列、畫面、觸控按鈕）。 */
@@ -204,7 +204,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
   <header class="mast">
     <button class="me" id="hubName" type="button"></button>
     <div class="coin">RETRO ARCADE <b>&#9654; INSERT COIN</b></div>
-    <h1>懷舊遊戲區</h1>
+    <h1>跨界遊戲區</h1>
     <p>放學後的網咖、電腦課偷玩的那幾款。選一張卡帶就能開始，電腦用鍵盤、手機用畫面上的按鈕。</p>
   </header>
   <nav class="cats" id="cats" aria-label="遊戲分類"></nav>
@@ -233,7 +233,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=99; // 每次改版加一
+window.ARCADE_V=101; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -582,8 +582,33 @@ async function enter(opts){
     '<div class="row"><button class="btn main" id="spGo">進入比賽</button><button class="btn" id="spBack">重新選擇</button></div>');
   mountStage(i,v3); on('spGo',()=>start(opts)); on('spBack',startCard);
 }
+// 擲硬幣動畫：正面＝names[0]、反面＝names[1]，約 3 秒後回傳
+function coinToss(info,first){
+  return new Promise(res=>{
+    const cv=document.createElement('canvas'),S=2,W=480,H=300; cv.width=W*S; cv.height=H*S; cv.className='fit'; cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:5'; stage.appendChild(cv);
+    const c=cv.getContext('2d'); c.scale(S,S); const t0=performance.now(),DUR=3.4,LAND=1.9; let tick=-1;
+    const TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
+    try{ SFX.click(); }catch(e){}
+    const frame=()=>{ if(!cv.isConnected){ res(); return; }
+      const t=(performance.now()-t0)/1000; c.fillStyle='#14122b'; c.fillRect(0,0,W,H);
+      c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText('擲硬幣決定誰'+info.verb,W/2,34);
+      c.font='700 14px '+TC; c.fillStyle='#fff'; c.fillText('正面：'+info.names[0]+'　　反面：'+info.names[1],W/2,62);
+      // 硬幣：往上拋、一邊翻轉，落地時停在結果那一面
+      const u=Math.min(1,t/LAND),y=H*.56-Math.sin(u*Math.PI)*90,spin=u<1?u*Math.PI*(14+first):Math.PI*(14+first),k=Math.cos(spin),face=k>=0?0:1,r=40;
+      c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(W/2,H*.56+46,r*(1-Math.sin(u*Math.PI)*.4),9,0,0,7); c.fill();
+      c.save(); c.translate(W/2,y); c.scale(Math.max(.08,Math.abs(k)),1);
+      const g=c.createRadialGradient(-10,-12,4,0,0,r); g.addColorStop(0,face?'#e8e8f0':'#fff3a8'); g.addColorStop(1,face?'#9aa0b0':'#e0a020'); c.fillStyle=g; c.beginPath(); c.arc(0,0,r,0,7); c.fill();
+      c.strokeStyle=face?'#6a7080':'#a86a10'; c.lineWidth=4; c.stroke(); c.lineWidth=1.5; c.beginPath(); c.arc(0,0,r-8,0,7); c.stroke();
+      c.fillStyle=face?'#4a5060':'#7a4a08'; c.font='900 34px '+TC; c.fillText(face?'反':'正',0,2); c.restore();
+      if(t>=LAND){ if(tick<0){ tick=1; try{ SFX.win(); }catch(e){} }
+        const a=Math.min(1,(t-LAND)*3); c.globalAlpha=a; c.font='900 30px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; const msg=(first?'反面':'正面')+'！'+info.names[first]+' '+info.verb;
+        c.strokeText(msg,W/2,H-42); c.fillStyle='#86dc4f'; c.fillText(msg,W/2,H-42); c.globalAlpha=1; }
+      if(t<DUR) requestAnimationFrame(frame); else { cv.remove(); res(); } };
+    requestAnimationFrame(frame);
+  });
+}
 async function start(opts){
-  if(state==='loading'||!cur) return;
+  if(state==='loading'||state==='coin'||!cur) return;
   if(opts.variant===undefined) opts.variant=variantSel;
   audio(); SFX.click(); lastOpts=opts; killInst();
   if(cur.load){
@@ -598,7 +623,12 @@ async function start(opts){
   for(const k in hits) delete hits[k];
   buildPad(padSpec(cur,opts.mode));
   closeLook();
-  inst=cur.create(env,{options:Object.assign({},optSel),stage:opts.stage||0,mode:opts.mode,variant:opts.variant,look:lookOf(cur),name:myName,net:opts.net?mkNet():null}); state='running'; acc=0; ov.hidden=true; document.body.classList.add('playing'); $('#bPause').textContent='暫停';
+  // 球類遊戲：開始前擲硬幣決定誰先（連線時用房間共用的亂數種子，大家看到的結果一樣）
+  let first=null;
+  if(cur.coin){ const info=cur.coin({mode:opts.mode,variant:opts.variant,stage:opts.stage||0,name:myName,net:opts.net?{names:Net.names,me:Net.me,count:Net.count}:null});
+    if(info){ first=opts.net?((Number(Net.seed)>>>5)&1):(Math.random()<.5?0:1); const g0=cur; state='coin'; ov.hidden=true; document.body.classList.add('playing');
+      await coinToss(info,first); if(state!=='coin'||cur!==g0) return; } }
+  inst=cur.create(env,{options:Object.assign({},optSel),stage:opts.stage||0,mode:opts.mode,variant:opts.variant,look:lookOf(cur),name:myName,net:opts.net?mkNet():null,first}); state='running'; acc=0; ov.hidden=true; document.body.classList.add('playing'); $('#bPause').textContent='暫停';
 }
 function finish(res){
   if(state!=='running') return; state='over';

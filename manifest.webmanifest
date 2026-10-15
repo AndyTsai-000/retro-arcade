@@ -1,6 +1,6 @@
 {
- "name": "懷舊遊戲區",
- "short_name": "懷舊遊戲區",
+ "name": "跨界遊戲區",
+ "short_name": "跨界遊戲區",
  "start_url": "./",
  "scope": "./",
  "display": "fullscreen",

@@ -177,17 +177,18 @@ function stadium(ctx,L,t){
 }
 
 function create(env,opts){
-  const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',vs=two||(!!net&&net.count>1),me=net?Math.min(1,net.me):1;
+  const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',vs=two||(!!net&&net.count>1),F=opts.first===1; let me=net?(vs?Math.min(1,net.me):1):1; if(F) me=1-me; // F：擲硬幣後換成第 1 方先攻
   const N=+(opts.variant||3)||3,si=opts.stage||0,foe=STAGES[si],lv=vs?.6:foe.lv,L=opts.look||{color:'#ff5d4f',hair:'1',grass:'#4c9a3c',bg:'stadium'};
   const {ctx}=env.canvas2d(W,H);
   // 單人：你是主隊（後攻），電腦是客隊。雙人：左邊 WASD 是客隊、右邊方向鍵是主隊。連線：房主客隊、加入者主隊。
   const lookOf=tm=>net&&net.looks?net.looks[tm===0?0:1]:null;
   const cols=vs?[(lookOf(0)||{}).color||'#3d8bff',(lookOf(1)||L).color||L.color]:[foe.col,L.color]; if(cols[0]===cols[1]) cols[0]=cols[1]==='#3d8bff'?'#ffd23f':'#3d8bff';
-  const tname=net&&net.names?[net.names[0]||'客隊',net.names[1]||(vs?'主隊':foe.name)]:vs?['客隊','主隊']:[foe.name,opts.name||'你的隊伍'];
+  const tname=net&&net.names?[net.names[0]||'客隊',net.names[1]||(vs?'主隊':foe.name)]:vs?['1P 隊','2P 隊']:[foe.name,opts.name||'你的隊伍'];
   if(net&&!vs){ tname[0]=foe.name; tname[1]=net.names&&net.names[0]||'你'; }
-  const ctl=tm=>net?(client?(tm===1?'k0':'net'):(vs?(tm===0?'k0':'net'):(tm===1?'k0':'ai'))):two?(tm===0?'k1':'k2'):(tm===1?'k0':'ai');
+  const ctl0=tm=>net?(client?(tm===1?'k0':'net'):(vs?(tm===0?'k0':'net'):(tm===1?'k0':'ai'))):two?(tm===0?'k1':'k2'):(tm===1?'k0':'ai'),ctl=tm=>ctl0(F?1-tm:tm);
   const mkTeam=(names,k)=>names.map((n,i)=>({name:n,con:k*(.9+((i*7)%5)*.05),pow:k*(.85+((i*3)%5)*.08),spd:25+((i*5)%4)*1.3}));
   const cpuK=.75+lv*.4,teams=vs?[mkTeam(AWAYN,1),mkTeam(HOMEN,1)]:[mkTeam(AWAYN,cpuK),mkTeam(HOMEN,1)];
+  if(F){ cols.reverse(); tname.reverse(); teams.reverse(); } // 先攻的一方當客隊
   // 共用的顯示狀態：房主算出來，連線時整包傳給另一邊
   const S={inn:1,half:0,outs:0,b:0,s:0,sc:[0,0],bases:[0,0,0],phase:'sel',bat:0,ord:[0,0],line:[[],[]],pit:null,last:'',ban:'',banT:0,fld:null,swing:0,hits:[0,0]};
   let swDone=false,prevF=[],prevR=[],pRep=0,pDir='',trail=[],trailMax=0,catchT=0,t=0,ended=false,selT=0,tx=0,ty=0,ptype=0,cx=0,cy=0,swung=null,pitT=0,resT=0,pend=null,fl=null,runners=[],ev=[],sendT=0,remoteSw=undefined,remotePc=null,sentSw=false,fx=[];
@@ -262,7 +263,7 @@ function create(env,opts){
     const n=Math.max(S.inn,S.line[0].length),row=tm=>'<tr><th>'+tname[tm]+'</th>'+Array.from({length:n},(_,i)=>'<td>'+(S.line[tm][i]==null?(tm===1&&i===n-1?'X':'-'):S.line[tm][i])+'</td>').join('')+'<td><b>'+S.sc[tm]+'</b></td><td>'+S.hits[tm]+'</td></tr>';
     env.end({title:w<0?'平手':two?tname[w]+' 獲勝':win?'你贏了！':'你輸了',big:S.sc[0]+' : '+S.sc[1],
       html:'<table class="ls"><tr><th></th>'+Array.from({length:n},(_,i)=>'<td>'+(i+1)+'</td>').join('')+'<td>分</td><td>安</td></tr>'+row(0)+row(1)+'</table>',
-      text:w<0?'延長賽也沒有分出勝負。':'',score:!vs&&!net&&w===1?si+1:null,next:!vs&&!net&&w===1&&si<STAGES.length-1});
+      text:w<0?'延長賽也沒有分出勝負。':'',score:!vs&&!net&&w===me?si+1:null,next:!vs&&!net&&w===me&&si<STAGES.length-1});
   }
 
   /* ---- 球打出去之後：守備與跑壘 ---- */
@@ -388,7 +389,7 @@ function create(env,opts){
     };
     else {
       net.onmsg=(m,from)=>{ if(from!==1) return; if(m.pc) remotePc=m.pc; if(m.sw!==undefined) remoteSw=m.sw; };
-      net.onleave=i=>{ if(i===1&&!ended&&vs){ S.sc[0]=Math.max(S.sc[0],S.sc[1]+1); finish(); } };
+      net.onleave=i=>{ if(i===1&&!ended&&vs){ const h=F?1:0; S.sc[h]=Math.max(S.sc[h],S.sc[1-h]+1); finish(); } };
     }
   }
 
@@ -583,6 +584,7 @@ const thumb=(ctx,w,h,t)=>{ ctx.save(); ctx.translate(0,-16); scene(ctx,w,h,{colo
   desc:'九人制棒球，投打自己來，守備和跑壘自動進行。六種常見球種，照正式規則打 3、5、7 或 9 局。可單人、兩人同一台，或開房間連線。',
   goal:'投球：方向鍵一按移一格選位置，換球種後丟球。打擊：球旁邊的圈圈變綠時，按一下 ↑ 打高飛（打得準有機會全壘打），按一下 ↓ 打平飛或滾地。守備會自己判斷傳哪一壘，有機會雙殺、三殺。',
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
+  coin:o=>({verb:'先攻',names:o.net?(o.net.count>1?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:[STAGES[o.stage||0].name,o.net.names[0]||'你']):o.mode==='2p'?['1P 隊','2P 隊']:[STAGES[o.stage||0].name,'你的隊伍']}),
   variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','投球：一按移一格選位置'],['J／空白鍵／Enter','投球時丟球'],['K','換球種（投球時）'],['↑','打擊：揮棒打高飛球，時機越準越遠，有機會全壘打'],['↓','打擊：揮棒打平飛球或滾地球'],['W A S D F G','雙人客隊：移動（W／S 揮棒）、丟球、換球種'],['↑ ↓ ← → , .','雙人主隊：移動（↑／↓ 揮棒）、丟球、換球種']],

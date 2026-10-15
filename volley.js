@@ -77,7 +77,7 @@ function create(env,opts){
   const rin={dx:0,jump:false,down:false,up:false,hit:false};
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
   function serve(to){ srvN++; for(const p of ps){ p.x=p.n?360:120; p.y=GROUND; p.vx=p.vy=0; } ball.x=to?360:120; ball.y=70; ball.vx=ball.vy=0; ball.hot=0; wait=.9; }
-  serve(0);
+  serve(opts.first===1?1:0); // 擲硬幣決定誰先發球
 
   const ALT=[{animal:'cat',color:'#ff9d3d'},{animal:'bear',color:'#4f9dff'}];
   ps.forEach(p=>{ p.look=(net?net.looks&&net.looks[p.n]:p.n===0?opts.look:null)||ALT[p.n]; if(p.n===1&&!net&&opts.look&&p.look.color===opts.look.color) p.look={animal:p.look.animal,color:'#5fd068'}; p.col=[p.look.color,shade(p.look.color,.68)]; });
@@ -228,6 +228,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).volley={
+  coin:o=>({verb:'先發球',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}),
   name:'椰林沙灘排球',tag:'BEACH VOLLEY',color:'#3ddbd9',online:true,maxPlayers:2,
   desc:'一對一打排球，跳起來殺球讓對手接不到。可單人對電腦、兩人同一台對打，或開房間連線。',
   options:[{key:'win',label:'打幾分',def:'11',opts:[{id:'5',label:'5 分'},{id:'11',label:'11 分'},{id:'15',label:'15 分'}]}],
