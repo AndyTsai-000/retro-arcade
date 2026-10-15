@@ -31,16 +31,23 @@ const DIFF={easy:{think:[.55,.9],bombP:.3,power:1,maxB:1,hunt:0,itemR:3,cap:2,sl
 const r2=v=>Math.round(v*100)/100;
 
 /* ---------- 畫圖 ---------- */
-const WATER=['#57a8ff','#ff7eb6','#5fd068','#ff9d3d','#b98cff','#3ddbd9'];
+const WATER=['#57a8ff','#ff7eb6','#5fd068','#ff9d3d','#b98cff','#3ddbd9','#ff4d4d','#ffd23f','#3a5bff','#ff3bd4','#a8e05a','#eef4ff'];
+// 人物顏色：auto＝照玩家順序的顏色
+const BODY=['auto','#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6','#8a5a3c','#f4f4f8','#2b2f55','#a8e05a'];
 const rgb=hex=>{ const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
 const mix=(hex,k)=>'rgb('+rgb(hex).map(v=>Math.round(k<1?v*k:v+(255-v)*(k-1))).join(',')+')';
-function drawChar(ctx,cx,cy,color,dir,moving,t,sc,style){
-  const s=sc||1,bob=moving?Math.sin(t*16)*1.5:0,st=style||'cap';
+function drawChar(ctx,cx,cy,color,dir,moving,t,sc,style,deco){
+  const s=sc||1,bob=moving?Math.sin(t*16)*1.5:0,st=style||'cap',D=new Set(String(deco||'').split(','));
   ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(cx,cy+15*s,11*s,4*s,0,0,7); ctx.fill();
+  if(D.has('cape')){ const sw=Math.sin(t*(moving?14:3))*1.5*s; ctx.fillStyle='#d6283c'; ctx.beginPath(); ctx.moveTo(cx-8*s,cy-1*s); ctx.lineTo(cx+8*s,cy-1*s); ctx.lineTo(cx+13*s+sw,cy+15*s); ctx.lineTo(cx-13*s+sw,cy+15*s); ctx.closePath(); ctx.fill(); }
+  if(D.has('pack')&&dir!==0){ ctx.fillStyle='#e8892a'; const bx=dir===2?cx+7*s:dir===3?cx-15*s:cx-7*s; if(dir!==1){ ctx.fillRect(bx,cy-2*s,8*s,11*s); ctx.fillStyle='#b5651d'; ctx.fillRect(bx,cy+3*s,8*s,2*s); } }
   ctx.fillStyle='#3a2a20'; ctx.fillRect(cx-8*s,cy+10*s+bob,6*s,5*s); ctx.fillRect(cx+2*s,cy+10*s-bob,6*s,5*s);
   ctx.fillStyle=color; ctx.beginPath(); ctx.ellipse(cx,cy+5*s,10*s,9*s,0,0,7); ctx.fill();
   if(st==='bunny'){ ctx.beginPath(); ctx.ellipse(cx-5*s,cy-22*s,3.5*s,9*s,-.15,0,7); ctx.ellipse(cx+5*s,cy-22*s,3.5*s,9*s,.15,0,7); ctx.fill(); }
   if(st==='cat'){ ctx.beginPath(); ctx.moveTo(cx-11*s,cy-11*s); ctx.lineTo(cx-9*s,cy-22*s); ctx.lineTo(cx-2*s,cy-16*s); ctx.fill(); ctx.beginPath(); ctx.moveTo(cx+11*s,cy-11*s); ctx.lineTo(cx+9*s,cy-22*s); ctx.lineTo(cx+2*s,cy-16*s); ctx.fill(); }
+  if(D.has('pack')&&dir===0){ ctx.fillStyle='#e8892a'; ctx.fillRect(cx-7*s,cy-1*s,14*s,12*s); ctx.fillStyle='#b5651d'; ctx.fillRect(cx-7*s,cy+4*s,14*s,2.5*s); }
+  if(D.has('pack')&&dir===1){ ctx.fillStyle='#b5651d'; ctx.fillRect(cx-7*s,cy-1*s,2.5*s,11*s); ctx.fillRect(cx+4.5*s,cy-1*s,2.5*s,11*s); }
+  if(D.has('cape')&&dir===0){ ctx.fillStyle='#d6283c'; ctx.fillRect(cx-9*s,cy-1*s,18*s,15*s); }
   ctx.fillStyle='#ffe0b8'; ctx.beginPath(); ctx.arc(cx,cy-7*s,11*s,0,7); ctx.fill();
   ctx.fillStyle=color;
   if(st==='cap'){ ctx.beginPath(); ctx.arc(cx,cy-9*s,11.5*s,Math.PI,0); ctx.fill(); ctx.fillRect(cx-12*s,cy-10*s,24*s,3*s); }
@@ -54,6 +61,20 @@ function drawChar(ctx,cx,cy,color,dir,moving,t,sc,style){
   if(dir===1){ ctx.fillRect(cx-5*s,cy-5*s,3*s,4*s); ctx.fillRect(cx+2*s,cy-5*s,3*s,4*s); }
   else if(dir===2){ ctx.fillRect(cx-8*s,cy-5*s,3*s,4*s); ctx.fillRect(cx-2*s,cy-5*s,3*s,4*s); }
   else if(dir===3){ ctx.fillRect(cx+5*s,cy-5*s,3*s,4*s); ctx.fillRect(cx-1*s,cy-5*s,3*s,4*s); }
+  // 擺飾：臉部（背對時看不到）
+  if(dir!==0){ const ex=dir===2?[-8,-2]:dir===3?[-1,5]:[-5,2],fx=dir===2?-3.5:dir===3?3.5:0;
+    if(D.has('shades')){ ctx.fillStyle='#0b0b14'; for(const x of ex) ctx.fillRect(cx+(x-1.5)*s,cy-6.5*s,6*s,5*s); ctx.fillRect(cx+(ex[0]+4)*s,cy-6*s,(ex[1]-ex[0]-3)*s,1.5*s); ctx.fillStyle='rgba(255,255,255,.6)'; for(const x of ex) ctx.fillRect(cx+(x-.5)*s,cy-5.8*s,1.5*s,1.5*s); }
+    else if(D.has('blush')){ ctx.fillStyle='rgba(255,120,150,.7)'; for(const x of ex){ ctx.beginPath(); ctx.ellipse(cx+(x+1.5+(x<fx?-2.5:2.5))*s,cy+.5*s,2.4*s,1.6*s,0,0,7); ctx.fill(); } }
+    else if(D.has('stache')){ ctx.fillStyle='#4a2c18'; for(const k of [-1,1]){ ctx.beginPath(); ctx.ellipse(cx+(fx+k*2.6)*s,cy+1.2*s,3*s,1.5*s,k*.35,0,7); ctx.fill(); } } }
+  // 擺飾：脖子
+  if(D.has('scarf')){ ctx.fillStyle='#2fb8ff'; ctx.fillRect(cx-9*s,cy+2*s,18*s,4*s); ctx.fillStyle='#1a8ad0'; const tx=dir===2?cx+4*s:dir===3?cx-7*s:cx+3*s; ctx.fillRect(tx,cy+4*s,3.5*s,8*s+Math.sin(t*8)*s); }
+  else if(D.has('tie')&&dir!==0){ ctx.fillStyle='#ff3b6b'; const tx=cx+(dir===2?-3:dir===3?3:0)*s; ctx.beginPath(); ctx.moveTo(tx,cy+4*s); ctx.lineTo(tx-5*s,cy+1.5*s); ctx.lineTo(tx-5*s,cy+6.5*s); ctx.closePath(); ctx.moveTo(tx,cy+4*s); ctx.lineTo(tx+5*s,cy+1.5*s); ctx.lineTo(tx+5*s,cy+6.5*s); ctx.closePath(); ctx.fill(); ctx.fillRect(tx-1.5*s,cy+2.5*s,3*s,3*s); }
+  // 擺飾：頭上
+  if(D.has('halo')){ ctx.strokeStyle='#ffe66b'; ctx.lineWidth=2.2*s; ctx.beginPath(); ctx.ellipse(cx,cy-26*s+Math.sin(t*3)*1.2*s,8*s,2.6*s,0,0,7); ctx.stroke(); }
+  else if(D.has('balloon')){ const by=cy-30*s+Math.sin(t*2.4)*1.6*s,bx=cx+13*s; ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.lineWidth=.8*s; ctx.beginPath(); ctx.moveTo(cx+8*s,cy+5*s); ctx.quadraticCurveTo(bx+2*s,cy-8*s,bx,by+6*s); ctx.stroke();
+    ctx.fillStyle='#ff3b5c'; ctx.beginPath(); ctx.moveTo(bx,by+7*s); ctx.bezierCurveTo(bx-9*s,by,bx-6*s,by-8*s,bx,by-4*s); ctx.bezierCurveTo(bx+6*s,by-8*s,bx+9*s,by,bx,by+7*s); ctx.fill(); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(bx-3*s,by-2.5*s,1.4*s,0,7); ctx.fill(); }
+  else if(D.has('stars')){ ctx.fillStyle='#ffe66b'; for(let i=0;i<3;i++){ const a=t*3+i*Math.PI*2/3,x=cx+Math.cos(a)*13*s,y=cy-21*s+Math.sin(a)*3*s,r=2.6*s;
+      ctx.beginPath(); for(let k=0;k<10;k++){ const b=-Math.PI/2+k*Math.PI/5,rr=k%2?r*.45:r; ctx[k?'lineTo':'moveTo'](x+Math.cos(b)*rr,y+Math.sin(b)*rr); } ctx.closePath(); ctx.fill(); } }
 }
 function drawBalloon(ctx,cx,cy,t,r0,shape,col){
   const r=(r0||15)*(1+.07*Math.sin(t*9)),c=col||WATER[0],sh=shape||'ball';
@@ -106,8 +127,8 @@ function create(env,opts){
     ai:i<humans?null:{think:Math.random()*.5,path:[],flee:false,avoid:new Map()}}));
   for(let i=0;i<total;i++) inputs.push({dir:-1,bomb:false});
   const CH=['cap','cat','bunny','crown','chef','pirate','ninja','bow'],SHP=['ball','star','melon'];
-  players.forEach((p,i)=>{ p.look=(p.human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{char:CH[(i*3+1)%CH.length],bomb:SHP[i%3],water:WATER[i%WATER.length]};
-    p.wc=Math.max(0,WATER.indexOf(p.look.water)); });
+  players.forEach((p,i)=>{ p.look=(p.human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{char:CH[(i*3+1)%CH.length],bomb:SHP[i%3],water:WATER[i%6],deco:[['shades','blush','stache',''][i%4],['scarf','tie','cape','pack',''][(i*2+1)%5],['halo','balloon','stars',''][(i*3+2)%4]].filter(Boolean).join(',')};
+    p.wc=Math.max(0,WATER.indexOf(p.look.water)); p.col=p.look.color&&p.look.color!=='auto'?p.look.color:COLORS[i]; });
 
   const cellOf=p=>Math.round(p.y)*COLS+Math.round(p.x);
   const speedOf=p=>p.state==='trapped'?.5:(3.6+p.spd*.55)*(p.human?1:D.slow);
@@ -306,11 +327,11 @@ function create(env,opts){
     const tm=Math.max(0,Math.ceil(time)); ctx.fillText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0'),12,19);
     const wide=players.length<=4,cw=wide?127:84; // 超過 4 人時改用名字顏色表示狀態
     players.forEach((p,i)=>{ const x=92+i*cw,sc=p.state==='alive'?'#86dc4f':p.state==='trapped'?'#ffd23f':'#6b6799'; ctx.fillStyle='#211e45'; ctx.fillRect(x,5,cw-7,28);
-      ctx.fillStyle=COLORS[i]; ctx.beginPath(); ctx.arc(x+13,19,7,0,7); ctx.fill();
+      ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(x+13,19,7,0,7); ctx.fill();
       ctx.font='700 13px '+TC; ctx.fillStyle=wide?(p.state==='dead'?'#6b6799':'#fff'):sc; ctx.fillText(p.name,x+25,19);
       if(wide){ ctx.textAlign='right'; ctx.fillStyle=sc; ctx.fillText(p.state==='alive'?'存活':p.state==='trapped'?'被困':'出局',x+114,19); ctx.textAlign='left'; } });
     const mp=players[me]; ctx.font='700 13px '+TC; ctx.fillStyle='#aaa4d8';
-    if(local2){ for(const q of [players[0],players[1]]){ ctx.fillStyle=COLORS[q.id]; ctx.fillText(q.name+'　水球 '+q.maxB+'　威力 '+q.power+'　速度 '+(q.spd+1)+'　針 '+q.needles,12+q.id*300,49); } }
+    if(local2){ for(const q of [players[0],players[1]]){ ctx.fillStyle=q.col; ctx.fillText(q.name+'　水球 '+q.maxB+'　威力 '+q.power+'　速度 '+(q.spd+1)+'　針 '+q.needles,12+q.id*300,49); } }
     else ctx.fillText('水球 '+mp.maxB+'　威力 '+mp.power+'　速度 '+(mp.spd+1)+'　針 '+mp.needles,12,49);
     if(local2){} else if(mp.state==='trapped'){ ctx.textAlign='right'; ctx.fillStyle='#ffd23f'; ctx.fillText(mp.needles>0?'按水球鍵用針脫困！':'被困住了…',W-12,49); ctx.textAlign='left'; }
     else if(mp.state==='dead'&&net){ ctx.textAlign='right'; ctx.fillStyle='#aaa4d8'; ctx.fillText('已出局，觀戰中',W-12,49); ctx.textAlign='left'; }
@@ -325,11 +346,11 @@ function create(env,opts){
     const order=players.filter(p=>p.state!=='dead').sort((a,b)=>a.ry-b.ry);
     for(const p of order){ const cx=p.rx*T+T/2,cy=p.ry*T+T/2;
       if(p.state==='trapped'){ const bob=Math.sin(t*5)*2; if(p.trapT<1.5&&Math.floor(t*10)%2) ctx.globalAlpha=.6;
-        drawChar(ctx,cx,cy+bob,COLORS[p.id],1,false,t,.72,p.look.char);
+        drawChar(ctx,cx,cy+bob,p.col,1,false,t,.72,p.look.char,p.look.deco);
         ctx.fillStyle='rgba(120,200,255,.5)'; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy+bob,18,0,7); ctx.fill(); ctx.stroke();
         ctx.fillStyle='rgba(255,255,255,.8)'; ctx.beginPath(); ctx.ellipse(cx-7,cy+bob-8,5,3,-.6,0,7); ctx.fill(); ctx.globalAlpha=1; }
-      else { if(p.inv>0&&Math.floor(t*14)%2) ctx.globalAlpha=.5; drawChar(ctx,cx,cy-4,COLORS[p.id],p.dir,p.moving,t,1,p.look.char); ctx.globalAlpha=1; }
-      if(p.id===me||(local2&&p.id<2)){ ctx.fillStyle=local2?COLORS[p.id]:'#fff'; ctx.beginPath(); ctx.moveTo(cx-5,cy-30); ctx.lineTo(cx+5,cy-30); ctx.lineTo(cx,cy-23); ctx.fill(); } }
+      else { if(p.inv>0&&Math.floor(t*14)%2) ctx.globalAlpha=.5; drawChar(ctx,cx,cy-4,p.col,p.dir,p.moving,t,1,p.look.char,p.look.deco); ctx.globalAlpha=1; }
+      if(p.id===me||(local2&&p.id<2)){ ctx.fillStyle=local2?p.col:'#fff'; ctx.beginPath(); ctx.moveTo(cx-5,cy-30); ctx.lineTo(cx+5,cy-30); ctx.lineTo(cx,cy-23); ctx.fill(); } }
     ctx.restore();
   }
   return {update,draw,destroy(){},_dbg:{players,grid,bombs:()=>bombs,inputs}};
@@ -337,7 +358,7 @@ function create(env,opts){
 
 function preview(ctx,w,h,L,t){
   const st=STAGES[0]; for(let y=0;y<5;y++) for(let x=0;x<9;x++){ ctx.fillStyle=st.g[(x+y)%2]; ctx.fillRect(x*T,y*T,T,T); }
-  ctx.save(); ctx.translate(w*.3,h*.56); ctx.scale(3,3); drawChar(ctx,0,0,COLORS[0],1,true,t,1,L.char); ctx.restore();
+  ctx.save(); ctx.translate(w*.3,h*.56); ctx.scale(3,3); drawChar(ctx,0,0,L.color&&L.color!=='auto'?L.color:COLORS[0],1,true,t,1,L.char,L.deco); ctx.restore();
   const ph=(t%2.4)/2.4;
   if(ph<.7){ ctx.save(); ctx.translate(w*.72,h*.52); ctx.scale(2.6,2.6); drawBalloon(ctx,0,0,t,15,L.bomb,L.water); ctx.restore(); }
   else { const k=1-(ph-.7)/.3,c=rgb(L.water).join(','); ctx.fillStyle='rgba('+c+','+(.5+.4*k)+')'; ctx.fillRect(w*.72-70,h*.52-22,140,44); ctx.fillRect(w*.72-22,h*.52-70,44,140);
@@ -387,8 +408,12 @@ function thumb(ctx,w,h,t){
   touch:{left:'dpad',right:[{l:'水球',c:'Space',act:true}]},
   best:{label:'已過關',fmt:v=>v+' / '+STAGES.length,lower:false},
   looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'},{id:'chef',label:'廚師'},{id:'pirate',label:'海盜'},{id:'ninja',label:'忍者'},{id:'bow',label:'蝴蝶結'}]},
+    {key:'color',label:'人物顏色',type:'color',opts:BODY},
+    {key:'deco',label:'擺飾',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'shades',label:'墨鏡',grp:'臉部'},{id:'blush',label:'腮紅',grp:'臉部'},{id:'stache',label:'八字鬍',grp:'臉部'},
+      {id:'scarf',label:'圍巾',grp:'身上'},{id:'tie',label:'領結',grp:'身上'},{id:'cape',label:'披風',grp:'身上'},{id:'pack',label:'背包',grp:'身上'},
+      {id:'halo',label:'光環',grp:'頭上'},{id:'balloon',label:'愛心氣球',grp:'頭上'},{id:'stars',label:'轉圈星星',grp:'頭上'}]},
     {key:'bomb',label:'炸彈造型',opts:[{id:'ball',label:'水球'},{id:'star',label:'星星'},{id:'melon',label:'西瓜紋'}]},
-    {key:'water',label:'水球顏色',type:'color',opts:['#57a8ff','#ff7eb6','#5fd068','#ff9d3d','#b98cff','#3ddbd9']}],
+    {key:'water',label:'水球顏色',type:'color',opts:WATER}],
   stagePreview,stageInfo,preview,thumb,create
 };
 })();
