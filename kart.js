@@ -849,6 +849,10 @@ function create(env,opts){
     for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*(k.drifting?3.4:5)); v.fov+=((k.boostT>0?(k.bk===2?84:74):62)-v.fov)*Math.min(1,dt*4); }
   }
 
+  // 分隊結果：照名次給分，總分高的隊伍贏；同分看誰的隊伍有人跑得最前面
+  function teamResult(){ const order=karts.filter(q=>!q.left).sort(rankSort),pts=[0,0],best=[99,99];
+    order.forEach((q,n)=>{ if(q.team==null) return; pts[q.team]+=POINTS[n]||0; best[q.team]=Math.min(best[q.team],n); });
+    return {order,pts,wt:pts[0]!==pts[1]?(pts[0]>pts[1]?0:1):(best[0]<best[1]?0:1)}; }
   const rankSort=(a,b)=>(a.fin!=null?a.fin-1e6:-a.prog)-(b.fin!=null?b.fin-1e6:-b.prog);
   let cer=null;
   function awards(){ startCeremony(); }
@@ -860,8 +864,7 @@ function create(env,opts){
     const rest=order.slice(3).map((q,n)=>'<li>第 '+(n+4)+' 名　'+esc(q.name)+'　'+time(q)+'</li>').join('');
     let title='頒獎',teamHtml='',teamTxt='';
     if(mode!=='ffa'){ // 照名次給分：第 1 名 10 分、第 2 名 8 分、6、5、4、3
-      const pts=[0,0],best=[99,99]; order.forEach((q,n)=>{ if(q.team==null) return; pts[q.team]+=POINTS[n]||0; best[q.team]=Math.min(best[q.team],n); });
-      const wt=pts[0]!==pts[1]?(pts[0]>pts[1]?0:1):(best[0]<best[1]?0:1),mine=local2?(karts[0].team===wt||karts[1].team===wt):my.team===wt,both=local2&&karts[0].team===karts[1].team;
+      const {pts,wt}=teamResult(),mine=local2?(karts[0].team===wt||karts[1].team===wt):my.team===wt,both=local2&&karts[0].team===karts[1].team;
       title=local2&&!both?TEAMS[wt].name+' 獲勝':mine?(mode==='coop'||both?'你們贏了！':'你的隊伍贏了！'):'你們輸了';
       teamHtml='<p style="font-weight:700">'+TEAMS.map((T,n)=>'<span style="color:'+T.col+'">'+T.name+' '+pts[n]+' 分</span>').join('　')+'</p>';
       teamTxt='名次積分：第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分，加起來多的隊伍獲勝。'+(pts[0]===pts[1]?'這次同分，'+TEAMS[wt].name+'有人跑得最前面，所以獲勝。':''); env.sfx(mine?'win':'lose'); }
@@ -870,7 +873,8 @@ function create(env,opts){
   }
 
   function startCeremony(){
-    const order=karts.filter(q=>!q.left).sort(rankSort).slice(0,3),S=new T.Scene();
+    const all=karts.filter(q=>!q.left).sort(rankSort),TR=mode!=='ffa'?teamResult():null,S=new T.Scene();
+    const order=TR?TR.order.filter(q=>q.team===TR.wt).slice(0,3):all.slice(0,3); // 分隊時贏的隊伍上台
     S.background=new T.Color(0x1a1440); S.fog=new T.Fog(0x1a1440,40,90);
     S.add(new T.AmbientLight(0xffffff,.55)); const dl=new T.DirectionalLight(0xffffff,.9); dl.position.set(6,14,10); S.add(dl);
     const ctex=(w,h,fn)=>{ const cv=document.createElement('canvas'); cv.width=w; cv.height=h; fn(cv.getContext('2d'),w,h); return new T.CanvasTexture(cv); };
@@ -879,20 +883,22 @@ function create(env,opts){
     const ring=new T.Mesh(new T.RingGeometry(10,11,48),new T.MeshBasicMaterial({color:0xffd23f})); ring.rotation.x=-Math.PI/2; ring.position.y=.02; S.add(ring);
     const board=new T.Mesh(new T.PlaneGeometry(34,12),new T.MeshBasicMaterial({map:ctex(1024,360,(c,w,h)=>{ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#3a1f7a'); g.addColorStop(1,'#14122b'); c.fillStyle=g; c.fillRect(0,0,w,h);
       for(let i=0;i<40;i++){ c.fillStyle=['#ffd23f','#ff5d8f','#3ddbd9'][i%3]; c.beginPath(); c.arc((i*97)%w,(i*53)%h,3,0,7); c.fill(); }
-      c.font='900 120px "Press Start 2P",monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.shadowColor='#ff5d8f'; c.shadowBlur=30; c.fillText('WINNER',w/2,h/2); })}));
+      c.font='900 120px "Press Start 2P",monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.shadowColor='#ff5d8f'; c.shadowBlur=30;
+      if(TR){ c.font='900 110px '+TC; c.fillStyle=TEAMS[TR.wt].col; c.fillText(TEAMS[TR.wt].name+' 獲勝',w/2,h*.42); c.font='900 54px "Press Start 2P",monospace'; c.fillStyle='#ffd23f'; c.fillText('TEAM WIN!',w/2,h*.8); }
+      else c.fillText('WINNER',w/2,h/2); })}));
     board.position.set(0,8,-9); S.add(board);
     // 頒獎台（中間第一名最高）
     const POD=[{x:0,h:3,c:0xffd23f},{x:-6.2,h:2,c:0xc8d0e0},{x:6.2,h:1.3,c:0xd08a4a}],meshes=[];
     POD.forEach((p,n)=>{ const front=new T.MeshLambertMaterial({map:ctex(128,128,(c,w,h)=>{ c.fillStyle='#'+p.c.toString(16).padStart(6,'0'); c.fillRect(0,0,w,h); c.fillStyle='#14122b'; c.font='900 84px "Press Start 2P",monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(n+1),w/2,h/2+6); })}),side=new T.MeshLambertMaterial({color:p.c});
       const box=new T.Mesh(new T.BoxGeometry(5.4,p.h,4.2),[side,side,side,side,front,side]); box.position.set(p.x,p.h/2,0); S.add(box);
       const q=order[n]; if(!q) return; const m=buildKart(T,q.look); m.position.set(p.x-.75,p.h,-.2); m.scale.setScalar(.92); S.add(m); if(m.userData.driver) m.userData.driver.visible=false;
-      const ch=buildCheer(T,q.look,m.userData.head); ch.position.set(p.x+1.7,p.h,.6); S.add(ch); meshes.push({m,q,n,top:p.h,ch,px:p.x}); });
+      const ch=buildCheer(T,q.look,m.userData.head); ch.position.set(p.x+1.7,p.h,.6); S.add(ch); meshes.push({m,q,n,top:p.h,ch,px:p.x,rank:all.indexOf(q)}); });
     // 第一名的聚光燈
     const beam=new T.Mesh(new T.ConeGeometry(4.2,22,32,1,true),new T.MeshBasicMaterial({color:0xfff2a8,transparent:true,opacity:.18,side:T.DoubleSide,depthWrite:false})); beam.position.set(0,13,0); S.add(beam);
     // 彩花
     const conf=[],cg=new T.PlaneGeometry(.38,.22),COLS=[0xff5d4f,0xffd23f,0x3ddbd9,0x86dc4f,0xff7eb6,0x4f9dff,0xffffff];
     for(let i=0;i<260;i++){ const m=new T.Mesh(cg,new T.MeshBasicMaterial({color:COLS[i%COLS.length],side:T.DoubleSide})); m.position.set((Math.random()-.5)*30,Math.random()*24+2,(Math.random()-.5)*14); S.add(m); conf.push({m,vy:1.6+Math.random()*2.2,sx:(Math.random()-.5)*1.2,r:[Math.random()*6,Math.random()*6]}); }
-    cer={t:0,S,cam:new T.PerspectiveCamera(46,vw/vh,.5,200),meshes,conf,beam,dur:7.5,skip:false};
+    cer={TR,t:0,S,cam:new T.PerspectiveCamera(46,vw/vh,.5,200),meshes,conf,beam,dur:7.5,skip:false};
     env.sfx('win'); setTimeout(()=>{ if(cer) env.sfx('lap'); },900);
   }
   function stepCeremony(dt){
@@ -916,12 +922,12 @@ function create(env,opts){
     cam2.position.set(Math.sin(a)*19,6.5+Math.sin(C.t*.7)*.6,Math.cos(a)*19); cam2.lookAt(0,3.2,0); renderer.render(C.S,cam2);
     c.textAlign='center'; c.textBaseline='middle';
     const big=(tx,col,size,font,yy)=>{ c.fillStyle=col; c.strokeStyle='#0b0a1c'; c.lineWidth=7*s; c.font='900 '+size*s+'px '+font; c.strokeText(tx,vw/2,yy); c.fillText(tx,vw/2,yy); };
-    big('頒獎典禮','#ffd23f',34,TC,36*s);
+    if(C.TR) big(TEAMS[C.TR.wt].name+' 獲勝！　'+C.TR.pts[C.TR.wt]+' 比 '+C.TR.pts[1-C.TR.wt],TEAMS[C.TR.wt].col,30,TC,36*s); else big('頒獎典禮','#ffd23f',34,TC,36*s);
     const v=new T.Vector3(),MED=['#ffd23f','#d8dde8','#e0954f'];
     for(const o of C.meshes){ v.set(o.px,o.top+4.6,0).project(cam2); const x=(v.x+1)/2*vw,y=(1-v.y)/2*vh;
       c.font='900 '+15*s+'px '+TC; const nm=o.q.name,tw=c.measureText(nm).width+40*s;
-      c.fillStyle='rgba(11,10,28,.82)'; c.fillRect(x-tw/2,y-15*s,tw,30*s); c.fillStyle=MED[o.n]; c.beginPath(); c.arc(x-tw/2+15*s,y,10*s,0,7); c.fill();
-      c.fillStyle='#14122b'; c.font='900 '+11*s+'px '+PIX; c.fillText(String(o.n+1),x-tw/2+15*s,y+1); c.fillStyle='#fff'; c.font='900 '+15*s+'px '+TC; c.textAlign='left'; c.fillText(nm,x-tw/2+30*s,y); c.textAlign='center';
+      c.fillStyle='rgba(11,10,28,.82)'; c.fillRect(x-tw/2,y-15*s,tw,30*s); c.fillStyle=MED[Math.min(2,o.rank)]||MED[2]; c.beginPath(); c.arc(x-tw/2+15*s,y,10*s,0,7); c.fill();
+      c.fillStyle='#14122b'; c.font='900 '+11*s+'px '+PIX; c.fillText(String(o.rank+1),x-tw/2+15*s,y+1); c.fillStyle='#fff'; c.font='900 '+15*s+'px '+TC; c.textAlign='left'; c.fillText(nm,x-tw/2+30*s,y); c.textAlign='center';
       c.font='700 '+11*s+'px '+TC; c.fillStyle='#cfe8d8'; c.fillText(o.q.fin!=null?fmtTime(o.q.fin):'未完賽',x,y+24*s); }
     if(C.t>1.2){ c.font='700 '+12*s+'px '+TC; c.fillStyle='rgba(255,255,255,.75)'; c.fillText(env.touch?'點畫面看完整名次':'按空白鍵看完整名次',vw/2,vh-18*s); }
   }
@@ -939,13 +945,13 @@ function create(env,opts){
       renderer.setScissorTest(false); renderer.setViewport(0,0,vw,vh); cam.aspect=vw/vh; cam.fov=52; cam.updateProjectionMatrix();
       cam.position.set(cx+Math.sin(a)*R,9-e*4,cz+Math.cos(a)*R); cam.lookAt(cx+Math.sin(h)*e*6,1.6,cz+Math.cos(h)*e*6); renderer.render(scene,cam);
       // 下方列出所有參賽者
-      const list=karts.filter(k=>k.human).concat(karts.filter(k=>!k.human)),bh=(list.length>3&&vw<520?70:52)*s;
+      const list=mode!=='ffa'?karts.filter(k=>k.team===0).concat(karts.filter(k=>k.team===1)):karts.filter(k=>k.human).concat(karts.filter(k=>!k.human)),bh=(list.length>3&&vw<520?70:52)*s;
       c.fillStyle='rgba(11,10,28,.8)'; c.fillRect(0,vh-bh-12*s,vw,bh+12*s); c.textBaseline='middle';
       c.textAlign='left'; c.fillStyle='#ffd23f'; c.font=10*s+'px '+PIX; c.fillText('RACERS',12*s,vh-bh-2*s);
       c.textAlign='right'; c.fillStyle='#aaa4d8'; c.font='700 '+11*s+'px '+TC; c.fillText(STAGES[opts.stage||0].name+'　'+(itemMode?'道具賽':'競速賽')+(net?'':'　'+(env.touch?'按「使用」跳過':'按空白鍵跳過')),vw-12*s,vh-bh-2*s);
       const per=Math.ceil(list.length/(bh>50*s?2:1)),cw=(vw-24*s)/per;
       list.forEach((k,i)=>{ const row=Math.floor(i/per),x=12*s+(i%per)*cw,y=vh-bh+16*s+row*24*s; c.fillStyle=k.color; c.beginPath(); c.arc(x+6*s,y,5*s,0,7); c.fill();
-        c.textAlign='left'; c.fillStyle=k.human?'#fff':'#c9c6e6'; c.font=(k.human?'900 ':'700 ')+13*s+'px '+TC; c.fillText(k.name,x+16*s,y); });
+        c.textAlign='left'; c.fillStyle=k.team!=null?TEAMS[k.team].col:k.human?'#fff':'#c9c6e6'; c.font=(k.human?'900 ':'700 ')+13*s+'px '+TC; c.fillText((k.team!=null?TEAMS[k.team].name+' ':'')+k.name,x+16*s,y); });
       return; }
     renderer.setScissorTest(n>1);
     locals.forEach((k,i)=>{
@@ -991,7 +997,11 @@ function create(env,opts){
       if(q.team!=null){ c.fillStyle=TEAMS[q.team].col; c.fillRect(10,y,4*s,rh); } // 分隊：名次表左邊有隊伍顏色
       c.fillStyle=q.color; c.beginPath(); c.arc(16+22*s,y+rh/2,5*s,0,7); c.fill();
       c.fillStyle=q===k?'#14122b':'#fff'; c.font='700 '+13*s+'px '+TC; c.fillText(q.name,16+32*s,y+rh/2+1);
-      if(q.fin!=null){ c.textAlign='right'; c.font='700 '+11*s+'px '+TC; c.fillText('完賽',10+146*s,y+rh/2+1); } });
+      if(q.fin!=null){ c.textAlign='right'; c.font='700 '+11*s+'px '+TC; c.fillText('完賽',10+146*s,y+rh/2+1); }
+      else if(mode!=='ffa'&&q!==k&&q.team===k.team){ c.textAlign='right'; c.font='900 '+10*s+'px '+TC; c.fillStyle=TEAMS[q.team].col; c.fillText('隊友',10+146*s,y+rh/2+1); } });
+    if(mode!=='ffa'&&k.team!=null){ const y=ly+order.length*(rh+2*s)+2*s,mates=karts.filter(q=>!q.left&&q!==k&&q.team===k.team).map(q=>q.name);
+      c.fillStyle='rgba(11,10,28,.62)'; c.fillRect(10,y,150*s,34*s); c.fillStyle=TEAMS[k.team].col; c.fillRect(10,y,4*s,34*s);
+      c.textAlign='left'; c.font='900 '+11*s+'px '+TC; c.fillText('我的隊伍：'+TEAMS[k.team].name,18*s,y+10*s); c.fillStyle='#fff'; c.font='700 '+10*s+'px '+TC; c.fillText(mates.length?'隊友：'+mates.join('、'):'隊友：無',18*s,y+25*s); }
     // 右上：時間與小地圖
     const mw=118*s; panel(w-10-mw,10,mw,26*s+mw); c.textAlign='center'; c.fillStyle='#fff'; c.font=11*s+'px '+PIX; c.fillText(fmtTime(k.fin!=null?k.fin:t),w-10-mw/2,10+14*s);
     const sc=(mw-16)/Math.max(maxX-minX,maxZ-minZ),ox=w-10-mw/2-(minX+maxX)/2*sc,oy=10+26*s+mw/2-(minZ+maxZ)/2*sc;

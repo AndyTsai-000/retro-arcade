@@ -434,6 +434,7 @@ function create(env,opts){
   }
 
   let intro0=null; // 開場提示用的時間（每台電腦自己算，連線的另一邊也看得到）
+  const viewers=local2?[players[0],players[1]]:[players[me]]; // 這台電腦上在玩的人
   function draw(){
     if(intro0==null) intro0=performance.now(); const introK=(performance.now()-intro0)/1000;
     ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,W,H);
@@ -466,6 +467,10 @@ function create(env,opts){
         ctx.fillStyle='rgba(120,200,255,.5)'; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy+bob,18,0,7); ctx.fill(); ctx.stroke();
         ctx.fillStyle='rgba(255,255,255,.8)'; ctx.beginPath(); ctx.ellipse(cx-7,cy+bob-8,5,3,-.6,0,7); ctx.fill(); ctx.globalAlpha=1; }
       else { if(p.inv>0&&Math.floor(t*14)%2) ctx.globalAlpha=.5; drawChar(ctx,cx,cy-4,p.col,p.dir,p.moving,t,1,p.look.char,p.look.deco); ctx.globalAlpha=1; }
+      // 分隊：隊友頭上一直有「隊友」小標籤（雙人模式兩人不同隊時寫是誰的隊友）
+      if(p.team!=null&&!viewers.includes(p)&&viewers.some(v=>ally(v,p))){ const lbl=local2&&viewers[0].team!==viewers[1].team?viewers.find(v=>ally(v,p)).name+'隊友':'隊友';
+        ctx.font='900 10px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; const tw=ctx.measureText(lbl).width+10,ty=(cy<60?cy+22:cy-36)-(p.state==='trapped'?6:0);
+        ctx.fillStyle=TEAMS[p.team].col; ctx.strokeStyle='#14122b'; ctx.lineWidth=1.5; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(cx-tw/2,ty-7,tw,14,7); else ctx.rect(cx-tw/2,ty-7,tw,14); ctx.fill(); ctx.stroke(); ctx.fillStyle='#14122b'; ctx.fillText(lbl,cx,ty+.5); }
       if(p.id===me||(local2&&p.id<2)){
         if(introK<4){ // 開場 4 秒：大箭頭＋「你」標籤＋閃爍光圈，告訴玩家自己是哪一個
           const bob=Math.abs(Math.sin(introK*5))*6,fade=Math.min(1,(4-introK)*1.5),lbl=local2?(p.id+1)+'P':'你',col=local2?p.col:'#ffd23f';
@@ -474,6 +479,15 @@ function create(env,opts){
           ctx.fillStyle=col; ctx.strokeStyle='#14122b'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(cx-10,ay-8*d); ctx.lineTo(cx+10,ay-8*d); ctx.lineTo(cx,ay+5*d); ctx.closePath(); ctx.stroke(); ctx.fill();
           ctx.font='900 15px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; const tw=ctx.measureText(lbl).width+16,ly=up?ay+8:ay-30; ctx.beginPath(); ctx.roundRect?ctx.roundRect(cx-tw/2,ly,tw,21,10):ctx.rect(cx-tw/2,ly,tw,21); ctx.stroke(); ctx.fill(); ctx.fillStyle='#14122b'; ctx.fillText(lbl,cx,ly+11); ctx.globalAlpha=1; }
         else { ctx.fillStyle=local2?p.col:'#fff'; ctx.beginPath(); ctx.moveTo(cx-5,cy-30); ctx.lineTo(cx+5,cy-30); ctx.lineTo(cx,cy-23); ctx.fill(); } } }
+    // 分隊：開場 5 秒在畫面中間列出兩隊成員
+    if(mode!=='ffa'&&introK<5){ const a=Math.min(1,(5-introK)*1.5),bw=W-80,bh=96,bx=40,by=ROWS*T/2-bh/2;
+      ctx.globalAlpha=a; ctx.fillStyle='rgba(11,10,28,.86)'; ctx.fillRect(bx,by,bw,bh); ctx.strokeStyle='#ffd23f'; ctx.lineWidth=2; ctx.strokeRect(bx+1,by+1,bw-2,bh-2);
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      TEAMS.forEach((T,n)=>{ const x=bx+bw*(n?.75:.25),mem=players.filter(p=>p.team===n);
+        ctx.fillStyle=T.col; ctx.font='900 20px '+TC; ctx.fillText(T.name,x,by+26);
+        ctx.font='700 14px '+TC; ctx.fillStyle='#fff'; ctx.fillText(mem.map(p=>p.name).join('、'),x,by+56);
+        if(mem.some(p=>viewers.includes(p))){ ctx.font='700 11px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText(local2?'（'+mem.filter(p=>viewers.includes(p)).map(p=>p.name).join('、')+' 的隊伍）':'（你的隊伍）',x,by+78); } });
+      ctx.fillStyle='#ffd23f'; ctx.font='900 22px '+PIX; ctx.fillText('VS',bx+bw/2,by+bh/2); ctx.globalAlpha=1; }
     ctx.restore();
   }
   return {update,draw,destroy(){},_dbg:{players,grid,bombs:()=>bombs,inputs}};
