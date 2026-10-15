@@ -138,6 +138,14 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .chip{background:var(--ink);border:2px solid var(--line);border-radius:999px;padding:5px 14px;font-weight:700}
 .chip.sel{background:var(--cyan);border-color:#0b0a1c;color:#14122b}
 .chip.lock{opacity:.4;cursor:not-allowed}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:7px;padding:4px 2px}
+.sg{height:42px;border-radius:10px;background:var(--ink);border:2px solid var(--line);color:var(--text);font-weight:900;font-size:15px;cursor:pointer}
+.sg.done{background:#24503a;border-color:#3f8a5f}
+.sg.sel{background:var(--cyan);border-color:#0b0a1c;color:#14122b}
+.sg.lock{opacity:.3;cursor:not-allowed}
+.sgInfo{font-weight:700;margin:4px 0 0}
+.sgSplit .lkL .lk{height:auto}
+.sgSplit .lkL{position:static}
 .stars{color:var(--yellow);letter-spacing:.05em}.chip.sel .stars{color:#7a3d00}
 .who{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;counter-reset:w}
 .who li{counter-increment:w;background:var(--ink);border:2px solid var(--line);border-radius:4px;padding:3px 10px;font-weight:700}
@@ -225,7 +233,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=87; // 每次改版加一
+window.ARCADE_V=88; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -521,13 +529,27 @@ function killInst(){ closeStage(); if(inst){ try{inst.destroy();}catch(e){} inst
 function open(id){
   if(!myName){ nameModal(); return; }
   audio(); SFX.click();
-  cur=G[id]; cur.id=id; loadOpts(cur); stageSel=0; if(cur.stageLocked&&cur.stages){ while(stageSel<cur.stages.length-1&&!cur.stageLocked(stageSel+1)) stageSel++; } // 有鎖關卡的遊戲：預設選最新解鎖的那一關 variantSel=cur.variants?(cur.variants.find(v=>v.def)||cur.variants[0]).id:null; // def:true 的選項是預設
+  cur=G[id]; cur.id=id; loadOpts(cur); stageSel=0; if(cur.stageLocked&&cur.stages){ while(stageSel<cur.stages.length-1&&!cur.stageLocked(stageSel+1)) stageSel++; } /* 有鎖關卡的遊戲：預設選最新解鎖的那一關 */ variantSel=cur.variants?(cur.variants.find(v=>v.def)||cur.variants[0]).id:null; // def:true 的選項是預設
   $('#hub').hidden=true; $('#play').hidden=false; $('#gName').textContent=cur.name;
   buildPad(padSpec(cur)); stage.innerHTML='';
   startCard(); scrollTo(0,0);
 }
+// 關卡很多的遊戲（stageGrid）：左邊示意圖和開始按鈕，右邊只放關卡數字，不用一直往下拉
+function gridHtml(g){
+  return '<div class="sgrid">'+g.stages.map((s,i)=>{ const lock=g.stageLocked&&g.stageLocked(i),done=g.stageBest&&g.stageBest(i);
+    return lock?'<button class="sg lock" disabled title="過了前一關才會解鎖">'+(i+1)+'</button>':'<button class="sg'+(done?' done':'')+(i===stageSel?' sel':'')+'" data-s="'+i+'" title="'+s+'">'+(i+1)+'</button>'; }).join('')+'</div>';
+}
+function gridInfo(g){ const i=stageSel,b=g.stageBest&&g.stageBest(i); return '第 '+(i+1)+' 關　'+g.stages[i]+(g.stars?'　<span class="stars">'+'★'.repeat(g.stars[i])+'</span>':'')+(b?'　<small>'+b+'</small>':''); }
 function startCard(){
   const g=cur; state='ready'; $('#bPause').textContent='暫停';
+  if(g.stageGrid){
+    showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas><p>'+g.goal+'</p><p class="hint">按上方「遊戲操作」可以看按鍵說明。</p>'+optsHtml(g)+
+      '<p class="sgInfo" id="sgInfo">'+gridInfo(g)+'</p><div class="row"><button class="btn main" id="sGo">開始</button>'+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div></div>'+
+      '<div class="lklist"><div class="lkhead">選擇關卡</div>'+gridHtml(g)+'</div></div>');
+    closeLook(); demo(g);
+    bindChips(()=>{ $('#sgInfo').innerHTML=gridInfo(g); }); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sLook',()=>{SFX.click();lookCard();});
+    const sel=card.querySelector('.sg.sel'); if(sel) sel.scrollIntoView({block:'nearest'});
+    return; }
   showCard('<h3>'+g.name+'</h3><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas><p>'+g.goal+'</p><p class="hint">按上方「遊戲操作」可以看按鍵說明。</p>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+chipsHtml(g)+optsHtml(g)+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>');
