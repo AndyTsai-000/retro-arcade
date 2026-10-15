@@ -146,6 +146,9 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .sgInfo{font-weight:700;margin:4px 0 0}
 .sgSplit .lkL .lk{height:auto}
 .sgSplit .lkL{position:static}
+.sgSplit .lklist .chips{justify-content:flex-start;padding:6px 0}
+.sgSplit .lklist .help{margin:6px 0}
+.sgGoal{text-align:left;margin:6px 0 4px;color:var(--dim);font-size:14px;line-height:1.6}
 .stars{color:var(--yellow);letter-spacing:.05em}.chip.sel .stars{color:#7a3d00}
 .who{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;counter-reset:w}
 .who li{counter-increment:w;background:var(--ink);border:2px solid var(--line);border-radius:4px;padding:3px 10px;font-weight:700}
@@ -233,7 +236,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=102; // 每次改版加一
+window.ARCADE_V=103; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -550,12 +553,19 @@ function startCard(){
     bindChips(()=>{ $('#sgInfo').innerHTML=gridInfo(g); }); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sLook',()=>{SFX.click();lookCard();});
     const sel=card.querySelector('.sg.sel'); if(sel) sel.scrollIntoView({block:'nearest'});
     return; }
-  showCard('<h3>'+g.name+'</h3><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas><p>'+g.goal+'</p><p class="hint">按上方「遊戲操作」可以看按鍵說明。</p>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+chipsHtml(g)+optsHtml(g)+
+  // 一般遊戲也用左右兩欄：左邊示意圖、說明、目前選的關卡和開始按鈕；右邊是關卡、賽制、玩法和操作說明
+  const stInfo=()=>g.stages?'<p class="sgInfo" id="sgInfo">'+gridInfo(g)+'</p>':'';
+  const stageChips=g.stages?'<div class="lkhead">選擇關卡</div>'+gridHtml(g):''; // 關卡只放數字，名稱和星數顯示在左邊
+  const varChips=g.variants?'<div class="lkhead">賽制</div><div class="chips">'+g.variants.map(v=>'<button class="chip'+(v.id===variantSel?' sel':'')+'" data-v="'+v.id+'">'+v.label+'</button>').join('')+'</div>':'';
+  const optBlock=(g.options||[]).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):'';
+  showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas>'+stInfo()+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
-    (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>');
+    (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+
+    '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal">'+g.goal+'</p><div class="lkhead">操作說明</div>'+helpHtml(g)+'</div></div>');
   closeLook(); demo(g);
-  bindChips(); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
+  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); }); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
+  const sel=card.querySelector('.lklist .sg.sel'); if(sel) sel.scrollIntoView({block:'nearest'});
 }
 // 開始畫面的示意圖：用這款遊戲的動態縮圖一直播放
 function demo(g){
