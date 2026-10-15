@@ -11,19 +11,25 @@ const COLORS=['#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d'];
 const SPAWN=[[0,0],[COLS-1,ROWS-1],[COLS-1,0],[0,ROWS-1],[7,0],[7,ROWS-1]];
 const STAGES=[
   {name:'水球村',info:'棋盤式的房子，箱子多，最標準的地圖。',solid:(x,y)=>x%2===1&&y%2===1,box:.78,drop:.38,
-   g:['#8fd16a','#84c760'],s:['#c9573f','#f0e2c0'],b:['#e3a24a','#b9772a']},
+   g:['#8fd16a','#84c760'],s:['#c9573f','#f0e2c0'],b:['#e3a24a','#b9772a'],rocks:8,rk:'well'},
   {name:'沙漠綠洲',info:'柱子少、箱子最多，前期要先炸出路。',solid:(x,y)=>x%3===1&&y%3===1,box:.84,drop:.4,
-   g:['#e8cf8e','#dfc481'],s:['#3f9a56','#2c7a40'],b:['#c98a55','#9b6234']},
+   g:['#e8cf8e','#dfc481'],s:['#3f9a56','#2c7a40'],b:['#c98a55','#9b6234'],rocks:14,rk:'cactus'},
   {name:'冰原要塞',info:'中間有十字大道，箱子少，很快就會碰面。',solid:(x,y)=>x%2===1&&y%2===1&&x!==7&&y!==6,box:.62,drop:.45,
-   g:['#dff1fb','#cfe6f4'],s:['#6fa9d6','#e9f7ff'],b:['#9fd0ea','#5f9cc0']},
+   g:['#dff1fb','#cfe6f4'],s:['#6fa9d6','#e9f7ff'],b:['#9fd0ea','#5f9cc0'],rocks:12,rk:'ice'},
   {name:'森林迷宮',info:'樹木交錯排列，走道彎彎曲曲。',solid:(x,y)=>(x%4===1&&y%2===1)||(x%4===3&&y%4===2),box:.74,drop:.4,
-   g:['#6fae5a','#66a352'],s:['#2f7d32','#7a5a36'],b:['#c9a45a','#8a6a3a']},
+   g:['#6fae5a','#66a352'],s:['#2f7d32','#7a5a36'],b:['#c9a45a','#8a6a3a'],rocks:10,rk:'stump'},
   {name:'海盜船',info:'甲板上有兩排桅杆圍出內外兩圈。',solid:(x,y)=>((x===3||x===11)&&y%2===1&&y!==5&&y!==7)||((y===3||y===9)&&x%2===1&&x!==7),box:.7,drop:.42,
-   g:['#c9a06a','#bf955f'],s:['#3a3a4a','#8a8fa8'],b:['#b9783a','#7a4a1f']},
+   g:['#c9a06a','#bf955f'],s:['#3a3a4a','#8a8fa8'],b:['#b9783a','#7a4a1f'],rocks:10,rk:'barrel'},
   {name:'糖果屋',info:'柱子只有一半，視野開闊，水球容易連鎖。',solid:(x,y)=>x%2===1&&y%2===1&&(x+y)%4===2,box:.72,drop:.5,
-   g:['#ffe3ef','#ffd3e6'],s:['#ff7eb6','#fff3c8'],b:['#a8e0ff','#5fb8e8']},
+   g:['#ffe3ef','#ffd3e6'],s:['#ff7eb6','#fff3c8'],b:['#a8e0ff','#5fb8e8'],rocks:14,rk:'lolly'},
   {name:'火山口',info:'柱子最密，通道窄，很容易被自己的水球困住。',solid:(x,y)=>(x%2===1&&y%2===1)||(x%4===2&&y%4===2),box:.66,drop:.42,
-   g:['#5a4640','#52403a'],s:['#3a2a26','#ff7a3a'],b:['#8a6a5a','#5a3f33']}
+   g:['#5a4640','#52403a'],s:['#3a2a26','#ff7a3a'],b:['#8a6a5a','#5a3f33'],rocks:8,rk:'lava'},
+  {name:'遊樂園',info:'中間圍成一圈的遊樂設施，只有四個缺口能進出，外面還有禮物盒擋路。',solid:(x,y)=>((x===4||x===10)&&y>=3&&y<=9&&y!==6)||((y===3||y===9)&&x>=4&&x<=10&&x!==7)||(x%4===1&&y%4===1&&(x<4||x>10||y<3||y>9)),box:.7,drop:.44,
+   g:['#b8e0a0','#acd694'],s:['#ff5d8f','#fff3c8'],b:['#ffb86b','#e08a3a'],rocks:12,rk:'gift'},
+  {name:'古代神殿',info:'兩圈菱形的石柱環繞祭壇，石像擋住很多去路。',solid:(x,y)=>{ const d=Math.abs(x-7)+Math.abs(y-6); return (d===3||d===7)&&x!==7&&y!==6||(x===0||x===14)&&(y===4||y===8); },box:.68,drop:.42,
+   g:['#d8c9a0','#cfbf94'],s:['#8a7a5a','#e8dcc0'],b:['#b08a5a','#806040'],rocks:14,rk:'statue'},
+  {name:'太空站',info:'像迷宮一樣的走道，轉角很多，水晶完全炸不掉，最難的地圖。',solid:(x,y)=>(x%4===2&&y%4!==0&&y%4!==2)||(y%4===2&&x%4===0&&x>0&&x<14)||(x%4===2&&y===6),box:.7,drop:.45,
+   g:['#2a3048','#262b42'],s:['#6a7aa0','#c8d4f0'],b:['#5a6a8a','#3a4a6a'],rocks:16,rk:'crystal'}
 ];
 // 電腦強度：想多久出手一次、看到機會放水球的機率、一開始的水球威力與數量
 // hunt：會不會瞄準玩家放水球、去刺破被困的人；itemR：多遠內的道具會去撿；cap：水球數與威力上限；slow：移動速度倍率；flee：看到危險後多久才反應
@@ -156,7 +162,42 @@ function drawItem(ctx,x,y,type,t){
   ctx.font='900 8px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; const tw=ctx.measureText(info[0]).width+6;
   ctx.fillStyle=info[1]; ctx.beginPath(); ctx.roundRect?ctx.roundRect(cx-tw/2,cy+10,tw,10,4):ctx.rect(cx-tw/2,cy+10,tw,10); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText(info[0],cx,cy+15.5);
 }
-function drawTile(ctx,st,v,x,y,gx,gy){
+// 地圖：柱子（1）→ 炸不掉的障礙物（3）→ 箱子（2）；障礙物不會把走道整個堵死
+function reachAll(g){ const ok=i=>g[i]!==1&&g[i]!==3; let start=-1,total=0; for(let i=0;i<N;i++) if(ok(i)){ total++; if(start<0) start=i; }
+  const seen=new Uint8Array(N),q=[start]; seen[start]=1; let n=1;
+  while(q.length){ const i=q.pop(),x=i%COLS,y=(i/COLS)|0; for(const [dx,dy] of DIRS){ const nx=x+dx,ny=y+dy,j=ny*COLS+nx; if(nx<0||ny<0||nx>=COLS||ny>=ROWS||seen[j]||!ok(j)) continue; seen[j]=1; n++; q.push(j); } }
+  return {all:n===total,seen}; }
+function layout(st,keep,rand,open){
+  const g=new Array(N).fill(0);
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ const i=y*COLS+x; if(st.solid(x,y)&&!keep.has(i)) g[i]=1; }
+  for(let guard=0;guard<60;guard++){ const r=reachAll(g); if(r.all) break; // 被柱子圍死的地方打通一格
+    let fixed=false; for(let i=0;i<N&&!fixed;i++){ if(g[i]!==1) continue; const x=i%COLS,y=(i/COLS)|0; let a=false,b=false;
+      for(const [dx,dy] of DIRS){ const nx=x+dx,ny=y+dy,j=ny*COLS+nx; if(nx<0||ny<0||nx>=COLS||ny>=ROWS||g[j]===1||g[j]===3) continue; if(r.seen[j]) a=true; else b=true; }
+      if(a&&b){ g[i]=0; fixed=true; } } if(!fixed) break; }
+  let need=st.rocks||0; for(let tries=0;need>0&&tries<500;tries++){ const i=Math.floor(rand()*N); if(g[i]||keep.has(i)||open&&open.has(i)) continue; g[i]=3; if(reachAll(g).all) need--; else g[i]=0; }
+  for(let i=0;i<N;i++) if(!g[i]&&!keep.has(i)&&!(open&&open.has(i))&&rand()<st.box) g[i]=2;
+  return g;
+}
+// 炸不掉的障礙物，每個場景造型不一樣
+function drawRock(ctx,st,x,y,t){
+  const cx=x+T/2,cy=y+T/2,k=st.rk||'stone';
+  ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(cx,y+T-4,15,4,0,0,7); ctx.fill();
+  const ol=()=>{ ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.stroke(); };
+  if(k==='well'){ ctx.fillStyle='#9aa0ad'; ctx.beginPath(); ctx.ellipse(cx,cy+6,15,9,0,0,7); ctx.fill(); ol(); ctx.fillStyle='#3a6ab0'; ctx.beginPath(); ctx.ellipse(cx,cy+4,10,5,0,0,7); ctx.fill(); ctx.fillStyle='#7a5230'; ctx.fillRect(cx-14,cy-14,3,18); ctx.fillRect(cx+11,cy-14,3,18); ctx.fillStyle='#c9573f'; ctx.beginPath(); ctx.moveTo(cx-17,cy-12); ctx.lineTo(cx,cy-20); ctx.lineTo(cx+17,cy-12); ctx.closePath(); ctx.fill(); ol(); }
+  else if(k==='cactus'){ ctx.fillStyle='#3f9a56'; const r=(a,b,w,h)=>{ ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(a,b,w,h,w/2); else ctx.rect(a,b,w,h); ctx.fill(); ol(); }; r(cx-5,cy-16,10,32); r(cx-14,cy-6,6,13); r(cx+8,cy-10,6,13); ctx.fillStyle='#ff7eb6'; ctx.beginPath(); ctx.arc(cx,cy-16,3,0,7); ctx.fill(); }
+  else if(k==='ice'){ ctx.fillStyle='rgba(170,220,250,.95)'; ctx.beginPath(); ctx.moveTo(cx-15,cy+12); ctx.lineTo(cx-13,cy-10); ctx.lineTo(cx-3,cy-16); ctx.lineTo(cx+14,cy-11); ctx.lineTo(cx+15,cy+12); ctx.closePath(); ctx.fill(); ol(); ctx.fillStyle='rgba(255,255,255,.75)'; ctx.beginPath(); ctx.moveTo(cx-10,cy-8); ctx.lineTo(cx-4,cy-12); ctx.lineTo(cx-7,cy+4); ctx.closePath(); ctx.fill(); }
+  else if(k==='stump'){ ctx.fillStyle='#8a5a32'; ctx.fillRect(cx-15,cy-6,30,12); ctx.beginPath(); ctx.ellipse(cx,cy+6,15,8,0,0,Math.PI); ctx.fill(); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(cx-15,cy-6); ctx.lineTo(cx-15,cy+6); ctx.ellipse(cx,cy+6,15,8,0,Math.PI,0,true); ctx.lineTo(cx+15,cy-6); ctx.stroke();
+    ctx.fillStyle='#d9a86a'; ctx.beginPath(); ctx.ellipse(cx,cy-6,15,7,0,0,7); ctx.fill(); ol(); ctx.strokeStyle='#a87a42'; ctx.lineWidth=1.2; for(const r of [9,4]){ ctx.beginPath(); ctx.ellipse(cx,cy-6,r,r/2,0,0,7); ctx.stroke(); } ctx.fillStyle='#3f9a56'; ctx.beginPath(); ctx.ellipse(cx+12,cy+9,5,3,0,0,7); ctx.fill(); }
+  else if(k==='barrel'){ ctx.fillStyle='#9b6234'; ctx.beginPath(); ctx.ellipse(cx,cy,14,17,0,0,7); ctx.fill(); ol(); ctx.strokeStyle='#4a4a5a'; ctx.lineWidth=3; for(const dy of [-9,9]){ ctx.beginPath(); ctx.moveTo(cx-13,cy+dy); ctx.quadraticCurveTo(cx,cy+dy+3,cx+13,cy+dy); ctx.stroke(); } ctx.strokeStyle='#7a4a1f'; ctx.lineWidth=1; for(const dx of [-6,0,6]){ ctx.beginPath(); ctx.moveTo(cx+dx,cy-16); ctx.lineTo(cx+dx,cy+16); ctx.stroke(); } }
+  else if(k==='lolly'){ ctx.fillStyle='#fff'; ctx.fillRect(cx-2,cy-2,4,18); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1; ctx.strokeRect(cx-2,cy-2,4,18); const cols=['#ff5d8f','#ffd23f','#3ddbd9','#ffffff']; for(let r=14,n=0;r>2;r-=3,n++){ ctx.fillStyle=cols[n%4]; ctx.beginPath(); ctx.arc(cx,cy-6,r,0,7); ctx.fill(); } ctx.beginPath(); ctx.arc(cx,cy-6,14,0,7); ol(); }
+  else if(k==='lava'){ ctx.fillStyle='#3a2a26'; ctx.beginPath(); ctx.moveTo(cx-15,cy+12); ctx.lineTo(cx-12,cy-8); ctx.lineTo(cx-2,cy-15); ctx.lineTo(cx+12,cy-9); ctx.lineTo(cx+15,cy+12); ctx.closePath(); ctx.fill(); ol(); ctx.strokeStyle='#ff7a3a'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx-8,cy-6); ctx.lineTo(cx-2,cy+2); ctx.lineTo(cx-5,cy+10); ctx.moveTo(cx+6,cy-8); ctx.lineTo(cx+3,cy); ctx.stroke(); }
+  else if(k==='gift'){ ctx.fillStyle='#ff5d8f'; ctx.fillRect(cx-14,cy-10,28,24); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.strokeRect(cx-14,cy-10,28,24); ctx.fillStyle='#ffd23f'; ctx.fillRect(cx-3,cy-10,6,24); ctx.fillRect(cx-14,cy-1,28,5); ctx.beginPath(); ctx.ellipse(cx-6,cy-13,6,4,-.5,0,7); ctx.ellipse(cx+6,cy-13,6,4,.5,0,7); ctx.fill(); ol(); }
+  else if(k==='statue'){ ctx.fillStyle='#b8ad94'; ctx.fillRect(cx-13,cy+6,26,9); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.strokeRect(cx-13,cy+6,26,9); ctx.fillStyle='#d8ccb0'; ctx.beginPath(); ctx.ellipse(cx,cy,9,8,0,0,7); ctx.fill(); ol(); ctx.beginPath(); ctx.arc(cx,cy-11,7,0,7); ctx.fill(); ol(); ctx.fillStyle='#2a2030'; ctx.fillRect(cx-4,cy-12,2,2); ctx.fillRect(cx+2,cy-12,2,2); ctx.beginPath(); ctx.moveTo(cx-7,cy-16); ctx.lineTo(cx,cy-21); ctx.lineTo(cx+7,cy-16); ctx.fill(); }
+  else if(k==='crystal'){ const tw=(Math.sin((t||0)*3+x)+1)/2; ctx.fillStyle='#7fe8ff'; ctx.beginPath(); ctx.moveTo(cx,cy-18); ctx.lineTo(cx+8,cy-4); ctx.lineTo(cx+5,cy+13); ctx.lineTo(cx-5,cy+13); ctx.lineTo(cx-8,cy-4); ctx.closePath(); ctx.fill(); ol(); ctx.fillStyle='#b98cff'; ctx.beginPath(); ctx.moveTo(cx-9,cy-6); ctx.lineTo(cx-4,cy+2); ctx.lineTo(cx-7,cy+13); ctx.lineTo(cx-14,cy+13); ctx.lineTo(cx-14,cy); ctx.closePath(); ctx.fill(); ol(); ctx.fillStyle='rgba(255,255,255,'+(.4+tw*.5)+')'; ctx.beginPath(); ctx.moveTo(cx-2,cy-12); ctx.lineTo(cx+2,cy-6); ctx.lineTo(cx-1,cy+4); ctx.closePath(); ctx.fill(); }
+  else { ctx.fillStyle='#8a8f9e'; ctx.beginPath(); ctx.ellipse(cx,cy+2,15,13,0,0,7); ctx.fill(); ol(); }
+}
+function drawTile(ctx,st,v,x,y,gx,gy,t){
+  if(v===3){ ctx.fillStyle=st.g[(gx+gy)%2]; ctx.fillRect(x,y,T,T); drawRock(ctx,st,x,y,t); return; }
   ctx.fillStyle=st.g[(gx+gy)%2]; ctx.fillRect(x,y,T,T);
   if(v===1){ ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(x+3,y+T-6,T-4,5);
     ctx.fillStyle=st.s[1]; ctx.fillRect(x+3,y+14,T-6,T-18); ctx.fillStyle=st.s[0];
@@ -177,8 +218,7 @@ function create(env,opts){
 
   // 地圖
   const keep=new Set(); for(const [sx,sy] of SPAWN.slice(0,Math.max(4,humans))){ for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]) keep.add((sy+dy)*COLS+sx+dx); }
-  if(!client) for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ const i=y*COLS+x;
-    if(st.solid(x,y)) grid[i]=1; else if(!keep.has(i)&&Math.random()<st.box) grid[i]=2; }
+  if(!client){ const g=layout(st,keep,Math.random); for(let i=0;i<N;i++) grid[i]=g[i]; }
   const total=net?Math.min(6,humans+(net.bots||0)):Math.max(4,humans); // 單機不足 4 人由電腦補滿；連線只有房間裡的人，加不加電腦由房主決定
   const players=SPAWN.slice(0,total).map(([x,y],i)=>({id:i,x,y,rx:x,ry:y,dir:1,moving:false,state:'alive',trapT:0,inv:0,
     maxB:i<humans?1:D.maxB,power:i<humans?1:D.power,spd:0,needles:0,human:i<humans,
@@ -217,7 +257,7 @@ function create(env,opts){
     while(q.length){ const b=q.pop(),i0=b.y*COLS+b.x,wc=players[b.owner]?players[b.owner].wc:0; bombAt[i0]=0; flameT[i0]=FLAME; flameC[i0]=wc;
       for(const [dx,dy] of DIRS) for(let s=1;s<=b.power;s++){
         const x=b.x+dx*s,y=b.y+dy*s; if(x<0||y<0||x>=COLS||y>=ROWS) break; const i=y*COLS+x;
-        if(grid[i]===1) break;
+        if(grid[i]===1||grid[i]===3) break;
         if(grid[i]===2){ grid[i]=0; flameT[i]=FLAME; flameC[i]=wc; if(Math.random()<st.drop) pending.push({i,t:FLAME+.02,type:rollItem()}); break; }
         if(bombAt[i]){ const o=bombs.find(o=>!o.done&&o.x===x&&o.y===y); if(o){ o.done=true; q.push(o); } }
         items.delete(i); flameT[i]=FLAME; flameC[i]=wc; } }
@@ -227,7 +267,7 @@ function create(env,opts){
   function blast(bx,by,power){
     const cells=[by*COLS+bx]; let boxes=0;
     for(const [dx,dy] of DIRS) for(let s=1;s<=power;s++){ const x=bx+dx*s,y=by+dy*s; if(x<0||y<0||x>=COLS||y>=ROWS) break; const i=y*COLS+x;
-      if(grid[i]===1) break; if(grid[i]===2){ boxes++; break; } cells.push(i); }
+      if(grid[i]===1||grid[i]===3) break; if(grid[i]===2){ boxes++; break; } cells.push(i); }
     return {cells,boxes};
   }
   function dangerMap(extra){
@@ -398,7 +438,7 @@ function create(env,opts){
     else if(mp.state==='dead'&&net){ ctx.textAlign='right'; ctx.fillStyle='#aaa4d8'; ctx.fillText('已出局，觀戰中',W-12,49); ctx.textAlign='left'; }
 
     ctx.save(); ctx.translate(0,HUD);
-    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) drawTile(ctx,st,grid[y*COLS+x],x*T,y*T,x,y);
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) drawTile(ctx,st,grid[y*COLS+x],x*T,y*T,x,y,t);
     for(const [i,type] of items) drawItem(ctx,(i%COLS)*T,((i/COLS)|0)*T,type,t);
     for(const b of bombs){ const o=players[b.owner],L=o?o.look:null; drawBalloon(ctx,b.x*T+T/2,b.y*T+T/2,t+b.x,15,L&&L.bomb,L&&L.water); }
     for(let i=0;i<N;i++){ const f=flameT[i]; if(f<=0) continue; const x=(i%COLS)*T,y=((i/COLS)|0)*T,k=Math.min(1,f/.2),m=(1-k)*10;
@@ -439,8 +479,8 @@ function stagePreview(ctx,w,h,si){
   const keep=new Set(); for(const [sx,sy] of SPAWN.slice(0,4)) for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]) keep.add((sy+dy)*COLS+sx+dx);
   ctx.save(); ctx.scale(k,k); ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,W,ROWS*T);
   const open=new Set([3*COLS+2,3*COLS+3,2*COLS+2,9*COLS+12,9*COLS+11,10*COLS+12,6*COLS+7,6*COLS+6,6*COLS+8,5*COLS+6]);
-  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ const i=y*COLS+x,v=st.solid(x,y)?1:(!keep.has(i)&&!open.has(i)&&rnd()<st.box?2:0); drawTile(ctx,st,v,x*T,y*T,x,y); }
-  const flame=(x,y,c)=>{ if(st.solid(x,y)) return; ctx.fillStyle='rgba('+rgb(c).join(',')+',.9)'; ctx.fillRect(x*T+3,y*T+3,T-6,T-6); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(x*T+11,y*T+11,T-22,T-22); };
+  const lg=layout(st,keep,rnd,open); for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) drawTile(ctx,st,lg[y*COLS+x],x*T,y*T,x,y);
+  const flame=(x,y,c)=>{ if(lg[y*COLS+x]===1||lg[y*COLS+x]===3) return; ctx.fillStyle='rgba('+rgb(c).join(',')+',.9)'; ctx.fillRect(x*T+3,y*T+3,T-6,T-6); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(x*T+11,y*T+11,T-22,T-22); };
   for(const [x,y] of [[6,6],[7,6],[8,6],[6,5]]) flame(x,y,WATER[1]);
   drawBalloon(ctx,2*T+20,3*T+20,0,15,'ball',WATER[0]); drawBalloon(ctx,12*T+20,9*T+20,0,15,'star',WATER[3]);
   drawItem(ctx,3*T,3*T,'p',0); drawItem(ctx,11*T,9*T,'s',0);
