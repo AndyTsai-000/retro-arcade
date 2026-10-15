@@ -164,21 +164,21 @@ function create(env,opts){
   BTN.forEach((b,i)=>{ b.w=112; b.x=W/2-(4*b.w+3*12)/2+i*(b.w+12); b.y=BY+BS+16; b.h=46; });
   function toLogical(e){ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=(r.width-W*s)/2,oy=(r.height-H*s)/2; return [(e.clientX-r.left-ox)/s,(e.clientY-r.top-oy)/s]; }
   const cellAt=(x,y)=>{ const cc=Math.floor((x-BX-GAP/2)/(CS+GAP)),r=Math.floor((y-BY-GAP/2)/(CS+GAP)); return r>=0&&r<N&&cc>=0&&cc<N?r*N+cc:-1; };
-  let drag=null,lastTap={k:-1,t:-9};
+  let drag=null;
   function onDown(e){ e.preventDefault(); const [x,y]=toLogical(e);
     for(const b of BTN) if(x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h){ ({undo,hint,auto:toggleAuto,reset:restart})[b.id](); return; }
     const k=cellAt(x,y); if(k<0||ended) return; cur=k;
     try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
-    const now=performance.now()/1000,dbl=lastTap.k===k&&now-lastTap.t<.32; lastTap={k,t:now};
-    if(dbl&&st[k]!==2){ if(grp) grp=null; tryCat(k); drag=null; return; } // 點兩下：放貓
+    // 點一下輪流換：空格 → 叉叉 → 貓 → 空格（快速點兩下就等於直接放貓）
     if(st[k]===2){ if(k===giftK) return; setCell(k,0); refreshAuto(); env.sfx('click'); drag=null; return; }
     grp=[];
-    if(st[k]===1){ setCell(k,0); drag={mode:'clear',last:k}; } else { setCell(k,1); drag={mode:'x',last:k}; }
-    env.sfx('click');
+    if(st[k]===1){ drag={mode:'pend',start:k,last:k}; return; } // 放開時才放貓；如果拖到別格就變成清除叉叉
+    setCell(k,1); drag={mode:'x',last:k}; env.sfx('click');
   }
-  function onMove(e){ if(!drag) return; const [x,y]=toLogical(e),k=cellAt(x,y); if(k<0||k===drag.last) return; drag.last=k; lastTap.k=-1;
+  function onMove(e){ if(!drag) return; const [x,y]=toLogical(e),k=cellAt(x,y); if(k<0||k===drag.last) return; drag.last=k;
+    if(drag.mode==='pend'){ drag.mode='clear'; setCell(drag.start,0); }
     if(drag.mode==='x'&&(st[k]===0||st[k]===3)) setCell(k,1); else if(drag.mode==='clear'&&st[k]===1) setCell(k,0); }
-  function onUp(){ const g=grp; grp=null; if(g&&g.length) hist.push(g); drag=null; }
+  function onUp(){ const g=grp; grp=null; if(g&&g.length) hist.push(g); if(drag&&drag.mode==='pend') tryCat(drag.start); drag=null; }
   canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); canvas.addEventListener('pointerup',onUp); canvas.addEventListener('pointercancel',onUp);
   canvas.style.touchAction='none';
 
@@ -214,6 +214,7 @@ function create(env,opts){
     ['每種顏色1隻','每行每列各1隻','貓咪不能相鄰'].forEach((s,i)=>{ const w=(W-44-24)/3,x=30+i*(w+4),on=ruleT>0&&ruleHi===i;
       c.fillStyle=on?'#ffe1e1':'#f6efe9'; rrect(c,x,149,w,44,10); c.fill(); if(on){ c.strokeStyle='#d0505a'; c.lineWidth=2.5; c.stroke(); }
       c.textAlign='center'; c.fillStyle=on?'#c0303a':'#8a5a58'; c.font='700 16px '+TC; c.fillText(s,x+w/2,171); });
+    c.textAlign='center'; c.fillStyle='#b59a90'; c.font='700 14px '+TC; c.fillText('點一下打 ✕，再點一下放貓，點貓可以拿掉',W/2,211);
     // 盤面
     const sx=shake>0?Math.sin(shake*60)*6*shake/.35:0; c.save(); c.translate(sx,0);
     c.fillStyle='#fff'; c.shadowColor='rgba(120,90,70,.15)'; c.shadowBlur=14; rrect(c,BX,BY,BS,BS,14); c.fill(); c.shadowBlur=0;
@@ -267,12 +268,12 @@ const preview=(c,w,h,L,t)=>demo(c,w,h,t,L);
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).meow={
   name:'貓咪數獨',tag:'MEOW PUZZLE',color:'#ffc845',
   desc:'為每隻高冷的小貓找到專屬領地：每種顏色、每一行、每一列都剛好一隻貓，而且貓咪不能相鄰，連斜角都不行。不用算數，全靠邏輯推理。共 50 關，從 5×5 到 9×9。',
-  goal:'點一下格子打叉，點兩下放貓，點貓可以拿掉；按住拖曳可以連續打叉。放錯貓會失去一顆愛心，3 顆用完就失敗。「自動」會幫你把放好的貓管到的格子打叉，「提示」會在一定有貓的格子打上問號（每關 3 次）。',
+  goal:'點一下格子打叉，再點一下（或快速點兩下）放貓，點貓可以拿掉；按住拖曳可以連續打叉。放錯貓會失去一顆愛心，3 顆用完就失敗。「自動」會幫你把放好的貓管到的格子打叉，「提示」會在一定有貓的格子打上問號（每關 3 次）。',
   stages:Array.from({length:LEVELS},(_,i)=>sizeOf(i)+'×'+sizeOf(i)),stars:Array.from({length:LEVELS},(_,i)=>sizeOf(i)-4),
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+fmt(v); },
   hubBest:()=>{ const n=cleared(); return n?'已過關 <b>'+n+' / '+LEVELS+'</b>':'尚無紀錄'; },
-  help:[['點一下','打叉，再點一下取消'],['點兩下','放貓（點貓可以拿掉）'],['按住拖曳','連續打叉或清除叉叉'],['↑ ↓ ← →','移動選取框'],['空白鍵','打叉／取消'],['Enter','放貓'],['H','提示'],['A','自動打叉開關'],['Z','復原']],
-  touchHelp:[['點一下','打叉，再點一下取消'],['點兩下','放貓，點貓可以拿掉'],['按住拖曳','連續打叉或清除叉叉'],['自動','放好貓後自動把不可能的格子打叉'],['提示','在一定有貓的格子打問號（每關 3 次）']],
+  help:[['點一下','空格打叉'],['再點一下','叉叉變成貓（快速點兩下也可以）'],['點貓','拿掉貓'],['按住拖曳','連續打叉或清除叉叉'],['↑ ↓ ← →','移動選取框'],['空白鍵','打叉／取消叉叉'],['Enter','放貓'],['H','提示'],['A','自動打叉開關'],['Z','復原']],
+  touchHelp:[['點一下','空格打叉'],['再點一下','叉叉變成貓（快速點兩下也可以）'],['點貓','拿掉貓'],['按住拖曳','連續打叉或清除叉叉'],['自動','放好貓後自動把不可能的格子打叉'],['提示','在一定有貓的格子打問號（每關 3 次）']],
   touch:null,
   looks:[{key:'cat',label:'貓咪',opts:[{id:'tuxedo',label:'賓士貓'},{id:'orange',label:'橘貓'},{id:'gray',label:'灰虎斑'},{id:'white',label:'白貓'},{id:'calico',label:'三花貓'}]},
     {key:'theme',label:'色系',opts:[{id:'classic',label:'經典'},{id:'candy',label:'糖果'},{id:'forest',label:'森林'}]}],
