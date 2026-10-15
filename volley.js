@@ -2,7 +2,7 @@
 // 連線時房主負責運算（左邊），加入的人是右邊，只送出按鍵。
 (function(){
 'use strict';
-const W=480,H=300,GROUND=268,NETX=240,NETW=8,NETTOP=178,PR=26,BR=17,WIN=11;
+const W=480,H=300,GROUND=268,NETX=240,NETW=8,NETTOP=178,PR=26,BR=17;
 const PIX='"Press Start 2P","Noto Sans TC","Microsoft JhengHei",monospace';
 const COL=[['#ff9d3d','#c96a14'],['#4f9dff','#1f5fc0']];
 const r1=v=>Math.round(v*10)/10;
@@ -70,6 +70,7 @@ function drawCourt(ctx,t){
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',me=net?Math.min(1,net.me):0,vsHuman=!!net&&net.count>1;
   const {ctx}=env.canvas2d(W,H);
+  const GOAL=[5,10,15].includes(+((opts.options||{}).win))?+opts.options.win:10; // 開始前選的勝利分數
   const mk=n=>({n,x:n?360:120,y:GROUND,tx:n?360:120,ty:GROUND,vx:0,vy:0,face:n?-1:1,power:0,moving:false,score:0});
   const ps=[mk(0),mk(1)],ball={x:120,y:70,tx:120,ty:70,vx:0,vy:0,rot:0,cool:0,hot:0};
   let srvN=0,srvSeen=-1,t=0,wait=1,lastW=-1,over=0,ended=false,aiErr=0,aiSide=false,aiTick=0,aiX=372,ev=[],sendT=0,lastIn='';
@@ -182,7 +183,7 @@ function create(env,opts){
     if(b.y+BR>=GROUND){
       b.y=GROUND-BR; const w=b.x<NETX?1:0; ps[w].score++; lastW=w;
       env.sfx(two||w===me?'item':'hurt'); if(net) ev.push('p'+w);
-      if(ps[w].score>=WIN) over=.001; else serve(w);
+      if(ps[w].score>=GOAL) over=.001; else serve(w);
     }
   }
 
@@ -190,6 +191,7 @@ function create(env,opts){
     drawCourt(ctx,t);
     ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='22px '+PIX; ctx.lineWidth=4; ctx.strokeStyle='#14122b';
     ps.forEach(p=>{ const x=p.n?W-70:70; ctx.strokeText(p.score,x,34); ctx.fillStyle=p.col[0]; ctx.fillText(p.score,x,34); });
+    ctx.font='900 12px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.lineWidth=4; ctx.strokeText('先拿 '+GOAL+' 分',W/2,22); ctx.fillStyle='#fff'; ctx.fillText('先拿 '+GOAL+' 分',W/2,22); ctx.font='22px '+PIX;
     if(net){ ctx.font='700 12px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.fillStyle='#14122b'; ctx.fillText('你',me?W-70:70,58); }
     for(const p of ps) drawCat(ctx,p.x,p.y,p.face,p.col,p.y<GROUND-1,t,p.moving,p.look.animal);
     if(ball.hot>0){ ctx.fillStyle='rgba(255,93,143,.35)'; ctx.beginPath(); ctx.arc(ball.x-ball.vx*.03,ball.y-ball.vy*.03,BR,0,7); ctx.fill(); }
@@ -228,7 +230,8 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).volley={
   name:'海灘排球',tag:'BEACH VOLLEY',color:'#3ddbd9',online:true,maxPlayers:2,
   desc:'一對一打排球，跳起來殺球讓對手接不到。玩法類似皮卡丘打排球，可單人對電腦、兩人同一台對打，或開房間連線。',
-  goal:'球落在對方場地就得 1 分，先拿 '+WIN+' 分獲勝。跳到空中按殺球會用力扣殺，同時按住 ↓ 會往下扣。',
+  options:[{key:'win',label:'打幾分',def:'10',opts:[{id:'5',label:'5 分'},{id:'10',label:'10 分'},{id:'15',label:'15 分'}]}],
+  goal:'球落在對方場地就得 1 分，先拿到開始前選的分數（5、10 或 15 分）就獲勝。跳到空中按殺球會用力扣殺，同時按住 ↓ 會往下扣。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['← → ↑ Space','單人與連線：移動、跳、殺球'],['A D W Space','雙人左邊'],['← → ↑ Enter','雙人右邊']],
   touchHelp:[['◀ ▶','移動'],['跳','跳起來'],['殺球','在空中按']],
