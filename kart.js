@@ -849,10 +849,10 @@ function create(env,opts){
     for(const k of locals){ const v=k.v; v.camH+=wrap(k.h-v.camH)*Math.min(1,dt*(k.drifting?3.4:5)); v.fov+=((k.boostT>0?(k.bk===2?84:74):62)-v.fov)*Math.min(1,dt*4); }
   }
 
-  // 分隊結果：照名次給分，總分高的隊伍贏；同分看誰的隊伍有人跑得最前面
+  // 分隊結果：只有衝過終點的人照名次給分（沒跑完的不算分），總分高的隊伍贏；同分看誰的隊伍有人跑得最前面，都沒人跑完就是平手
   function teamResult(){ const order=karts.filter(q=>!q.left).sort(rankSort),pts=[0,0],best=[99,99];
-    order.forEach((q,n)=>{ if(q.team==null) return; pts[q.team]+=POINTS[n]||0; best[q.team]=Math.min(best[q.team],n); });
-    return {order,pts,wt:pts[0]!==pts[1]?(pts[0]>pts[1]?0:1):(best[0]<best[1]?0:1)}; }
+    order.forEach((q,n)=>{ if(q.team==null||q.fin==null) return; pts[q.team]+=POINTS[n]||0; best[q.team]=Math.min(best[q.team],n); });
+    return {order,pts,wt:pts[0]!==pts[1]?(pts[0]>pts[1]?0:1):best[0]!==best[1]?(best[0]<best[1]?0:1):-1}; }
   const rankSort=(a,b)=>(a.fin!=null?a.fin-1e6:-a.prog)-(b.fin!=null?b.fin-1e6:-b.prog);
   let cer=null;
   function awards(){ startCeremony(); }
@@ -864,16 +864,16 @@ function create(env,opts){
     const rest=order.slice(3).map((q,n)=>'<li>第 '+(n+4)+' 名　'+esc(q.name)+'　'+time(q)+'</li>').join('');
     let title='頒獎',teamHtml='',teamTxt='';
     if(mode!=='ffa'){ // 照名次給分：第 1 名 10 分、第 2 名 8 分、6、5、4、3
-      const {pts,wt}=teamResult(),mine=local2?(karts[0].team===wt||karts[1].team===wt):my.team===wt,both=local2&&karts[0].team===karts[1].team;
-      title=local2&&!both?TEAMS[wt].name+' 獲勝':mine?(mode==='coop'||both?'你們贏了！':'你的隊伍贏了！'):'你們輸了';
+      const {pts,wt}=teamResult(),mine=wt>=0&&(local2?(karts[0].team===wt||karts[1].team===wt):my.team===wt),both=local2&&karts[0].team===karts[1].team;
+      title=wt<0?'平手':local2&&!both?TEAMS[wt].name+' 獲勝':mine?(mode==='coop'||both?'你們贏了！':'你的隊伍贏了！'):'你們輸了';
       teamHtml='<p style="font-weight:700">'+TEAMS.map((T,n)=>'<span style="color:'+T.col+'">'+T.name+' '+pts[n]+' 分</span>').join('　')+'</p>';
-      teamTxt='名次積分：第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分，加起來多的隊伍獲勝。'+(pts[0]===pts[1]?'這次同分，'+TEAMS[wt].name+'有人跑得最前面，所以獲勝。':''); env.sfx(mine?'win':'lose'); }
+      teamTxt='名次積分：第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分，只有衝過終點的人才算分，加起來多的隊伍獲勝。'+(wt<0?'兩隊都沒有人跑完，算平手。':pts[0]===pts[1]?'這次同分，'+TEAMS[wt].name+'有人跑得最前面，所以獲勝。':''); env.sfx(mine?'win':'lose'); }
     env.end({title,html:teamHtml+'<div class="podium">'+pod+'</div>'+(rest?'<ul class="rest">'+rest+'</ul>':''),
       text:(local2?'':'你是第 '+r+' 名。'+recText(stage,my.fin,!local2))+teamTxt,score:null,next:single&&stage<STAGES.length-1});
   }
 
   function startCeremony(){
-    const all=karts.filter(q=>!q.left).sort(rankSort),TR=mode!=='ffa'?teamResult():null,S=new T.Scene();
+    const all=karts.filter(q=>!q.left).sort(rankSort),TR0=mode!=='ffa'?teamResult():null,TR=TR0&&TR0.wt>=0?TR0:null,S=new T.Scene(); // 分隊平手時照一般頒獎
     const order=TR?TR.order.filter(q=>q.team===TR.wt).slice(0,3):all.slice(0,3); // 分隊時贏的隊伍上台
     S.background=new T.Color(0x1a1440); S.fog=new T.Fog(0x1a1440,40,90);
     S.add(new T.AmbientLight(0xffffff,.55)); const dl=new T.DirectionalLight(0xffffff,.9); dl.position.set(6,14,10); S.add(dl);
@@ -1123,7 +1123,7 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'極速大亂鬥',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,bots:true,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 20 關，星星越多越難，4、5 星路比較窄、彎比較急，還有不好走的捷徑；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
-  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣，甩尾放開後馬上按一下 ↑ 可以甩噴（手機按 ▲）。4、5 星賽道有碎石捷徑，路短但開不快又有石頭擋路。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多），分隊時照名次算積分（第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分），總分高的隊伍獲勝。',
+  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣，甩尾放開後馬上按一下 ↑ 可以甩噴（手機按 ▲）。4、5 星賽道有碎石捷徑，路短但開不快又有石頭擋路。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多），分隊時照名次算積分（第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分，只有衝過終點的人才算分），總分高的隊伍獲勝。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'}],
   options:[{key:'team',label:'雙人／連線玩法',def:'ffa',opts:[{id:'ffa',label:'各自分開'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],
