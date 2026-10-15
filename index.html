@@ -207,7 +207,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=64; // 每次改版加一
+window.ARCADE_V=65; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -406,11 +406,26 @@ function photoRow(L,look){
   const v=look[L.key];
   return '<div class="lkrow"><span>'+L.label+'</span><div class="chips"><img id="phImg" class="ph" alt="個人照"'+(v?' src="'+v+'"':' hidden')+'>'+
     '<label class="chip" for="phFile">'+(v?'換一張照片':'上傳照片')+'</label><input type="file" id="phFile" accept="image/*" hidden>'+
-    '<button class="chip" id="phDel"'+(v?'':' hidden')+'>移除</button></div></div><p class="hint">選「我的照片」人物時，角色的臉會換成這張照片。照片只存在這台裝置，連線比賽時房間裡的玩家看得到。</p>';
+    '<button class="chip" id="phDel"'+(v?'':' hidden')+'>移除</button></div></div><p class="hint" id="phMsg" style="color:var(--yellow)">'+(()=>{ const n=phNote; phNote=''; return n; })()+'</p><p class="hint">選「我的照片」人物時，角色的臉會換成這張照片。照片只存在這台裝置，連線比賽時房間裡的玩家看得到。</p>';
+}
+// 自動找臉：先用瀏覽器內建的臉部偵測，沒有的話載入 face-api（只在上傳照片時才下載）
+const FACEAPI='https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14';
+let faceApiReady=null,phNote='';
+async function detectFace(img){
+  const best=list=>list.sort((a,b)=>b.w*b.h-a.w*a.h)[0];
+  try{ if('FaceDetector' in window){ const r=await new FaceDetector({fastMode:true,maxDetectedFaces:5}).detect(img); if(r.length) return best(r.map(f=>({x:f.boundingBox.x,y:f.boundingBox.y,w:f.boundingBox.width,h:f.boundingBox.height}))); } }catch(e){}
+  try{ if(!faceApiReady) faceApiReady=(async()=>{ if(!window.faceapi) await loadScript(FACEAPI+'/dist/face-api.js'); await faceapi.nets.tinyFaceDetector.loadFromUri(FACEAPI+'/model'); })();
+    await faceApiReady;
+    const r=await faceapi.detectAllFaces(img,new faceapi.TinyFaceDetectorOptions({inputSize:416,scoreThreshold:.4}));
+    if(r.length) return best(r.map(d=>({x:d.box.x,y:d.box.y,w:d.box.width,h:d.box.height}))); }catch(e){ faceApiReady=null; }
+  return null;
 }
 function photoToFace(file,cb){
-  const fr=new FileReader(); fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const S=192,c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d'),w=img.naturalWidth,h=img.naturalHeight;
-    const sz=Math.min(w,h)*(h>w?.92:1),sx=(w-sz)/2,sy=h>w?Math.max(0,(h-sz)*.28):(h-sz)/2; x.drawImage(img,sx,sy,sz,sz,0,0,S,S); cb(c.toDataURL('image/jpeg',.82)); };
+  const fr=new FileReader(); fr.onload=()=>{ const img=new Image(); img.onload=async()=>{ const S=192,c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d'),w=img.naturalWidth,h=img.naturalHeight;
+    let sx,sy,sz; const f=await detectFace(img);
+    if(f){ sz=Math.min(Math.max(f.w,f.h)*1.45,w,h); const cx=f.x+f.w/2,cy=f.y+f.h*.45; sx=Math.max(0,Math.min(w-sz,cx-sz/2)); sy=Math.max(0,Math.min(h-sz,cy-sz/2)); } // 以臉為中心，留一點額頭和下巴
+    else { sz=Math.min(w,h)*(h>w?.92:1); sx=(w-sz)/2; sy=h>w?Math.max(0,(h-sz)*.28):(h-sz)/2; }
+    x.drawImage(img,sx,sy,sz,sz,0,0,S,S); cb(c.toDataURL('image/jpeg',.85),!!f); };
     img.onerror=()=>cb(null); img.src=fr.result; }; fr.readAsDataURL(file);
 }
 function bindPhoto(g,look){
@@ -418,7 +433,8 @@ function bindPhoto(g,look){
   const apply=v=>{ look[L.key]=v; const dl=g.looks.find(x=>(x.opts||[]).some(o=>o.id==='photo'));
     if(dl&&v) look[dl.key]='photo'; else if(dl&&!v&&look[dl.key]==='photo') look[dl.key]=dl.opts[0].id||dl.opts[0];
     save('arcade.look.'+g.id,JSON.stringify(look)); if(lookPrev&&lookPrev.v) lookPrev.v.set(look); lookCard(); };
-  const f=$('#phFile'); if(f) f.addEventListener('change',()=>{ const file=f.files&&f.files[0]; if(!file) return; photoToFace(file,v=>{ if(v) apply(v); }); });
+  const f=$('#phFile'); if(f) f.addEventListener('change',()=>{ const file=f.files&&f.files[0]; if(!file) return; const m=$('#phMsg'); if(m) m.textContent='正在找照片裡的臉…';
+    photoToFace(file,(v,found)=>{ if(!v){ if(m) m.textContent='這個檔案讀不出來，換一張照片試試。'; return; } phNote=found?'已自動擷取臉部。':'照片裡沒有找到臉，先用照片中間的部分；可以換一張正面、清楚的照片。'; apply(v); }); });
   on('phDel',()=>apply(''));
 }
 async function lookCard(){
