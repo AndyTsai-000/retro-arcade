@@ -379,7 +379,9 @@ function create(env,opts){
     if(net&&!ended){ sendT-=dt; if(sendT<=0){ sendT=.05; net.send(snapshot()); } }
   }
 
+  let intro0=null; // 開場提示用的時間（每台電腦自己算，連線的另一邊也看得到）
   function draw(){
+    if(intro0==null) intro0=performance.now(); const introK=(performance.now()-intro0)/1000;
     ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,W,H);
     // 計分列
     ctx.textBaseline='middle'; ctx.textAlign='left'; ctx.font='14px '+PIX; ctx.fillStyle=time<30?'#ff5d8f':'#fff';
@@ -409,7 +411,14 @@ function create(env,opts){
         ctx.fillStyle='rgba(120,200,255,.5)'; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy+bob,18,0,7); ctx.fill(); ctx.stroke();
         ctx.fillStyle='rgba(255,255,255,.8)'; ctx.beginPath(); ctx.ellipse(cx-7,cy+bob-8,5,3,-.6,0,7); ctx.fill(); ctx.globalAlpha=1; }
       else { if(p.inv>0&&Math.floor(t*14)%2) ctx.globalAlpha=.5; drawChar(ctx,cx,cy-4,p.col,p.dir,p.moving,t,1,p.look.char,p.look.deco); ctx.globalAlpha=1; }
-      if(p.id===me||(local2&&p.id<2)){ ctx.fillStyle=local2?p.col:'#fff'; ctx.beginPath(); ctx.moveTo(cx-5,cy-30); ctx.lineTo(cx+5,cy-30); ctx.lineTo(cx,cy-23); ctx.fill(); } }
+      if(p.id===me||(local2&&p.id<2)){
+        if(introK<4){ // 開場 4 秒：大箭頭＋「你」標籤＋閃爍光圈，告訴玩家自己是哪一個
+          const bob=Math.abs(Math.sin(introK*5))*6,fade=Math.min(1,(4-introK)*1.5),lbl=local2?(p.id+1)+'P':'你',col=local2?p.col:'#ffd23f';
+          ctx.globalAlpha=fade; ctx.strokeStyle=col; ctx.lineWidth=3; const rr=20+((introK*2)%1)*10; ctx.globalAlpha=fade*(1-((introK*2)%1)); ctx.beginPath(); ctx.ellipse(cx,cy+8,rr,rr*.5,0,0,7); ctx.stroke(); ctx.globalAlpha=fade;
+          const up=cy<70,d=up?-1:1,ay=up?cy+30+bob:cy-34-bob; // 最上面一排的人：箭頭改放在下面往上指，才不會蓋到上方資訊
+          ctx.fillStyle=col; ctx.strokeStyle='#14122b'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(cx-10,ay-8*d); ctx.lineTo(cx+10,ay-8*d); ctx.lineTo(cx,ay+5*d); ctx.closePath(); ctx.stroke(); ctx.fill();
+          ctx.font='900 15px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; const tw=ctx.measureText(lbl).width+16,ly=up?ay+8:ay-30; ctx.beginPath(); ctx.roundRect?ctx.roundRect(cx-tw/2,ly,tw,21,10):ctx.rect(cx-tw/2,ly,tw,21); ctx.stroke(); ctx.fill(); ctx.fillStyle='#14122b'; ctx.fillText(lbl,cx,ly+11); ctx.globalAlpha=1; }
+        else { ctx.fillStyle=local2?p.col:'#fff'; ctx.beginPath(); ctx.moveTo(cx-5,cy-30); ctx.lineTo(cx+5,cy-30); ctx.lineTo(cx,cy-23); ctx.fill(); } } }
     ctx.restore();
   }
   return {update,draw,destroy(){},_dbg:{players,grid,bombs:()=>bombs,inputs}};
