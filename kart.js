@@ -229,7 +229,10 @@ function buildKart(T,L){
     add(new T.CylinderGeometry(.14,.12,.85,10),suit,x*.2,sy+.14,-.05,PI/2-.12); }
   add(new T.CylinderGeometry(.12,.14,.16,10),L.driver==='helmet'?dark:skin,0,sy+.97,-.57); }
   const hy=moto?RH.hy:sy+1.32,hz=moto?RH.hz:-.57,eye=(x,r,c)=>{ ball(r||.055,lam(c||0x15151c),x,hy+.06,hz+.4); };
-  if(L.driver==='photo'){ ball(.44,skin,0,hy,hz); add(new T.SphereGeometry(.455,20,10,0,PI*2,0,PI*.32),lam(0x2a1f1a),0,hy,hz); // 頭與頭髮
+  if(L.driver==='photo'&&L.face&&!/^data:image\/jpeg/.test(L.face)){ // 剪下來的整顆頭：永遠面向鏡頭
+    const img=new Image(),tx=new T.Texture(img),sm=new T.SpriteMaterial({map:tx,transparent:true,opacity:0}); img.onload=()=>{ tx.needsUpdate=true; sm.opacity=1; sm.needsUpdate=true; }; img.src=L.face;
+    const sp=new T.Sprite(sm); sp.scale.set(1.55,1.55,1); sp.position.set(0,hy+.12,hz); sp.center.set(.5,.45); g.add(sp); }
+  else if(L.driver==='photo'){ ball(.44,skin,0,hy,hz); add(new T.SphereGeometry(.455,20,10,0,PI*2,0,PI*.32),lam(0x2a1f1a),0,hy,hz); // 頭與頭髮（舊的方形照片）
     if(L.face){ const img=new Image(),tx=new T.Texture(img),fm=new T.MeshBasicMaterial({color:0xf2c9a0}); img.onload=()=>{ tx.needsUpdate=true; fm.map=tx; fm.color.set(0xffffff); fm.needsUpdate=true; }; img.src=L.face; // 照片載入前先顯示膚色
       const pl=PI*.82; add(new T.SphereGeometry(.448,28,18,PI/2-pl/2,pl,PI*.2,PI*.6),fm,0,hy,hz); }
     else { eye(-.16); eye(.16); } }
