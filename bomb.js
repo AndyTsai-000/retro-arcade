@@ -220,7 +220,7 @@ function create(env,opts){
   // 玩法：各自分開（ffa）／分隊對戰（vs，人數一定一樣多）／玩家同隊打電腦（coop，電腦數量和玩家一樣）
   let mode=(opts.options&&opts.options.team)||'ffa'; if(single) mode='ffa'; if(mode==='coop'&&humans>3) mode='vs';
   let total=net?Math.min(6,humans+(net.bots||0)):Math.max(4,humans); // 單機不足 4 人由電腦補滿；連線只有房間裡的人，加不加電腦由房主決定
-  if(mode==='coop') total=humans*2; else if(mode==='vs'){ if(total%2) total=Math.min(6,total+1); if(total<2) total=2; }
+  if(mode==='coop') total=humans*2; else if(mode==='pvp') total=Math.max(2,humans+humans%2); /* 只有玩家分兩隊，雙人就是 1 對 1，人數單數時補 1 台電腦 */ else if(mode==='vs'){ if(total%2) total=Math.min(6,total+1); if(total<2) total=2; }
   const TEAMOF=[0,1,1,0,0,1]; // 出生點：紅隊在左邊、藍隊在右邊
   const teamOf=i=>mode==='ffa'?null:mode==='coop'?(i<humans?0:1):TEAMOF[i];
   const TEAMS=mode==='coop'?[{name:'玩家隊',col:'#ffd23f'},{name:'電腦隊',col:'#8a8fa8'}]:[{name:'紅隊',col:'#ff4d4d'},{name:'藍隊',col:'#3d8bff'}];
@@ -522,11 +522,11 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={_draw:drawChar,_item:drawItem,
   name:'水球炸翻天',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
   desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。7 個場景、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
-  goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困。沒有針被困住就會出局。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一定一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）或「玩家同隊打電腦」（電腦和玩家一樣多）。分隊時隊友被困住，走過去碰一下就能救出來。',
+  goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困。沒有針被困住就會出局。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一定一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多）。分隊時隊友被困住，走過去碰一下就能救出來。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
   variants:[{id:'easy',label:'電腦：簡單'},{id:'normal',label:'電腦：中等',def:true},{id:'hard',label:'電腦：困難'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  options:[{key:'team',label:'雙人／連線玩法',def:'ffa',opts:[{id:'ffa',label:'各自分開'},{id:'vs',label:'分隊對戰'},{id:'coop',label:'玩家同隊打電腦'}]}],
+  options:[{key:'team',label:'雙人／連線玩法',def:'ffa',opts:[{id:'ffa',label:'各自分開'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],
   help:[['↑ ↓ ← →','移動'],['Space','放水球，被困時用針'],['W A S D Space','雙人 1P'],['↑ ↓ ← → Enter','雙人 2P']],
   touchHelp:[['方向盤','移動'],['水球','放水球，被困時用針']],
   touch:{left:'dpad',right:[{l:'水球',c:'Space',act:true}]},
