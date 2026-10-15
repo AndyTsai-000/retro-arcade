@@ -125,54 +125,115 @@ function buildKart(T,L){
   const hull=(pts,width,m)=>{ const sh=new T.Shape(); pts.forEach((p,i)=>i?sh.lineTo(p[0],p[1]):sh.moveTo(p[0],p[1]));
     const geo=new T.ExtrudeGeometry(sh,{depth:width-.2,bevelEnabled:true,bevelThickness:.1,bevelSize:.09,bevelSegments:4}); geo.translate(0,0,-(width-.2)/2);
     return add(geo,m,0,0,0,0,-PI/2,0); };
-  const B=L.body,buggy=B==='buggy',sport=B==='sport';
-  const wr=buggy?.68:sport?.44:.46,ww=buggy?.58:.44,wx=buggy?1.32:sport?1.08:1.14,wz=sport?1.3:1.12,by=buggy?1.02:sport?.5:.52;
-  if(sport){
+  const B=L.body,buggy=B==='buggy',sport=B==='sport',heavy=B==='bike',moto=heavy||B==='scooter';
+  const wr=moto?(heavy?.6:.44):buggy?.68:sport?.44:.46,ww=moto?(heavy?.34:.26):buggy?.58:.44,wx=buggy?1.32:sport?1.08:1.14,wz=sport?1.3:1.12,by=moto?(heavy?.7:.6):buggy?1.02:sport?.5:.52;
+  // 兩點之間拉一根圓柱（機車的前叉、手腳）
+  const limb=(a,b,r,m)=>{ const d=new T.Vector3(b[0]-a[0],b[1]-a[1],b[2]-a[2]),len=d.length(),mesh=new T.Mesh(new T.CylinderGeometry(r,r*.92,len,10),m); mesh.position.set((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2); mesh.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize()); g.add(mesh); ball(r*1.04,m,b[0],b[1],b[2]); return mesh; };
+  const glass=new T.MeshPhongMaterial({color:0x9fd8ff,transparent:true,opacity:.5,shininess:140}),gold=new T.MeshPhongMaterial({color:0xd4a017,shininess:120,specular:0xffffff}),lampW=lam(0xfff6c8),lampR=lam(0xff3b3b);
+  let RH=null,wheelAt;
+  if(heavy){ // 重型機車：整流罩、油箱、尾段一體的車殼
+    const fair=hull([[.5,.72],[.62,1.2],[.92,1.58],[1.25,1.56],[1.72,1.24],[1.98,.98],[1.86,.76],[1.45,.64],[.9,.6]],.62,paint); // 前段尖窄的整流罩
+    ball(.5,paint,0,1.5,.12,.78,.56,1.25);                                                            // 圓鼓的油箱
+    hull([[-1.95,1.42],[-1.9,1.56],[-1.3,1.52],[-.6,1.42],[-.42,1.18],[-.95,1.16],[-1.65,1.28]],.46,paint); // 細長上翹的尾段
+    hull([[-.3,.62],[-.2,1.05],[.55,1.15],[.62,.72],[.3,.55]],.7,dark);                               // 下方車架
+    box(.16,.025,.95,lam(0xffffff),0,1.785,.12); box(.12,.02,.7,lam(0xffffff),0,1.555,-1.35);          // 車殼上的白色條紋
+    box(.62,.55,.95,dark,0,.72,.15); box(.7,.2,.42,metal,0,.98,.45);                                  // 引擎
+    box(.55,.42,.04,glass,0,1.74,1.12,-1.0);                                                             // 擋風鏡
+    for(const x of [-.18,.18]) ball(.12,lampW,x,1.22,1.86,1,.8,.6);                                  // 雙大燈
+    for(const x of [-.17,.17]) limb([x,.6,1.38],[x,1.6,1.05],.07,gold);                              // 金色倒立前叉
+    box(.5,.08,.25,metal,0,1.63,1.02); tube(.04,.95,dark,0,1.52,.86,0,0,PI/2); for(const x of [-.48,.48]) ball(.07,dark,x,1.52,.86);
+    for(const x of [-.18,.18]) limb([x,.6,-1.28],[x,.78,-.2],.08,dark);                              // 後搖臂
+    limb([.3,.5,.45],[.32,.78,-1.05],.08,metal); add(new T.CylinderGeometry(.15,.17,.75,14),metal,.33,.86,-1.38,PI/2-.15); add(new T.CylinderGeometry(.12,.12,.05,14),dark,.33,.89,-1.76,PI/2-.15); // 排氣管
+    box(.44,.1,.66,seatM,0,1.47,-.7); box(.32,.1,.05,lampR,0,1.38,-1.86); box(.3,.05,.6,paint,0,.88,1.42); // 座墊、尾燈、前土除
+    wheelAt=[[0,1.38,1],[0,-1.28,1]];
+    RH={hip:[0,1.5,-.62],lean:.62,grip:[.46,1.55,.86],knee:[.36,1.22,-.05],peg:[.33,.78,-.55]};
+  } else if(moto){ // 一般機車（速克達）：前擋板、踏板、座墊下的車殼
+    hull([[-1.45,.55],[-1.55,.8],[-1.4,1.05],[-1.0,1.12],[-.2,1.08],[-.1,.62],[.45,.55],[.6,.75],[.85,1.45],[1.05,1.62],[1.22,1.5],[1.25,1.0],[1.15,.7],[.95,.48],[-1.2,.42]],.66,paint);
+    box(.7,.05,1.05,lam(0xffffff),0,.82,-.72);                                                        // 側邊白色線條
+    box(.5,.03,.55,dark,0,.6,.18);                                                                     // 踏板止滑墊
+    box(.5,.16,1.0,seatM,0,1.2,-.7); tube(.03,.6,metal,0,1.12,-1.32,0,0,PI/2);                       // 座墊、後扶手
+    box(.36,.15,.06,lampW,0,1.42,1.23); box(.7,.12,.24,paint,0,1.74,.78);                            // 大燈、龍頭蓋
+    tube(.035,1.05,dark,0,1.74,.74,0,0,PI/2); for(const x of [-.52,.52]) ball(.06,dark,x,1.74,.74);
+    for(const x of [-.36,.36]){ limb([x,1.78,.76],[x*1.18,2.02,.7],.02,metal); box(.16,.1,.04,dark,x*1.18,2.05,.7); } // 後照鏡
+    for(const x of [-.1,.1]) limb([x,.44,1.15],[x,1.32,.96],.055,metal);                              // 前叉
+    box(.3,.06,.5,paint,0,.92,1.18); box(.28,.1,.05,lampR,0,.95,-1.56);                               // 前土除、尾燈
+    wheelAt=[[0,1.15,1],[0,-1.05,1]];
+    RH={hip:[0,1.26,-.66],lean:.15,grip:[.5,1.74,.74],knee:[.3,1.12,.2],peg:[.24,.62,.16]};
+  } else if(sport){
     hull([[-1.95,.2],[-2,.62],[-1.6,.86],[-.75,.84],[-.25,.66],[1.1,.56],[2.15,.36],[2.3,.22],[2.2,.14],[-1.85,.14]],1.75,paint);
     box(1.5,.05,.9,dark,0,.69,.2,.14); box(1.3,.34,.06,new T.MeshPhongMaterial({color:0x9fd8ff,transparent:true,opacity:.45,shininess:120}),0,.86,.5,-.5);
-    box(1.95,.06,.5,dark,0,.14,2.2); box(.24,.1,.06,lam(0xfff6c8),-.62,.4,2.2); box(.24,.1,.06,lam(0xfff6c8),.62,.4,2.2);
-    box(.3,.1,.06,lam(0xff3b3b),-.6,.55,-2.02); box(.3,.1,.06,lam(0xff3b3b),.6,.55,-2.02);
+    box(1.95,.06,.5,dark,0,.14,2.2); box(.9,.14,.05,dark,0,.27,2.26);                                  // 前下巴、水箱罩
+    for(const x of [-.62,.62]){ box(.34,.09,.08,lampW,x,.4,2.16,.25); box(.36,.11,.04,dark,x,.4,2.21,.25); } // 斜長型大燈
+    box(1.5,.06,.05,lampR,0,.57,-2.0); box(1.2,.12,.06,dark,0,.2,-1.98);                              // 一字尾燈、後擾流
+    for(const x of [-.38,.38]){ add(new T.CylinderGeometry(.08,.08,.18,12),metal,x,.22,-2.02,PI/2); } // 雙排氣尾管
+    for(const x of [-1,1]) for(const z of [-1.3,1.3]) ball(.62,paint,x*.97,.7,z,.36,.32,1.0);         // 蓋在輪胎上方的輪拱
+    for(const x of [-1,1]){ box(.04,.18,.5,dark,x*.9,.42,.5); limb([x*.75,.82,.56],[x*.93,.9,.5],.025,dark); ball(.1,paint,x*.95,.9,.5,1.5,.9,.6); } // 側邊進氣口、後照鏡
+    for(const x of [-.42,.42]) add(new T.TorusGeometry(.22,.05,8,16,PI),metal,x,.84,-.98);           // 頭枕後方的防滾架
   } else if(buggy){
-    hull([[-1.45,.72],[-1.5,1.12],[-.5,1.18],[.5,1.1],[1.45,.92],[1.62,.76],[1.5,.66],[-1.35,.66]],1.5,paint);
-    for(const x of [-.72,.72]){ tube(.06,2,metal,x,2.05,-1.05); tube(.06,2.25,metal,x,2.02,.35,-.62); tube(.06,.8,metal,x,3.03,-.67,PI/2); }
-    tube(.06,1.5,metal,0,3.03,-1.05,0,0,PI/2); tube(.06,1.5,metal,0,3.0,-.3,0,0,PI/2);
-    for(const x of [-.4,.4]) ball(.16,lam(0xfff2a8),x,3.18,-.3);
-    box(1.7,.12,.3,dark,0,.74,1.72); box(1.7,.12,.3,dark,0,.74,-1.62);
+    hull([[-1.55,.75],[-1.55,1.42],[-.6,1.42],[-.5,1.22],[.72,1.26],[1.62,1.22],[1.7,.98],[1.68,.75]],1.62,paint); // 方正車身
+    box(1.3,.5,.05,paint,0,1.0,1.71); for(let i=-3;i<=3;i++) box(.07,.34,.03,dark,i*.15,1.02,1.74);   // 七孔水箱罩
+    for(const x of [-.56,.56]){ add(new T.CylinderGeometry(.15,.15,.06,18),lampW,x,1.05,1.74,PI/2); add(new T.TorusGeometry(.15,.03,6,18),metal,x,1.05,1.77); } // 圓形大燈
+    for(const x of [-.78,.78]) tube(.045,.85,dark,x,1.66,.74); tube(.045,1.6,dark,0,2.08,.74,0,0,PI/2); box(1.5,.78,.03,glass,0,1.68,.76,-.1); // 直立擋風玻璃
+    for(const x of [-1,1]) for(const z of [-1.18,1.18]) box(.5,.1,1.45,dark,x*1.18,1.36,z);          // 黑色輪拱
+    for(const x of [-.72,.72]){ tube(.06,1.1,metal,x,1.95,-.95); } tube(.06,1.5,metal,0,2.5,-.95,0,0,PI/2); limb([-.72,2.5,-.95],[-.72,2.05,.0],.05,metal); limb([.72,2.5,-.95],[.72,2.05,.0],.05,metal); // 防滾架
+    add(new T.TorusGeometry(.4,.17,10,22),rubber,0,1.25,-1.76); add(new T.CircleGeometry(.24,18),metal,0,1.25,-1.94,0,PI,0); // 後背備胎
+    box(1.95,.2,.24,dark,0,.78,1.86); box(1.95,.2,.22,dark,0,.78,-1.66); for(const x of [-.9,.9]) box(.16,.06,1.4,dark,x,.66,0); // 前後保桿、側踏板
   } else {
-    hull([[-1.55,.26],[-1.6,.58],[-1.15,.7],[-.3,.62],[.9,.56],[1.85,.4],[2.02,.28],[1.9,.2],[-1.45,.2]],1.25,paint);
-    for(const x of [-.92,.92]){ const p=add(new T.CylinderGeometry(.2,.2,1.5,12),paint,x,.44,-.15,PI/2); p.scale.set(1.5,1,1); }
-    tube(.06,2.3,metal,0,.34,2.06,0,0,PI/2); tube(.06,2.2,metal,0,.4,-1.68,0,0,PI/2);
-    box(.9,.03,.5,lam(0xffffff),0,.6,1.25,.13);
+    box(1.25,.05,2.9,dark,0,.22,0); for(const x of [-.58,.58]) tube(.045,3,metal,x,.28,0,PI/2);        // 車架與底盤
+    hull([[1.3,.18],[1.38,.42],[1.75,.47],[2.05,.37],[2.12,.24],[1.92,.15],[1.3,.15]],1.75,paint);       // 前鼻翼
+    hull([[.5,.28],[.56,.86],[.74,.9],[1.02,.5],[1.02,.28]],.92,paint);                                   // 方向盤前的面板
+    { const cv=document.createElement('canvas'); cv.width=cv.height=96; const c=cv.getContext('2d'); c.fillStyle='#fff'; c.beginPath(); c.arc(48,48,46,0,7); c.fill(); c.fillStyle='#14122b'; c.font='900 58px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(1+(parseInt(String(L.color).slice(1),16)%9)),48,52);
+      add(new T.CircleGeometry(.22,24),new T.MeshBasicMaterial({map:new T.CanvasTexture(cv)}),0,.66,.955,-.62); }   // 號碼牌
+    for(const x of [-1,1]){ const sp=hull([[-.9,.18],[-.85,.5],[-.3,.55],[.48,.48],[.72,.3],[.58,.18]],.3,paint); sp.position.x=x*.86; } // 側箱
+    box(1.95,.18,.24,dark,0,.34,-1.64); for(const x of [-.6,.6]) box(.08,.08,.5,metal,x,.3,-1.4);      // 後保桿
+    box(.42,.42,.5,dark,.5,.5,-.86); add(new T.CylinderGeometry(.17,.17,.32,14),metal,.5,.86,-.86);     // 引擎
+    limb([.62,.55,-1.08],[.78,.48,-1.55],.07,metal); add(new T.CylinderGeometry(.12,.12,.45,12),metal,.8,.48,-1.72,PI/2); // 排氣管
   }
   // 座椅與方向盤
   const sy=by+(buggy?.2:.12);
-  box(.78,.12,.7,seatM,0,sy,-.5); box(.78,.85,.14,seatM,0,sy+.42,-.88,-.2); box(.5,.2,.1,seatM,0,sy+.9,-.98,-.2);
-  tube(.035,.75,metal,0,sy+.38,.22,-.95); add(new T.TorusGeometry(.26,.05,8,18),dark,0,sy+.6,.02,-.95+PI/2);
+  if(!moto){ box(.78,.12,.7,seatM,0,sy,-.5); box(.78,.85,.14,seatM,0,sy+.42,-.88,-.2); box(.5,.2,.1,seatM,0,sy+.9,-.98,-.2);
+  tube(.035,.75,metal,0,sy+.38,.22,-.95); add(new T.TorusGeometry(.26,.05,8,18),dark,0,sy+.6,.02,-.95+PI/2); }
   // 輪胎：胎面、輪框、輪輻
   const wheels=[],WS=WHEEL[L.wheel]||WHEEL.std,neon=L.wheel==='neon',rimM=neon?new T.MeshBasicMaterial({color:WS[0]}):new T.MeshPhongMaterial({color:WS[0],shininess:140,specular:0xffffff}),w2=ww*WS[2];
-  for(const [x,z,k] of [[-wx,wz,1],[wx,wz,1],[-wx,-wz,sport||buggy?1:1.14],[wx,-wz,sport||buggy?1:1.14]]){
+  for(const [x,z,k] of (moto?wheelAt:[[-wx,wz,1],[wx,wz,1],[-wx,-wz,sport||buggy?1:1.14],[wx,-wz,sport||buggy?1:1.14]])){
     const w=new T.Group(),r=wr*k*WS[3]; w.position.set(x,r,z); g.add(w);
     add(new T.CylinderGeometry(r,r,w2,24),rubber,0,0,0,0,0,PI/2,w); add(new T.TorusGeometry(r-.06,.07,8,24),rubber,-w2/2+.03,0,0,0,PI/2,0,w); add(new T.TorusGeometry(r-.06,.07,8,24),rubber,w2/2-.03,0,0,0,PI/2,0,w);
     add(new T.CylinderGeometry(r*WS[1],r*WS[1],w2+.03,18),rimM,0,0,0,0,0,PI/2,w); add(new T.CylinderGeometry(r*.2,r*.2,w2+.08,10),paint,0,0,0,0,0,PI/2,w);
     for(let i=0;i<3;i++) add(new T.BoxGeometry(w2+.05,.07,r*WS[1]*1.8),dark,0,0,0,i*PI/3,0,0,w);
     if(L.wheel==='offroad') for(let i=0;i<10;i++){ const a=i*PI/5; add(new T.BoxGeometry(w2*1.04,.16,.22),rubber,0,Math.cos(a)*r,Math.sin(a)*r,a,0,0,w); }   // 越野胎的顆粒
     if(neon){ add(new T.TorusGeometry(r*.8,.045,6,24),rimM,-w2/2-.02,0,0,0,PI/2,0,w); add(new T.TorusGeometry(r*.8,.045,6,24),rimM,w2/2+.02,0,0,0,PI/2,0,w); }
+    if(moto) add(new T.CylinderGeometry(r*.58,r*.58,.03,20),metal,w2/2+.05,0,0,0,0,PI/2,w); // 碟煞
     wheels.push(w);
   }
-  tube(.07,wx*2,dark,0,wr,wz,0,0,PI/2); tube(.07,wx*2,dark,0,wr,-wz,0,0,PI/2);
+  if(!moto){ tube(.07,wx*2,dark,0,wr,wz,0,0,PI/2); tube(.07,wx*2,dark,0,wr,-wz,0,0,PI/2); }
   // 配件
-  const ry=buggy?1.25:sport?.9:.72,rz=sport?-1.75:-1.45;
-  if(L.part==='wing'){ box(2.3,.08,.62,paint,0,ry+.75,rz,-.12); box(.06,.42,.7,dark,-1.16,ry+.72,rz); box(.06,.42,.7,dark,1.16,ry+.72,rz); tube(.05,.75,metal,-.55,ry+.36,rz); tube(.05,.75,metal,.55,ry+.36,rz); }
+  const ry=moto?(heavy?1.5:1.15):buggy?1.25:sport?.9:.72,rz=moto?(heavy?-1.6:-1.38):sport?-1.75:-1.45;
+  if(moto){ if(L.part==='wing'){ box(1.0,.06,.42,paint,0,ry+.5,rz,-.12); tube(.04,.5,metal,-.3,ry+.25,rz); tube(.04,.5,metal,.3,ry+.25,rz); }
+    else if(L.part==='flag'){ tube(.035,1.8,metal,-.22,ry+.9,rz); const f=add(new T.PlaneGeometry(.8,.5),new T.MeshLambertMaterial({color:0xffd23f,side:T.DoubleSide}),.2,ry+1.55,rz); f.rotation.y=.25; ball(.07,metal,-.22,ry+1.82,rz); }
+    else if(L.part==='exhaust'){ for(const x of [-.3,.3]) add(new T.CylinderGeometry(.1,.13,.7,12),metal,x,ry-.35,rz-.05,1.3); } }
+  else if(L.part==='wing'){ box(2.3,.08,.62,paint,0,ry+.75,rz,-.12); box(.06,.42,.7,dark,-1.16,ry+.72,rz); box(.06,.42,.7,dark,1.16,ry+.72,rz); tube(.05,.75,metal,-.55,ry+.36,rz); tube(.05,.75,metal,.55,ry+.36,rz); }
   else if(L.part==='flag'){ tube(.035,2.4,metal,-.62,ry+1.2,rz); const f=add(new T.PlaneGeometry(.95,.55),new T.MeshLambertMaterial({color:0xffd23f,side:T.DoubleSide}),-.14,ry+2.1,rz,0,0,0); f.rotation.y=.25; ball(.07,metal,-.62,ry+2.42,rz); }
   else if(L.part==='exhaust'){ for(const x of [-.42,.42]){ add(new T.CylinderGeometry(.13,.16,1.1,12),metal,x,ry+.05,rz-.3,1.15); add(new T.CylinderGeometry(.16,.16,.16,12),dark,x,ry+.28,rz-.82,1.15); } }
   else { box(1.7,.07,.4,dark,0,ry+.32,rz); tube(.04,.34,metal,-.5,ry+.15,rz); tube(.04,.34,metal,.5,ry+.15,rz); }
   // 駕駛：身體、手臂握方向盤、頭
+  if(moto){ const H=RH.hip,tp=[0,H[1]+Math.cos(RH.lean)*.8,H[2]+Math.sin(RH.lean)*.8];
+    limb(H,tp,.34,suit); add(new T.CylinderGeometry(.35,.35,.12,14),paint,0,H[1]+.12,H[2]+.06,RH.lean);
+    for(const sx of [-1,1]){ const sh=[sx*.36,tp[1]-.08,tp[2]-.02],gp=[sx*RH.grip[0],RH.grip[1],RH.grip[2]],el=[(sh[0]+gp[0])/2+sx*.1,(sh[1]+gp[1])/2+.06,(sh[2]+gp[2])/2];
+      ball(.17,suit,sh[0],sh[1],sh[2]); limb(sh,el,.09,suit); limb(el,gp,.085,suit); ball(.1,dark,gp[0],gp[1],gp[2]);
+      const hp=[sx*.2,H[1],H[2]],kn=[sx*RH.knee[0],RH.knee[1],RH.knee[2]],pg=[sx*RH.peg[0],RH.peg[1],RH.peg[2]]; limb(hp,kn,.14,suit); limb(kn,pg,.12,suit); box(.16,.14,.32,dark,pg[0],pg[1]-.04,pg[2]+.08); }
+    add(new T.CylinderGeometry(.12,.14,.16,10),L.driver==='helmet'?dark:skin,0,tp[1]+.1,tp[2]+.04);
+    RH.hy=tp[1]+.45; RH.hz=tp[2]+.1; }
+  else {
   add(new T.CylinderGeometry(.3,.38,.78,14),suit,0,sy+.5,-.55,-.1); add(new T.CylinderGeometry(.31,.31,.12,14),paint,0,sy+.62,-.56,-.1);
   for(const x of [-1,1]){ ball(.17,suit,x*.36,sy+.82,-.56); add(new T.CylinderGeometry(.09,.085,.72,10),suit,x*.31,sy+.68,-.22,1.18,0,x*.12); ball(.1,dark,x*.24,sy+.58,.06);
     add(new T.CylinderGeometry(.14,.12,.85,10),suit,x*.2,sy+.14,-.05,PI/2-.12); }
-  add(new T.CylinderGeometry(.12,.14,.16,10),L.driver==='helmet'?dark:skin,0,sy+.97,-.57);
-  const hy=sy+1.32,hz=-.57,eye=(x,r,c)=>{ ball(r||.055,lam(c||0x15151c),x,hy+.06,hz+.4); };
-  if(L.driver==='bear'){ const br=lam(0x9a6a3a),cr=lam(0xf0d6ad); ball(.46,br,0,hy,hz); for(const x of [-.34,.34]){ ball(.17,br,x,hy+.38,hz); ball(.09,cr,x,hy+.38,hz+.1); }
+  add(new T.CylinderGeometry(.12,.14,.16,10),L.driver==='helmet'?dark:skin,0,sy+.97,-.57); }
+  const hy=moto?RH.hy:sy+1.32,hz=moto?RH.hz:-.57,eye=(x,r,c)=>{ ball(r||.055,lam(c||0x15151c),x,hy+.06,hz+.4); };
+  if(L.driver==='photo'){ ball(.44,skin,0,hy,hz); add(new T.SphereGeometry(.455,20,10,0,PI*2,0,PI*.32),lam(0x2a1f1a),0,hy,hz); // 頭與頭髮
+    if(L.face){ const img=new Image(),tx=new T.Texture(img),fm=new T.MeshBasicMaterial({color:0xf2c9a0}); img.onload=()=>{ tx.needsUpdate=true; fm.map=tx; fm.color.set(0xffffff); fm.needsUpdate=true; }; img.src=L.face; // 照片載入前先顯示膚色
+      const pl=PI*.82; add(new T.SphereGeometry(.448,28,18,PI/2-pl/2,pl,PI*.2,PI*.6),fm,0,hy,hz); }
+    else { eye(-.16); eye(.16); } }
+  else if(L.driver==='bear'){ const br=lam(0x9a6a3a),cr=lam(0xf0d6ad); ball(.46,br,0,hy,hz); for(const x of [-.34,.34]){ ball(.17,br,x,hy+.38,hz); ball(.09,cr,x,hy+.38,hz+.1); }
     ball(.2,cr,0,hy-.1,hz+.36,1.15,.85,1); ball(.07,lam(0x2a1b12),0,hy-.03,hz+.55); eye(-.17); eye(.17); }
   else if(L.driver==='bunny'){ const wh=lam(0xfafafa),pk=lam(0xffa8c8); ball(.44,wh,0,hy,hz); for(const x of [-.17,.17]){ ball(.14,wh,x,hy+.72,hz,1,3.2,.7); ball(.08,pk,x,hy+.72,hz+.06,1,3.6,.5); }
     ball(.16,wh,0,hy-.1,hz+.36,1.2,.8,1); ball(.055,pk,0,hy-.03,hz+.5); eye(-.17); eye(.17); }
@@ -181,14 +242,14 @@ function buildKart(T,L){
   else { ball(.47,paint,0,hy,hz); add(new T.SphereGeometry(.485,20,8,PI/2-.95,1.9,1.12,.6),new T.MeshPhongMaterial({color:0x10121c,shininess:160,specular:0xaaccff}),0,hy,hz);
     add(new T.TorusGeometry(.47,.03,6,24),lam(0xffffff),0,hy,hz,0,0,0); box(.5,.1,.3,dark,0,hy-.36,hz+.22); }
   // 特效用的零件
-  const flame=add(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:(NITRO[L.nitro]||NITRO.fire).cols[0]}),0,by+.05,(sport?-2.9:-2.6),-PI/2); flame.visible=false;
-  add(new T.CircleGeometry(sport?2.3:2,18),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.3}),0,.1,0,-PI/2);
+  const flame=add(new T.ConeGeometry(.4,2,8),new T.MeshBasicMaterial({color:(NITRO[L.nitro]||NITRO.fire).cols[0]}),0,moto?(heavy?.85:.7):by+.05,moto?(heavy?-2.4:-2.1):(sport?-2.9:-2.6),-PI/2); flame.visible=false;
+  const shadowM=add(new T.CircleGeometry(moto?1.5:sport?2.3:2,18),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.3}),0,.1,0,-PI/2);
   const sd=add(new T.SphereGeometry(2.7,14,10),new T.MeshBasicMaterial({color:0x66e0ff,transparent:true,opacity:.3}),0,1.1,0); sd.visible=false;
   const cl=new T.Group(),cm=new T.MeshBasicMaterial({color:0x3a3d4d});
   for(const [x,y,z,r] of [[0,0,0,1.5],[1.3,-.2,.2,1.1],[-1.3,-.2,-.1,1.2],[.4,.5,-.3,1]]) add(new T.SphereGeometry(r,10,8),cm,x,y,z,0,0,0,cl);
   cl.position.set(0,5,1.2); cl.visible=false; g.add(cl);
   const bolt=add(new T.ConeGeometry(.5,2.2,4),new T.MeshBasicMaterial({color:0xffe14a}),0,4.8,0,PI); bolt.visible=false;
-  g.userData={flame,shield:sd,cloud:cl,bolt,wheels};
+  g.userData={flame,shield:sd,cloud:cl,bolt,wheels,moto,shadow:shadowM};
   return g;
 }
 // 「我的造型」裡可以拖曳旋轉的 3D 預覽
@@ -303,8 +364,8 @@ function create(env,opts){
 
   /* ---- 車 ---- */
   const makeKart=L=>{ const g=buildKart(T,L); scene.add(g); return g; };
-  const BODIES=['std','sport','buggy'],PARTS=['none','wing','flag','exhaust'],DRIVERS=['helmet','bear','bunny','cap'];
-  const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{body:BODIES[i%3],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4],wheel:Object.keys(WHEEL)[i%5],nitro:Object.keys(NITRO)[(i+2)%5]};
+  const BODIES=['std','sport','buggy','scooter','bike'],PARTS=['none','wing','flag','exhaust'],DRIVERS=['helmet','bear','bunny','cap'];
+  const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{body:BODIES[(i*2+1)%5],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4],wheel:Object.keys(WHEEL)[i%5],nitro:Object.keys(NITRO)[(i+2)%5]};
   const karts=[];
   for(let i=0;i<NK;i++){
     const human=i<humans,slot=SLOTS[i];       // 所有車排成一直線同時出發，真人排在中間
@@ -568,10 +629,13 @@ function create(env,opts){
     if(flashT>0) flashT-=dt;
     if(pip){ pip.t-=dt; if(pip.t<=0) pip=null; }
     for(const k of karts){ const air=k.flags&16; k.mesh.position.set(k.x,air?Math.abs(Math.sin(t*5))*3.2+.6:0,k.z); k.mesh.rotation.x=air?t*11:0; k.mesh.rotation.y=k.h+((k.flags&8)&&!air?t*16:0); { const fl=k.mesh.userData.flame; fl.visible=!!(k.flags&1)&&!(k.flags&256); if(fl.visible){ const q=1.5+Math.random()*.9,big=k.flags&128?1.9:1.4; fl.scale.set(big,q,big); fl.material.color.setHex(k.flags&128?nitroCol(k,Math.floor(t*12)):0xffa41a); } } { const sp=Math.hypot(k.vx,k.vz)*dt*2; for(const wl of k.mesh.userData.wheels) wl.rotation.x+=sp; } k.mesh.userData.shield.visible=!!(k.flags&4); k.mesh.userData.cloud.visible=!!(k.flags&64); k.mesh.userData.bolt.visible=!!(k.flags&32)&&Math.floor(t*8)%2===0; }
+    for(const k of karts){ if(!k.mesh.userData.moto||(k.flags&512)) continue; // 機車過彎壓車
+      const dh=wrap(k.h-(k.ph==null?k.h:k.ph)); k.ph=k.h; const tg=clamp(-dh/Math.max(dt,1e-3)*.22,-.55,.55); k.lean=(k.lean||0)+(tg-(k.lean||0))*Math.min(1,dt*7); k.mesh.rotation.z=k.lean;
+      const sh=k.mesh.userData.shadow; if(sh){ sh.rotation.set(0,0,0); sh.rotateZ(-k.lean); sh.rotateX(-Math.PI/2); sh.position.set(Math.sin(k.lean)*.1,.1*Math.cos(k.lean)-Math.sin(Math.abs(k.lean))*.0,0); } } // 影子保持平貼地面
     for(const k of karts){ // 被飛彈炸飛：拋到半空翻兩圈，落地揚起塵土
       if(k.flags&512){ if(!k.flyAt){ k.flyAt=t; burst(k.x,k.z,0xff7a1a,7,1,.6); } const u=Math.min(1,(t-k.flyAt)/1.5);
         k.mesh.position.y=Math.sin(u*Math.PI)*9; k.mesh.rotation.x=u*Math.PI*4; k.mesh.rotation.z=Math.sin(u*Math.PI*2)*.5; }
-      else if(k.flyAt){ k.flyAt=0; k.mesh.rotation.z=0; burst(k.x,k.z,0xd9c9a8,5,.4,.5); } }
+      else if(k.flyAt){ k.flyAt=0; if(!k.mesh.userData.moto) k.mesh.rotation.z=0; burst(k.x,k.z,0xd9c9a8,5,.4,.5); } }
     for(const k of karts){ if(k.left||!(k.flags&2)||k.z>.5){ k.sk=null; continue; } // 甩尾中才留胎痕
       const sx=Math.sin(k.h),cz=Math.cos(k.h),w=[[k.x-sx*1.1+cz*1.12,k.z-cz*1.1-sx*1.12],[k.x-sx*1.1-cz*1.12,k.z-cz*1.1+sx*1.12]];
       if(!k.sk) k.sk=w; else if(Math.hypot(w[0][0]-k.sk[0][0],w[0][1]-k.sk[0][1])>.7){ for(let j=0;j<2;j++) skid(k.sk[j][0],k.sk[j][1],w[j][0],w[j][1]); k.sk=w; } }
@@ -755,6 +819,16 @@ function preview(ctx,w,h,L,t){
   ctx.fillStyle='#4a4a55'; ctx.beginPath(); ctx.moveTo(w*.42,h*.5); ctx.lineTo(w*.58,h*.5); ctx.lineTo(w*.95,h); ctx.lineTo(w*.05,h); ctx.fill();
   const x=w/2+Math.sin(t*1.5)*10,y=h*.86,s=2.3,B=L.body,ww=B==='buggy'?13:10,wh=B==='buggy'?20:B==='sport'?12:15,bw=B==='sport'?40:36,bh=B==='sport'?13:B==='buggy'?19:16,lift=B==='buggy'?6:0;
   const R=(a,b,c,d)=>ctx.fillRect(x+a*s,y+b*s,c*s,d*s);
+  if(B==='scooter'||B==='bike'){ const hv=B==='bike',lean=Math.sin(t*1.5)*.12; ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x,y+3*s,16*s,5*s,0,0,7); ctx.fill();
+    ctx.save(); ctx.translate(x,y); ctx.rotate(lean); const r=(a,b,c,d)=>ctx.fillRect(a*s,b*s,c*s,d*s);
+    ctx.fillStyle='#22222c'; r(-4,-20,8,22); ctx.fillStyle=L.color; r(hv?-11:-9,hv?-36:-30,hv?22:18,hv?18:14); ctx.fillStyle='#ff3b3b'; r(-5,hv?-32:-27,10,3); ctx.fillStyle='#fff'; r(-2,hv?-36:-30,4,hv?18:14);
+    ctx.fillStyle='#22222c'; r(-15,hv?-40:-44,30,3); ctx.fillStyle='#f4f4f8'; r(-8,hv?-58:-60,16,hv?20:18); ctx.fillStyle=L.color; r(-8,hv?-42:-46,16,4);
+    const hy=(hv?-64:-68)*s,C=(cx,cy,rr,c)=>{ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(cx,cy,rr,0,7); ctx.fill(); };
+    if(L.driver==='bear'){ C(-7*s,hy-7*s,3.6*s,'#9a6a3a'); C(7*s,hy-7*s,3.6*s,'#9a6a3a'); C(0,hy,9*s,'#9a6a3a'); }
+    else if(L.driver==='bunny'){ ctx.fillStyle='#fff'; ctx.fillRect(-6*s,hy-22*s,4*s,15*s); ctx.fillRect(2*s,hy-22*s,4*s,15*s); C(0,hy,9*s,'#fff'); }
+    else if(L.driver==='cap'){ C(0,hy,9*s,'#ffd9a8'); ctx.fillStyle=L.color; ctx.beginPath(); ctx.arc(0,hy-s,9*s+.5,Math.PI,0); ctx.fill(); }
+    else C(0,hy,9*s,L.color);
+    ctx.restore(); return; }
   ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x,y+3*s,28*s,6*s,0,0,7); ctx.fill();
   ctx.fillStyle='#22222c'; R(-bw/2-ww+3,-wh+2,ww,wh); R(bw/2-3,-wh+2,ww,wh);
   if(L.part==='exhaust'){ ctx.fillStyle='#b9c2d0'; R(-9,-8-lift,6,7); R(3,-8-lift,6,7); }
@@ -816,12 +890,13 @@ function thumb(ctx,w,h,t){
   best:{label:'最快紀錄',fmt:v=>fmtTime(v),lower:true},
   stageBest:i=>{ const v=getRec(i); return v==null?'':fmtTime(v); },
   hubBest:()=>{ let i=0; try{ i=+localStorage.getItem('arcade.kart.last')||0; }catch(e){} const v=getRec(i); return v==null?'尚無紀錄':'最快紀錄 <b>'+STAGES[i].name+' '+fmtTime(v)+'</b>'; },
-  looks:[{key:'body',label:'車輛',opts:[{id:'std',label:'標準車'},{id:'sport',label:'跑車'},{id:'buggy',label:'越野車'}]},
+  looks:[{key:'body',label:'車輛',opts:[{id:'std',label:'標準車'},{id:'sport',label:'跑車'},{id:'buggy',label:'越野車'},{id:'scooter',label:'機車'},{id:'bike',label:'重型機車'}]},
     {key:'color',label:'車輛顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#ff7eb6']},
     {key:'part',label:'配件',opts:[{id:'none',label:'小尾翼'},{id:'wing',label:'大尾翼'},{id:'flag',label:'旗子'},{id:'exhaust',label:'排氣管'}]},
-    {key:'driver',label:'人物',opts:[{id:'helmet',label:'賽車手'},{id:'cap',label:'棒球帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'}]},
+    {key:'driver',label:'人物',opts:[{id:'helmet',label:'賽車手'},{id:'cap',label:'棒球帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'},{id:'photo',label:'我的照片'}]},
+    {key:'face',label:'個人照',type:'photo'},
     {key:'wheel',label:'輪子',opts:[{id:'std',label:'銀框'},{id:'gold',label:'金框'},{id:'race',label:'紅框寬胎'},{id:'offroad',label:'越野胎'},{id:'neon',label:'霓虹'}]},
     {key:'nitro',label:'氮氣特效',opts:[{id:'fire',label:'火焰'},{id:'ice',label:'冰晶'},{id:'rainbow',label:'彩虹'},{id:'bolt',label:'閃電'},{id:'star',label:'星光'}]}],
-  stagePreview,stageInfo,stageViewer,ready:()=>!!window.THREE,preview,viewer,thumb,load,create
+  stagePreview,stageInfo,stageViewer,ready:()=>!!window.THREE,preview,viewer,thumb,load,create,_buildKart:buildKart
 };
 })();

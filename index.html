@@ -45,6 +45,7 @@ kbd{font-family:var(--pixel);font-size:10px;background:var(--ink);border:1px sol
 .lk{width:100%;max-width:360px;aspect-ratio:9/5;margin:0 auto;display:block;background:var(--ink);border:2px solid #0b0a1c;border-radius:4px}
 .hint{font-size:13px}
 .chips .olbl{align-self:center;color:var(--dim);font-size:13px;font-weight:700;margin-right:2px}
+.ph{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--yellow);align-self:center}
 .lk.demo{aspect-ratio:16/9;max-width:400px}
 .lk.sp{aspect-ratio:24/11;max-width:none}
 .spRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -206,7 +207,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=62; // 每次改版加一
+window.ARCADE_V=64; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -394,17 +395,38 @@ function padSpec(g,mode){ return typeof g.touch==='function'?g.touch(mode):g.tou
 let lookPrev=null;
 function normLook(g,o){
   if(!g.looks) return null; o=o&&typeof o==='object'?o:{}; const r={};
-  for(const L of g.looks){ const ids=L.opts.map(x=>x.id||x); r[L.key]=ids.includes(o[L.key])?o[L.key]:ids[0]; }
+  for(const L of g.looks){ if(L.type==='photo'){ const v=o[L.key]; r[L.key]=typeof v==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(v)&&v.length<90000?v:''; continue; }
+    const ids=L.opts.map(x=>x.id||x); r[L.key]=ids.includes(o[L.key])?o[L.key]:ids[0]; }
   return r;
 }
 function lookOf(g){ let o=null; try{o=JSON.parse(load('arcade.look.'+g.id)||'null');}catch(e){} return normLook(g,o); }
 function closeLook(){ if(lookPrev&&lookPrev.v){ try{lookPrev.v.destroy();}catch(e){} } lookPrev=null; }
+// 個人照：上傳後自動裁成正方形（直式照片取上半部，臉通常在那裡）、縮成 192×192
+function photoRow(L,look){
+  const v=look[L.key];
+  return '<div class="lkrow"><span>'+L.label+'</span><div class="chips"><img id="phImg" class="ph" alt="個人照"'+(v?' src="'+v+'"':' hidden')+'>'+
+    '<label class="chip" for="phFile">'+(v?'換一張照片':'上傳照片')+'</label><input type="file" id="phFile" accept="image/*" hidden>'+
+    '<button class="chip" id="phDel"'+(v?'':' hidden')+'>移除</button></div></div><p class="hint">選「我的照片」人物時，角色的臉會換成這張照片。照片只存在這台裝置，連線比賽時房間裡的玩家看得到。</p>';
+}
+function photoToFace(file,cb){
+  const fr=new FileReader(); fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const S=192,c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d'),w=img.naturalWidth,h=img.naturalHeight;
+    const sz=Math.min(w,h)*(h>w?.92:1),sx=(w-sz)/2,sy=h>w?Math.max(0,(h-sz)*.28):(h-sz)/2; x.drawImage(img,sx,sy,sz,sz,0,0,S,S); cb(c.toDataURL('image/jpeg',.82)); };
+    img.onerror=()=>cb(null); img.src=fr.result; }; fr.readAsDataURL(file);
+}
+function bindPhoto(g,look){
+  const L=(g.looks||[]).find(x=>x.type==='photo'); if(!L) return;
+  const apply=v=>{ look[L.key]=v; const dl=g.looks.find(x=>(x.opts||[]).some(o=>o.id==='photo'));
+    if(dl&&v) look[dl.key]='photo'; else if(dl&&!v&&look[dl.key]==='photo') look[dl.key]=dl.opts[0].id||dl.opts[0];
+    save('arcade.look.'+g.id,JSON.stringify(look)); if(lookPrev&&lookPrev.v) lookPrev.v.set(look); lookCard(); };
+  const f=$('#phFile'); if(f) f.addEventListener('change',()=>{ const file=f.files&&f.files[0]; if(!file) return; photoToFace(file,v=>{ if(v) apply(v); }); });
+  on('phDel',()=>apply(''));
+}
 async function lookCard(){
   const g=cur,look=lookOf(g); let use3d=!!g.viewer;
   if(use3d&&g.load){ showCard('<h3>我的造型</h3><p>載入 3D 預覽中…</p>'); try{ await g.load(); }catch(e){ use3d=false; } if(cur!==g||state!=='ready') return; }
   closeLook();
   showCard('<h3>我的造型</h3>'+(use3d?'<div id="lkBox" class="lk"></div><p class="hint">按住拖曳可以旋轉，滾輪可以拉近拉遠</p>':'<canvas id="lkCv" width="720" height="400" class="lk"></canvas>')+
-    g.looks.map(L=>'<div class="lkrow"><span>'+L.label+'</span><div class="chips">'+L.opts.map(o=>L.type==='color'
+    g.looks.map(L=>L.type==='photo'?photoRow(L,look):'<div class="lkrow"><span>'+L.label+'</span><div class="chips">'+L.opts.map(o=>L.type==='color'
       ?'<button class="sw'+(look[L.key]===o?' sel':'')+'" data-k="'+L.key+'" data-o="'+o+'" style="background:'+o+'" aria-label="顏色 '+o+'"></button>'
       :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join('')+'</div></div>').join('')+
     '<p>選好就會自動記住，下次打開還在。</p><div class="row"><button class="btn main" id="lkOk">完成</button></div>');
@@ -415,6 +437,7 @@ async function lookCard(){
     card.querySelectorAll('[data-k="'+b.dataset.k+'"]').forEach(x=>x.classList.toggle('sel',x===b));
     if(lookPrev&&lookPrev.v) lookPrev.v.set(look);
   }));
+  bindPhoto(g,look);
   on('lkOk',startCard);
 }
 function killInst(){ closeStage(); if(inst){ try{inst.destroy();}catch(e){} inst=null; } stage.innerHTML=''; }
