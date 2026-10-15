@@ -130,14 +130,31 @@ function drawBalloon(ctx,cx,cy,t,r0,shape,col){
   ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(cx-r*.35,cy-r*.4,r*.25,r*.16,-.6,0,7); ctx.fill();
   ctx.fillStyle=mix(c,.62); ctx.fillRect(cx-2,cy-r-3,4,4);
 }
+// 道具：外圈顏色＋下方小字，一眼看得出是什麼（水球＋1、威力＋1、速度＋1、針＝被困時脫困）
+const ITEM_INFO={b:['水球','#4f9dff'],p:['威力','#ff5d8f'],s:['速度','#ff9d3d'],n:['針','#3fbf6a']};
 function drawItem(ctx,x,y,type,t){
-  const cx=x+T/2,cy=y+T/2+Math.sin(t*4+x)*1.5;
-  ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(cx,y+T-6,11,3,0,0,7); ctx.fill();
-  ctx.fillStyle='#fff'; ctx.strokeStyle='#14122b'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,13,0,7); ctx.fill(); ctx.stroke();
+  const cx=x+T/2,cy=y+T/2-2+Math.sin(t*4+x)*1.5,info=ITEM_INFO[type]||ITEM_INFO.n;
+  ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(cx,y+T-5,11,3,0,0,7); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.strokeStyle=info[1]; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(cx,cy,13,0,7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle='#14122b'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(cx,cy,14.5,0,7); ctx.stroke();
   if(type==='b'){ drawBalloon(ctx,cx,cy+1,0,8); }
-  else if(type==='p'){ ctx.fillStyle='#ff5d8f'; ctx.beginPath(); ctx.arc(cx,cy+3,7,0,7); ctx.fill(); ctx.fillRect(cx-3,cy-9,6,7); ctx.fillStyle='#14122b'; ctx.fillRect(cx-4,cy-10,8,2); }
-  else if(type==='s'){ ctx.fillStyle='#ff9d3d'; ctx.fillRect(cx-7,cy-7,7,10); ctx.fillRect(cx-7,cy,15,5); ctx.fillStyle='#14122b'; ctx.beginPath(); ctx.arc(cx-4,cy+7,2.5,0,7); ctx.arc(cx+5,cy+7,2.5,0,7); ctx.fill(); }
-  else { ctx.strokeStyle='#6b7280'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(cx-7,cy+7); ctx.lineTo(cx+6,cy-6); ctx.stroke(); ctx.fillStyle='#ff5d8f'; ctx.beginPath(); ctx.arc(cx-7,cy+7,3,0,7); ctx.fill(); }
+  else if(type==='p'){ // 威力藥水
+    ctx.fillStyle='#ff5d8f'; ctx.beginPath(); ctx.arc(cx,cy+3,7,0,7); ctx.fill(); ctx.fillRect(cx-2.5,cy-7,5,5); ctx.strokeStyle='#14122b'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(cx,cy+3,7,0,7); ctx.stroke();
+    ctx.fillStyle='#b5651d'; ctx.fillRect(cx-3.5,cy-10,7,3.5); ctx.fillStyle='rgba(255,255,255,.75)'; ctx.beginPath(); ctx.ellipse(cx-3,cy+1,1.6,2.6,.4,0,7); ctx.fill(); }
+  else if(type==='s'){ // 溜冰鞋
+    ctx.fillStyle='#ff9d3d'; ctx.beginPath(); ctx.moveTo(cx-7,cy-8); ctx.lineTo(cx-1,cy-8); ctx.lineTo(cx-1,cy-1); ctx.quadraticCurveTo(cx+8,cy-1,cx+8,cy+4); ctx.lineTo(cx-7,cy+4); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#14122b'; ctx.lineWidth=1.2; ctx.stroke();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(cx-6,cy-5); ctx.lineTo(cx-2,cy-5); ctx.moveTo(cx-6,cy-2); ctx.lineTo(cx-2,cy-2); ctx.stroke();
+    ctx.fillStyle='#14122b'; ctx.beginPath(); ctx.arc(cx-4,cy+7,2.6,0,7); ctx.arc(cx+5,cy+7,2.6,0,7); ctx.fill(); }
+  else { // 針：銀色的長針，針眼穿紅線，閃一下
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(-Math.PI/4);
+    const g=ctx.createLinearGradient(-2,0,2,0); g.addColorStop(0,'#9aa3b5'); g.addColorStop(.5,'#ffffff'); g.addColorStop(1,'#8a93a5'); ctx.fillStyle=g;
+    ctx.beginPath(); ctx.moveTo(0,12); ctx.lineTo(-1.8,-6); ctx.quadraticCurveTo(-2,-11,0,-11.5); ctx.quadraticCurveTo(2,-11,1.8,-6); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#4a5060'; ctx.lineWidth=.9; ctx.stroke();
+    ctx.fillStyle='#14122b'; ctx.beginPath(); ctx.ellipse(0,-8.3,.7,1.8,0,0,7); ctx.fill();
+    ctx.strokeStyle='#e23b3b'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(0,-8.3); ctx.bezierCurveTo(5,-12,6,-4,3,-1); ctx.bezierCurveTo(1,1,4,4,6,3); ctx.stroke(); ctx.restore();
+    const sp=(Math.sin(t*5+x)+1)/2; ctx.fillStyle='rgba(255,255,255,'+sp+')'; ctx.beginPath(); ctx.moveTo(cx-7,cy+5); for(let k=0;k<8;k++){ const a=k*Math.PI/4,r=k%2?.9:3.2; ctx.lineTo(cx-7+Math.cos(a)*r,cy+5+Math.sin(a)*r); } ctx.fill(); }
+  // 下方小字
+  ctx.font='900 8px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; const tw=ctx.measureText(info[0]).width+6;
+  ctx.fillStyle=info[1]; ctx.beginPath(); ctx.roundRect?ctx.roundRect(cx-tw/2,cy+10,tw,10,4):ctx.rect(cx-tw/2,cy+10,tw,10); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText(info[0],cx,cy+15.5);
 }
 function drawTile(ctx,st,v,x,y,gx,gy){
   ctx.fillStyle=st.g[(gx+gy)%2]; ctx.fillRect(x,y,T,T);
@@ -194,7 +211,7 @@ function create(env,opts){
     const i=cellOf(p); if(p.state!=='alive'||bombAt[i]||active(p)>=p.maxB) return false;
     bombs.push({x:i%COLS,y:(i/COLS)|0,t:FUSE,power:p.power,owner:p.id,done:false}); bombAt[i]=1; sfx('place'); return true;
   }
-  function rollItem(){ const r=Math.random(); return r<.36?'b':r<.68?'p':r<.92?'s':'n'; }
+  function rollItem(){ const r=Math.random(); return r<.32?'b':r<.6?'p':r<.82?'s':'n'; } // 針 18%
   function detonate(first){
     const q=[first]; first.done=true;
     while(q.length){ const b=q.pop(),i0=b.y*COLS+b.x,wc=players[b.owner]?players[b.owner].wc:0; bombAt[i0]=0; flameT[i0]=FLAME; flameC[i0]=wc;
@@ -438,10 +455,10 @@ function thumb(ctx,w,h,t){
   ctx.restore();
 }
 
-(window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={_draw:drawChar,
+(window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={_draw:drawChar,_item:drawItem,
   name:'水球炸翻天',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
   desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。7 個場景、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
-  goal:'放水球把對手困進水泡，再走過去碰破。自己被困住時，有針可以脫困；沒有針就會出局。',
+  goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困。沒有針被困住就會出局。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
   variants:[{id:'easy',label:'電腦：簡單'},{id:'normal',label:'電腦：中等',def:true},{id:'hard',label:'電腦：困難'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
