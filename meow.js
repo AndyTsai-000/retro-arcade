@@ -249,8 +249,6 @@ function create(env,opts){
   const RC=k=>[k/N|0,k%N];
   const cellX=k=>BX+GAP+(k%N)*(CS+GAP),cellY=k=>BY+GAP+(k/N|0)*(CS+GAP);
   const cellXY=k=>[cellX(k)+CS/2,cellY(k)+CS/2];
-  // 開局送一隻：只有一格的顏色區塊，貓一定在那裡
-  for(let g=0;g<N;g++){ const ks=[]; for(let k=0;k<N*N;k++) if(P.reg[k]===g) ks.push(k); if(ks.length===1){ st[ks[0]]=2; break; } }
   const sees=(a,b)=>{ const [r,cc]=RC(a),[r2,c2]=RC(b); return r2===r||c2===cc||P.reg[a]===P.reg[b]||Math.abs(r2-r)<=1&&Math.abs(c2-cc)<=1; };
   function refreshAuto(){ for(let k=0;k<N*N;k++) if(st[k]===3) st[k]=0;
     if(auto) for(let k=0;k<N*N;k++) if(st[k]===2) for(let j=0;j<N*N;j++) if(j!==k&&st[j]===0&&sees(k,j)) st[j]=3; }
@@ -275,7 +273,7 @@ function create(env,opts){
   }
   function undo(){ if(ended) return; const h=hist.pop(); if(!h) return; for(let i=h.length-1;i>=0;i--) st[h[i][0]]=h[i][1]; refreshAuto(); env.sfx('click'); }
   function restart(){ if(ended) return; for(let k=0;k<N*N;k++) if(st[k]!==2||k!==giftK) st[k]=0; hist=[]; hintK.clear(); refreshAuto(); env.sfx('click'); }
-  const giftK=st.indexOf(2);
+  const giftK=-1; // 每關一開始都沒有貓，只有一格的顏色區塊也要自己放
   function toggleAuto(){ auto=!auto; try{ localStorage.setItem(autoKey,auto?'1':'0'); }catch(e){} refreshAuto(); env.sfx('click'); }
   function win(){ ended=true; winT=0; const time=t,old=getRec(lv); let rec=false;
     if(old==null||time<old){ rec=true; try{ localStorage.setItem(recKey(lv),String(time)); }catch(e){} }
