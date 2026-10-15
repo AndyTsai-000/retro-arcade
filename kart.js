@@ -1,4 +1,4 @@
-// 甩尾卡丁大賽：three.js 畫面，物理是平面上的 2D（位置、車頭角度、速度向量）。
+// 競速卡丁車：three.js 畫面，物理是平面上的 2D（位置、車頭角度、速度向量）。
 // 連線時每個人自己算自己的車，房主負責電腦車並轉送所有人的位置。
 (function(){
 'use strict';
@@ -1096,7 +1096,7 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
-  name:'甩尾卡丁大賽',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,bots:true,
+  name:'競速卡丁車',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,bots:true,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 20 關，星星越多越難，4、5 星路比較窄、彎比較急，還有不好走的捷徑；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
   goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣，甩尾放開後馬上按一下 ↑ 可以甩噴（手機按 ▲）。4、5 星賽道有碎石捷徑，路短但開不快又有石頭擋路。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
