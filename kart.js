@@ -264,13 +264,13 @@ function buildKart(T,L){
   else { ball(.47,paint,0,hy,hz); add(new T.SphereGeometry(.485,20,8,PI/2-.95,1.9,1.12,.6),new T.MeshPhongMaterial({color:0x10121c,shininess:160,specular:0xaaccff}),0,hy,hz);
     add(new T.TorusGeometry(.47,.03,6,24),lam(0xffffff),0,hy,hz,0,0,0); box(.5,.1,.3,dark,0,hy-.36,hz+.22); }
   const headG=new T.Group(); for(const c of g.children.slice(n1)){ c.position.y-=hy; c.position.z-=hz; headG.add(c); } headG.position.set(0,hy,hz); g.add(headG);
-  const anim=[],D=L.deco,goldD=new T.MeshPhongMaterial({color:0xffc928,shininess:140,specular:0xffffff}),hTop=L.driver==='photo'&&L.face&&!/^data:image\/jpeg/.test(L.face)?.78:L.driver==='bunny'?.95:.5;
+  const anim=[],D=new Set(String(L.deco||'').split(',')),goldD=new T.MeshPhongMaterial({color:0xffc928,shininess:140,specular:0xffffff}),hTop=L.driver==='photo'&&L.face&&!/^data:image\/jpeg/.test(L.face)?.78:L.driver==='bunny'?.95:.5;
   const hadd=(geo,m,x,y,z,rx,ry,rz)=>{ const b=new T.Mesh(geo,m); b.position.set(x,y,z); b.rotation.set(rx||0,ry||0,rz||0); headG.add(b); return b; };
-  if(D==='halo'){ const h=hadd(new T.TorusGeometry(.36,.055,10,28),new T.MeshBasicMaterial({color:0xfff2a8}),0,hTop+.32,0,PI/2); anim.push(t=>{ h.position.y=hTop+.32+Math.sin(t*3)*.05; h.rotation.z=t*1.2; }); }
-  else if(D==='horns'){ for(const x of [-1,1]){ const c=hadd(new T.ConeGeometry(.1,.38,10),lam(0xd32f2f),x*.26,hTop+.08,.05,0,0,-x*.45); c.scale.set(1,1,1); } }
-  else if(D==='crown'){ const cr=new T.Group(); cr.position.set(0,hTop+.06,0); headG.add(cr); const base=new T.Mesh(new T.CylinderGeometry(.3,.27,.16,16,1,true),goldD); base.material.side=T.DoubleSide; cr.add(base);
+  if(D.has('halo')){ const h=hadd(new T.TorusGeometry(.36,.055,10,28),new T.MeshBasicMaterial({color:0xfff2a8}),0,hTop+.32,0,PI/2); anim.push(t=>{ h.position.y=hTop+.32+Math.sin(t*3)*.05; h.rotation.z=t*1.2; }); }
+  else if(D.has('horns')){ for(const x of [-1,1]){ const c=hadd(new T.ConeGeometry(.1,.38,10),lam(0xd32f2f),x*.26,hTop+.08,.05,0,0,-x*.45); c.scale.set(1,1,1); } }
+  else if(D.has('crown')){ const cr=new T.Group(); cr.position.set(0,hTop+.06,0); headG.add(cr); const base=new T.Mesh(new T.CylinderGeometry(.3,.27,.16,16,1,true),goldD); base.material.side=T.DoubleSide; cr.add(base);
     for(let i=0;i<6;i++){ const a=i*PI/3,sp=new T.Mesh(new T.ConeGeometry(.07,.2,6),goldD); sp.position.set(Math.cos(a)*.28,.17,Math.sin(a)*.28); cr.add(sp); const gm=new T.Mesh(new T.SphereGeometry(.045,8,6),lam([0xe23b3b,0x3d8bff,0x5fd068][i%3])); gm.position.set(Math.cos(a)*.3,0,Math.sin(a)*.3); cr.add(gm); } cr.rotation.z=.12; }
-  else if(D==='propeller'){ const cap=hadd(new T.SphereGeometry(.3,14,8,0,PI*2,0,PI/2),lam(0x3d8bff),0,hTop-.08,0); hadd(new T.CylinderGeometry(.025,.025,.22,8),lam(0x22222c),0,hTop+.12,0); const pr=new T.Group(); pr.position.set(0,hTop+.24,0); headG.add(pr);
+  else if(D.has('propeller')){ const cap=hadd(new T.SphereGeometry(.3,14,8,0,PI*2,0,PI/2),lam(0x3d8bff),0,hTop-.08,0); hadd(new T.CylinderGeometry(.025,.025,.22,8),lam(0x22222c),0,hTop+.12,0); const pr=new T.Group(); pr.position.set(0,hTop+.24,0); headG.add(pr);
     for(const sd of [-1,1]){ const bl=new T.Mesh(new T.BoxGeometry(.5,.025,.1),lam(sd>0?0xff5d4f:0xffd23f)); bl.position.x=sd*.25; pr.add(bl); } anim.push(t=>{ pr.rotation.y=t*14; }); }
   const dv=new T.Group(); for(const c of g.children.slice(n0)){ c.position.z-=hz; dv.add(c); } dv.position.z=hz; g.add(dv);
   { const hood=moto?(heavy?[0,1.66,1.05]:[0,1.85,.78]):buggy?[0,1.3,1.25]:sport?[0,.66,1.45]:[0,.7,1.55];
@@ -278,19 +278,19 @@ function buildKart(T,L){
       at(new T.SphereGeometry(.26,12,10),fur,0,.26,0).scale.set(1,1.05,.9); at(new T.SphereGeometry(.13,10,8),cr,0,.24,.17); at(new T.SphereGeometry(.21,12,10),fur,0,.62,0);
       for(const x of [-.15,.15]){ at(new T.SphereGeometry(.075,8,6),fur,x,.8,0); at(new T.SphereGeometry(.09,8,6),fur,x*1.6,.24,.08); at(new T.SphereGeometry(.09,8,6),fur,x*1.1,.04,.12); at(new T.SphereGeometry(.026,6,5),lam(0x15151c),x*.5,.66,.18); }
       at(new T.SphereGeometry(.08,8,6),cr,0,.57,.17); at(new T.SphereGeometry(.028,6,5),lam(0x15151c),0,.6,.24); p.scale.setScalar(sc); return p; };
-    if(D==='bear'){ const b=plush(1,0xb07a48); b.position.set(moto?0:.55,ry+(moto?-.05:.02),rz+(moto?.15:.05)); g.add(b); }
-    else if(D==='charm'){ tube(.025,1.4,metal,-.55,ry+.7,rz); tube(.02,.4,metal,-.38,ry+1.4,rz,0,0,PI/2); const sw=new T.Group(); sw.position.set(-.2,ry+1.4,rz); g.add(sw);
+    if(D.has('bear')){ const b=plush(1,0xb07a48); b.position.set(moto?0:.55,ry+(moto?-.05:.02),rz+(moto?.15:.05)); g.add(b); }
+    if(D.has('charm')){ tube(.025,1.4,metal,-.55,ry+.7,rz); tube(.02,.4,metal,-.38,ry+1.4,rz,0,0,PI/2); const sw=new T.Group(); sw.position.set(-.2,ry+1.4,rz); g.add(sw);
       const str=new T.Mesh(new T.CylinderGeometry(.008,.008,.28,4),lam(0xffffff)); str.position.y=-.14; sw.add(str); const b=plush(.8,0xff9ec4); b.position.y=-.95; sw.add(b);
       anim.push((t,sp)=>{ sw.rotation.z=Math.sin(t*4.2)*(.25+Math.min(.35,(sp||0)*.006)); sw.rotation.x=-Math.min(.5,(sp||0)*.008)+Math.sin(t*3.1)*.08; }); }
-    else if(D==='duck'){ const d=new T.Group(),yl=lam(0xffd23f); const at=(geo,m,x,y,z)=>{ const b=new T.Mesh(geo,m); b.position.set(x,y,z); d.add(b); return b; };
+    if(D.has('duck')){ const d=new T.Group(),yl=lam(0xffd23f); const at=(geo,m,x,y,z)=>{ const b=new T.Mesh(geo,m); b.position.set(x,y,z); d.add(b); return b; };
       at(new T.SphereGeometry(.28,14,10),yl,0,.22,0).scale.set(1,.8,1.25); at(new T.SphereGeometry(.18,12,10),yl,0,.52,.16); const bk=at(new T.ConeGeometry(.07,.18,8),lam(0xff8a1a),0,.5,.36); bk.rotation.x=PI/2;
       for(const x of [-.08,.08]) at(new T.SphereGeometry(.03,6,5),lam(0x15151c),x,.57,.3); at(new T.SphereGeometry(.12,8,6),yl,0,.32,-.32).scale.set(1,.7,1);
       d.position.set(hood[0],hood[1],hood[2]); g.add(d); anim.push(t=>{ d.rotation.z=Math.sin(t*5)*.12; }); }
-    else if(D==='balloon'){ const bx=moto?.25:-.6,by2=ry+2.5,bal=new T.Group(); bal.position.set(bx,by2,rz-.1); g.add(bal); const rd=new T.MeshPhongMaterial({color:0xff3b5c,shininess:120,specular:0xffffff});
+    if(D.has('balloon')){ const bx=moto?.25:.6,by2=ry+2.5,bal=new T.Group(); bal.position.set(bx,by2,rz-.1); g.add(bal); const rd=new T.MeshPhongMaterial({color:0xff3b5c,shininess:120,specular:0xffffff});
       for(const x of [-.17,.17]){ const s2=new T.Mesh(new T.SphereGeometry(.24,14,12),rd); s2.position.set(x,.08,0); bal.add(s2); } const cn=new T.Mesh(new T.ConeGeometry(.33,.42,16),rd); cn.rotation.x=PI; cn.position.y=-.2; bal.add(cn);
       const strg=new T.Mesh(new T.CylinderGeometry(.008,.008,1,4),lam(0xffffff)); g.add(strg); anim.push(t=>{ bal.position.y=by2+Math.sin(t*2)*.12; bal.rotation.z=Math.sin(t*1.6)*.2; const top=bal.position;
         strg.position.set((bx+top.x)/2,(ry+.2+top.y-.4)/2,rz-.1); strg.scale.y=top.y-.4-(ry+.2); }); }
-    else if(D==='wings'){ const wm=new T.MeshPhongMaterial({color:0xffffff,shininess:30,side:T.DoubleSide}),wx=moto?.38:buggy?1.0:.85,wy=moto?(heavy?1.4:1.15):by+.55,wz=moto?-.4:-.6;
+    if(D.has('wings')){ const wm=new T.MeshPhongMaterial({color:0xffffff,shininess:30,side:T.DoubleSide}),wx=moto?.38:buggy?1.0:.85,wy=moto?(heavy?1.4:1.15):by+.55,wz=moto?-.4:-.6;
       for(const sd of [-1,1]){ const wg=new T.Group(); wg.position.set(sd*wx,wy,wz); g.add(wg);
         for(let i=0;i<3;i++){ const f=new T.Mesh(new T.SphereGeometry(.4-i*.08,12,8),wm); f.scale.set(1.7,.42,.07); f.position.set(sd*(.45+i*.16),.16-i*.2,-i*.08); f.rotation.z=sd*(.35+i*.18); wg.add(f); }
         anim.push(t=>{ wg.rotation.z=sd*(Math.sin(t*6)*.35+.15); }); } } }
@@ -423,7 +423,7 @@ function create(env,opts){
   /* ---- 車 ---- */
   const makeKart=L=>{ const g=buildKart(T,L); scene.add(g); return g; };
   const BODIES=['std','sport','buggy','scooter','bike'],PARTS=['none','wing','flag','exhaust'],DRIVERS=['helmet','bear','bunny','cap'];
-  const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{deco:['charm','crown','balloon','halo','duck','propeller','wings','horns','bear'][(i*4+2)%9],body:BODIES[(i*2+1)%5],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4],wheel:Object.keys(WHEEL)[i%5],nitro:Object.keys(NITRO)[(i+2)%5]};
+  const lookFor=(i,human)=>(human?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null)||{deco:['crown','halo','propeller','horns'][i%4]+','+['charm','duck','balloon','wings','bear'][(i*3+1)%5],body:BODIES[(i*2+1)%5],color:COLORS[i],part:PARTS[(i*3+1)%4],driver:DRIVERS[(i+1)%4],wheel:Object.keys(WHEEL)[i%5],nitro:Object.keys(NITRO)[(i+2)%5]};
   const karts=[];
   for(let i=0;i<NK;i++){
     const human=i<humans,slot=SLOTS[i];       // 所有車排成一直線同時出發，真人排在中間
@@ -965,10 +965,10 @@ function thumb(ctx,w,h,t){
   hubBest:()=>{ let i=0; try{ i=+localStorage.getItem('arcade.kart.last')||0; }catch(e){} const v=getRec(i); return v==null?'尚無紀錄':'最快紀錄 <b>'+STAGES[i].name+' '+fmtTime(v)+'</b>'; },
   looks:[{key:'body',label:'車輛',opts:[{id:'std',label:'標準車'},{id:'sport',label:'跑車'},{id:'buggy',label:'越野車'},{id:'scooter',label:'機車'},{id:'bike',label:'重型機車'}]},
     {key:'color',label:'車輛顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#ff7eb6']},
-    {key:'part',label:'配件',opts:[{id:'none',label:'小尾翼'},{id:'wing',label:'大尾翼'},{id:'flag',label:'旗子'},{id:'exhaust',label:'排氣管'}]},
     {key:'driver',label:'人物',opts:[{id:'helmet',label:'賽車手'},{id:'cap',label:'棒球帽'},{id:'bear',label:'小熊'},{id:'bunny',label:'兔子'},{id:'photo',label:'我的照片'}]},
     {key:'face',label:'個人照',type:'photo'},
-    {key:'deco',label:'擺飾',opts:[{id:'none',label:'無'},{id:'charm',label:'娃娃吊飾'},{id:'bear',label:'小熊娃娃'},{id:'duck',label:'小鴨'},{id:'balloon',label:'愛心氣球'},{id:'wings',label:'天使翅膀'},{id:'halo',label:'天使光環'},{id:'horns',label:'惡魔角'},{id:'crown',label:'皇冠'},{id:'propeller',label:'竹蜻蜓'}]},
+    {key:'part',label:'配件',opts:[{id:'none',label:'小尾翼'},{id:'wing',label:'大尾翼'},{id:'flag',label:'旗子'},{id:'exhaust',label:'排氣管'}]},
+    {key:'deco',label:'擺飾',type:'multi',hint:'每一類可以選一個，再按一次取下',opts:[{id:'halo',label:'天使光環',grp:'頭飾'},{id:'horns',label:'惡魔角',grp:'頭飾'},{id:'crown',label:'皇冠',grp:'頭飾'},{id:'propeller',label:'竹蜻蜓',grp:'頭飾'},{id:'charm',label:'娃娃吊飾',grp:'娃娃'},{id:'bear',label:'小熊娃娃',grp:'娃娃'},{id:'duck',label:'小鴨',grp:'娃娃'},{id:'balloon',label:'愛心氣球',grp:'背後'},{id:'wings',label:'天使翅膀',grp:'背後'}]},
     {key:'wheel',label:'輪子',opts:[{id:'std',label:'銀框'},{id:'gold',label:'金框'},{id:'race',label:'紅框寬胎'},{id:'offroad',label:'越野胎'},{id:'neon',label:'霓虹'}]},
     {key:'nitro',label:'氮氣特效',opts:[{id:'fire',label:'火焰'},{id:'ice',label:'冰晶'},{id:'rainbow',label:'彩虹'},{id:'bolt',label:'閃電'},{id:'star',label:'星光'}]}],
   stagePreview,stageInfo,stageViewer,ready:()=>!!window.THREE,preview,viewer,thumb,load,create,_buildKart:buildKart

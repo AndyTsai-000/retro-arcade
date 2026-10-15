@@ -207,7 +207,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=72; // 每次改版加一
+window.ARCADE_V=73; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -396,6 +396,7 @@ let lookPrev=null;
 function normLook(g,o){
   if(!g.looks) return null; o=o&&typeof o==='object'?o:{}; const r={};
   for(const L of g.looks){ if(L.type==='photo'){ const v=o[L.key]; r[L.key]=typeof v==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(v)&&v.length<240000?v:''; continue; }
+    if(L.type==='multi'){ const got={}; for(const id of String(o[L.key]||'').split(',')){ const op=L.opts.find(x=>x.id===id); if(op&&!got[op.grp]) got[op.grp]=id; } r[L.key]=L.opts.filter(x=>got[x.grp]===x.id).map(x=>x.id).join(','); continue; }
     const ids=L.opts.map(x=>x.id||x); r[L.key]=ids.includes(o[L.key])?o[L.key]:ids[0]; }
   return r;
 }
@@ -456,17 +457,29 @@ function bindPhoto(g,look){
     photoToFace(file,(v,found)=>{ if(!v){ if(m) m.textContent='這個檔案讀不出來，換一張照片試試。'; return; } phNote=found?'已自動把整顆頭剪下來換到角色身上。':'照片裡沒有找到臉，先用照片中間的部分；可以換一張正面、清楚的照片。'; apply(v); }); });
   on('phDel',()=>apply(''));
 }
+function multiRow(L,look){
+  const on=String(look[L.key]||'').split(','),grps=[...new Set(L.opts.map(x=>x.grp))];
+  return '<div class="lkrow"><span>'+L.label+'</span><div>'+grps.map(gp=>'<div class="chips" style="margin-bottom:4px"><span class="olbl">'+gp+'</span>'+
+    L.opts.filter(x=>x.grp===gp).map(o=>'<button class="chip'+(on.includes(o.id)?' sel':'')+'" data-mk="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join('')+'</div>').join('')+'</div></div>'+(L.hint?'<p class="hint">'+L.hint+'</p>':'');
+}
 async function lookCard(){
   const g=cur,look=lookOf(g); let use3d=!!g.viewer;
   if(use3d&&g.load){ showCard('<h3>我的造型</h3><p>載入 3D 預覽中…</p>'); try{ await g.load(); }catch(e){ use3d=false; } if(cur!==g||state!=='ready') return; }
   closeLook();
   showCard('<h3>我的造型</h3>'+(use3d?'<div id="lkBox" class="lk"></div><p class="hint">按住拖曳可以旋轉，滾輪可以拉近拉遠</p>':'<canvas id="lkCv" width="720" height="400" class="lk"></canvas>')+
-    g.looks.map(L=>L.type==='photo'?photoRow(L,look):'<div class="lkrow"><span>'+L.label+'</span><div class="chips">'+L.opts.map(o=>L.type==='color'
+    g.looks.map(L=>L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):'<div class="lkrow"><span>'+L.label+'</span><div class="chips">'+L.opts.map(o=>L.type==='color'
       ?'<button class="sw'+(look[L.key]===o?' sel':'')+'" data-k="'+L.key+'" data-o="'+o+'" style="background:'+o+'" aria-label="顏色 '+o+'"></button>'
       :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join('')+'</div></div>').join('')+
     '<p>選好就會自動記住，下次打開還在。</p><div class="row"><button class="btn main" id="lkOk">完成</button></div>');
   if(use3d){ let v=null; try{ v=g.viewer($('#lkBox'),look); }catch(e){} lookPrev={g,look,v}; if(!v) $('#lkBox').textContent='這台裝置無法顯示 3D 預覽'; }
   else { const ctx=$('#lkCv').getContext('2d'); ctx.scale(2,2); lookPrev={g,ctx,look}; }
+  card.querySelectorAll('[data-mk]').forEach(b=>b.addEventListener('click',()=>{ // 複選：同一組只留一個，再按一次取下
+    const L=g.looks.find(x=>x.key===b.dataset.mk),op=L.opts.find(x=>x.id===b.dataset.o),on=new Set(String(look[L.key]||'').split(',').filter(Boolean));
+    if(on.has(op.id)) on.delete(op.id); else { for(const x of L.opts) if(x.grp===op.grp) on.delete(x.id); on.add(op.id); }
+    look[L.key]=L.opts.filter(x=>on.has(x.id)).map(x=>x.id).join(','); save('arcade.look.'+g.id,JSON.stringify(look)); SFX.click();
+    card.querySelectorAll('[data-mk="'+L.key+'"]').forEach(x=>x.classList.toggle('sel',on.has(x.dataset.o)));
+    if(lookPrev&&lookPrev.v) lookPrev.v.set(look);
+  }));
   card.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>{
     look[b.dataset.k]=b.dataset.o; save('arcade.look.'+g.id,JSON.stringify(look)); SFX.click();
     card.querySelectorAll('[data-k="'+b.dataset.k+'"]').forEach(x=>x.classList.toggle('sel',x===b));
