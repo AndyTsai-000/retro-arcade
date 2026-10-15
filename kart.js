@@ -110,6 +110,17 @@ const NITRO={
 // 輪子：輪框顏色、輪框佔比、寬度倍率、直徑倍率
 const WHEEL={std:[0xc8ccd6,.62,1,1],gold:[0xffc928,.62,1,1],race:[0xe23b3b,.76,1.28,1],offroad:[0x6b7686,.5,1.18,1.12],neon:[0x3ddbd9,.66,1,1]};
 
+// 頒獎用：站著、雙手舉高慶祝的人物，頭跟車上的同一顆
+function buildCheer(T,L,head){
+  const g=new T.Group(),suit=new T.MeshPhongMaterial({color:0xf4f4f8,shininess:20}),paint=new T.MeshPhongMaterial({color:new T.Color(L.color),shininess:60}),dark=new T.MeshLambertMaterial({color:0x1c1c24});
+  const cyl=(r1,r2,h,m,x,y,z)=>{ const b=new T.Mesh(new T.CylinderGeometry(r1,r2,h,12),m); b.position.set(x,y,z); g.add(b); return b; };
+  cyl(.3,.36,.8,suit,0,1.35,0); cyl(.37,.37,.12,paint,0,1.0,0); cyl(.12,.14,.18,suit,0,1.82,0);              // 身體、腰帶、脖子
+  for(const x of [-.17,.17]){ cyl(.13,.12,.9,suit,x,.5,0); const sh=new T.Mesh(new T.BoxGeometry(.2,.14,.34),dark); sh.position.set(x,.07,.06); g.add(sh); } // 腿、鞋子
+  const arms=[]; for(const sd of [-1,1]){ const a=new T.Group(); a.position.set(sd*.36,1.66,0); const arm=new T.Mesh(new T.CylinderGeometry(.09,.085,.8,10),suit); arm.position.y=.38; a.add(arm);
+    const hand=new T.Mesh(new T.SphereGeometry(.12,10,8),dark); hand.position.y=.8; a.add(hand); const sh=new T.Mesh(new T.SphereGeometry(.17,10,8),suit); a.add(sh); a.rotation.z=-sd*.5; g.add(a); arms.push({a,sd}); }
+  const h=head.clone(); h.position.set(0,2.25,0); g.add(h);
+  g.userData.arms=arms; return g;
+}
 // 設定噴焰：顏色、長度、粗細（每格都會抖動，看起來像在噴）
 function setFlame(fl,col,len,w){
   fl.visible=true;
@@ -235,6 +246,7 @@ function buildKart(T,L){
   for(const x of [-1,1]){ ball(.17,suit,x*.36,sy+.82,-.56); add(new T.CylinderGeometry(.09,.085,.72,10),suit,x*.31,sy+.68,-.22,1.18,0,x*.12); ball(.1,dark,x*.24,sy+.58,.06);
     add(new T.CylinderGeometry(.14,.12,.85,10),suit,x*.2,sy+.14,-.05,PI/2-.12); }
   add(new T.CylinderGeometry(.12,.14,.16,10),L.driver==='helmet'?dark:skin,0,sy+.97,-.57); }
+  const n1=g.children.length;
   const hy=moto?RH.hy:sy+1.32,hz=moto?RH.hz:-.57,eye=(x,r,c)=>{ ball(r||.055,lam(c||0x15151c),x,hy+.06,hz+.4); };
   if(L.driver==='photo'&&L.face&&!/^data:image\/jpeg/.test(L.face)){ // 剪下來的整顆頭：永遠面向鏡頭
     const img=new Image(),tx=new T.Texture(img),sm=new T.SpriteMaterial({map:tx,transparent:true,opacity:0}); img.onload=()=>{ tx.needsUpdate=true; sm.opacity=1; sm.needsUpdate=true; }; img.src=L.face;
@@ -251,6 +263,7 @@ function buildKart(T,L){
     add(new T.SphereGeometry(.43,16,8,PI,PI,PI/2,.6),lam(0x3a2a20),0,hy,hz); eye(-.16); eye(.16); ball(.05,lam(0xe0a882),0,hy-.05,hz+.42); box(.16,.025,.02,lam(0x9a4a3a),0,hy-.17,hz+.38); }
   else { ball(.47,paint,0,hy,hz); add(new T.SphereGeometry(.485,20,8,PI/2-.95,1.9,1.12,.6),new T.MeshPhongMaterial({color:0x10121c,shininess:160,specular:0xaaccff}),0,hy,hz);
     add(new T.TorusGeometry(.47,.03,6,24),lam(0xffffff),0,hy,hz,0,0,0); box(.5,.1,.3,dark,0,hy-.36,hz+.22); }
+  const headG=new T.Group(); for(const c of g.children.slice(n1)){ c.position.y-=hy; c.position.z-=hz; headG.add(c); } headG.position.set(0,hy,hz); g.add(headG);
   const dv=new T.Group(); for(const c of g.children.slice(n0)){ c.position.z-=hz; dv.add(c); } dv.position.z=hz; g.add(dv);
   // 特效用的零件
   const flame=new T.Group(),fy=moto?(heavy?.85:.7):by+.12,fz=moto?(heavy?-1.95:-1.65):buggy?-1.75:(sport?-2.1:-1.7),parts=[];
@@ -265,7 +278,7 @@ function buildKart(T,L){
   for(const [x,y,z,r] of [[0,0,0,1.5],[1.3,-.2,.2,1.1],[-1.3,-.2,-.1,1.2],[.4,.5,-.3,1]]) add(new T.SphereGeometry(r,10,8),cm,x,y,z,0,0,0,cl);
   cl.position.set(0,5,1.2); cl.visible=false; g.add(cl);
   const bolt=add(new T.ConeGeometry(.5,2.2,4),new T.MeshBasicMaterial({color:0xffe14a}),0,4.8,0,PI); bolt.visible=false;
-  g.userData={flame,shield:sd,cloud:cl,bolt,wheels,moto,shadow:shadowM,driver:dv};
+  g.userData={flame,shield:sd,cloud:cl,bolt,wheels,moto,shadow:shadowM,driver:dv,head:headG};
   return g;
 }
 // 「我的造型」裡可以拖曳旋轉的 3D 預覽
@@ -482,8 +495,8 @@ function create(env,opts){
     let fx=Math.sin(k.h),fz=Math.cos(k.h),vf=k.vx*fx+k.vz*fz;
     k.ss+=(inp.steer-k.ss)*Math.min(1,dt*(k.ai?40:11)); // 方向盤不是瞬間打到底
     k.stA=inp.steer?0:(k.stA||0)+dt;
-    if(!k.drifting&&inp.drift&&(inp.steer||k.stA<.3)&&vf>14){ k.drifting=true; k.driftT=0; }
-    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<9){ k.drifting=false; k.gripT=.45; if(k.driftT>DB_MIN){ k.dbT=.6; k.dbAmt=driftMode?Math.min(2.4,.5+k.driftT):.55; if(mine&&!k.ai) toast(k,'按 '+(env.touch?'▲':local2&&k.i===0?'W':'↑')+' 甩噴！'); } } }
+    if(!k.drifting&&inp.drift&&(inp.steer||k.stA<.3)&&vf>14){ k.drifting=true; k.driftT=0; k.dBad=false; }
+    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<9){ k.drifting=false; k.gripT=.45; if(k.driftT>DB_MIN&&!k.dBad){ k.dbT=.6; k.dbAmt=driftMode?Math.min(2.4,.5+k.driftT):.55; if(mine&&!k.ai) toast(k,'按 '+(env.touch?'▲':local2&&k.i===0?'W':'↑')+' 甩噴！'); } } }
     // 甩尾結束後 0.6 秒內按一下出發鍵（鍵盤 ↑、手機 ▲）才會噴
     if(k.dbT>0){ k.dbT-=dt; if(inp.tap){ k.dbT=0; k.boostT=Math.max(k.boostT,k.dbAmt); k.bk=1; burst(k.x,k.z,driftMode?0x4fd0ff:0xffd23f,driftMode?8:4,1,.45); if(mine){ env.sfx('boost'); if(driftMode){ toast(k,'甩噴！'); flashT=.12; } } } }
     k.h+=k.ss*1.9*Math.min(1,Math.abs(vf)/14)*(k.drifting?1.38:1)*(vf<0?-1:1)*dt;
@@ -497,9 +510,9 @@ function create(env,opts){
     if(!inp.gas&&!inp.brake) vf-=vf*.6*dt;
     if(vf>max) vf-=Math.min(vf-max,(off?60:25)*dt);
     const slide=Math.abs(vl);
-    if(k.drifting){ vf-=slide*.045*dt; k.gauge+=itemMode||driftMode?0:slide*dt*.031;
+    if(k.drifting){ vf-=slide*.045*dt; k.gauge+=itemMode||driftMode||k.dBad?0:slide*dt*.031;
       if(k.gauge>=1){ if(k.stock<2){ k.stock++; k.gauge=0; if(mine) env.sfx('item'); } else k.gauge=1; } }
-    if(driftMode) k.gauge=k.drifting?Math.min(1,k.driftT/1.9):0; // 甩噴賽：集氣條顯示這次甩尾能噴多久
+    if(driftMode) k.gauge=k.drifting&&!k.dBad?Math.min(1,k.driftT/1.9):0; // 甩噴賽：集氣條顯示這次甩尾能噴多久
     // 放開甩尾後 0.45 秒內抓地力漸漸恢復，並把一部分側滑的速度轉回前進，不會突然頓一下
     let gb=1; if(k.gripT>0&&!k.drifting){ k.gripT-=dt; gb=.3+.7*(1-Math.max(0,k.gripT)/.45); vf+=slide*1.1*dt; }
     vl*=Math.exp(-(k.drifting?g0*.24:g0*gb)*dt);
@@ -511,6 +524,7 @@ function create(env,opts){
       k.x-=nx[j]*over*s; k.z-=nz[j]*over*s; k.d=LIM*s;
       const vn=k.vx*nx[j]+k.vz*nz[j]; if(vn*s>0){ k.vx-=nx[j]*vn; k.vz-=nz[j]*vn; }
       if(!k.wall){ k.vx*=.7; k.vz*=.7; if(mine) env.sfx('bump'); } k.wall=true;
+      if(k.drifting&&!k.dBad){ k.dBad=true; if(mine) toast(k,'甩尾撞牆，這次不能集氣和甩噴'); }
     } else k.wall=false;
     for(const p of pads){ let dd=k.idx-p; if(dd>N/2) dd-=N; if(dd>=-2&&dd<=2&&Math.abs(k.d)<5&&k.boostT<1){ k.boostT=1.3; k.bk=3; if(mine) env.sfx('boost'); } }
     if(itemMode){
@@ -594,13 +608,14 @@ function create(env,opts){
         if(k.left) continue;
         if(k.remote){ k.tx+=k.vx*dt; k.tz+=k.vz*dt; const f=Math.min(1,dt*10); k.x+=(k.tx-k.x)*f; k.z+=(k.tz-k.z)*f; k.h+=wrap(k.th-k.h)*f; continue; }
         if(k.ai) aiInput(k,dt); else humanInput(k);
+        if(k.fin!=null){ inp.steer=0; inp.gas=false; inp.drift=false; inp.nitro=false; inp.tap=false; inp.brake=Math.hypot(k.vx,k.vz)>1.5; } // 跑完了：煞車停在終點後面等
         if(k.tumble>0) k.tumble-=dt; if(k.flyT>0) k.flyT-=dt;
         if(k.spin>0){ k.spin-=dt; inp.steer=0; inp.gas=inp.brake=inp.drift=inp.nitro=false; }
         drive(k,inp,dt);
-        if(k.fin==null&&k.prog>=LAPS*N){ k.fin=t; if(k.local){ env.sfx('win'); k.ai={lane:0,skill:.6,nt:1e9}; } }
+        if(k.fin==null&&k.prog>=LAPS*N){ k.fin=t; if(k.local) env.sfx('win'); }
       }
       // 車與車互撞：只推自己算的車
-      for(let a=0;a<NK;a++) for(let b=a+1;b<NK;b++){ const A=karts[a],B=karts[b]; if(A.left||B.left||(A.remote&&B.remote)) continue;
+      for(let a=0;a<NK;a++) for(let b=a+1;b<NK;b++){ const A=karts[a],B=karts[b]; if(A.left||B.left||(A.remote&&B.remote)||A.fin!=null||B.fin!=null) continue; // 停在終點的車不擋路
         const dx=B.x-A.x,dz=B.z-A.z,d=Math.hypot(dx,dz); if(d>2.7||d<.001) continue; const p=(2.7-d)/d,wa=A.remote?0:(B.remote?1:.5),wb=B.remote?0:(A.remote?1:.5);
         A.x-=dx*p*wa; A.z-=dz*p*wa; B.x+=dx*p*wb; B.z+=dz*p*wb; }
       for(const k of locals){ const v=k.v,lap=clamp(Math.floor(k.prog/N)+1,1,LAPS); if(lap>v.lap&&k.fin==null){ v.lap=lap; env.sfx('lap'); }
@@ -611,7 +626,7 @@ function create(env,opts){
         remain=Math.max(0,15-(t-first));
         const c2=Math.ceil(remain); if(c2<lastTick&&c2>=1&&c2<=5) env.sfx('beep'); lastTick=c2;
         if(karts.every(k=>k.left||!k.human||k.fin!=null)) endT+=dt; // 真人都跑完就不用等滿 15 秒
-        if(remain<=0||endT>1.6){ ended=true; awards(); }
+        if(remain<=0||endT>4){ ended=true; awards(); }
       }
     }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/15;
@@ -687,7 +702,8 @@ function create(env,opts){
     const POD=[{x:0,h:3,c:0xffd23f},{x:-6.2,h:2,c:0xc8d0e0},{x:6.2,h:1.3,c:0xd08a4a}],meshes=[];
     POD.forEach((p,n)=>{ const front=new T.MeshLambertMaterial({map:ctex(128,128,(c,w,h)=>{ c.fillStyle='#'+p.c.toString(16).padStart(6,'0'); c.fillRect(0,0,w,h); c.fillStyle='#14122b'; c.font='900 84px "Press Start 2P",monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(n+1),w/2,h/2+6); })}),side=new T.MeshLambertMaterial({color:p.c});
       const box=new T.Mesh(new T.BoxGeometry(5.4,p.h,4.2),[side,side,side,side,front,side]); box.position.set(p.x,p.h/2,0); S.add(box);
-      const q=order[n]; if(!q) return; const m=buildKart(T,q.look); m.position.set(p.x,p.h,0); S.add(m); meshes.push({m,q,n,top:p.h}); });
+      const q=order[n]; if(!q) return; const m=buildKart(T,q.look); m.position.set(p.x-.75,p.h,-.2); m.scale.setScalar(.92); S.add(m); if(m.userData.driver) m.userData.driver.visible=false;
+      const ch=buildCheer(T,q.look,m.userData.head); ch.position.set(p.x+1.7,p.h,.6); S.add(ch); meshes.push({m,q,n,top:p.h,ch,px:p.x}); });
     // 第一名的聚光燈
     const beam=new T.Mesh(new T.ConeGeometry(4.2,22,32,1,true),new T.MeshBasicMaterial({color:0xfff2a8,transparent:true,opacity:.18,side:T.DoubleSide,depthWrite:false})); beam.position.set(0,13,0); S.add(beam);
     // 彩花
@@ -699,8 +715,10 @@ function create(env,opts){
   function stepCeremony(dt){
     const C=cer; C.t+=dt;
     for(const o of C.meshes){ const n=o.n,ph=C.t*(n===0?5:4)+n*1.7; // 跳上跳下、轉圈、左右搖
-      o.m.position.y=o.top; o.m.rotation.y=Math.sin(C.t*.6+n)*.35; o.m.rotation.z=0; // 車子停在頒獎台上，只有人物跳
-      const dv=o.m.userData.driver; if(dv){ dv.position.y=Math.abs(Math.sin(ph))*(n===0?1.5:1.0); dv.rotation.y=(C.t*(n===0?3:2.2)+n)*(n===1?-1:1); dv.rotation.z=Math.sin(ph*1.3)*.15; }
+      o.m.position.y=o.top; o.m.rotation.y=.35+Math.sin(C.t*.6+n)*.12; // 車子停在台上
+      const ch=o.ch; ch.position.y=o.top+Math.abs(Math.sin(ph))*(n===0?1.4:1.0);                // 人物在車旁跳
+      ch.rotation.y=n===0?C.t*3.2:(Math.floor(C.t/1.6+n)%2?C.t*2.6*(n===1?-1:1):Math.sin(C.t*3)*.5); // 轉圈或左右扭
+      for(const ar of ch.userData.arms) ar.a.rotation.z=-ar.sd*(.35+.45*Math.abs(Math.sin(C.t*8+ar.sd)));  // 揮手
     }
     for(const f of C.conf){ f.m.position.y-=f.vy*dt; f.m.position.x+=Math.sin(C.t*2+f.r[0])*f.sx*dt; f.m.rotation.x+=dt*f.r[0]; f.m.rotation.y+=dt*f.r[1]; if(f.m.position.y<0){ f.m.position.y=22+Math.random()*4; } }
     C.beam.material.opacity=.14+.08*Math.sin(C.t*6);
@@ -716,7 +734,7 @@ function create(env,opts){
     const big=(tx,col,size,font,yy)=>{ c.fillStyle=col; c.strokeStyle='#0b0a1c'; c.lineWidth=7*s; c.font='900 '+size*s+'px '+font; c.strokeText(tx,vw/2,yy); c.fillText(tx,vw/2,yy); };
     big('頒獎典禮','#ffd23f',34,TC,36*s);
     const v=new T.Vector3(),MED=['#ffd23f','#d8dde8','#e0954f'];
-    for(const o of C.meshes){ v.set(o.m.position.x,o.top+4.6,0).project(cam2); const x=(v.x+1)/2*vw,y=(1-v.y)/2*vh;
+    for(const o of C.meshes){ v.set(o.px,o.top+4.6,0).project(cam2); const x=(v.x+1)/2*vw,y=(1-v.y)/2*vh;
       c.font='900 '+15*s+'px '+TC; const nm=o.q.name,tw=c.measureText(nm).width+40*s;
       c.fillStyle='rgba(11,10,28,.82)'; c.fillRect(x-tw/2,y-15*s,tw,30*s); c.fillStyle=MED[o.n]; c.beginPath(); c.arc(x-tw/2+15*s,y,10*s,0,7); c.fill();
       c.fillStyle='#14122b'; c.font='900 '+11*s+'px '+PIX; c.fillText(String(o.n+1),x-tw/2+15*s,y+1); c.fillStyle='#fff'; c.font='900 '+15*s+'px '+TC; c.textAlign='left'; c.fillText(nm,x-tw/2+30*s,y); c.textAlign='center';
@@ -749,7 +767,8 @@ function create(env,opts){
       const sx=Math.sin(v.camH),cz=Math.cos(v.camH);
       cam.aspect=w/h; cam.fov=v.fov; cam.updateProjectionMatrix();
       const sh=k.boostT>0&&k.bk===2?.09:0,jx=(Math.random()-.5)*sh,jy=(Math.random()-.5)*sh; // 噴氮氣時鏡頭輕微震動
-      cam.position.set(k.x-sx*10.5+jx,5.4+jy,k.z-cz*10.5); cam.lookAt(k.x+sx*6,1.6,k.z+cz*6);
+      if(k.fin!=null){ const oa=v.camH+Math.PI+(t-k.fin)*.45,R=Math.max(7,10.5-(t-k.fin)*2); cam.position.set(k.x+Math.sin(oa)*R,3.6,k.z+Math.cos(oa)*R); cam.lookAt(k.x,1.3,k.z); } // 跑完：鏡頭繞著停下來的車轉
+      else { cam.position.set(k.x-sx*10.5+jx,5.4+jy,k.z-cz*10.5); cam.lookAt(k.x+sx*6,1.6,k.z+cz*6); }
       renderer.render(scene,cam);
       c.save(); c.translate(x,y); c.beginPath(); c.rect(0,0,w,h); c.clip(); drawHud(k,w,h); c.restore();
     });
@@ -805,7 +824,8 @@ function create(env,opts){
     if(cd>0){ big(String(Math.min(3,Math.ceil(cd))),'#ffd23f',72,PIX,h*.38); if(!k.ai){ const tip=k.startDone&&!k.startOK?'':'GO 的瞬間按'+(env.touch?' ▲ ':local2&&k.i===0?' W ':' ↑ ')+'可以起步加速'; c.font='700 '+13*s+'px '+TC; c.lineWidth=4; c.strokeStyle='#0b0a1c'; c.strokeText(tip,w/2,h*.38+52*s); c.fillStyle='#fff'; c.fillText(tip,w/2,h*.38+52*s); } }
     else if(t<.9) big('GO!','#86dc4f',60,PIX,h*.38);
     if(v.wrongT>1) big(local2?'逆向！':'逆向！按 R 回到賽道','#ff5d8f',30,TC,h*.3,'900 ');
-    if(k.fin!=null) big('抵達終點','#ffd23f',50,TC,h*.36,'900 ');
+    if(k.fin!=null){ const ft=t-k.fin,r=rankOf(k); c.save(); c.translate(w/2,h*.3); const sc=ft<.35?.4+ft/.35*.75:1.15-Math.min(.15,(ft-.35)*.5); c.scale(sc,sc); c.translate(-w/2,-h*.3);
+      big('FINISH!','#ffd23f',54,PIX,h*.3); c.restore(); if(ft>.5) big('第 '+r+' 名'+(r===1?'　冠軍！':''),r===1?'#ffd23f':'#fff',28,TC,h*.3+52*s,'900 '); }
     if(k.cloudT>0){ // 烏雲蓋住畫面中央，只留下方和兩側
       c.globalAlpha=Math.min(1,k.cloudT*2)*.93; c.fillStyle='#2c2f3d';
       for(let i=0;i<14;i++){ const a=i*1.7,cx=w*(.14+.72*((i*37)%14)/13)+Math.sin(t*1.3+a)*14,cy=h*(.2+.36*((i*5)%7)/6)+Math.cos(t+a)*8; c.beginPath(); c.arc(cx,cy,Math.min(w,h)*(.13+.03*(i%3)),0,7); c.fill(); }
