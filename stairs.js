@@ -52,25 +52,55 @@ function drawPlat(ctx,pl,y,t){
   ctx.fillStyle='#35641a'; for(let i=8;i<w;i+=18) ctx.fillRect(x+i,y+8,6,3);
 }
 
+const mixC=(hex,k)=>{ const n=parseInt(String(hex).slice(1),16); if(isNaN(n)) return hex; return 'rgb('+[(n>>16)&255,(n>>8)&255,n&255].map(v=>Math.round(v*k)).join(',')+')'; };
+// 人物：Q 版大頭（大眼睛、腮紅、圓鞋子），face 1 向右、-1 向左；掉落時雙手舉高、一臉驚訝
 function drawKid(ctx,x,y,face,walk,air,flash,shirt,char){
   if(flash&&Math.floor(flash*20)%2) return;
-  const s=Math.sin(walk*14),robot=char==='robot',ninja=char==='ninja',girl=char==='girl';
-  const skin=robot?'#b9c2d0':'#ffd9a8',hair=robot?'#6b7686':girl?'#7a3b1d':'#2a1b12';
-  ctx.fillStyle=robot?'#6b7686':ninja?'#4a4a66':'#2b3f9e';
-  if(air){ ctx.fillRect(x-7,y-6,5,5); ctx.fillRect(x+2,y-6,5,5); }
-  else { ctx.fillRect(x-7,y-6,5,6-Math.max(0,s)*2); ctx.fillRect(x+2,y-6,5,6-Math.max(0,-s)*2); }
-  ctx.fillStyle=shirt; ctx.fillRect(x-8,y-15,16,9);
-  if(girl){ ctx.beginPath(); ctx.moveTo(x-8,y-9); ctx.lineTo(x+8,y-9); ctx.lineTo(x+11,y-4); ctx.lineTo(x-11,y-4); ctx.fill(); }
-  ctx.fillStyle=ninja?'#4a4a66':skin;
-  if(air){ ctx.fillRect(x-12,y-21,4,7); ctx.fillRect(x+8,y-21,4,7); }
-  else { ctx.fillRect(x-11,y-15,3,7); ctx.fillRect(x+8,y-15,3,7); }
-  ctx.fillRect(x-8,y-26,16,11);
-  if(ninja){ ctx.fillStyle=skin; ctx.fillRect(x-8,y-23,16,5); ctx.fillStyle=shirt; ctx.fillRect(x-8,y-27,16,3); ctx.fillRect(x-face*13-2,y-26,5,2); }
-  else if(robot){ ctx.fillStyle=hair; ctx.fillRect(x-1,y-31,2,5); ctx.fillStyle=shirt; ctx.fillRect(x-2,y-34,4,4); }
-  else { ctx.fillStyle=hair; ctx.fillRect(x-8,y-27,16,4); ctx.fillRect(x-8*face-(face>0?0:2),y-24,2,4); if(girl){ ctx.fillRect(x-11,y-25,3,10); ctx.fillRect(x+8,y-25,3,10); } }
-  ctx.fillStyle=robot?'#3ddbd9':'#14122b'; ctx.fillRect(x+face*3-1,y-21,2,3); ctx.fillRect(x+face*3-5*face-1,y-21,2,3);
+  const s=Math.sin(walk*14),robot=char==='robot',ninja=char==='ninja',girl=char==='girl',f=face||1;
+  const OL='#2a1a26',SK=robot?'#c9d2e0':'#ffe2c6',HAIR=girl?'#8a4a26':'#3a2418',dark=mixC(shirt,.7),now=performance.now()/1000;
+  const hop=air?0:Math.abs(s)*1.2,y0=y-hop,ol=w=>{ ctx.strokeStyle=OL; ctx.lineWidth=w||1.1; ctx.stroke(); };
+  const ell=(cx,cy,rx,ry,col,lw)=>{ ctx.fillStyle=col; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.fill(); if(lw!==0) ol(lw); };
+  // 腳：圓圓的鞋
+  const shoe=robot?'#6b7686':ninja?'#2b2b44':'#e8463a';
+  if(air){ ell(x-4,y-2,3.2,2.4,shoe); ell(x+4,y-2,3.2,2.4,shoe); }
+  else { ell(x-4+Math.max(0,s)*1.5*f,y-1.6-Math.max(0,s)*1.6,3.4,2.4,shoe); ell(x+4+Math.max(0,-s)*1.5*f,y-1.6-Math.max(0,-s)*1.6,3.4,2.4,shoe); }
+  // 身體
+  const bodyCol=ninja?'#3a3a5a':shirt;
+  if(girl){ ctx.fillStyle=bodyCol; ctx.beginPath(); ctx.moveTo(x-5,y0-13); ctx.lineTo(x+5,y0-13); ctx.lineTo(x+8.5,y0-3.5); ctx.quadraticCurveTo(x,y0-1.5,x-8.5,y0-3.5); ctx.closePath(); ctx.fill(); ol(); }
+  else { ell(x,y0-8,6.6,6,bodyCol); }
+  if(robot){ ell(x,y0-8,2.4,2.4,'#3ddbd9',.8); }
+  else if(!ninja){ ctx.fillStyle='rgba(255,255,255,.75)'; ctx.beginPath(); ctx.ellipse(x+f*1,y0-6.5,3,2.6,0,0,7); ctx.fill(); }
+  else { ctx.fillStyle=shirt; ctx.fillRect(x-6.4,y0-9,12.8,2); }
+  // 手：掉落時舉高
+  const hand=robot?'#9aa3b5':ninja?'#3a3a5a':SK;
+  for(const k of [-1,1]){ const ay=air?y0-19:y0-8+(k*s*1.4),ax=x+k*(air?8:7.6);
+    ell(ax,ay,2.2,2.2,hand); }
+  // 頭
+  const hx=x+f*.6,hy=y0-21,R=10;
+  if(girl){ for(const k of [-1,1]){ ell(hx+k*10.5,hy+2,3,5.5,HAIR); ctx.fillStyle='#ff6fa8'; ctx.beginPath(); ctx.moveTo(hx+k*10,hy-3); ctx.lineTo(hx+k*14,hy-6.5); ctx.lineTo(hx+k*14,hy+.5); ctx.closePath(); ctx.fill(); ol(.8); ctx.beginPath(); ctx.moveTo(hx+k*10,hy-3); ctx.lineTo(hx+k*6.5,hy-6.5); ctx.lineTo(hx+k*6.5,hy+.5); ctx.closePath(); ctx.fill(); ol(.8); } }
+  if(robot){ ctx.strokeStyle=OL; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(hx,hy-R); ctx.lineTo(hx,hy-R-5); ctx.stroke(); const gl=.6+.4*Math.sin(now*6); ctx.fillStyle='rgba(255,93,143,'+gl+')'; ctx.beginPath(); ctx.arc(hx,hy-R-6.5,2.3,0,7); ctx.fill(); ol(.8);
+    ctx.fillStyle=SK; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(hx-R*1.05,hy-R*.9,R*2.1,R*1.8,5); else ctx.rect(hx-R*1.05,hy-R*.9,R*2.1,R*1.8); ctx.fill(); ol(1.2);
+    ell(hx-R*1.05,hy,1.8,3,'#9aa3b5',.8); ell(hx+R*1.05,hy,1.8,3,'#9aa3b5',.8); }
+  else ell(hx,hy,R*1.05,R*.97,ninja?'#2b2b44':SK,1.2);
+  // 頭髮／頭巾
+  if(ninja){ ctx.fillStyle=SK; ctx.beginPath(); ctx.ellipse(hx+f*1.5,hy+1.5,R*.78,3.6,0,0,7); ctx.fill();
+    ctx.fillStyle=shirt; ctx.fillRect(hx-R*1.05,hy-5.5,R*2.1,2.6); const wv=Math.sin(now*8)*1.5; ctx.beginPath(); ctx.moveTo(hx-f*R,hy-5); ctx.lineTo(hx-f*(R+6),hy-7+wv); ctx.lineTo(hx-f*(R+5),hy-2+wv); ctx.closePath(); ctx.fill(); }
+  else if(!robot){ ctx.fillStyle=HAIR; ctx.beginPath(); ctx.moveTo(hx-R*1.03,hy+1); ctx.quadraticCurveTo(hx-R,hy-R*1.06,hx,hy-R*.99); ctx.quadraticCurveTo(hx+R,hy-R*1.06,hx+R*1.03,hy+1);
+    ctx.lineTo(hx+R*.98,hy-R*.2); for(let i=3;i>=-3;i--){ const bx=hx+i*R*.3+f*1.2; ctx.quadraticCurveTo(bx+R*.16,hy-R*(i===0?.1:.2),bx,hy-R*.46); } ctx.quadraticCurveTo(hx-R*.98,hy-R*.3,hx-R*1.03,hy+1); ctx.closePath(); ctx.fill(); ol(.9);
+    if(!girl){ ctx.fillStyle=HAIR; ctx.beginPath(); ctx.moveTo(hx+1,hy-R*.95); ctx.quadraticCurveTo(hx+5*f,hy-R*1.5,hx+7*f,hy-R*1.25); ctx.quadraticCurveTo(hx+3*f,hy-R*1.1,hx+2*f,hy-R*.9); ctx.fill(); ol(.8); } } // 男孩頭頂一撮呆毛
+  // 臉：大眼睛＋亮點、腮紅、嘴巴
+  const ex=[-3.8,3.8].map(v=>hx+v+f*1.4),ey=hy+1.6,blink=!air&&(now*.6+x*.01)%4<.1;
+  for(const e of ex){
+    if(robot){ ctx.fillStyle='#14122b'; ctx.fillRect(e-3,ey-2.5,6,5); ctx.fillStyle='#3ddbd9'; ctx.fillRect(e-2,ey-(blink?.4:1.6),4,blink?.8:3.2); continue; }
+    if(blink){ ctx.strokeStyle=OL; ctx.lineWidth=1.1; ctx.beginPath(); ctx.moveTo(e-2.4,ey); ctx.quadraticCurveTo(e,ey+1.2,e+2.4,ey); ctx.stroke(); continue; }
+    const w=2.5,h=air?3.8:3.3; ctx.fillStyle='#2a1a2a'; ctx.beginPath(); ctx.ellipse(e,ey,w,h,0,0,7); ctx.fill();
+    ctx.fillStyle='#6a4a9a'; ctx.beginPath(); ctx.ellipse(e,ey+1,w*.72,h*.48,0,0,7); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(e+.8,ey-1.3,1.1,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(e-.8,ey+1.3,.5,0,7); ctx.fill(); }
+  if(!robot&&!ninja){ ctx.fillStyle='rgba(255,120,150,.55)'; for(const e of ex){ ctx.beginPath(); ctx.ellipse(e+(e<hx+f*1.4?-1.6:1.6),hy+5.4,2.1,1.2,0,0,7); ctx.fill(); } }
+  if(!ninja){ const mx=hx+f*1.4; ctx.strokeStyle=robot?'#3ddbd9':OL; ctx.lineWidth=1;
+    if(air){ ctx.fillStyle='#8a2a3a'; ctx.beginPath(); ctx.ellipse(mx,hy+6.4,1.4,1.7,0,0,7); ctx.fill(); }
+    else { ctx.beginPath(); ctx.moveTo(mx-1.6,hy+5.6); ctx.quadraticCurveTo(mx-.8,hy+6.9,mx,hy+5.8); ctx.quadraticCurveTo(mx+.8,hy+6.9,mx+1.6,hy+5.6); ctx.stroke(); } }
 }
-
 function drawWall(ctx,cam){
   ctx.fillStyle='#1a1530'; ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#231c40';
@@ -225,7 +255,7 @@ function thumb(ctx,w,h,t){
   ctx.restore();
 }
 
-(window.ARCADE_GAMES=window.ARCADE_GAMES||{}).stairs={
+(window.ARCADE_GAMES=window.ARCADE_GAMES||{}).stairs={_kid:drawKid,
   name:'樓梯大逃亡',tag:'STAIR ESCAPE',color:'#86dc4f',online:true,wide:false,
   desc:'天花板一直壓下來，踩著平台往下逃。小心尖刺、會翻的假板和輸送帶。可單人、兩人同一台，或開房間連線比誰撐得久。',
   goal:'踩平台往下走，別被天花板的尖刺刺到，也別掉出畫面。踩到新的平台會補血。',
