@@ -236,7 +236,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=104; // 每次改版加一
+window.ARCADE_V=105; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -555,8 +555,8 @@ function startCard(){
     return; }
   // 一般遊戲也用左右兩欄：左邊示意圖、說明、目前選的關卡和開始按鈕；右邊是關卡、賽制、玩法和操作說明
   const stInfo=()=>g.stages?'<p class="sgInfo" id="sgInfo">'+gridInfo(g)+'</p>':'';
-  // 有難度星數的遊戲（例如極速大亂鬥）右邊列出關卡名稱和星數；其他遊戲只放數字
-  const stageChips=!g.stages?'':g.stars?'<div class="lkhead">選擇關卡</div><div class="chips">'+g.stages.map((s,i)=>(g.stageLocked&&g.stageLocked(i)?'<button class="chip lock" disabled title="過了前一關才會解鎖">🔒 '+(i+1)+'　'+s+'</button>':'<button class="chip'+(i===stageSel?' sel':'')+'" data-s="'+i+'">'+(i+1)+'　'+s+'　<span class="stars">'+'★'.repeat(g.stars[i])+'</span>'+(g.stageBest&&g.stageBest(i)?'　<small>'+g.stageBest(i)+'</small>':'')+'</button>')).join('')+'</div>':'<div class="lkhead">選擇關卡</div>'+gridHtml(g);
+  // 右邊列出關卡名稱（有難度的加星數）；只有貓咪數獨那種關卡很多的遊戲（stageGrid）才只放數字
+  const stageChips=!g.stages?'':!g.stageGrid?'<div class="lkhead">選擇關卡</div><div class="chips">'+g.stages.map((s,i)=>(g.stageLocked&&g.stageLocked(i)?'<button class="chip lock" disabled title="過了前一關才會解鎖">🔒 '+(i+1)+'　'+s+'</button>':'<button class="chip'+(i===stageSel?' sel':'')+'" data-s="'+i+'">'+(i+1)+'　'+s+(g.stars?'　<span class="stars">'+'★'.repeat(g.stars[i])+'</span>':'')+(g.stageBest&&g.stageBest(i)?'　<small>'+g.stageBest(i)+'</small>':'')+'</button>')).join('')+'</div>':'<div class="lkhead">選擇關卡</div>'+gridHtml(g);
   const varChips=g.variants?'<div class="lkhead">賽制</div><div class="chips">'+g.variants.map(v=>'<button class="chip'+(v.id===variantSel?' sel':'')+'" data-v="'+v.id+'">'+v.label+'</button>').join('')+'</div>':'';
   const optBlock=(g.options||[]).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):'';
   showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas>'+stInfo()+
