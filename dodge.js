@@ -478,6 +478,15 @@ window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
   name:'鬥魂躲避球',tag:'DODGE BALL',color:'#ff9d3d',online:true,maxPlayers:2,
   desc:'三對三躲避球，丟球打倒對方內野。助跑丟、跳起來丟會變成必殺球，共 7 種；集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'丟球打對方內野的人扣體力，三個人都倒下就贏了。連按兩下 ← 或 → 助跑後丟、或跳起來丟，會丟出必殺球。打中人或接到球會累積氣力，集滿後拿球按「必殺」放出接不住的超必殺。球飛過來時按「丟」可以接住。',
+  // 開始畫面左邊：選哪一隊就顯示那一隊的三名內野
+  stageShow:(ctx,w,h,si,t)=>{ const st=STAGES[si],col=st.col;
+  const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1d1a40'); g.addColorStop(1,'#0e0c22'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle=col; ctx.globalAlpha=.18; ctx.beginPath(); ctx.ellipse(w/2,h*.86,w*.46,h*.12,0,0,7); ctx.fill(); ctx.globalAlpha=1;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.1)+'px "Noto Sans TC",sans-serif'; ctx.lineWidth=5; ctx.strokeStyle='#0b0a1c';
+  ctx.strokeText('對手：'+st.name,w/2,h*.12); ctx.fillStyle=col; ctx.fillText('對手：'+st.name,w/2,h*.12);
+    st.team.forEach((m,i)=>{ const x=w*(.25+i*.25),y=h*.8,pose=[0,2,1][(Math.floor(t*.7)+i)%3];
+      ctx.save(); ctx.translate(x,y); ctx.scale(2.4,2.4); drawGuy(ctx,0,0,Math.abs(Math.sin(t*3+i))*3,-1,col,i%4,pose,t+i); ctx.restore();
+      ctx.font='700 '+Math.round(h*.065)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(m.name,x,y+h*.08); }); },
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動，連按兩下 ← → 助跑'],['J','丟球；沒球時是接球'],['K','傳球；沒球時按住是蹲下'],['L','跳'],['I','超必殺（氣力條滿、拿著球時）'],['W A S D F G H R','雙人左隊：移動、丟、傳、跳、超必殺'],['↑ ↓ ← → , . / M','雙人右隊：移動、丟、傳、跳、超必殺']],

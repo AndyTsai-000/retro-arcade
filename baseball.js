@@ -583,6 +583,16 @@ const thumb=(ctx,w,h,t)=>{ ctx.save(); ctx.translate(0,-16); scene(ctx,w,h,{colo
   name:'鬥魂棒球',tag:'BASEBALL',color:'#ff7eb6',online:true,maxPlayers:2,
   desc:'九人制棒球，投打自己來，守備和跑壘自動進行。六種常見球種，照正式規則打 3、5、7 或 9 局。可單人、兩人同一台，或開房間連線。',
   goal:'投球：方向鍵一按移一格選位置，換球種後丟球。打擊：球旁邊的圈圈變綠時，按一下 ↑ 打高飛（打得準有機會全壘打），按一下 ↓ 打平飛或滾地。守備會自己判斷傳哪一壘，有機會雙殺、三殺。',
+  // 開始畫面左邊：選哪一隊就顯示那一隊的球員（投手、打者、守備）
+  stageShow:(ctx,w,h,si,t)=>{ const st=STAGES[si],col=st.col;
+  const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1d1a40'); g.addColorStop(1,'#0e0c22'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle=col; ctx.globalAlpha=.18; ctx.beginPath(); ctx.ellipse(w/2,h*.86,w*.46,h*.12,0,0,7); ctx.fill(); ctx.globalAlpha=1;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.1)+'px "Noto Sans TC",sans-serif'; ctx.lineWidth=5; ctx.strokeStyle='#0b0a1c';
+  ctx.strokeText('對手：'+st.name,w/2,h*.12); ctx.fillStyle=col; ctx.fillText('對手：'+st.name,w/2,h*.12);
+    const ps=['throw','ready','catch','run','stand'];
+    AWAYN.slice(0,5).forEach((nm,i)=>{ const x=w*(.12+i*.19),y=h*(i%2?.88:.78),pn=ps[(i+Math.floor(t*.6))%ps.length];
+      fig(ctx,x,y,.85,i<2?1:-1,pose(pn,t*1.2+i),col,pn==='run'?{helmet:1}:{glove:'F',ball:pn==='throw'?'B':null,up:pn==='catch'});
+      ctx.font='700 '+Math.round(h*.055)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.fillText(nm,x,y+h*.07); }); },
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
   coin:o=>({verb:'先攻',names:o.net?(o.net.count>1?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:[STAGES[o.stage||0].name,o.net.names[0]||'你']):o.mode==='2p'?['1P 隊','2P 隊']:[STAGES[o.stage||0].name,'你的隊伍']}),
   variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'}],

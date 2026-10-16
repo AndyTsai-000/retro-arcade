@@ -503,20 +503,27 @@ function preview(ctx,w,h,L,t){
 }
 
 // 用這個場景的地形和配色畫一張實際的遊戲畫面（箱子位置固定，方便每次看到一樣的圖）
-function stagePreview(ctx,w,h,si){
+function stagePreview(ctx,w,h,si,t){
+  t=t||0;
   const st=STAGES[si],k=w/W; let seed=si*7919+13; const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
   const keep=new Set(); for(const [sx,sy] of SPAWN.slice(0,4)) for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]) keep.add((sy+dy)*COLS+sx+dx);
   ctx.save(); ctx.scale(k,k); ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,W,ROWS*T);
   const open=new Set([3*COLS+2,3*COLS+3,2*COLS+2,9*COLS+12,9*COLS+11,10*COLS+12,6*COLS+7,6*COLS+6,6*COLS+8,5*COLS+6]);
   const lg=layout(st,keep,rnd,open); for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) drawTile(ctx,st,lg[y*COLS+x],x*T,y*T,x,y);
   const flame=(x,y,c)=>{ if(lg[y*COLS+x]===1||lg[y*COLS+x]===3) return; ctx.fillStyle='rgba('+rgb(c).join(',')+',.9)'; ctx.fillRect(x*T+3,y*T+3,T-6,T-6); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(x*T+11,y*T+11,T-22,T-22); };
-  for(const [x,y] of [[6,6],[7,6],[8,6],[6,5]]) flame(x,y,WATER[1]);
-  drawBalloon(ctx,2*T+20,3*T+20,0,15,'ball',WATER[0]); drawBalloon(ctx,12*T+20,9*T+20,0,15,'star',WATER[3]);
-  drawItem(ctx,3*T,3*T,'p',0); drawItem(ctx,11*T,9*T,'s',0);
-  [[0,0,'cap',3],[14,12,'ninja',2],[14,0,'pirate',1],[0,12,'chef',0],[2,2,'bow',1]].forEach((a,n)=>drawChar(ctx,a[0]*T+20,a[1]*T+16,COLORS[n],a[3],false,0,1,a[2]));
+  if(!t||Math.sin(t*2.2)>-.3) for(const [x,y] of [[6,6],[7,6],[8,6],[6,5]]) flame(x,y,WATER[1]); // 選關預覽時水柱一閃一閃
+  drawBalloon(ctx,2*T+20,3*T+20,t,15,'ball',WATER[0]); drawBalloon(ctx,12*T+20,9*T+20,t,15,'star',WATER[3]);
+  drawItem(ctx,3*T,3*T,'p',t); drawItem(ctx,11*T,9*T,'s',t);
+  const walk=(a,b)=>{ const u=(t*.45)%2,k=u<1?u:2-u; return a+(b-a)*k; },mv=!!t,dirOf=(a,b)=>((t*.45)%2<1)===(b>a)?3:2;
+  [[t?walk(0,2):0,0,'cap',t?dirOf(0,2):3,mv],[t?walk(14,12):14,12,'ninja',t?dirOf(14,12):2,mv],[14,0,'pirate',1,false],[0,12,'chef',0,false],[2,2,'bow',1,false]].forEach((a,n)=>drawChar(ctx,a[0]*T+20,a[1]*T+16,COLORS[n],a[3],a[4],t,1,a[2]));
   ctx.restore();
 }
 const stageInfo=si=>STAGES[si].info;
+// 開始畫面左邊：點哪一關就顯示那一關的地圖（會動）
+function stageShow(ctx,w,h,si,t){
+  ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,w,h); const mh=ROWS*T,k=Math.min(w/W,h/mh),dw=W*k,dh=mh*k;
+  ctx.save(); ctx.translate((w-dw)/2,(h-dh)/2); stagePreview(ctx,dw,dh,si,t||.01); ctx.restore();
+}
 
 function thumb(ctx,w,h,t){
   const st=STAGES[0],ox=0,oy=-10;
@@ -552,6 +559,6 @@ function thumb(ctx,w,h,t){
       {id:'halo',label:'光環',grp:'頭上'},{id:'balloon',label:'愛心氣球',grp:'頭上'},{id:'stars',label:'轉圈星星',grp:'頭上'}]},
     {key:'bomb',label:'炸彈造型',opts:[{id:'ball',label:'水球'},{id:'star',label:'星星'},{id:'melon',label:'西瓜紋'}]},
     {key:'water',label:'水球顏色',type:'color',opts:WATER}],
-  stagePreview,stageInfo,preview,thumb,create
+  stagePreview,stageInfo,stageShow,preview,thumb,create
 };
 })();

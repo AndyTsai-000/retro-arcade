@@ -236,7 +236,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=105; // 每次改版加一
+window.ARCADE_V=106; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -500,7 +500,7 @@ function multiRow(L,look){
   return '<div class="lkhead">'+L.label+(L.hint?'<small>'+L.hint+'</small>':'')+'</div>'+grps.map(gp=>foldRow(L.key+'.'+gp,gp,
     L.opts.filter(x=>x.grp===gp).map(o=>'<button class="chip'+(on.includes(o.id)?' sel':'')+'" data-mk="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join(''),true)).join('');
 }
-async function lookCard(){
+async function lookCard(){ closeStage();
   const g=cur,look=lookOf(g); let use3d=!!g.viewer; try{ lkFold=JSON.parse(load('arcade.lkfold.'+g.id)||'{}')||{}; }catch(e){ lkFold={}; }
   if(use3d&&g.load){ showCard('<h3>我的造型</h3><p>載入 3D 預覽中…</p>'); try{ await g.load(); }catch(e){ use3d=false; } if(cur!==g||state!=='ready') return; }
   closeLook();
@@ -563,15 +563,23 @@ function startCard(){
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+
     '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal">'+g.goal+'</p><div class="lkhead">操作說明</div>'+helpHtml(g)+'</div></div>');
-  closeLook(); demo(g);
-  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); }); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
+  closeLook(); demo(g); leftTrack(g);
+  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); }); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
   const sel=card.querySelector('.lklist .sg.sel,.lklist .chip.sel[data-s]'); if(sel) sel.scrollIntoView({block:'nearest'});
+}
+// 有 3D 賽道預覽的遊戲：開始畫面左邊直接飛一圈選到的賽道（3D 元件還沒載入就先載入，載入前顯示縮圖）
+function leftTrack(g){
+  if(!g.stageViewer||!g.stages) return; const cv=$('#demoCv')||$('#demoBox'); if(!cv) return;
+  const mount=()=>{ if(cur!==g||state!=='ready'||!cv.isConnected) return; closeStage();
+    let box=$('#demoBox'); if(!box){ box=document.createElement('div'); box.id='demoBox'; box.className='lk demo'; box.style.cssText='aspect-ratio:16/9;width:100%;overflow:hidden;position:relative'; cv.replaceWith(box); }
+    box.innerHTML=''; let v=null; try{ v=g.stageViewer(box,stageSel); }catch(e){} if(v) stagePrev={v}; };
+  if(g.ready()) mount(); else g.load().then(mount).catch(()=>{});
 }
 // 開始畫面的示意圖：用這款遊戲的動態縮圖一直播放
 function demo(g){
   const cv=$('#demoCv'); if(!cv) return; const ctx=cv.getContext('2d'); ctx.scale(2,2); const t0=performance.now();
-  const loop=()=>{ if(!cv.isConnected||cur!==g) return; try{ g.thumb(ctx,480,270,still?1.3:(performance.now()-t0)/1000); }catch(e){} if(!still) requestAnimationFrame(loop); };
+  const loop=()=>{ if(!cv.isConnected||cur!==g) return; const tt=still?1.3:(performance.now()-t0)/1000; try{ if(g.stageShow&&g.stages) g.stageShow(ctx,480,270,stageSel,tt); else g.thumb(ctx,480,270,tt); }catch(e){} if(!still) requestAnimationFrame(loop); };
   loop();
 }
 // 有賽道預覽的遊戲：選好關卡後先看環境圖和路線圖，再決定要不要進去
@@ -579,7 +587,7 @@ let stagePrev=null,stageWait=false;
 function closeStage(){ if(stagePrev){ try{stagePrev.v.destroy();}catch(e){} stagePrev=null; } }
 const stageHtml=v3=>v3?'<div class="spRow"><div id="spBox" class="lk sq"></div><canvas id="spCv" width="720" height="540" class="lk sq"></canvas></div><p class="hint">左邊是實際賽道的 3D 畫面，鏡頭會沿著賽道飛一圈</p>'
   :(()=>{ const z=cur.stageSize||[360,165]; return '<canvas id="spCv" width="'+z[0]*2+'" height="'+z[1]*2+'" class="lk" style="aspect-ratio:'+z[0]+'/'+z[1]+';max-width:'+(z[1]>200?'340px':'none')+'"></canvas>'; })();
-function mountStage(i,v3){
+function mountStage(i,v3){ closeStage();
   const cv=$('#spCv'); if(!cv) return; const c=cv.getContext('2d'); c.setTransform(2,0,0,2,0,0);
   try{ if(v3) cur.stagePreview(c,360,270,i,'route'); else { const z=cur.stageSize||[360,165]; cur.stagePreview(c,z[0],z[1],i); } }catch(e){}
   if(v3){ let v=null; try{ v=cur.stageViewer($('#spBox'),i); }catch(e){} if(v) stagePrev={v}; else $('#spBox').textContent='這台裝置無法顯示 3D 畫面'; }
@@ -784,7 +792,7 @@ function leaveNet(){
   if(p){ try{p.destroy();}catch(e){} }
   if(mq) setTimeout(()=>mq.close(),400);
 }
-function netCard(msg){
+function netCard(msg){ closeStage();
   state='ready'; killInst();
   showCard('<h3>多人連線</h3><p>一個人建立房間，把房號告訴朋友；其他人在自己的電腦或手機打開同一個網址，輸入房號加入。這款最多 '+maxP()+' 人。</p>'+
     '<div class="row"><button class="btn main" id="nHost">建立房間</button></div>'+

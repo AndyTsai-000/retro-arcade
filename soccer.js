@@ -381,6 +381,15 @@ function thumb(ctx,w,h,t){
   name:'鬥魂足球',tag:'SOCCER',color:'#5fd068',online:true,maxPlayers:2,
   desc:'五對五的鬥魂足球，沒有犯規，可以鏟人搶球。助跑射門是必殺射門，集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'2 分鐘內進球多的贏，平手打延長賽。連按兩下 ← 或 → 助跑後射門，會踢出必殺射門；沒球時按「射」是鏟球。守門員會自己守。',
+  // 開始畫面左邊：選哪一隊就顯示那一隊的五名球員
+  stageShow:(ctx,w,h,si,t)=>{ const st=STAGES[si],col=st.col;
+  const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1d1a40'); g.addColorStop(1,'#0e0c22'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle=col; ctx.globalAlpha=.18; ctx.beginPath(); ctx.ellipse(w/2,h*.86,w*.46,h*.12,0,0,7); ctx.fill(); ctx.globalAlpha=1;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.1)+'px "Noto Sans TC",sans-serif'; ctx.lineWidth=5; ctx.strokeStyle='#0b0a1c';
+  ctx.strokeText('對手：'+st.name,w/2,h*.12); ctx.fillStyle=col; ctx.fillText('對手：'+st.name,w/2,h*.12);
+    FOE.forEach((nm,i)=>{ const x=w*(.12+i*.19),y=h*(i%2?.86:.74),run=Math.floor(t*.8+i)%3===0;
+      ctx.save(); ctx.translate(x,y); ctx.scale(1.9,1.9); guy(ctx,0,0,run?0:Math.abs(Math.sin(t*3+i))*2,-1,col,i%4,run?1:0,t+i); ctx.restore();
+      ctx.font='700 '+Math.round(h*.055)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(nm,x,y+h*.07); }); },
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動，連按兩下 ← → 助跑'],['J','射門；沒球時是鏟球'],['K','傳球；沒球時換人'],['L','跳'],['I','超必殺（氣力條滿、帶著球時）'],['W A S D F G H R','雙人左隊：移動、射、傳、跳、超必殺'],['↑ ↓ ← → , . / M','雙人右隊：移動、射、傳、跳、超必殺']],
