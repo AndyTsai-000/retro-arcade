@@ -72,29 +72,53 @@ const foul13=rows=>!rows||rowScore(rows[1])>rowScore(rows[2])||rowScore(rows[0])
 function bjTotal(cards){ let t=0,a=0; for(const c of cards){ const r=rk(c); if(r===14){ t+=11; a++; } else t+=r>=10?10:r; } while(t>21&&a){ t-=10; a--; } return t; }
 const bjSoft=cards=>{ let t=0,a=0; for(const c of cards){ const r=rk(c); if(r===14){ t+=11; a++; } else t+=r>=10?10:r; } while(t>21&&a){ t-=10; a--; } return a>0; };
 
-/* ---------- 畫牌 ---------- */
-const BACKS={red:['#c8323c','#8a1f28'],blue:['#2f6fd0','#1d4a94'],purple:['#7a4ac8','#4f2f88'],green:['#2f8a5a','#1d5a3a']};
+/* ---------- 畫牌（樣式跟著「我的造型」） ---------- */
+const BACKS={red:['#c8323c','#8a1f28'],blue:['#2f6fd0','#1d4a94'],purple:['#7a4ac8','#4f2f88'],green:['#2f8a5a','#1d5a3a'],black:['#2b2b36','#111118'],gold:['#d9a520','#9a7010']};
+const FOUR=['#1f9a4a','#2f6fd0','#d4283a','#1c1a26']; // 四色牌：梅花綠、方塊藍、紅心紅、黑桃黑
+let STYLE={face:'#fdfcf8',suit:'classic',back:'red',pat:'stripe'};
+const setStyle=L=>{ L=L||{}; STYLE={face:L.face||'#fdfcf8',suit:L.suit||'classic',back:L.back||'red',pat:L.pat||'stripe'}; };
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function drawCard(c,x,y,w,h,id,up,o){
   o=o||{}; c.save(); if(o.dim) c.globalAlpha=.45;
   c.fillStyle='rgba(0,0,0,.28)'; rr(c,x+1.5,y+2.5,w,h,w*.12); c.fill();
-  if(!up){ const B=BACKS[o.back]||BACKS.red; c.fillStyle='#fff'; rr(c,x,y,w,h,w*.12); c.fill(); c.fillStyle=B[0]; rr(c,x+w*.08,y+w*.08,w*.84,h-w*.16,w*.08); c.fill();
-    c.save(); rr(c,x+w*.08,y+w*.08,w*.84,h-w*.16,w*.08); c.clip(); c.strokeStyle=B[1]; c.lineWidth=Math.max(1,w*.05); c.beginPath(); for(let i=-h;i<w+h;i+=w*.2){ c.moveTo(x+i,y); c.lineTo(x+i+h,y+h); c.moveTo(x+i+h,y); c.lineTo(x+i,y+h); } c.stroke(); c.restore();
-    c.restore(); return; }
-  c.fillStyle=o.hl?'#fff8d8':'#fdfcf8'; rr(c,x,y,w,h,w*.12); c.fill(); c.strokeStyle=o.sel?'#ffd23f':o.hl?'#ffb000':'#9a95a8'; c.lineWidth=o.sel?3:1; c.stroke();
-  const red=su(id)===1||su(id)===2; c.fillStyle=red?'#d4283a':'#1c1a26'; c.textAlign='left'; c.textBaseline='top';
-  c.font='900 '+Math.round(w*.34)+'px '+TC; c.fillText(RN(rk(id)),x+w*.09,y+w*.06);
-  c.font=Math.round(w*.3)+'px '+TC; c.fillText(SUITS[su(id)],x+w*.1,y+w*.42);
-  c.textAlign='center'; c.textBaseline='middle'; c.font=Math.round(w*.62)+'px '+TC; c.fillText(SUITS[su(id)],x+w*.6,y+h*.66);
+  if(!up){ const B=BACKS[o.back||STYLE.back]||BACKS.red,ix=x+w*.08,iy=y+w*.08,iw=w*.84,ih=h-w*.16; c.fillStyle='#fff'; rr(c,x,y,w,h,w*.12); c.fill(); c.fillStyle=B[0]; rr(c,ix,iy,iw,ih,w*.08); c.fill();
+    c.save(); rr(c,ix,iy,iw,ih,w*.08); c.clip(); c.strokeStyle=B[1]; c.fillStyle=B[1]; c.lineWidth=Math.max(1,w*.05); const pat=STYLE.pat;
+    if(pat==='stripe'){ c.beginPath(); for(let i=-h;i<w+h;i+=w*.2){ c.moveTo(x+i,y); c.lineTo(x+i+h,y+h); c.moveTo(x+i+h,y); c.lineTo(x+i,y+h); } c.stroke(); }
+    else if(pat==='dots'){ for(let yy=iy+w*.1;yy<iy+ih;yy+=w*.2) for(let xx=ix+w*.1+((yy-iy)/(w*.2)%2)*w*.1;xx<ix+iw;xx+=w*.2){ c.beginPath(); c.arc(xx,yy,w*.045,0,7); c.fill(); } }
+    else if(pat==='star'){ c.fillStyle='rgba(255,255,255,.55)'; c.font=Math.round(w*.5)+'px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('★',x+w/2,y+h/2); c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=Math.max(1,w*.03); rr(c,ix+w*.06,iy+w*.06,iw-w*.12,ih-w*.12,w*.05); c.stroke(); }
+    c.restore(); c.restore(); return; }
+  c.fillStyle=STYLE.face; rr(c,x,y,w,h,w*.12); c.fill(); if(o.hl){ c.fillStyle='rgba(255,220,120,.25)'; rr(c,x,y,w,h,w*.12); c.fill(); }
+  c.strokeStyle=o.sel?'#ffd23f':o.hl?'#ffb000':'#9a95a8'; c.lineWidth=o.sel?3:1; c.stroke();
+  const sg=su(id),col=STYLE.suit==='four'?FOUR[sg]:(sg===1||sg===2)?'#d4283a':'#1c1a26',big=STYLE.suit==='big';
+  c.fillStyle=col; c.textAlign='left'; c.textBaseline='top';
+  c.font='900 '+Math.round(w*(big?.5:.34))+'px '+TC; c.fillText(RN(rk(id)),x+w*.08,y+w*.04);
+  c.font=Math.round(w*(big?.36:.3))+'px '+TC; c.fillText(SUITS[sg],x+w*.1,y+w*(big?.56:.42));
+  c.textAlign='center'; c.textBaseline='middle'; c.font=Math.round(w*(big?.5:.62))+'px '+TC; c.fillText(SUITS[sg],x+w*(big?.66:.6),y+h*(big?.74:.66));
   c.restore();
 }
-
+// 牌桌背景：經典綠桌、木框賭桌、星空、咖啡廳
+function drawTable(c,w,h,L,t){
+  const k=w/800,bg=(L&&L.bg)||'felt',felt=(L&&L.felt)||'#1f6b4a',cx=w/2,cy=h*.46,rx=w*.47,ry=h*.43;
+  if(bg==='felt'){ const g=c.createRadialGradient(cx,h/2,60*k,cx,h/2,520*k); g.addColorStop(0,felt); g.addColorStop(1,'#0b0a1c'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    c.strokeStyle='rgba(255,255,255,.08)'; c.lineWidth=3*k; c.beginPath(); c.ellipse(cx,h/2-10*k,330*k,170*k,0,0,7); c.stroke(); return; }
+  if(bg==='wood'){ c.fillStyle='#3a2416'; c.fillRect(0,0,w,h); c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=2*k; for(let y=0;y<h;y+=26*k){ c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); }
+    c.fillStyle='rgba(255,220,150,.08)'; for(let i=0;i<5;i++){ c.beginPath(); c.arc(w*(.1+i*.2),-20*k,120*k,0,7); c.fill(); } }
+  else if(bg==='night'){ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0b0f2e'); g.addColorStop(1,'#1d1240'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    for(let i=0;i<70;i++){ c.globalAlpha=.4+.6*Math.abs(Math.sin((t||0)*1.3+i)); c.fillStyle='#fff'; c.fillRect((i*137)%w,(i*71)%h,1.6*k,1.6*k); } c.globalAlpha=1;
+    c.fillStyle='#f6f0c8'; c.beginPath(); c.arc(w*.9,h*.12,22*k,0,7); c.fill(); c.fillStyle='#0b0f2e'; c.beginPath(); c.arc(w*.88,h*.1,20*k,0,7); c.fill(); }
+  else if(bg==='cafe'){ c.fillStyle='#e9d6b8'; c.fillRect(0,0,w,h); c.fillStyle='rgba(150,100,60,.12)'; for(let x=0;x<w;x+=40*k) c.fillRect(x,0,20*k,h);
+    c.fillStyle='#bfe0f0'; for(const x of [.08,.82]){ c.fillRect(w*x,h*.08,w*.1,h*.22); c.strokeStyle='#8a5a3a'; c.lineWidth=4*k; c.strokeRect(w*x,h*.08,w*.1,h*.22); c.beginPath(); c.moveTo(w*(x+.05),h*.08); c.lineTo(w*(x+.05),h*.3); c.stroke(); } }
+  // 橢圓牌桌：外框＋桌布
+  c.fillStyle=bg==='wood'?'#7a4a22':bg==='night'?'#2a2a4a':'#8a5a3a'; c.beginPath(); c.ellipse(cx,cy,rx+16*k,ry+16*k,0,0,7); c.fill();
+  c.strokeStyle=bg==='night'?'#7a7ac8':'#d9b25a'; c.lineWidth=3*k; c.beginPath(); c.ellipse(cx,cy,rx+7*k,ry+7*k,0,0,7); c.stroke();
+  const g2=c.createRadialGradient(cx,cy,30*k,cx,cy,rx); g2.addColorStop(0,felt); g2.addColorStop(1,'rgba(0,0,0,.55)'); c.fillStyle=felt; c.beginPath(); c.ellipse(cx,cy,rx,ry,0,0,7); c.fill(); c.fillStyle=g2; c.fill();
+}
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
   const kind=GID[clamp(opts.stage||0,0,3)],humans=net?net.count:1;
   const OP=(opts.options||{}),seats=+OP.seats||6,bjSeats=+OP.bjseats||3;
   const np=net?Math.min(kind==='th'?9:kind==='bj'?7:4,net.count+(net.bots||0)):kind==='bj'?clamp(bjSeats,1,7):kind==='th'?clamp(seats,2,9):4; // 德州撲克最多 9 人、二十一點最多 7 人
-  const L=opts.look||{felt:'#1f6b4a',back:'red'},spd=['slow','normal','fast'].indexOf((opts.options||{}).speed||'normal'),AID=[1.5,.9,.45][spd<0?1:spd];
+  const L=opts.look||{felt:'#1f6b4a',back:'red'}; setStyle(L); const LK=L,spd=['slow','normal','fast'].indexOf((opts.options||{}).speed||'normal'),AID=[1.5,.9,.45][spd<0?1:spd];
   const {ctx:c,canvas}=env.canvas2d(W,H);
   const names=[]; for(let i=0;i<np;i++) names.push(i<humans?(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你')):'電腦 '+(i-humans+1));
   const isAI=p=>p>=humans,sfx=n=>env.sfx(n);
@@ -327,8 +351,7 @@ function create(env,opts){
 
   function draw(){
     btns=[]; hits=[];
-    const g=c.createRadialGradient(W/2,H/2,60,W/2,H/2,520); g.addColorStop(0,L.felt||'#1f6b4a'); g.addColorStop(1,'#0b0a1c'); c.fillStyle=g; c.fillRect(0,0,W,H);
-    c.strokeStyle='rgba(255,255,255,.08)'; c.lineWidth=3; c.beginPath(); c.ellipse(W/2,H/2-10,330,170,0,0,7); c.stroke();
+    setStyle(L); drawTable(c,W,H,L,t);
     c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 16px '+TC; c.fillText(GAMES[GID.indexOf(kind)],14,20);
     if(G.log){ c.font='700 12px '+TC; c.textAlign='left'; let tx=G.log; while(c.measureText(tx).width>250&&tx.length>4) tx=tx.slice(0,-2); if(tx!==G.log) tx+='…'; const w=c.measureText(tx).width+20; c.fillStyle='rgba(11,10,28,.7)'; rr(c,10,34,w,22,11); c.fill(); c.fillStyle='#fff'; c.fillText(tx,20,45); } // 訊息放左上角，不擋到對面的人
     if(kind==='b2') drawB2(); else if(kind==='th') drawTH(); else if(kind==='13') draw13(); else drawBJ();
@@ -419,6 +442,7 @@ function create(env,opts){
 
 /* ---------- 開始畫面的示意圖 ---------- */
 function stageShow(ctx,w,h,si,t){
+  setStyle(window.__pokerLook);
   const g=ctx.createRadialGradient(w/2,h/2,30,w/2,h/2,w*.7); g.addColorStop(0,'#1f6b4a'); g.addColorStop(1,'#0b0a1c'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.09)+'px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText(GAMES[si],w/2,h*.1);
   const k=w/480,cw=48*k,ch=68*k,u=(t%4)/4;
@@ -444,6 +468,7 @@ function stageShow(ctx,w,h,si,t){
     ctx.fillStyle='#86dc4f'; ctx.font='900 '+Math.round(h*.08)+'px '+TC; ctx.fillText(u>.3?'21 點！':'',w/2,h*.93); }
 }
 function thumb(ctx,w,h,t){
+  setStyle(null);
   const g=ctx.createRadialGradient(w/2,h/2,30,w/2,h/2,w*.7); g.addColorStop(0,'#1f6b4a'); g.addColorStop(1,'#0b0a1c'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
   const ids=[47,48,49,50,51],k=w/480;
   ids.forEach((id,i)=>{ const a=(i-2)*.22+Math.sin(t*1.2)*.04; ctx.save(); ctx.translate(w/2+(i-2)*38*k,h*.62); ctx.rotate(a); drawCard(ctx,-30*k,-90*k,60*k,86*k,id,true); ctx.restore(); });
@@ -469,9 +494,17 @@ function thumb(ctx,w,h,t){
   help:[['點牌','選取／取消選取'],['按鈕','出牌、過、跟注、加注、要牌、停牌…'],['大老二','單張、一對、五張牌型（順子＜同花＜葫蘆＜鐵支＜同花順）'],['十三支','點牌再點空位放進墩裡，或按「自動排牌」']],
   touchHelp:[['點牌','選取／取消選取'],['按鈕','出牌、過、跟注、加注、要牌、停牌…'],['十三支','點牌再點空位放進墩裡，或按「自動排牌」']],
   touch:null,
-  looks:[{key:'felt',label:'桌布顏色',type:'color',opts:['#1f6b4a','#1f4f7a','#6b1f3a','#3a2d57','#5a4630','#2b2b33']},
-    {key:'back',label:'牌背',opts:[{id:'red',label:'紅色'},{id:'blue',label:'藍色'},{id:'purple',label:'紫色'},{id:'green',label:'綠色'}]}],
+  looks:[{key:'face',label:'牌面顏色',type:'color',opts:['#fdfcf8','#fff3d6','#e6f2ff','#ffe6ee','#e9ffe6']},
+    {key:'suit',label:'牌面樣式',opts:[{id:'classic',label:'經典'},{id:'four',label:'四色牌'},{id:'big',label:'大字'}]},
+    {key:'back',label:'牌背顏色',opts:[{id:'red',label:'紅色'},{id:'blue',label:'藍色'},{id:'purple',label:'紫色'},{id:'green',label:'綠色'},{id:'black',label:'黑色'},{id:'gold',label:'金色'}]},
+    {key:'pat',label:'牌背圖案',opts:[{id:'stripe',label:'斜紋'},{id:'dots',label:'圓點'},{id:'star',label:'星星'},{id:'plain',label:'素面'}]},
+    {key:'felt',label:'桌布顏色',type:'color',opts:['#1f6b4a','#1f4f7a','#6b1f3a','#3a2d57','#5a4630','#2b2b33']},
+    {key:'bg',label:'背景',opts:[{id:'felt',label:'經典牌桌'},{id:'wood',label:'木框賭桌'},{id:'night',label:'星空'},{id:'cafe',label:'咖啡廳'}]}],
   best:{label:'最多籌碼',fmt:v=>v+' 籌碼',lower:false},
-  stageShow,preview:(ctx,w,h,L,t)=>{ thumb(ctx,w,h,t); },thumb,create
+  stageShow,preview:(ctx,w,h,L,t)=>{ // 造型預覽：背景＋牌面＋牌背
+    drawTable(ctx,w,h,L,t); setStyle(L); window.__pokerLook=L; const k=w/480,cw=58*k,ch=84*k;
+    [47,22,9,35].forEach((id,i)=>{ ctx.save(); ctx.translate(w*.36+(i-1.5)*40*k,h*.6); ctx.rotate((i-1.5)*.16); drawCard(ctx,-cw/2,-ch*.9,cw,ch,id,true); ctx.restore(); });
+    drawCard(ctx,w*.66,h*.6-ch*.9,cw,ch,0,false); drawCard(ctx,w*.66+cw*.35,h*.6-ch*.85,cw,ch,0,false);
+    setStyle(null); },thumb,create
 };
 })();
