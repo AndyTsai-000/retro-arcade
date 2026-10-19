@@ -65,7 +65,7 @@ function create(env,opts){
   const kind=GID[clamp(opts.stage||0,0,3)],humans=net?net.count:1,OP=opts.options||{};
   const np=net?Math.min(6,net.count+(net.bots||0)):clamp(+OP.seats||4,2,6);
   const L=opts.look||{}; setSty(L);
-  const AID=[3.2,2.2,1.3][Math.max(0,['slow','normal','fast'].indexOf(OP.speed||'normal'))];
+  const AID=[5,3.6,2.2][Math.max(0,['slow','normal','fast'].indexOf(OP.speed||'normal'))];
   const {ctx:c,canvas}=env.canvas2d(W,H);
   const names=[]; for(let i=0;i<np;i++) names.push(i<humans?(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你')):'電腦 '+(i-humans+1));
   const isAI=p=>p>=humans,sfx=n=>env.sfx(n),SHK=1.3,shake=who=>{ G.shk++; G.shkWho=who; };
@@ -173,7 +173,7 @@ function create(env,opts){
     if(kind==='liar'&&G.reveal){ G.reveal.until-=dt; if(G.reveal.until<=0){ const al=aliveL(); if(al.length<=1){ G.over={win:al[0]}; } else { const L2=G.reveal.loser; liarRound(G.lives[L2]>0?L2:al.find(q=>q>L2)??al[0]); } broadcast(); } return; }
     if((kind==='sb'||kind==='nn')&&G.show){ G.show.until-=dt; if(G.show.until<=0){ potRound(); broadcast(); } return; }
     if(kind==='rb'&&(G.phase==='show'||G.phase==='lost')){ G.until-=dt; if(G.until<=0){ if(G.phase==='show') rbNext(); else rbAfterLost(); broadcast(); } return; }
-    if(shkT<SHK) return; if(G.turn!==lastTurn){ lastTurn=G.turn; aiT=0; aiWait=AID*(.75+Math.random()*.6); } aiT+=dt; if(aiT>aiWait){ aiT=0; lastTurn=-2; aiStep(); }
+    if(shkT<SHK) return; if(G.turn!==lastTurn){ lastTurn=G.turn; aiT=0; aiWait=AID*(.85+Math.random()*.4); } aiT+=dt; if(aiT>aiWait){ aiT=0; lastTurn=-2; aiStep(); }
   }
   function finish(){
     const tbl=(h,list)=>'<table class="ls"><tr><th>名次</th><th>玩家</th><th>'+h+'</th></tr>'+list.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>').join('')+'</table>';
@@ -226,7 +226,9 @@ function create(env,opts){
     for(let p=0;p<np;p++){ if(p===me) continue; const {x,y}=seat(p),out=G.lives[p]<=0;
       if(R&&!out){ diceRow(G.dice[p],x,y-26,20,{hl:f=>f===R.f||(R.f!==1&&f===1)}); }
       else if(!out){ const a=cupAnim(p); drawCup(c,x+(a?a.dx:0),y-4,48,a&&a.cover?a.lift*48:0,a&&a.cover?a.rot:0); }
-      plate(p,x,y+18,out?'出局':'♥'.repeat(G.lives[p]),!R&&G.turn===p&&!G.over); }
+      plate(p,x,y+18,out?'出局':'♥'.repeat(G.lives[p]),!R&&G.turn===p&&!G.over);
+      if(b&&b.by===p&&!R){ const tx='喊 '+b.q+' 個 '+b.f; c.font='900 13px '+TC; const bw=c.measureText(tx).width+22; c.fillStyle='#ffe066'; rr(c,x-bw/2,y+33,bw,22,11); c.fill();
+        c.beginPath(); c.moveTo(x-6,y+34); c.lineTo(x,y+27); c.lineTo(x+6,y+34); c.fill(); c.fillStyle='#14122b'; c.textAlign='center'; c.fillText(tx,x,y+45); } }
     // 中間：目前喊的
     if(b){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,W/2-150,170,300,70,16); c.fill(); c.fillStyle='#cfe8d8'; c.font='700 13px '+TC; c.textAlign='center'; c.fillText(names[b.by]+' 喊',W/2,186);
       c.fillStyle='#ffd23f'; c.font='900 30px '+TC; c.fillText(b.q+' 個',W/2-30,218); drawDie(c,W/2+30,198,40,b.f); }
