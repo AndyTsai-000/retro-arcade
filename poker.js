@@ -92,7 +92,8 @@ function drawCard(c,x,y,w,h,id,up,o){
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
   const kind=GID[clamp(opts.stage||0,0,3)],humans=net?net.count:1;
-  const np=net?Math.min(4,net.count+(net.bots||0)):kind==='bj'?3:4;
+  const OP=(opts.options||{}),seats=+OP.seats||6;
+  const np=net?Math.min(kind==='th'?8:4,net.count+(net.bots||0)):kind==='bj'?3:kind==='th'?clamp(seats,2,8):4; // 德州撲克最多 8 人
   const L=opts.look||{felt:'#1f6b4a',back:'red'},spd=['slow','normal','fast'].indexOf((opts.options||{}).speed||'normal'),AID=[1.5,.9,.45][spd<0?1:spd];
   const {ctx:c,canvas}=env.canvas2d(W,H);
   const names=[]; for(let i=0;i<np;i++) names.push(i<humans?(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你')):'電腦 '+(i-humans+1));
@@ -129,8 +130,8 @@ function create(env,opts){
     return b2Play(p,pick.ids); }
 
   /* ===== 德州撲克 ===== */
-  const BB=20,MAXH=8;
-  function thSetup(){ G.chips=new Array(np).fill(1000); G.handNo=0; G.dealer=Math.floor(Math.random()*np); thNewHand(); }
+  const BLIND=String(OP.blind||'10/20').split('/').map(Number),BB=BLIND[1]||20,SB=BLIND[0]||BB/2,START=+OP.chips||1000,MAXH=8; // 起始籌碼和盲注可以在開始前選
+  function thSetup(){ G.chips=new Array(np).fill(START); G.handNo=0; G.dealer=Math.floor(Math.random()*np); thNewHand(); }
   const live=p=>G.chips[p]>0||G.contrib&&G.contrib[p]>0;
   function thNewHand(){
     const alive=[...Array(np).keys()].filter(p=>G.chips[p]>0);
@@ -140,8 +141,8 @@ function create(env,opts){
     for(let p=0;p<np;p++){ if(G.chips[p]>0) G.hole[p]=[d.pop(),d.pop()]; else { G.hole[p]=[]; G.folded[p]=true; } }
     const nxt=q=>{ for(let k=1;k<=np;k++){ const r=(q+k)%np; if(G.chips[r]>0) return r; } return q; };
     G.dealer=nxt(G.dealer); const sb=alive.length===2?G.dealer:nxt(G.dealer),bb=nxt(sb);
-    thPut(sb,BB/2); thPut(bb,BB); G.cur=BB; G.minR=BB; G.acted=new Set(); G.turn=nxt(bb); G.sb=sb; G.bbp=bb;
-    log('第 '+G.handNo+' / '+MAXH+' 手　'+names[sb]+' 小盲 '+BB/2+'、'+names[bb]+' 大盲 '+BB); thSkip(); }
+    thPut(sb,SB); thPut(bb,BB); G.cur=BB; G.minR=BB; G.acted=new Set(); G.turn=nxt(bb); G.sb=sb; G.bbp=bb;
+    log('第 '+G.handNo+' / '+MAXH+' 手　'+names[sb]+' 小盲 '+SB+'、'+names[bb]+' 大盲 '+BB); thSkip(); }
   function thSkip(){ if(!canAct(G.turn)) thAdvance(); } // 輪到的人已經全下（例如大盲就全下）時直接跳過
   function thPut(p,a){ a=Math.min(a,G.chips[p]); G.chips[p]-=a; G.bet[p]+=a; G.contrib[p]+=a; if(G.chips[p]===0) G.allin[p]=true; }
   const canAct=p=>!G.folded[p]&&!G.allin[p];
@@ -274,6 +275,8 @@ function create(env,opts){
   /* ===== 座位 ===== */
   function seatOf(p){ const rel=(p-me+np)%np; const S={1:['b'],2:['b','t'],3:['b','l','r'],4:['b','l','t','r']}[np]; return S[rel]; }
   const POS={b:[400,470],l:[64,230],t:[400,58],r:[736,230]};
+  function thPos(p){ if(np<=4){ const s=seatOf(p),[x,y]=POS[s]; return {x,y:s==='t'?y+10:y-30,top:s==='t'}; }
+    const rel=(p-me+np)%np,a=Math.PI*(.97+1.06*(rel-1)/(np-2)); return {x:400+Math.cos(a)*335,y:200+Math.sin(a)*145-24,top:Math.sin(a)<-.3}; } // 其他人坐在桌子上半圈，下面留給自己的牌和按鈕
   const BJPOS={b:[400,470],l:[110,250],t:[690,250],r:[690,250]};
 
   /* ===== 更新 ===== */
@@ -347,11 +350,11 @@ function create(env,opts){
   }
   function drawTH(){
     if(!G.hole) return;
-    for(let p=0;p<np;p++){ if(p===me) continue; const s=seatOf(p),[x,y]=POS[s],yy=s==='t'?y+10:y-30;
+    for(let p=0;p<np;p++){ if(p===me) continue; const sp=thPos(p),x=sp.x,yy=sp.y;
       const shown=G.show&&G.show.sc&&!G.folded[p];
-      if(G.hole[p].length){ if(shown){ drawCard(c,x-30,yy,32,46,G.hole[p][0],true); drawCard(c,x,yy,32,46,G.hole[p][1],true); } else if(!G.folded[p]){ drawCard(c,x-24,yy,32,46,0,false,{back:L.back}); drawCard(c,x-8,yy,32,46,0,false,{back:L.back}); } }
-      plate(p,x,yy+62,G.folded[p]?'棄牌':G.allin[p]?'全下':String(G.chips[p]),G.turn===p&&!G.show&&!G.over);
-      if(G.bet[p]){ c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText('下注 '+G.bet[p],x,yy+84); }
+      const cw=np>6?26:32,chh=np>6?37:46; if(G.hole[p].length){ if(shown){ drawCard(c,x-cw-1,yy,cw,chh,G.hole[p][0],true); drawCard(c,x+1,yy,cw,chh,G.hole[p][1],true); } else if(!G.folded[p]){ drawCard(c,x-cw*.75,yy,cw,chh,0,false,{back:L.back}); drawCard(c,x-cw*.25,yy,cw,chh,0,false,{back:L.back}); } }
+      plate(p,x,yy+chh+16,G.folded[p]?'棄牌':G.allin[p]?'全下':String(G.chips[p]),G.turn===p&&!G.show&&!G.over);
+      if(G.bet[p]){ c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText('下注 '+G.bet[p],x,yy+chh+38); }
       if(G.show&&G.show.win[p]){ c.fillStyle='#86dc4f'; c.font='900 14px '+TC; c.fillText('+'+G.show.win[p]+(G.show.sc&&G.show.sc[p]?' '+G.show.sc[p]:''),x,yy-12); } }
     for(let i=0;i<5;i++){ const x=W/2-140+i*58; if(G.board[i]!=null) drawCard(c,x,150,52,74,G.board[i],true); else { c.strokeStyle='rgba(255,255,255,.18)'; c.setLineDash([4,4]); rr(c,x,150,52,74,6); c.stroke(); c.setLineDash([]); } }
     c.fillStyle='#fff'; c.font='900 16px '+TC; c.textAlign='center'; c.fillText('彩池 '+(pot()),W/2,246); c.font='700 12px '+TC; c.fillStyle='#cfe8d8'; c.fillText('第 '+G.handNo+' / '+MAXH+' 手',W/2,266);
@@ -445,11 +448,14 @@ function thumb(ctx,w,h,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).poker={
-  name:'牌桌派對',tag:'CARD PARTY',color:'#e23b3b',online:true,maxPlayers:4,bots:true,minPlayers:2,
+  name:'牌桌派對',tag:'CARD PARTY',color:'#e23b3b',online:true,maxPlayers:si=>si===1?8:4,bots:true,minPlayers:2, // 德州撲克最多 8 人，其他 4 人
   desc:'一副撲克牌玩四種：大老二、德州撲克、十三支、二十一點。和電腦同桌，或開房間 2～4 人連線。',
-  goal:'大老二：拿到最小牌的人先出，跟著出同張數、比上一手大的牌，先出完的人贏。德州撲克：兩張手牌配五張公牌湊最大的五張，打 8 手比籌碼。十三支：把 13 張分成頭墩 3、中墩 5、尾墩 5，尾墩最大、頭墩最小，和每家逐墩比大小。二十一點：和莊家比點數，越接近 21 越好，超過就爆，打 6 局比籌碼。',
+  goal:'大老二：拿到最小牌的人先出，跟著出同張數、比上一手大的牌，先出完的人贏。德州撲克：兩張手牌配五張公牌湊最大的五張，打 8 手比籌碼；起始籌碼、盲注和人數（單機 4～8 人、連線最多 8 人）可以在開始前選。十三支：把 13 張分成頭墩 3、中墩 5、尾墩 5，尾墩最大、頭墩最小，和每家逐墩比大小。二十一點：和莊家比點數，越接近 21 越好，超過就爆，打 6 局比籌碼。',
   stages:GAMES,
-  options:[{key:'speed',label:'電腦速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]}],
+  options:[{key:'speed',label:'電腦速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]},
+    {key:'chips',label:'德州撲克　起始籌碼',def:'1000',opts:[{id:'500',label:'500'},{id:'1000',label:'1000'},{id:'2000',label:'2000'},{id:'5000',label:'5000'}]},
+    {key:'blind',label:'德州撲克　盲注',def:'10/20',opts:[{id:'5/10',label:'5／10'},{id:'10/20',label:'10／20'},{id:'25/50',label:'25／50'},{id:'50/100',label:'50／100'}]},
+    {key:'seats',label:'德州撲克　單機人數',def:'6',opts:[{id:'4',label:'4 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'}]}],
   help:[['點牌','選取／取消選取'],['按鈕','出牌、過、跟注、加注、要牌、停牌…'],['大老二','單張、一對、五張牌型（順子＜同花＜葫蘆＜鐵支＜同花順）'],['十三支','點牌再點空位放進墩裡，或按「自動排牌」']],
   touchHelp:[['點牌','選取／取消選取'],['按鈕','出牌、過、跟注、加注、要牌、停牌…'],['十三支','點牌再點空位放進墩裡，或按「自動排牌」']],
   touch:null,

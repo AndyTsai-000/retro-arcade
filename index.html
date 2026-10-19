@@ -236,7 +236,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=109; // 每次改版加一
+window.ARCADE_V=110; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -740,7 +740,7 @@ if(/github\.io$/.test(location.hostname)){ const l=document.createElement('link'
 /* ---------- 多人連線 ----------
    先試 PeerJS 直連（WebRTC）；兩邊網路打不通時，改走公用 MQTT 伺服器轉送。
    免費的 TURN 中繼實測都連不上，所以用轉送當備援。 */
-const PEERJS='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',PREFIX='retro-arcade-tw-',maxP=()=>(cur&&cur.maxPlayers)||4;
+const PEERJS='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',PREFIX='retro-arcade-tw-',maxP=()=>{ const m=cur&&cur.maxPlayers; return (typeof m==='function'?m(stageSel):m)||4; }; // 人數上限可以跟著選的關卡變（牌桌派對的德州撲克 8 人）
 // 連線只在獨立網址或本機能用；Claude 的頁面會擋掉對外連線
 const CAN_NET=location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$|github\.io$/.test(location.hostname);
 const NO_NET=CAN_NET?'連不上連線伺服器，請確認網路後再試一次。':'這個頁面是 Claude 的預覽頁，對外連線被擋住，所以不能開房間。請改用獨立網址（或直接開啟電腦裡的 index.html）。';
@@ -924,6 +924,7 @@ function roomCard(){
     if(g.stageViewer&&!v3&&!stageWait){ stageWait=true; g.load().then(()=>{ stageWait=false; if(cur===g&&Net.sid&&!Net.inGame&&state==='ready'&&$('#nLeave')) roomCard(); }).catch(()=>{}); } }
   on('nStart',()=>{
     Net.conns=Net.conns.filter(c=>!c.gone); Net.count=Net.conns.length+1;
+    if(Net.count>maxP()){ $('#nWarn').textContent='這個遊戲最多 '+maxP()+' 人，現在房間裡有 '+Net.count+' 人。'; return; }
     if(g.minPlayers&&Net.count+(g.bots?Net.bots||0:0)<g.minPlayers){ $('#nWarn').textContent='至少要 '+g.minPlayers+' 位玩家才能開始，等朋友加入或加電腦。'; return; } Net.inGame=true; Net.seed=(Math.random()*2147483647)|0;
     Net.names=allNames();
     Net.looks=allLooks();
