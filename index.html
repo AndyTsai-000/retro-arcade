@@ -236,7 +236,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=115; // 每次改版加一
+window.ARCADE_V=116; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -566,7 +566,7 @@ function startCard(){
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+
     '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+(g.stageGoal?g.stageGoal(stageSel):g.goal)+'</p><div class="lkhead">操作說明</div>'+helpHtml(g)+'</div></div>');
   closeLook(); demo(g); leftTrack(g);
-  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); const gl=$('#sgGoal'); if(gl&&g.stageGoal) gl.textContent=g.stageGoal(stageSel); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); // 換關卡時只顯示那一關的設定 bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
+  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); const gl=$('#sgGoal'); if(gl&&g.stageGoal) gl.textContent=g.stageGoal(stageSel); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
   const sel=card.querySelector('.lklist .sg.sel,.lklist .chip.sel[data-s]'); if(sel) sel.scrollIntoView({block:'nearest'});
 }
