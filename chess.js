@@ -539,7 +539,6 @@ function create(env,opts){
     const ph=phase==='plan'?(isPve(round)?'準備：這回合打野怪':'準備階段'):phase==='fight'?(battle?'對戰：'+battle.opp:'觀戰中'):'等待其他玩家…';
     c.fillText('第 '+roundLabel(round)+' 回合　'+ph,480,18);
     if(phase==='plan'||phase==='fight'){ const dur=phase==='plan'?phDur:fightInfo?fightInfo.dur:1,u=clamp(1-phT/dur,0,1),left=Math.max(0,Math.ceil(dur-phT)); // 倒數秒數
-      c.fillStyle='#3a3670'; rr(c,380,30,200,8,4); c.fill(); c.fillStyle=phase==='plan'?(left<=5?'#ff5d5d':'#86dc4f'):'#ff7a3d'; rr(c,380,30,200*u,8,4); c.fill();
       c.fillStyle='rgba(11,10,28,.7)'; rr(c,812,6,138,34,10); c.fill(); c.fillStyle=phase==='plan'&&left<=5?'#ff5d5d':'#fff'; c.font='900 17px '+TC; c.textAlign='center'; c.fillText((phase==='plan'?'準備 ':'戰鬥 ')+left+' 秒',881,24); }
     else if(phase==='wait'){ c.fillStyle='rgba(11,10,28,.7)'; rr(c,812,6,138,34,10); c.fill(); c.fillStyle='#cfe8d8'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText('等待其他玩家…',881,24); }
     drawBoard(); drawBench(); drawShop(); drawTraits(); drawPlayers(); drawItems(); drawInfo();
