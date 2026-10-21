@@ -386,7 +386,8 @@ function create(env,opts){
 
   /* ----- 更新 ----- */
   function update(dt){
-    t+=dt; if(msgT>0) msgT-=dt; if(ended) return; phT+=dt;
+    t+=dt; if(msgT>0) msgT-=dt; if(ended) return; const was=phT; phT+=dt;
+    if(phase==='plan'&&PL[me].alive){ const L1=Math.ceil(phDur-was),L2=Math.ceil(phDur-phT); if(L2!==L1&&L2>=1&&L2<=3) sfx('beep'); }
     if(phase==='plan'){
       if(phT>=phDur||(!net&&readyHum.has(me))||(net&&!client&&readyHum.size>=PL.filter(p=>!p.ai&&p.alive).length&&readyHum.size>0)){
         if(PL[me].alive&&waitBoards===0&&!client) sendBoard();
@@ -427,8 +428,6 @@ function create(env,opts){
   function onUp(e){ if(!drag) return; const d=drag; drag=null; const [x,y]=[d.x,d.y]; if(Math.hypot(x-d.sx,y-d.sy)<6) return;
     if(d.kind==='item'){ const hit=unitAt(x,y)||(battle?null:null); if(hit){ const it=ME.items[d.i]; if(addItem(hit.u,it,ME)){ ME.items.splice(d.i,1); sfx('item'); } else say('這隻已經有 3 件裝備了'); } return; }
     const u=d.u;
-    // 拖到商店＝賣掉
-    if(y>SHOP_Y-10){ if(d.from==='board'&&!planning()) return; if(d.from==='bench') ME.bench[d.i]=null; else ME.board.splice(ME.board.indexOf(u),1); ME.gold+=sellVal(u); ME.items.push(...u.it); sfx('pop'); say('賣掉 '+defOf(u.u).n+'，拿回 '+sellVal(u)+' 金幣',1.4); sel=null; return; }
     const bi=benchAt(x,y);
     if(bi>=0){ const other=ME.bench[bi]; if(d.from==='bench'){ ME.bench[bi]=u; ME.bench[d.i]=other; }
       else { if(!planning()) return; ME.board.splice(ME.board.indexOf(u),1); ME.bench[bi]=u; if(other){ other.c=u.c; other.r=u.r; ME.board.push(other); } } sfx('click'); return; }
@@ -436,6 +435,11 @@ function create(env,opts){
       if(d.from==='board'){ if(other){ other.c=u.c; other.r=u.r; } u.c=h[0]; u.r=h[1]; }
       else { if(!other&&ME.board.length>=ME.level){ say('上場人數已滿（等級 '+ME.level+' 可以上 '+ME.level+' 隻）'); return; }
         ME.bench[d.i]=other||null; if(other) ME.board.splice(ME.board.indexOf(other),1); u.c=h[0]; u.r=h[1]; ME.board.push(u); } sfx('place'); } }
+  // 賣出：點萌獸後在資料框按「賣出」（戰鬥中只能賣備戰席上的）
+  const ownWhere=u=>ME.bench.includes(u)?'bench':ME.board.includes(u)?'board':null;
+  const canSell=u=>{ const w=ownWhere(u); return w==='bench'||w==='board'&&planning(); };
+  function sellUnit(u){ const w=ownWhere(u); if(!w||!canSell(u)) return; if(w==='bench') ME.bench[ME.bench.indexOf(u)]=null; else ME.board.splice(ME.board.indexOf(u),1);
+    ME.gold+=sellVal(u); ME.items.push(...u.it); sfx('pop'); say('賣掉 '+defOf(u.u).n+'，拿回 '+sellVal(u)+' 金幣',1.4); sel=null; }
   canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); canvas.style.touchAction='none';
 
   /* ----- 畫面 ----- */
@@ -508,6 +512,7 @@ function create(env,opts){
     L2.forEach(([a,b],i)=>{ c.fillStyle='#9a96c8'; c.font='700 11px '+TC; c.fillText(a,x+12+(i%2)*90,y+100+Math.floor(i/2)*20); c.fillStyle='#fff'; c.fillText(String(b),x+46+(i%2)*90,y+100+Math.floor(i/2)*20); });
     c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.fillText('技能',x+12,y+172); wrap(SKILL_TXT[d.sk.t](d.sk),x+12,y+192,w-24,16,'#fff');
     const its=sel.it||[]; its.forEach((it,i)=>{ drawItemIcon(c,x+24,y+262+i*40,26,it); c.fillStyle='#fff'; c.font='900 11px '+TC; c.textAlign='left'; c.fillText(itemName(it),x+42,y+254+i*40); wrap(itemDesc(it),x+42,y+270+i*40,w-50,12,'#cfe8d8',10); });
+    if(ownWhere(sel)&&PL[me].alive){ const ok=canSell(sel); btn(ok?'賣出 +'+sellVal(sel)+' 金幣':'戰鬥中不能賣',x+8,y+h-34,122,26,()=>sellUnit(sel),!ok,true); }
     btn('關閉',x+w-56,y+h-34,48,26,()=>{ sel=null; }); }
   function wrap(s,x,y,w,lh,col,fs){ c.fillStyle=col; c.font='700 '+(fs||12)+'px '+TC; c.textAlign='left'; let line=''; for(const ch of s){ if(c.measureText(line+ch).width>w){ c.fillText(line,x,y); y+=lh; line=ch; } else line+=ch; } if(line) c.fillText(line,x,y); }
   function draw(){
@@ -517,13 +522,16 @@ function create(env,opts){
     c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#fff'; c.font='900 16px '+TC;
     const ph=phase==='plan'?(isPve(round)?'準備：這回合打野怪':'準備階段'):phase==='fight'?(battle?'對戰：'+battle.opp:'觀戰中'):'等待其他玩家…';
     c.fillText('第 '+round+' 回合　'+ph,480,18);
-    if(phase==='plan'||phase==='fight'){ const dur=phase==='plan'?phDur:fightInfo?fightInfo.dur:1,u=clamp(1-phT/dur,0,1); c.fillStyle='#3a3670'; rr(c,380,30,200,6,3); c.fill(); c.fillStyle=phase==='plan'?'#86dc4f':'#ff7a3d'; rr(c,380,30,200*u,6,3); c.fill(); }
+    if(phase==='plan'||phase==='fight'){ const dur=phase==='plan'?phDur:fightInfo?fightInfo.dur:1,u=clamp(1-phT/dur,0,1),left=Math.max(0,Math.ceil(dur-phT)); // 倒數秒數
+      c.fillStyle='#3a3670'; rr(c,380,30,200,8,4); c.fill(); c.fillStyle=phase==='plan'?(left<=5?'#ff5d5d':'#86dc4f'):'#ff7a3d'; rr(c,380,30,200*u,8,4); c.fill();
+      c.fillStyle='rgba(11,10,28,.7)'; rr(c,812,6,138,34,10); c.fill(); c.fillStyle=phase==='plan'&&left<=5?'#ff5d5d':'#fff'; c.font='900 17px '+TC; c.textAlign='center'; c.fillText((phase==='plan'?'準備 ':'戰鬥 ')+left+' 秒',881,24); }
+    else if(phase==='wait'){ c.fillStyle='rgba(11,10,28,.7)'; rr(c,812,6,138,34,10); c.fill(); c.fillStyle='#cfe8d8'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText('等待其他玩家…',881,24); }
     drawBoard(); drawBench(); drawShop(); drawTraits(); drawPlayers(); drawItems(); drawInfo();
     if(phase==='plan'&&PL[me].alive) btn(readyHum.has(me)?'等待其他人…':'準備好了，開打！',744,BENCH_Y-12,206,40,()=>{ readyHum.add(me); if(client){ sendBoard(); net.send({t:'ready'}); } },readyHum.has(me),true);
-    c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.textAlign='center'; c.fillText('上場 '+ME.board.length+' / '+ME.level+'　拖到下面商店可以賣掉',480,BENCH_Y-36);
+    c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.textAlign='center'; c.fillText('上場 '+ME.board.length+' / '+ME.level+'　點萌獸可以看資料、賣出',480,BENCH_Y-36);
     drawBtns();
     // 拖曳中的東西
-    if(drag&&Math.hypot(drag.x-drag.sx,drag.y-drag.sy)>=6){ if(drag.kind==='item') drawItemIcon(c,drag.x,drag.y,32,ME.items[drag.i]); else { const d=defOf(drag.u.u); drawCreature(c,drag.x,drag.y,1.2,d,{t,photo:d.photo}); if(drag.y>SHOP_Y-10){ c.fillStyle='#ffd23f'; c.font='900 14px '+TC; c.textAlign='center'; c.fillText('放開賣掉：+'+sellVal(drag.u)+' 金幣',drag.x,drag.y-34); } } }
+    if(drag&&Math.hypot(drag.x-drag.sx,drag.y-drag.sy)>=6){ if(drag.kind==='item') drawItemIcon(c,drag.x,drag.y,32,ME.items[drag.i]); else { const d=defOf(drag.u.u); drawCreature(c,drag.x,drag.y,1.2,d,{t,photo:d.photo}); } }
     if(phase==='fight'&&battle&&battle.over){ const win=battle.over.win!==-1&&(battle.over.win===0)!==myFlip; c.fillStyle=win?'#86dc4f':'#ff8a8a'; c.font='900 30px '+TC; c.textAlign='center'; c.strokeStyle='#1a1530'; c.lineWidth=6; const s2=battle.over.win===-1?'平手':win?'勝利！':'輸了…'; c.strokeText(s2,480,BY+HH*3.5); c.fillText(s2,480,BY+HH*3.5); }
     if(!PL[me].alive&&!ended){ c.fillStyle='rgba(11,10,28,.7)'; c.fillRect(260,180,440,80); c.fillStyle='#ffd23f'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText('你被淘汰了（第 '+PL[me].place+' 名），繼續觀戰…',480,220); }
     if(msgT>0&&msg){ c.font='900 15px '+TC; c.textAlign='center'; const w=c.measureText(msg).width+30; c.fillStyle='rgba(180,30,50,.92)'; rr(c,480-w/2,BENCH_Y-80,w,34,12); c.fill(); c.fillStyle='#fff'; c.fillText(msg,480,BENCH_Y-63); }
@@ -559,7 +567,7 @@ function preview(ctx,w,h,L,t){ const k=w/480; const g=ctx.createLinearGradient(0
   goal:'每回合在商店買萌獸、拖上棋盤，三隻一樣的會自動合成升星；相同羈絆湊到 2、4 隻有加成；裝備拖到萌獸身上，兩個小裝備會合成大裝備。戰鬥自動進行，輸了扣血，100 點血扣完就淘汰，活到最後的是第一名。',
   stages:['輕鬆','普通','困難'],stageLabel:'電腦強度',
   stageGoal:si=>['輕鬆：電腦亂買亂擺、升級慢，適合先熟悉規則。','普通：電腦會湊羈絆、存利息、照時間升級。','困難：電腦每回合多 1 金幣，後期會刷商店找升星，很難纏。'][si]+'　每回合買萌獸、拖上棋盤，三隻一樣的自動升星；相同羈絆湊 2／4 隻有加成；裝備拖到萌獸身上，兩件小裝備會合成大裝備。前 3 回合和之後每 6 回合打野怪掉裝備。輸了扣血（2＋回合數／5＋對手剩下萌獸的星數），100 血扣完就淘汰。',
-  help:[['點商店卡片','買萌獸（三隻一樣自動升星）'],['拖曳萌獸','上棋盤、回備戰席、拖到商店賣掉'],['拖曳裝備','裝到萌獸身上；兩件小裝備合成大裝備'],['點萌獸','看能力、技能和裝備'],['升級／刷新','4 金幣買 4 經驗；2 金幣換一批商店'],['準備好了','不用等時間到，直接開打']],
+  help:[['點商店卡片','買萌獸（三隻一樣自動升星）'],['拖曳萌獸','上棋盤、回備戰席'],['點萌獸','看能力、技能、裝備，也可以按「賣出」'],['拖曳裝備','裝到萌獸身上；兩件小裝備合成大裝備'],['升級／刷新','4 金幣買 4 經驗；2 金幣換一批商店'],['準備好了','不用等時間到，直接開打']],
   touch:null,
   looks:[{key:'face',label:'萌獸照片',type:'photo',hint:'上傳人或動物的照片，你的專屬萌獸臉就會換成這張照片。'},
     {key:'cname',label:'萌獸名字',type:'text',max:6,def:'我的萌獸'},
