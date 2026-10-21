@@ -431,7 +431,7 @@ function create(env,opts){
     if(battle){ for(const f of battle.F){ const [fx,fy]=fpos(f); if(f.alive&&Math.hypot(x-fx,y-fy)<20){ sel={u:f.u,s:f.s,it:f.items,live:f}; return; } } }
     sel=null; }
   function onMove(e){ const [x,y]=toLogical(e); hoverX=x; hoverY=y; if(!drag) return; e.preventDefault(); drag.x=x; drag.y=y; }
-  function onUp(e){ if(!drag) return; const d=drag; drag=null; const [x,y]=[d.x,d.y]; if(Math.hypot(x-d.sx,y-d.sy)<6) return;
+  function onUp(e){ if(!drag) return; const d=drag; drag=null; const [x,y]=[d.x,d.y]; if(Math.hypot(x-d.sx,y-d.sy)<(d.kind==='item'?12:6)) return; // 裝備點一下（手指稍微動一點也算）就顯示說明
     if(d.kind==='item'){ tipItem=-1; const hit=unitAt(x,y)||(battle?null:null); if(hit){ const it=ME.items[d.i]; if(addItem(hit.u,it,ME)){ ME.items.splice(d.i,1); sfx('item'); } else say('這隻已經有 3 件裝備了'); } return; }
     const u=d.u;
     const bi=benchAt(x,y);
@@ -510,7 +510,7 @@ function create(env,opts){
   function drawItems(){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,744,316,206,114,10); c.fill(); c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillText('裝備（拖到萌獸身上）',752,330);
     ME.items.forEach((it,i)=>{ if(drag&&drag.kind==='item'&&drag.i===i) return; drawItemIcon(c,762+(i%5)*38,354+Math.floor(i/5)*36,30,it); }); }
   // 裝備說明：滑鼠移到裝備上（手機點一下）就顯示名稱、效果、可以合成什麼
-  function drawItemTip(){ if(drag&&Math.hypot(drag.x-drag.sx,drag.y-drag.sy)>=6) return;
+  function drawItemTip(){ if(drag&&Math.hypot(drag.x-drag.sx,drag.y-drag.sy)>=12) return;
     let i=itemAt(hoverX,hoverY); if(i<0) i=tipItem; if(i<0||i>=ME.items.length) return; const id=ME.items[i],ix=762+(i%5)*38,iy=354+Math.floor(i/5)*36;
     const lines=[]; lines.push(['t',itemName(id)+(COMP[id]?'（小裝備）':'（大裝備）')]); lines.push(['d',itemDesc(id)]);
     if(COMP[id]){ lines.push(['h','和其他小裝備合成：']); for(const o of COMP_IDS) lines.push(['c',COMP[o].n+' → '+COMBO[comboKey(id,o)].n+'：'+itemDesc(comboKey(id,o))]); }
