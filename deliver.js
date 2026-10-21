@@ -36,11 +36,11 @@ const STAGES=[
   {name:'曼谷・考山路',stars:5,orders:6,traffic:.75,onc:.75,scoot:1,bus:.2,peds:.8,cam:.4,jay:.5,runner:.45,park:.4,tuk:1,dog:.7,stall:.6,night:1,left:1,pal:'th',land:'wat',target:640,
    shop:['打拋豬飯','泰式炒河粉','芒果糯米飯','冬蔭功','泰式奶茶','綠咖哩','烤肉串','椰子冰'],cus:['頌猜先生','娜娜小姐','阿南同學','蘇妲太太','差猜先生','妮妮小姐'],sign:['按摩','烤肉','冰沙','旅店','酒吧','刺青','水果','夜市'],desc:'泰國也是靠左行駛，嘟嘟車左鑽右鑽，路邊攤和流浪狗特別多。'}
 ];
-const PAL={tw:{walk:'#c9b8a0',bld:['#e8d7c0','#d9c6a8','#c8d0d8','#e4c4b0','#d0d8c4','#f0e0c8'],sign:['#e23b3b','#2f6fd0','#f5a623','#2a9d5c','#9b51e0']},
-  jp:{walk:'#c8c4c0',bld:['#e8e4e0','#d8dce8','#f0e8e0','#c8d4dc','#e0d8d0'],sign:['#e23b3b','#1f3f9f','#f5a623','#222','#d4247a']},
-  kr:{walk:'#b8b4c0',bld:['#d8d4e0','#c8c8d8','#e0d8e8','#b8c8d8','#d8c8c8'],sign:['#ff4f7f','#3ddbd9','#ffd23f','#7a5cff','#ff8a3d']},
-  us:{walk:'#b0aca8',bld:['#b8a898','#a8b0b8','#c8b0a0','#9898a8','#b8b8b0'],sign:['#ff3d3d','#ffd23f','#3d9dff','#ff3dcf','#3dff8a']},
-  th:{walk:'#c8b498',bld:['#e8c8a0','#d8b890','#e0d0b0','#f0c8a8','#c8b8a0'],sign:['#ffd23f','#ff7a3d','#e23b3b','#3dbf6a','#d43dff']}};
+const PAL={tw:{walk:'#b3a596',bld:['#d6cfc2','#c2b8a8','#b8b0a4','#dcd2c0','#a8a196','#cbbfae','#9f968a','#e2dccf','#b8a48e','#a0644e'],sign:['#d8322c','#1f5fbf','#e8a010','#1f8a4c','#8a3fc0','#e0e0e0']},
+  jp:{walk:'#b8b6b2',bld:['#e6e4de','#cfd2d4','#bfc4c8','#d8d2c8','#a9adb2','#efece6'],sign:['#d8322c','#1f3f9f','#e8a010','#222','#c4246a']},
+  kr:{walk:'#a8a6ac',bld:['#cfc8bf','#b9b3ad','#a59c94','#d8d2ca','#8f8a86','#c6beb4','#9a5a48'],sign:['#ff3f6f','#20b8b6','#e8c020','#6a4cff','#ff7a2d']},
+  us:{walk:'#a8a49e',bld:['#8a4e3a','#9a5a42','#7a4434','#b8a890','#a89a86','#6e6a66'],sign:['#e82d2d','#e8c020','#2d8de8','#e02dbf','#2de07a']},
+  th:{walk:'#b8a890',bld:['#e0cfa8','#d4bc90','#c8b8a0','#e8d8b8','#b8a080','#d8c4a4'],sign:['#e8c020','#f06a2d','#d8322c','#2daf5a','#c42def']}};
 
 /* ---------- 人物（Q 版外送員） ---------- */
 const CHARS=['boy','girl','cat','bear'];
@@ -240,117 +240,266 @@ function crossPeds(lv,I,t,out){
 }
 
 function shade(hex,k){ const n=parseInt(String(hex).slice(1),16); if(isNaN(n)) return hex; const f=v=>clamp(Math.round(v*k),0,255); return 'rgb('+f(n>>16&255)+','+f(n>>8&255)+','+f(n&255)+')'; }
-/* ---------- 第一人稱畫面：騎在機車上往前看 ---------- */
-const SKY={day:['#6ab8f0','#d8f0ff'],eve:['#ff8a5a','#ffd6a0'],night:['#070b24','#2a2050']};
+/* ---------- 第一人稱畫面：騎在機車上往前看（參考實景：騎樓、老公寓鐵窗、電線桿、路邊整排機車） ---------- */
+const SKY={day:['#7fb3e0','#e2ecf2'],eve:['#e08a66','#f4d4ac'],night:['#070b24','#2a2050']};
 const VH={car:20,taxi:20,truck:34,bus:46,garbage:34,scoot:26,runner:26,tuk:28};
-// 車子從後面看（同方向）或從前面看（對向）
+const SKIN=['#f1cfb0','#e6bf9a','#d9a983','#c48c66'],PANTS=['#2b3550','#3a3a40','#6a5a48','#1e2a40','#cfc6b4','#4a4a4a'];
+const SHIRT=['#e8e8e4','#2b2b36','#c8323c','#2f6fd0','#7a8a5a','#e0a030','#8a5aa0','#5a8ab0','#d86a8a','#f0f0f0'];
+const BOXC=['#2aa05a','#e8457a','#f08a24','#2f9ad0'],SCOL=['#e8e8e4','#2b2b30','#c8323c','#9aa0a8','#2f5fa0','#f0e8d8','#5a6a4a','#d0a040'];
+const hcol=(a,i,s)=>a[Math.floor(hash(Math.abs(Math.floor(i)),s||1)*a.length)];
+// 機車騎士（後面或前面看）
+function riderBack(c,X,Y,w,h,e,front,t){ const id=e.idx!=null?e.idx:Math.floor(Math.abs(e.d||0)),sh=e.shirt||hcol(SHIRT,id,3);
+  c.fillStyle='#141414'; rr(c,X-w*.09,Y-h*.26,w*.18,h*.26,w*.06); c.fill();
+  const g=c.createLinearGradient(0,Y-h*.62,0,Y-h*.18); g.addColorStop(0,shade(e.col,1.15)); g.addColorStop(1,shade(e.col,.6)); c.fillStyle=g;
+  c.beginPath(); c.moveTo(X-w*.24,Y-h*.18); c.quadraticCurveTo(X-w*.4,Y-h*.46,X-w*.3,Y-h*.62); c.lineTo(X+w*.3,Y-h*.62); c.quadraticCurveTo(X+w*.4,Y-h*.46,X+w*.24,Y-h*.18); c.closePath(); c.fill();
+  c.fillStyle=front?'#fffbe6':(e.brake?'#ff2a2a':'#c41e1e'); rr(c,X-w*.17,Y-h*.5,w*.34,h*.07,h*.03); c.fill();
+  if(!front){ c.fillStyle='#f2f2ee'; c.fillRect(X-w*.1,Y-h*.38,w*.2,h*.08); }
+  c.fillStyle=e.pants||hcol(PANTS,id,4); rr(c,X-w*.5,Y-h*.66,w*.2,h*.36,w*.08); c.fill(); rr(c,X+w*.3,Y-h*.66,w*.2,h*.36,w*.08); c.fill();
+  c.fillStyle='#222'; c.fillRect(X-w*.52,Y-h*.32,w*.22,h*.07); c.fillRect(X+w*.3,Y-h*.32,w*.22,h*.07);
+  const tg=c.createLinearGradient(X-w*.45,0,X+w*.45,0); tg.addColorStop(0,shade(sh,.72)); tg.addColorStop(.45,sh); tg.addColorStop(1,shade(sh,.68)); c.fillStyle=tg;
+  c.beginPath(); c.moveTo(X-w*.34,Y-h*.6); c.lineTo(X-w*.46,Y-h*1.02); c.quadraticCurveTo(X,Y-h*1.14,X+w*.46,Y-h*1.02); c.lineTo(X+w*.34,Y-h*.6); c.closePath(); c.fill();
+  c.strokeStyle=shade(sh,.8); c.lineWidth=Math.max(1,w*.15); c.lineCap='round'; c.beginPath(); c.moveTo(X-w*.42,Y-h*.98); c.lineTo(X-w*.54,Y-h*.72); c.moveTo(X+w*.42,Y-h*.98); c.lineTo(X+w*.54,Y-h*.72); c.stroke(); c.lineCap='butt';
+  if(!front&&(e.box||hash(id,5)<.3)){ const bc=e.box||hcol(BOXC,id,6); c.fillStyle=bc; rr(c,X-w*.4,Y-h*1.0,w*.8,h*.44,w*.06); c.fill(); c.fillStyle=shade(bc,1.25); c.fillRect(X-w*.4,Y-h*1.0,w*.8,h*.06); c.fillStyle='rgba(255,255,255,.85)'; c.fillRect(X-w*.15,Y-h*.82,w*.3,h*.05); }
+  c.fillStyle=front?SKIN[id%4]:'#2b2016'; c.fillRect(X-w*.1,Y-h*1.16,w*.2,h*.08);
+  const hc=e.helm||'#f2f2f2',hg=c.createRadialGradient(X-w*.08,Y-h*1.3,w*.03,X,Y-h*1.24,w*.32); hg.addColorStop(0,shade(hc,1.25)); hg.addColorStop(1,shade(hc,.68)); c.fillStyle=hg;
+  c.beginPath(); c.ellipse(X,Y-h*1.25,w*.27,h*.15,0,0,7); c.fill();
+  if(front){ c.fillStyle=SKIN[id%4]; c.beginPath(); c.ellipse(X,Y-h*1.17,w*.16,h*.07,0,0,7); c.fill(); c.fillStyle='rgba(20,25,35,.8)'; c.fillRect(X-w*.18,Y-h*1.26,w*.36,h*.05); } }
+// 汽車（後面＝同方向，前面＝對向）
+function carBack(c,X,Y,w,h,e,front,t){ const col=e.col,id=e.idx||0;
+  c.fillStyle='#121212'; rr(c,X-w*.46,Y-h*.22,w*.17,h*.22,w*.03); c.fill(); rr(c,X+w*.29,Y-h*.22,w*.17,h*.22,w*.03); c.fill();
+  const g=c.createLinearGradient(0,Y-h*.64,0,Y-h*.12); g.addColorStop(0,shade(col,1.12)); g.addColorStop(.55,col); g.addColorStop(1,shade(col,.6)); c.fillStyle=g; rr(c,X-w*.5,Y-h*.64,w,h*.52,w*.07); c.fill();
+  c.fillStyle=shade(col,.92); c.beginPath(); c.moveTo(X-w*.46,Y-h*.62); c.lineTo(X-w*.34,Y-h); c.lineTo(X+w*.34,Y-h); c.lineTo(X+w*.46,Y-h*.62); c.closePath(); c.fill();
+  const gg=c.createLinearGradient(0,Y-h*.97,0,Y-h*.66); gg.addColorStop(0,front?'#9ab0c4':'#222c3a'); gg.addColorStop(1,front?'#3a4a5c':'#5a6c82'); c.fillStyle=gg;
+  c.beginPath(); c.moveTo(X-w*.41,Y-h*.66); c.lineTo(X-w*.31,Y-h*.96); c.lineTo(X+w*.31,Y-h*.96); c.lineTo(X+w*.41,Y-h*.66); c.closePath(); c.fill();
+  if(front){ c.fillStyle='rgba(20,20,26,.55)'; c.beginPath(); c.ellipse(X+w*.16*(e.left?-1:1),Y-h*.78,w*.07,h*.1,0,0,7); c.fill(); }
+  c.fillStyle=shade(col,.8); c.fillRect(X-w*.57,Y-h*.72,w*.09,h*.08); c.fillRect(X+w*.48,Y-h*.72,w*.09,h*.08);
+  c.fillStyle=shade(col,.48); rr(c,X-w*.5,Y-h*.27,w,h*.12,w*.04); c.fill();
+  if(front){ c.fillStyle='#1c1c20'; rr(c,X-w*.22,Y-h*.47,w*.44,h*.13,w*.03); c.fill(); c.fillStyle='#f4f4e8';
+    for(const sx of [-1,1]){ c.beginPath(); c.moveTo(X+sx*w*.47,Y-h*.55); c.lineTo(X+sx*w*.26,Y-h*.52); c.lineTo(X+sx*w*.28,Y-h*.44); c.lineTo(X+sx*w*.47,Y-h*.46); c.closePath(); c.fill(); }
+    if(e.night){ c.fillStyle='rgba(255,250,210,.28)'; c.beginPath(); c.arc(X-w*.38,Y-h*.5,w*.24,0,7); c.arc(X+w*.38,Y-h*.5,w*.24,0,7); c.fill(); } }
+  else { c.fillStyle=e.brake?'#ff2a2a':'#a81818';
+    for(const sx of [-1,1]){ c.beginPath(); c.moveTo(X+sx*w*.49,Y-h*.57); c.lineTo(X+sx*w*.25,Y-h*.57); c.lineTo(X+sx*w*.29,Y-h*.46); c.lineTo(X+sx*w*.49,Y-h*.44); c.closePath(); c.fill(); }
+    if(e.brake){ c.fillStyle='rgba(255,40,40,.22)'; c.beginPath(); c.ellipse(X-w*.38,Y-h*.51,w*.2,h*.14,0,0,7); c.ellipse(X+w*.38,Y-h*.51,w*.2,h*.14,0,0,7); c.fill(); }
+    c.fillStyle='#f4f4ee'; c.fillRect(X-w*.12,Y-h*.43,w*.24,h*.1);
+    if(w>40){ c.fillStyle='#222'; c.font='700 '+Math.round(h*.08)+'px monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String.fromCharCode(65+id%26,65+id*7%26,65+id*3%26)+'-'+(1000+id*137%9000),X,Y-h*.375); } }
+  if(e.k==='taxi'){ c.fillStyle='#fff'; rr(c,X-w*.13,Y-h*1.1,w*.26,h*.1,w*.02); c.fill(); c.fillStyle='#222'; c.fillRect(X-w*.13,Y-h*1.03,w*.26,h*.02); } }
+// 公車、卡車、垃圾車
+function bigBack(c,X,Y,w,h,e,front,t){ const k=e.k,col=k==='garbage'?'#f1c40f':k==='truck'&&!front?'#e6e6e2':e.col,id=e.idx||0;
+  c.fillStyle='#121212'; c.fillRect(X-w*.46,Y-h*.12,w*.2,h*.12); c.fillRect(X+w*.26,Y-h*.12,w*.2,h*.12);
+  const g=c.createLinearGradient(X-w*.5,0,X+w*.5,0); g.addColorStop(0,shade(col,.8)); g.addColorStop(.4,shade(col,1.05)); g.addColorStop(1,shade(col,.78)); c.fillStyle=g; rr(c,X-w*.5,Y-h,w,h*.9,w*.05); c.fill();
+  const glass=(x,y,ww,hh)=>{ const gg=c.createLinearGradient(0,y,0,y+hh); gg.addColorStop(0,'#2a3444'); gg.addColorStop(1,'#5a6c82'); c.fillStyle=gg; c.fillRect(x,y,ww,hh); };
+  if(k==='bus'){ if(front) glass(X-w*.44,Y-h*.86,w*.88,h*.44); else glass(X-w*.36,Y-h*.86,w*.72,h*.2);
+    c.fillStyle='#111'; c.fillRect(X-w*.38,Y-h*.97,w*.76,h*.09); c.fillStyle='#ffa020'; c.font='900 '+Math.max(6,Math.round(h*.07))+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(200+id%300)+(front?' 捷運站':''),X,Y-h*.925);
+    if(!front){ c.fillStyle=shade(col,.7); c.fillRect(X-w*.5,Y-h*.6,w,h*.2); } }
+  else if(k==='truck'){ if(front) glass(X-w*.42,Y-h*.82,w*.84,h*.3); else { c.strokeStyle='rgba(0,0,0,.3)'; c.lineWidth=Math.max(1,w*.01); c.beginPath(); c.moveTo(X,Y-h*.96); c.lineTo(X,Y-h*.2); c.stroke(); c.fillStyle='#777'; c.fillRect(X-w*.06,Y-h*.6,w*.03,h*.1); c.fillRect(X+w*.03,Y-h*.6,w*.03,h*.1); } }
+  else { c.fillStyle='#2a6a8a'; c.fillRect(X-w*.5,Y-h*.4,w,h*.1); if(!front){ c.fillStyle='#2a2a2e'; rr(c,X-w*.38,Y-h*.82,w*.76,h*.38,w*.05); c.fill(); } else glass(X-w*.42,Y-h*.82,w*.84,h*.3);
+    c.fillStyle='#fff'; c.font='900 '+Math.max(6,Math.round(h*.16))+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('♪',X+Math.sin(t*6)*w*.2,Y-h*1.08-Math.abs(Math.sin(t*3))*h*.1); }
+  c.fillStyle='#2a2a2e'; c.fillRect(X-w*.5,Y-h*.2,w,h*.08);
+  c.fillStyle=front?'#f4f4e8':(e.brake?'#ff2a2a':'#a81818'); c.fillRect(X-w*.47,Y-h*.32,w*.1,h*.09); c.fillRect(X+w*.37,Y-h*.32,w*.1,h*.09);
+  if(front&&e.night){ c.fillStyle='rgba(255,250,210,.28)'; c.beginPath(); c.arc(X-w*.42,Y-h*.28,w*.18,0,7); c.arc(X+w*.42,Y-h*.28,w*.18,0,7); c.fill(); } }
 function vehBack(c,X,Y,s,e,front,t){ const w=e.w*s,h=(VH[e.k]||20)*s,k=e.k;
-  c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(X,Y,w*.55,w*.12,0,0,7); c.fill();
-  if(k==='scoot'||k==='runner'){ c.fillStyle='#222'; rr(c,X-w*.18,Y-h*.32,w*.36,h*.32,w*.1); c.fill(); c.fillStyle=e.col; rr(c,X-w*.38,Y-h*.62,w*.76,h*.36,w*.2); c.fill();
-    c.fillStyle=front?'#fffbe0':'#ff3030'; c.fillRect(X-w*.12,Y-h*.5,w*.24,h*.06);
-    c.fillStyle=e.shirt||'#4f6fa0'; rr(c,X-w*.42,Y-h*.95,w*.84,h*.42,w*.3); c.fill(); c.fillStyle=e.helm||'#ffd23f'; c.beginPath(); c.arc(X,Y-h*1.02,w*.36,0,7); c.fill(); c.strokeStyle='rgba(0,0,0,.4)'; c.lineWidth=Math.max(1,s*.4); c.stroke();
-    if(e.box){ c.fillStyle=e.box; rr(c,X-w*.45,Y-h*.78,w*.9,h*.36,w*.08); c.fill(); } return; }
+  c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(X,Y,w*.58,Math.max(1,w*.1),0,0,7); c.fill();
+  if(k==='scoot'||k==='runner'){ riderBack(c,X,Y,w,h,e,front,t); return; }
   if(k==='tuk'){ c.fillStyle='#222'; c.fillRect(X-w*.55,Y-h*.2,w*.18,h*.2); c.fillRect(X+w*.37,Y-h*.2,w*.18,h*.2); c.fillStyle=e.col; rr(c,X-w*.55,Y-h*.75,w*1.1,h*.58,w*.12); c.fill();
-    c.fillStyle='#ffd23f'; rr(c,X-w*.6,Y-h*1.05,w*1.2,h*.34,w*.15); c.fill(); c.fillStyle='#e23b3b'; c.fillRect(X-w*.6,Y-h*.75,w*1.2,h*.05); c.fillStyle='rgba(30,40,60,.7)'; c.fillRect(X-w*.4,Y-h*.68,w*.8,h*.25); return; }
-  // 汽車、計程車、卡車、公車、垃圾車
-  c.fillStyle='#1a1a1a'; c.fillRect(X-w*.46,Y-h*.14,w*.16,h*.14); c.fillRect(X+w*.3,Y-h*.14,w*.16,h*.14);
-  const body=k==='garbage'?'#f5d020':e.col; c.fillStyle=body; rr(c,X-w*.5,Y-h*.62,w,h*.52,w*.08); c.fill(); c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=Math.max(1,s*.3); c.stroke();
-  if(k==='bus'||k==='truck'||k==='garbage'){ c.fillStyle=k==='bus'?e.col:k==='garbage'?'#2a7a4a':'#ddd'; rr(c,X-w*.5,Y-h,w,h*.45,w*.06); c.fill(); c.stroke();
-    c.fillStyle='rgba(30,40,60,.8)'; if(k==='bus'||front) c.fillRect(X-w*.38,Y-h*.95,w*.76,h*.3);
-    if(k==='bus'&&!front){ c.fillStyle='#ffd23f'; c.font='900 '+Math.max(6,Math.round(h*.12))+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(200+(e.idx||0)%300),X,Y-h*.8); }
-    if(k==='garbage'){ c.fillStyle='#fff'; c.font='900 '+Math.max(6,Math.round(h*.16))+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('♪',X+Math.sin(t*6)*w*.2,Y-h*1.08-Math.abs(Math.sin(t*3))*h*.1); } }
-  else { c.fillStyle=shade(body,.85); rr(c,X-w*.4,Y-h,w*.8,h*.42,w*.12); c.fill(); c.fillStyle='rgba(30,40,60,.85)'; rr(c,X-w*.34,Y-h*.94,w*.68,h*.3,w*.06); c.fill();
-    if(k==='taxi'){ c.fillStyle='#fff'; c.fillRect(X-w*.12,Y-h*1.1,w*.24,h*.1); } }
-  c.fillStyle=front?'#fffbe0':(e.brake?'#ff2020':'#a01818'); const ly=Y-h*.45; c.fillRect(X-w*.46,ly,w*.18,h*.09); c.fillRect(X+w*.28,ly,w*.18,h*.09);
-  if(front&&(e.night)){ c.fillStyle='rgba(255,250,200,.25)'; c.beginPath(); c.arc(X-w*.37,ly,w*.25,0,7); c.arc(X+w*.37,ly,w*.25,0,7); c.fill(); }
-  c.fillStyle='#ddd'; c.fillRect(X-w*.12,Y-h*.3,w*.24,h*.08); }
+    c.fillStyle='#2a6a3a'; rr(c,X-w*.6,Y-h*1.05,w*1.2,h*.34,w*.15); c.fill(); c.fillStyle='#ffd23f'; c.fillRect(X-w*.6,Y-h*.75,w*1.2,h*.05); c.fillStyle='rgba(30,40,60,.7)'; c.fillRect(X-w*.4,Y-h*.68,w*.8,h*.25); return; }
+  if(k==='bus'||k==='truck'||k==='garbage'){ bigBack(c,X,Y,w,h,e,front,t); return; }
+  carBack(c,X,Y,w,h,e,front,t); }
 // 橫向經過（側面）
 function vehSide(c,X,Y,s,e,dirX){ const L=e.h*s,h=(VH[e.k]||20)*s;
   c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(X,Y,L*.5,L*.06,0,0,7); c.fill();
-  if(e.k==='scoot'||e.k==='runner'){ c.fillStyle='#222'; c.beginPath(); c.arc(X-L*.32,Y-L*.1,L*.1,0,7); c.arc(X+L*.32,Y-L*.1,L*.1,0,7); c.fill(); c.fillStyle=e.col; rr(c,X-L*.38,Y-h*.55,L*.76,h*.3,h*.1); c.fill();
-    c.fillStyle='#4f6fa0'; rr(c,X-L*.12,Y-h*.95,L*.24,h*.42,L*.08); c.fill(); c.fillStyle=e.helm||'#ffd23f'; c.beginPath(); c.arc(X+dirX*L*.04,Y-h*1.02,L*.13,0,7); c.fill(); return; }
-  c.fillStyle='#1a1a1a'; c.beginPath(); c.arc(X-L*.32,Y-h*.1,h*.16,0,7); c.arc(X+L*.32,Y-h*.1,h*.16,0,7); c.fill();
-  c.fillStyle=e.col; rr(c,X-L*.5,Y-h*.6,L,h*.45,h*.1); c.fill(); c.fillStyle=shade(e.col,.85); rr(c,X-L*.3+dirX*L*.04,Y-h,L*.55,h*.45,h*.15); c.fill();
-  c.fillStyle='rgba(30,40,60,.85)'; c.fillRect(X-L*.25+dirX*L*.04,Y-h*.92,L*.2,h*.3); c.fillRect(X+L*.0+dirX*L*.04,Y-h*.92,L*.2,h*.3);
-  c.fillStyle='#fffbe0'; c.fillRect(dirX>0?X+L*.46:X-L*.5,Y-h*.5,L*.04,h*.12); }
-function pedFront(c,X,Y,s,col,hair,t,ph){ const h=30*s,sw=Math.sin(t*9+(ph||0));
-  c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(X,Y,h*.25,h*.05,0,0,7); c.fill();
-  c.fillStyle='#333'; c.fillRect(X-h*.12,Y-h*.32+sw*h*.03,h*.09,h*.32); c.fillRect(X+h*.03,Y-h*.32-sw*h*.03,h*.09,h*.32);
-  c.fillStyle=col; rr(c,X-h*.18,Y-h*.66,h*.36,h*.38,h*.1); c.fill();
-  c.fillStyle='#ffe0c0'; c.beginPath(); c.arc(X,Y-h*.8,h*.17,0,7); c.fill(); c.fillStyle=hair; c.beginPath(); c.arc(X,Y-h*.84,h*.17,Math.PI,0); c.fill(); }
+  if(e.k==='scoot'||e.k==='runner'){ for(const sx of [-1,1]){ c.fillStyle='#151515'; c.beginPath(); c.arc(X+sx*L*.32,Y-L*.11,L*.11,0,7); c.fill(); c.fillStyle='#888'; c.beginPath(); c.arc(X+sx*L*.32,Y-L*.11,L*.05,0,7); c.fill(); }
+    c.fillStyle=e.col; c.beginPath(); c.moveTo(X-dirX*L*.46,Y-h*.3); c.quadraticCurveTo(X-dirX*L*.4,Y-h*.52,X,Y-h*.48); c.lineTo(X+dirX*L*.26,Y-h*.4); c.lineTo(X+dirX*L*.34,Y-h*.78); c.lineTo(X+dirX*L*.42,Y-h*.76); c.lineTo(X+dirX*L*.44,Y-h*.2); c.lineTo(X-dirX*L*.36,Y-h*.16); c.closePath(); c.fill();
+    c.fillStyle=hcol(PANTS,Math.floor(Math.abs(e.x)),4); c.beginPath(); c.moveTo(X-dirX*L*.18,Y-h*.55); c.lineTo(X+dirX*L*.12,Y-h*.52); c.lineTo(X+dirX*L*.16,Y-h*.3); c.lineTo(X+dirX*L*.06,Y-h*.3); c.lineTo(X,Y-h*.46); c.lineTo(X-dirX*L*.2,Y-h*.46); c.closePath(); c.fill();
+    c.fillStyle=e.k==='runner'?'#2b2b36':hcol(SHIRT,Math.floor(Math.abs(e.x)),3); c.beginPath(); c.moveTo(X-dirX*L*.22,Y-h*.52); c.lineTo(X-dirX*L*.12,Y-h*.98); c.lineTo(X+dirX*L*.04,Y-h*.96); c.lineTo(X+dirX*L*.02,Y-h*.52); c.closePath(); c.fill();
+    c.strokeStyle=c.fillStyle; c.lineWidth=Math.max(1,L*.06); c.beginPath(); c.moveTo(X-dirX*L*.06,Y-h*.9); c.lineTo(X+dirX*L*.3,Y-h*.76); c.stroke();
+    c.fillStyle=e.helm||'#f2f2f2'; c.beginPath(); c.arc(X-dirX*L*.04,Y-h*1.08,L*.12,0,7); c.fill(); c.fillStyle='rgba(20,25,35,.8)'; c.fillRect(Math.min(X+dirX*L*.02,X+dirX*L*.1),Y-h*1.1,L*.08,h*.06); return; }
+  const col=e.col,g=c.createLinearGradient(0,Y-h*.66,0,Y-h*.2); g.addColorStop(0,shade(col,1.12)); g.addColorStop(1,shade(col,.62)); c.fillStyle=g; rr(c,X-L*.5,Y-h*.66,L,h*.46,h*.12); c.fill();
+  c.fillStyle=shade(col,.92); c.beginPath(); c.moveTo(X-dirX*L*.44,Y-h*.64); c.lineTo(X-dirX*L*.3,Y-h); c.lineTo(X+dirX*L*.12,Y-h); c.lineTo(X+dirX*L*.3,Y-h*.64); c.closePath(); c.fill();
+  c.fillStyle='#34404e'; c.beginPath(); c.moveTo(X-dirX*L*.38,Y-h*.67); c.lineTo(X-dirX*L*.28,Y-h*.94); c.lineTo(X+dirX*L*.1,Y-h*.94); c.lineTo(X+dirX*L*.24,Y-h*.67); c.closePath(); c.fill();
+  c.fillStyle=shade(col,.92); c.fillRect(X-dirX*L*.08-L*.015,Y-h*.96,L*.03,h*.3);
+  c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=1; c.beginPath(); c.moveTo(X-dirX*L*.08,Y-h*.64); c.lineTo(X-dirX*L*.08,Y-h*.24); c.stroke();
+  for(const sx of [-1,1]){ c.fillStyle='#121212'; c.beginPath(); c.arc(X+sx*L*.32,Y-h*.2,h*.2,0,7); c.fill(); c.fillStyle='#9a9aa0'; c.beginPath(); c.arc(X+sx*L*.32,Y-h*.2,h*.1,0,7); c.fill(); }
+  c.fillStyle='#fffbe0'; c.fillRect(dirX>0?X+L*.47:X-L*.5,Y-h*.56,L*.03,h*.1); c.fillStyle='#c41e1e'; c.fillRect(dirX>0?X-L*.5:X+L*.47,Y-h*.56,L*.03,h*.1);
+  if(e.k==='taxi'){ c.fillStyle='#fff'; c.fillRect(X-L*.06,Y-h*1.08,L*.12,h*.08); } }
+// 行人（真實比例）
+function pedFront(c,X,Y,s,col,hair,t,ph){ const h=25*s,id=Math.floor(Math.abs(ph||0)*7),sw=Math.sin(t*7+(ph||0)),sk=SKIN[id%4];
+  c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(X,Y,h*.16,h*.035,0,0,7); c.fill();
+  c.fillStyle=hcol(PANTS,id,8); c.fillRect(X-h*.09,Y-h*.48+sw*h*.02,h*.08,h*.46-sw*h*.02); c.fillRect(X+h*.01,Y-h*.48-sw*h*.02,h*.08,h*.46+sw*h*.02);
+  c.fillStyle='#222'; c.fillRect(X-h*.1,Y-h*.03+sw*h*.0,h*.09,h*.03); c.fillRect(X+h*.01,Y-h*.03,h*.09,h*.03);
+  const tg=c.createLinearGradient(X-h*.13,0,X+h*.13,0); tg.addColorStop(0,shade(col,.75)); tg.addColorStop(.5,col); tg.addColorStop(1,shade(col,.75)); c.fillStyle=tg;
+  c.beginPath(); c.moveTo(X-h*.1,Y-h*.47); c.lineTo(X-h*.13,Y-h*.8); c.quadraticCurveTo(X,Y-h*.84,X+h*.13,Y-h*.8); c.lineTo(X+h*.1,Y-h*.47); c.closePath(); c.fill();
+  c.fillStyle=shade(col,.85); c.fillRect(X-h*.17,Y-h*.79-sw*h*.02,h*.05,h*.3); c.fillRect(X+h*.12,Y-h*.79+sw*h*.02,h*.05,h*.3);
+  c.fillStyle=sk; c.fillRect(X-h*.17,Y-h*.5-sw*h*.02,h*.05,h*.05); c.fillRect(X+h*.12,Y-h*.5+sw*h*.02,h*.05,h*.05); c.fillRect(X-h*.025,Y-h*.86,h*.05,h*.05);
+  c.beginPath(); c.ellipse(X,Y-h*.92,h*.06,h*.075,0,0,7); c.fill();
+  c.fillStyle=hair; c.beginPath(); c.ellipse(X,Y-h*.95,h*.065,h*.055,0,Math.PI,0); c.fill(); if(id%3===0){ c.fillRect(X-h*.065,Y-h*.95,h*.025,h*.1); c.fillRect(X+h*.04,Y-h*.95,h*.025,h*.1); }
+  if(id%5===1){ c.fillStyle=hcol(['#6a4a2a','#222','#c8a070'],id,9); c.fillRect(X+h*.11,Y-h*.62,h*.08,h*.12); } }
 function dogSide(c,X,Y,s,t,dirX){ const h=12*s; c.fillStyle='#b07a3a'; rr(c,X-h*.8,Y-h*.75,h*1.6,h*.5,h*.2); c.fill(); c.fillRect(X-h*.7,Y-h*.3,h*.18,h*.3); c.fillRect(X+h*.5,Y-h*.3,h*.18,h*.3);
   c.beginPath(); c.arc(X+dirX*h*.9,Y-h*.85,h*.32,0,7); c.fill(); c.strokeStyle='#b07a3a'; c.lineWidth=h*.15; c.beginPath(); c.moveTo(X-dirX*h*.8,Y-h*.65); c.lineTo(X-dirX*h*1.1,Y-h*(1+Math.sin(t*14)*.2)); c.stroke(); }
-// 機車把手、雙手、儀表、照後鏡（照後鏡顯示後面的車）
-function drawCockpit(c,vx,vw,L,speed,lean,t,mirrorL,mirrorR,fuel,night){ const cx=vx+vw/2,k=vw/800,y0=H-8;
-  c.save(); c.translate(cx,y0); c.rotate(lean*.05); c.scale(k,k);
-  // 車頭、儀表板
-  c.fillStyle=L.bike; c.beginPath(); c.moveTo(-120,20); c.quadraticCurveTo(-110,-46,-40,-58); c.lineTo(40,-58); c.quadraticCurveTo(110,-46,120,20); c.closePath(); c.fill(); c.strokeStyle='#1a1530'; c.lineWidth=3; c.stroke();
-  c.fillStyle='#1a1a24'; rr(c,-58,-54,116,40,12); c.fill(); c.strokeStyle='#555'; c.lineWidth=2; c.stroke();
-  c.fillStyle='#86dc4f'; c.font='900 22px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(Math.round(Math.abs(speed)/250*60)),-18,-34); c.fillStyle='#9a9ab0'; c.font='700 9px '+TC; c.fillText('km/h',-18,-20);
-  c.fillStyle='#3a3a4a'; rr(c,14,-44,34,8,4); c.fill(); c.fillStyle=fuel<20?'#ff5d5d':'#ffd23f'; rr(c,14,-44,34*clamp(fuel/100,0,1),8,4); c.fill(); c.fillStyle='#9a9ab0'; c.fillText('油',31,-28);
-  // 把手
-  c.strokeStyle='#2a2a32'; c.lineWidth=10; c.lineCap='round'; c.beginPath(); c.moveTo(-250,-40); c.quadraticCurveTo(0,-74,250,-40); c.stroke();
-  // 照後鏡
-  for(const [sx,list] of [[-1,mirrorL],[1,mirrorR]]){ c.strokeStyle='#2a2a32'; c.lineWidth=5; c.beginPath(); c.moveTo(sx*190,-52); c.lineTo(sx*230,-120); c.stroke();
-    c.save(); c.translate(sx*236,-140); c.beginPath(); c.ellipse(0,0,46,28,0,0,7); c.fillStyle='#1a1a24'; c.fill(); c.beginPath(); c.ellipse(0,0,42,24,0,0,7); c.clip();
-    const g=c.createLinearGradient(0,-24,0,24); g.addColorStop(0,night?'#0b1030':'#9ac8f0'); g.addColorStop(.45,night?'#2a2050':'#cfe0f0'); g.addColorStop(.46,night?'#2a2a34':'#555a66'); g.addColorStop(1,night?'#22222a':'#44444e'); c.fillStyle=g; c.fillRect(-46,-28,92,56);
-    for(const m of list){ const ss=clamp(40/Math.max(12,m.dz),.12,1.2),mx=clamp(m.dx*ss*.6,-40,40); c.fillStyle=m.col; rr(c,mx-12*ss,4-14*ss,24*ss,14*ss,3*ss); c.fill(); }
-    c.restore(); c.strokeStyle='#2a2a32'; c.lineWidth=4; c.beginPath(); c.ellipse(sx*236,-140,46,28,0,0,7); c.stroke(); }
-  // 戴手套的手
-  for(const sx of [-1,1]){ c.fillStyle=L.shirt; c.beginPath(); c.moveTo(sx*300,40); c.quadraticCurveTo(sx*270,-10,sx*228,-34); c.lineTo(sx*200,-18); c.quadraticCurveTo(sx*240,10,sx*250,40); c.closePath(); c.fill(); c.strokeStyle='#1a1530'; c.lineWidth=3; c.stroke();
-    c.fillStyle='#2b2b36'; c.beginPath(); c.ellipse(sx*212,-42,24,18,sx*.3,0,7); c.fill(); c.strokeStyle='#1a1530'; c.stroke(); c.fillStyle='#4a4a58'; c.beginPath(); c.ellipse(sx*206,-48,10,6,sx*.3,0,7); c.fill(); }
+// 路邊停的機車（側面）
+function scootSide(c,X,Y,s,col,dirX){ const L=24*s;
+  c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(X,Y,L*.5,L*.05,0,0,7); c.fill();
+  c.fillStyle='#151515'; c.beginPath(); c.arc(X-dirX*L*.34,Y-L*.12,L*.12,0,7); c.arc(X+dirX*L*.36,Y-L*.12,L*.12,0,7); c.fill();
+  c.fillStyle=col; c.beginPath(); c.moveTo(X-dirX*L*.5,Y-L*.3); c.quadraticCurveTo(X-dirX*L*.45,Y-L*.5,X-dirX*L*.1,Y-L*.46); c.lineTo(X+dirX*L*.2,Y-L*.4); c.lineTo(X+dirX*L*.3,Y-L*.76); c.lineTo(X+dirX*L*.42,Y-L*.76); c.lineTo(X+dirX*L*.44,Y-L*.22); c.lineTo(X-dirX*L*.4,Y-L*.18); c.closePath(); c.fill();
+  c.fillStyle='#1e1e1e'; const a=X-dirX*L*.46,b=X-dirX*L*.04; rr(c,Math.min(a,b),Y-L*.56,Math.abs(b-a),L*.09,L*.04); c.fill();
+  c.fillStyle='#333'; c.fillRect(X+dirX*L*.36-L*.08,Y-L*.84,L*.16,L*.05); }
+
+// 機車把手、雙手、儀表、照後鏡（照後鏡顯示後面的車）：照實際騎車的視角，畫面下方只看到車頭和握把手的手
+function drawCockpit(c,vx,vw,L,speed,lean,t,mirrorL,mirrorR,fuel,night){ const cx=vx+vw/2,k=vw/800,dk=night?.55:1;
+  c.save(); c.translate(cx,H+Math.sin(t*38)*Math.min(1,Math.abs(speed)/200)*.8); c.rotate(lean*.05); c.scale(k,k);
+  // 把手（在車頭後面）
+  c.strokeStyle='#26262c'; c.lineWidth=9; c.lineCap='round'; c.beginPath(); c.moveTo(-236,-66); c.quadraticCurveTo(0,-92,236,-66); c.stroke();
+  c.strokeStyle='#9a9aa4'; c.lineWidth=3; c.beginPath(); c.moveTo(-160,-78); c.lineTo(-226,-92); c.moveTo(160,-78); c.lineTo(226,-92); c.stroke(); // 煞車拉桿
+  // 車頭（擋風殼）
+  const g=c.createRadialGradient(-30,-120,10,0,-60,160); g.addColorStop(0,shade(L.bike,1.35*dk)); g.addColorStop(.5,shade(L.bike,dk)); g.addColorStop(1,shade(L.bike,.55*dk)); c.fillStyle=g;
+  c.beginPath(); c.moveTo(-128,10); c.bezierCurveTo(-120,-80,-90,-128,-40,-138); c.quadraticCurveTo(0,-144,40,-138); c.bezierCurveTo(90,-128,120,-80,128,10); c.closePath(); c.fill();
+  c.fillStyle='rgba(255,255,255,.22)'; c.beginPath(); c.ellipse(-46,-104,30,9,-.5,0,7); c.fill();
+  // 頭燈（車頭上緣）
+  c.fillStyle=night?'#fffbe0':'#e8eef2'; c.beginPath(); c.ellipse(0,-136,22,6,0,0,7); c.fill(); c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=2; c.stroke();
+  // 儀表
+  c.fillStyle='#16161c'; rr(c,-66,-118,132,50,14); c.fill(); c.strokeStyle='#3a3a44'; c.lineWidth=2; c.stroke();
+  c.fillStyle='#0c0c10'; c.beginPath(); c.arc(-32,-93,21,0,7); c.fill(); c.strokeStyle='#888'; c.lineWidth=1.5; c.stroke();
+  const kmh=Math.round(Math.abs(speed)/250*60),na=Math.PI*.8+Math.min(1,kmh/80)*Math.PI*1.4; c.strokeStyle='#ff5040'; c.lineWidth=2.5; c.beginPath(); c.moveTo(-32,-93); c.lineTo(-32+Math.cos(na)*17,-93+Math.sin(na)*17); c.stroke();
+  c.fillStyle='#e8e8e8'; for(let i=0;i<=8;i++){ const a=Math.PI*.8+i/8*Math.PI*1.4; c.fillRect(-32+Math.cos(a)*18-1,-93+Math.sin(a)*18-1,2,2); }
+  c.fillStyle='#86dc4f'; c.font='900 20px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(kmh),20,-100); c.fillStyle='#9a9ab0'; c.font='700 9px '+TC; c.fillText('km/h',20,-84);
+  c.fillStyle='#3a3a4a'; rr(c,44,-108,14,32,4); c.fill(); const fh=32*clamp(fuel/100,0,1); c.fillStyle=fuel<20?'#ff5d5d':'#ffd23f'; rr(c,44,-76-fh,14,fh,4); c.fill();
+  // 照後鏡（圓形）
+  for(const [sx,list] of [[-1,mirrorL],[1,mirrorR]]){ c.strokeStyle='#3a3a42'; c.lineWidth=4; c.beginPath(); c.moveTo(sx*150,-80); c.lineTo(sx*196,-150); c.stroke();
+    c.save(); c.translate(sx*206,-170); c.beginPath(); c.ellipse(0,0,38,30,0,0,7); c.fillStyle='#16161c'; c.fill(); c.beginPath(); c.ellipse(0,0,34,26,0,0,7); c.clip();
+    const mg=c.createLinearGradient(0,-26,0,26); mg.addColorStop(0,night?'#0b1030':'#9ac0e0'); mg.addColorStop(.45,night?'#2a2050':'#d0dce6'); mg.addColorStop(.46,night?'#2a2a34':'#5a5a60'); mg.addColorStop(1,night?'#22222a':'#46464c'); c.fillStyle=mg; c.fillRect(-40,-30,80,60);
+    for(const m of list){ const ss=clamp(40/Math.max(12,m.dz),.12,1.2),mx=clamp(m.dx*ss*.6,-34,34); c.fillStyle=m.col; rr(c,mx-12*ss,4-14*ss,24*ss,14*ss,3*ss); c.fill(); }
+    c.restore(); c.strokeStyle='#2a2a32'; c.lineWidth=3; c.beginPath(); c.ellipse(sx*206,-170,38,30,0,0,7); c.stroke(); }
+  // 手臂＋手套（從畫面下方兩角伸出來握住把手）
+  for(const sx of [-1,1]){ const ag=c.createLinearGradient(sx*420,0,sx*240,-60); ag.addColorStop(0,shade(L.shirt,.6*dk)); ag.addColorStop(1,shade(L.shirt,1.05*dk)); c.fillStyle=ag;
+    c.beginPath(); c.moveTo(sx*470,40); c.quadraticCurveTo(sx*380,-30,sx*270,-80); c.lineTo(sx*222,-46); c.quadraticCurveTo(sx*290,10,sx*320,40); c.closePath(); c.fill();
+    c.fillStyle='#22222a'; rr(c,sx>0?196:-270,-80,74,24,10); c.fill(); // 握把
+    c.fillStyle=night?'#1a1a20':'#2b2b34'; c.beginPath(); c.ellipse(sx*236,-66,30,20,sx*.35,0,7); c.fill();
+    c.strokeStyle='rgba(255,255,255,.12)'; c.lineWidth=2; c.beginPath(); for(let i=0;i<3;i++){ c.moveTo(sx*(222+i*9),-82); c.lineTo(sx*(218+i*9),-58); } c.stroke(); }
   c.restore(); }
+
 // 整個第一人稱世界
 function drawFP(c,vx,vw,st){
-  const {lv,S,M,px,pd,simT,t}=st,F=vw*.62,camH=17,cx=vx+vw/2,hz=H*.42,cd=pd-6,night=S.night;
+  const {lv,S,M,px,pd,simT,t}=st,F=vw*.6,camH=14,cx=vx+vw/2,hz=H*.46,cd=pd-6,night=S.night,pal=PAL[S.pal],arc=S.pal==='tw'||S.pal==='th',dim=night?.42:S.evening?.9:1;
   const X=(x,s)=>cx+(x-px)*s*M,proj=(x,d,h)=>{ const dz=d-cd; if(dz<2.5) return null; const s=F/dz; return [cx+(x-px)*s*M,hz+(camH-(h||0))*s,s,dz]; };
+  const E=(x,d)=>{ const dz=d-cd; if(dz<2.5) return null; const s=F/dz; return [cx+(x-px)*s*M,s]; },Yv=(e,v)=>hz+(camH-v)*e[1];
+  const fq=(A,B,va,vb)=>{ c.beginPath(); c.moveTo(A[0],Yv(A,va)); c.lineTo(B[0],Yv(B,va)); c.lineTo(B[0],Yv(B,vb)); c.lineTo(A[0],Yv(A,vb)); c.closePath(); };
   c.save(); c.beginPath(); c.rect(vx,0,vw,H); c.clip(); c.translate(cx,H); c.rotate(-(st.lean||0)*.035); c.translate(-cx,-H);
   // 天空、遠方城市、地標
   const sk=night?'night':S.evening?'eve':'day',g=c.createLinearGradient(0,0,0,hz); g.addColorStop(0,SKY[sk][0]); g.addColorStop(1,SKY[sk][1]); c.fillStyle=g; c.fillRect(vx-40,-40,vw+80,hz+42);
   if(night){ c.fillStyle='#fff'; for(let i=0;i<40;i++){ c.globalAlpha=.4+.5*Math.abs(Math.sin(t+i)); c.fillRect(vx+(i*97)%vw,(i*53)%(hz*.7),1.5,1.5); } c.globalAlpha=1; }
-  else { c.fillStyle='rgba(255,255,255,.8)'; for(let i=0;i<4;i++){ const x=vx+((i*230+t*6)%(vw+200))-100,y=hz*.2+i*hz*.12; c.beginPath(); c.ellipse(x,y,40,10,0,0,7); c.ellipse(x+24,y-6,26,9,0,0,7); c.fill(); } }
-  drawLandmark(c,S.land,vx+vw*(M>0?.74:.26),hz-vw*.075,vw/800*1.1,t,night);
-  const pal=PAL[S.pal]; for(let i=0;i<26;i++){ const w2=vw/22,x=vx+i*w2-w2*.5-((pd*.02)%w2),h=18+hash(i,7,Math.floor((pd*.02+i*w2)/w2))*44;
-    c.fillStyle=night?'#1a1830':shade(pal.bld[i%pal.bld.length],.62); c.fillRect(x,hz-h,w2+1,h+1); if(night){ c.fillStyle='rgba(255,230,128,.55)'; for(let j=0;j<3;j++) c.fillRect(x+3+j*w2*.3,hz-h+5+((i+j)%3)*8,2,3); } }
-  // 地面（人行道顏色）
-  c.fillStyle=night?'#2a2a38':pal.walk; c.fillRect(vx-40,hz,vw+80,H-hz+40);
-  const asph=S.rain?'#2c2e38':night?'#2f2f3a':'#4a4a54',tgt=st.target;
+  else { c.fillStyle='rgba(255,255,255,.75)'; for(let i=0;i<4;i++){ const x=vx+((i*230+t*6)%(vw+200))-100,y=hz*.18+i*hz*.1; c.beginPath(); c.ellipse(x,y,40,10,0,0,7); c.ellipse(x+24,y-6,26,9,0,0,7); c.fill(); } }
+  drawLandmark(c,S.land,vx+vw*(M>0?.6:.4),hz-vw*.075,vw/800*1.1,t,night);
+  const haze=night?'#1c1a34':S.evening?'#b88a80':'#a3b1bf'; for(let i=0;i<30;i++){ const w2=vw/26,x=vx+i*w2-w2*.5-((pd*.02)%w2),h=22+hash(i,7,Math.floor((pd*.02+i*w2)/w2))*64;
+    c.fillStyle=shade(haze,.92+hash(i,9)*.14); c.fillRect(x,hz-h,w2+1,h+1); if(night){ c.fillStyle='rgba(255,230,128,.5)'; for(let j=0;j<3;j++) c.fillRect(x+3+j*w2*.3,hz-h+5+((i+j)%3)*9,2,3); } }
+  // 地面：人行道磚、紅線、柏油（有深淺、補丁）
+  const walk=night?'#3e3c48':shade(pal.walk,dim); c.fillStyle=walk; c.fillRect(vx-40,hz,vw+80,H-hz+40);
+  const asph=S.rain?'#30323a':night?'#2e2e36':S.pal==='us'?'#55555a':'#5c5c60',tgt=st.target,red=S.pal==='tw';
   for(let y=Math.ceil(hz)+1;y<H+30;y+=2){ const dz=camH*F/(y-hz),d=cd+dz,s=F/dz;
-    const inI=lv.inter.find(I=>d>=I.d&&d<=I.d+90),seg=(x0,x1,col)=>{ let a=X(x0,s),b=X(x1,s); if(a>b){ const q=a; a=b; b=q; } c.fillStyle=col; c.fillRect(a,y,b-a+1,2.6); };
-    if(inI){ c.fillStyle=asph; c.fillRect(vx-40,y,vw+80,2.6); continue; }
-    seg(-30,0,night?'#4a4858':'#d8d0c0'); seg(ROADW,ROADW+30,night?'#4a4858':'#d8d0c0'); seg(-3,0,'#a8a090'); seg(ROADW,ROADW+3,'#a8a090');
-    seg(0,ROADW,asph);
+    const seg=(x0,x1,col)=>{ let a=X(x0,s),b=X(x1,s); if(a>b){ const q=a; a=b; b=q; } c.fillStyle=col; c.fillRect(a,y,b-a+1,2.6); };
+    const A=dz<500?shade(asph,1+(hash(Math.floor(d/6),3)-.5)*.08):asph,inI=lv.inter.find(I=>d>=I.d&&d<=I.d+90);
+    if(inI){ c.fillStyle=A; c.fillRect(vx-40,y,vw+80,2.6); continue; }
+    if(dz<400&&Math.floor(d/9)%2){ const wk=shade(walk,.92); seg(-80,0,wk); seg(ROADW,ROADW+80,wk); }
+    const rc=red?(hash(Math.floor(d/240),5)<.25?'#d8a820':'#c0403a'):'#a8a090'; seg(-3,0,rc); seg(ROADW,ROADW+3,rc);
+    seg(0,ROADW,A);
+    if(dz<600){ const pk=Math.floor(d/53); if(hash(pk,11)<.16){ const x0=hash(pk,12)*300; seg(x0,x0+18+hash(pk,13)*40,shade(asph,.86)); } }
     const cw=lv.inter.find(I=>d>I.d-34&&d<I.d-14||d>I.d+104&&d<I.d+124);
-    if(cw){ for(let x=4;x<ROADW;x+=24) seg(x,x+13,'rgba(255,255,255,.88)'); continue; }
-    if(lv.inter.some(I=>d>I.d-13&&d<I.d-8)) seg(144,ROADW,'#fff');
-    seg(140,142.5,'#ffc020'); seg(145.5,148,'#ffc020'); seg(287,289.5,'rgba(255,255,255,.85)');
-    if(Math.floor(d/22)%2===0){ seg(70.5,73.5,'rgba(255,255,255,.75)'); seg(214.5,217.5,'rgba(255,255,255,.75)'); }
+    if(cw){ for(let x=4;x<ROADW;x+=24) seg(x,x+13,'rgba(240,240,236,.9)'); continue; }
+    if(lv.inter.some(I=>d>I.d-13&&d<I.d-8)) seg(144,ROADW,'#f0f0ec');
+    seg(140,142.5,'#e8b020'); seg(145.5,148,'#e8b020'); seg(287,289.5,'rgba(240,240,236,.85)');
+    if(Math.floor(d/22)%2===0){ seg(70.5,73.5,'rgba(240,240,236,.75)'); seg(214.5,217.5,'rgba(240,240,236,.75)'); }
     if(tgt&&Math.abs(d-tgt.d)<46) seg(288,ROADW,'rgba(134,220,79,'+(.3+.15*Math.sin(t*6))+')');
     for(const gs of lv.gas) if(Math.abs(d-gs.d)<46) seg(288,ROADW,'rgba(255,210,63,.22)'); }
-  // 遠方霧氣
-  const fog=c.createLinearGradient(0,hz,0,hz+26); fog.addColorStop(0,night?'rgba(20,20,50,.8)':'rgba(220,235,250,.7)'); fog.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=fog; c.fillRect(vx-40,hz,vw+80,26);
-  // 地上的坑洞、水窪、機車道字
+  // 路面「慢」字、人孔蓋
   const groundEll=(x,d,rx,col,stroke)=>{ const p=proj(x,d,0); if(!p||p[3]>700) return; c.fillStyle=col; c.beginPath(); c.ellipse(p[0],p[1],rx*p[2],rx*p[2]*camH/Math.max(8,p[3])*1.2+.5,0,0,7); c.fill(); if(stroke){ c.strokeStyle=stroke; c.lineWidth=1; c.stroke(); } };
+  if(S.pal==='tw'||S.pal==='th') for(let d=Math.ceil((cd+30)/430)*430;d<cd+520;d+=430){ if(lv.inter.some(I=>d>I.d-70&&d<I.d+150)) continue; const p=proj(LANE[3],d,0); if(!p) continue;
+    c.save(); c.translate(p[0],p[1]); c.scale(1,Math.min(1,camH/p[3]*1.6)); c.fillStyle='rgba(240,240,236,.7)'; c.font='900 '+Math.round(42*p[2])+'px '+TC; c.textAlign='center'; c.textBaseline='bottom'; c.fillText(S.pal==='tw'?'慢':'SLOW',0,0); c.restore(); }
+  for(let d=Math.ceil(cd/170)*170;d<cd+700;d+=170){ const k=d/170; if(hash(k,31)<.45) groundEll(LANE[1+Math.floor(hash(k,32)*4)]+(hash(k,33)-.5)*30,d,9,'#3c3c42','#76767c'); }
   for(const pd2 of lv.puddles) groundEll(pd2.x,pd2.d,pd2.r,'rgba(140,180,230,.5)');
   for(const h of lv.holes) groundEll(h.x,h.d,h.r,'#1e1e26','#5a5a66');
-  // 立起來的東西，由遠畫到近
-  const B=[]; const add=(dz,fn)=>{ if(dz>9&&dz<1100) B.push([dz,fn]); }; // 已經在身旁的東西（被車頭擋住）就不畫，免得塞滿畫面
-  for(const sg of lv.signs){ const d1=sg.d,d2=sg.d+sg.w*.9,dz=d1-cd; if(d2-cd<12||dz>1100) continue;
-    add(Math.max(dz,10),()=>{ const xs=sg.side<0?-50:ROADW+50,n1=Math.max(d1,cd+3),hh=sg.h*1.5,a=proj(xs,n1,0),b=proj(xs,d2,0),a2=proj(xs,n1,hh),b2=proj(xs,d2,hh); if(!a||!b) return;
-      c.fillStyle=night?'#3a3550':sg.col; c.beginPath(); c.moveTo(a[0],a[1]); c.lineTo(a2[0],a2[1]); c.lineTo(b2[0],b2[1]); c.lineTo(b[0],b[1]); c.closePath(); c.fill(); c.strokeStyle='rgba(0,0,0,.2)'; c.lineWidth=1; c.stroke();
-      // 窗戶
-      c.fillStyle=night?(sg.lit<.6?'rgba(255,230,128,.9)':'rgba(80,70,110,.9)'):'rgba(255,255,255,.5)';
-      for(let r2=0;r2<3;r2++) for(let q=0;q<3;q++){ const u1=.12+q*.3,u2=u1+.18,v1=.3+r2*.22,v2=v1+.12,P2=(u,v)=>{ const dd=lerp(n1,d2,u),pp=proj(xs,dd,hh*v); return pp; }; const p1=P2(u1,v1),p2=P2(u2,v1),p3=P2(u2,v2),p4=P2(u1,v2); if(!p1||!p2) continue;
-        c.beginPath(); c.moveTo(p1[0],p1[1]); c.lineTo(p2[0],p2[1]); c.lineTo(p3[0],p3[1]); c.lineTo(p4[0],p4[1]); c.closePath(); c.fill(); }
-      // 店面招牌（台灣直式）
-      const sp=proj(sg.side<0?-36:ROADW+36,n1+6,0); if(sp&&sp[3]<600){ const sw=10*sp[2],sh=34*sp[2],sy0=sp[1]-62*sp[2]; c.fillStyle=sg.sc; if(night){ c.shadowColor=sg.sc; c.shadowBlur=12; } c.fillRect(sp[0]-sw/2,sy0,sw,sh); c.shadowBlur=0;
-        if(sw>6){ c.fillStyle='#fff'; c.font='900 '+Math.round(sw*.75)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; [...sg.txt].slice(0,3).forEach((ch,i)=>c.fillText(ch,sp[0],sy0+sh*(.2+i*.3))); } } }); }
-  // 店家、客人、加油站
-  for(const s2 of lv.stops){ const dz=s2.d-cd; if(dz<40) continue; add(dz,()=>{ const p=proj(ROADW+42,s2.d,0); if(!p) return; const isT=s2===tgt,isG=s2.kind==='gas',w2=60*p[2],h2=50*p[2];
-      c.fillStyle=isG?'#e23b3b':s2.kind==='shop'?'#ff7a3d':'#4f9dff'; rr(c,p[0]-w2/2,p[1]-h2-26*p[2],w2,h2,6*p[2]); c.fill(); c.strokeStyle='#1a1530'; c.lineWidth=Math.max(1,p[2]*.6); c.stroke();
-      if(w2>30){ c.fillStyle='#fff'; c.font='900 '+Math.round(w2*.16)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(isG?'⛽ 加油':s2.kind==='shop'?'🍱 取餐':'🏠 送達',p[0],p[1]-h2*.75-26*p[2]); c.font='700 '+Math.round(w2*.13)+'px '+TC; c.fillText(s2.name,p[0],p[1]-h2*.4-26*p[2]); }
-      if(isT){ const ay=p[1]-h2-40*p[2]-Math.abs(Math.sin(t*5))*8; c.fillStyle='#86dc4f'; c.beginPath(); c.moveTo(p[0]-12,ay-14); c.lineTo(p[0]+12,ay-14); c.lineTo(p[0],ay); c.fill(); }
-      if(s2.kind==='cus'&&isT) pedFront(c,proj(ROADW+18,s2.d,0)[0],p[1],p[2],'#ffd23f','#4a2a1a',t); }); }
+  const fog=c.createLinearGradient(0,hz,0,hz+30); fog.addColorStop(0,night?'rgba(20,20,50,.8)':'rgba(214,226,236,.75)'); fog.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=fog; c.fillRect(vx-40,hz,vw+80,30);
+
+  // 兩旁的房子：同一邊連成一整排（騎樓、鐵窗、冷氣、頂樓加蓋、招牌），每一關固定
+  if(!lv.bld){ lv.bld=[]; const sd0=Math.floor(lv.L)%997; for(const sd of [-1,1]){ let d=-400,i=0; while(d<lv.L+1600){ const w=56+hash(i,sd+3+sd0,201)*70,id=i*2+(sd>0?1:0)+sd0*1000;
+      lv.bld.push({d,w,side:sd,id,col:hcol(pal.bld,id,202),sc:hcol(pal.sign,id,203),txt:hcol(S.sign,id,204)}); d+=w+(hash(i,sd+3+sd0,205)<.1?16:0); i++; } } }
+  const B1=[],B=[]; const add=(dz,fn)=>{ if(dz>14&&dz<1100) B.push([dz,fn]); }; // 已經貼在眼前的東西（被車頭擋住）不畫，免得塞滿畫面
+  const qText=(x,da,db,va,vb,txt,col)=>{ const a=proj(x,da,vb),b=proj(x,db,vb); if(!a||!b||Math.abs(b[0]-a[0])<30) return; let p0=a,p1=b,p3=proj(x,da,va); if(b[0]<a[0]){ p0=b; p1=a; p3=proj(x,db,va); } if(!p3) return;
+    c.save(); c.transform((p1[0]-p0[0])/100,(p1[1]-p0[1])/100,(p3[0]-p0[0])/30,(p3[1]-p0[1])/30,p0[0],p0[1]); c.fillStyle=col; c.font='900 22px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(txt,50,16,90); c.restore(); };
+  function building(b,d1,d2){
+    const o=b.side<0?1:-1,xs=b.side<0?-44:ROADW+44,id=b.id,n1=Math.max(d1,cd+3),A=E(xs,n1),Bq=E(xs,d2); if(!A||!Bq) return;
+    const nf=S.pal==='us'?3+Math.floor(hash(id,21)*7):2+Math.floor(hash(id,21)*(S.pal==='jp'?6:5)),G=arc?54:46,FH=34,hh=G+nf*FH;
+    const lk=(b.side<0)===(M>0)?1:.86,wall=shade(b.col,lk*dim),len=Math.abs(Bq[0]-A[0]),near=d1-cd<700;
+    const U=(x,u)=>E(x,Math.max(lerp(d1,d2,u),cd+3));
+    // 靠近自己這一端的側牆
+    if(d1>=cd+3){ const C=E(xs-o*170,d1),Ar=E(xs-o*28,d1); c.fillStyle=shade(b.col,.68*dim);
+      c.fillRect(Math.min(A[0],C[0]),Yv(A,hh),Math.abs(C[0]-A[0]),Yv(A,arc?40:0)-Yv(A,hh)); if(arc) c.fillRect(Math.min(Ar[0],C[0]),Yv(A,40),Math.abs(C[0]-Ar[0]),Yv(A,0)-Yv(A,40)); }
+    if(arc){ const xr=xs-o*28,Ar=E(xr,n1),Br=E(xr,d2);
+      c.fillStyle=night?'#3a3630':shade('#9a9284',dim); c.beginPath(); c.moveTo(A[0],Yv(A,0)); c.lineTo(Bq[0],Yv(Bq,0)); c.lineTo(Br[0],Yv(Br,0)); c.lineTo(Ar[0],Yv(Ar,0)); c.closePath(); c.fill();
+      const open=hash(id,22)<.62; c.fillStyle=open?(night?'#ffdf9e':'#5e5244'):(night?'#3a3a3e':'#a4a6a8'); fq(Ar,Br,0,40); c.fill();
+      if(near&&len>30){ if(open){ for(let i=0;i<3;i++){ const P=U(xr+o,.08+i*.31),Q=U(xr+o,.3+i*.31); c.fillStyle=hcol(['#e8c060','#c05040','#4a90c0','#f0f0e0','#70a050','#d0d0d0'],id+i,23); fq(P,Q,3,20); c.fill(); } }
+        else { c.strokeStyle='rgba(0,0,0,.16)'; c.lineWidth=1; c.beginPath(); for(let v=4;v<38;v+=4){ c.moveTo(Ar[0],Yv(Ar,v)); c.lineTo(Br[0],Yv(Br,v)); } c.stroke(); } }
+      c.fillStyle=night?'#2a2620':shade('#4a443c',dim); c.beginPath(); c.moveTo(A[0],Yv(A,40)); c.lineTo(Bq[0],Yv(Bq,40)); c.lineTo(Br[0],Yv(Br,40)); c.lineTo(Ar[0],Yv(Ar,40)); c.closePath(); c.fill();
+      if(night&&near){ c.fillStyle='rgba(255,240,200,.9)'; const P=U(xs-o*14,.5); c.beginPath(); c.ellipse(P[0],Yv(P,39.5),Math.max(1,3*P[1]),Math.max(.6,P[1]*.8),0,0,7); c.fill(); }
+      for(const u of (d2-d1>80?[0,.5,1]:[0,1])){ const da=lerp(d1,d2,u)-(u===1?7:u===.5?3.5:0); if(da<cd+3) continue; const P1=E(xs,da),P2=E(xs,da+7),Pc=E(xs-o*7,da);
+        c.fillStyle=shade(b.col,.72*dim); c.fillRect(Math.min(P1[0],Pc[0]),Yv(P1,40),Math.abs(Pc[0]-P1[0]),Yv(P1,0)-Yv(P1,40)); c.fillStyle=wall; fq(P1,P2,0,40); c.fill(); }
+      c.fillStyle=wall; fq(A,Bq,40,hh); c.fill();
+      // 騎樓上的橫式招牌
+      const P=U(xs+o*2,0),Q=E(xs+o*2,d2); if(P&&Q){ c.fillStyle=shade(b.sc,night?1.1:.95); fq(P,Q,41,53); c.fill(); if(near) qText(xs+o*2.2,Math.max(d1,cd+3),d2,41,53,b.txt,'#fff'); } }
+    else { c.fillStyle=wall; fq(A,Bq,0,hh); c.fill();
+      c.fillStyle=night?'#ffe6b0':shade('#3a4654',dim); fq(U(xs,.06),U(xs,.94),3,32); c.fill();
+      if(near&&len>30){ c.fillStyle=night?'#c8a060':'#22262c'; fq(U(xs+o*.5,.4),U(xs+o*.5,.58),3,28); c.fill(); }
+      const a1=U(xs,0),a2=E(xs,d2),b1=U(xs+o*14,0),b2=E(xs+o*14,d2); if(b1&&b2){ c.fillStyle=shade(b.sc,.9*dim); c.beginPath(); c.moveTo(a1[0],Yv(a1,38)); c.lineTo(a2[0],Yv(a2,38)); c.lineTo(b2[0],Yv(b2,31)); c.lineTo(b1[0],Yv(b1,31)); c.closePath(); c.fill(); }
+      c.fillStyle=shade(b.sc,night?1.1:.85); fq(U(xs+o,.1),U(xs+o,.9),39,46); c.fill(); if(near) qText(xs+o*1.2,lerp(d1,d2,.1),lerp(d1,d2,.9),39,46,b.txt,'#fff'); }
+    // 樓層：窗戶、鐵窗、冷氣
+    const nw=Math.max(1,Math.min(5,Math.round((d2-d1)/32))),dirty=S.pal==='tw'||S.pal==='th'||S.pal==='kr';
+    for(let f=0;f<nf;f++){ const v0=G+f*FH; c.fillStyle='rgba(0,0,0,.13)'; fq(A,Bq,v0,v0+2.5); c.fill(); if(!near&&len<12) continue;
+      for(let i=0;i<nw;i++){ const da=lerp(d1,d2,(i+.18)/nw),db=lerp(d1,d2,(i+.82)/nw); if(da<cd+3) continue; const P=E(xs,da),Q=E(xs,db),hs=hash(id*7+f,i+30);
+        c.fillStyle=night?(hs<.45?'#ffd98a':'#1c1e2a'):shade(hs<.3?'#7f93a8':'#4e5d6e',dim); fq(P,Q,v0+9,v0+27); c.fill();
+        if(!near||Math.abs(Q[0]-P[0])<6) continue;
+        if(!night){ c.fillStyle='rgba(255,255,255,.16)'; fq(P,E(xs,lerp(da,db,.45)),v0+19,v0+27); c.fill(); }
+        if(dirty&&hs>.3){ const P3=E(xs+o*5,da-2),Q3=E(xs+o*5,db+2); if(P3&&Q3){ c.strokeStyle=night?'rgba(110,110,120,.85)':'rgba(222,222,212,.92)'; c.lineWidth=Math.max(.5,P3[1]*.3); fq(P3,Q3,v0+7,v0+29); c.stroke();
+          c.beginPath(); for(let k=1;k<5;k++){ const Pb=E(xs+o*5,lerp(da-2,db+2,k/5)); if(Pb) c.moveTo(Pb[0],Yv(Pb,v0+7)); c.lineTo(Pb[0],Yv(Pb,v0+29)); } c.stroke();
+          c.fillStyle=night?'rgba(80,80,90,.5)':'rgba(200,200,190,.35)'; c.beginPath(); c.moveTo(P[0],Yv(P,v0+29)); c.lineTo(Q[0],Yv(Q,v0+29)); c.lineTo(Q3[0],Yv(Q3,v0+29)); c.lineTo(P3[0],Yv(P3,v0+29)); c.closePath(); c.fill(); } }
+        if(hash(id+f,i+40)<.32&&S.pal!=='us'){ const P4=E(xs+o*5,lerp(da,db,.15)),Q4=E(xs+o*5,lerp(da,db,.62)); if(P4&&Q4){ c.fillStyle=night?'#55555a':shade('#e2e2da',dim); fq(P4,Q4,v0+1,v0+8); c.fill(); c.fillStyle='rgba(0,0,0,.25)'; fq(E(xs+o*5,lerp(da,db,.2)),E(xs+o*5,lerp(da,db,.36)),v0+2,v0+7); c.fill(); } }
+        if(S.pal==='us'&&i===Math.floor(nw/2)){ c.strokeStyle='#26262a'; c.lineWidth=Math.max(.6,P[1]*.35); const R1=E(xs+o*9,da-4),R2=E(xs+o*9,db+4); if(R1&&R2){ c.beginPath(); c.moveTo(R1[0],Yv(R1,v0+2)); c.lineTo(R2[0],Yv(R2,v0+2)); c.moveTo(R1[0],Yv(R1,v0+11)); c.lineTo(R2[0],Yv(R2,v0+11)); c.moveTo(R1[0],Yv(R1,v0+2)); c.lineTo(R2[0],Yv(R2,v0-30)); c.stroke(); } } } }
+    // 髒污、頂樓（女兒牆、鐵皮加蓋、水塔）
+    if(dirty&&near){ c.fillStyle='rgba(40,30,20,.08)'; for(let k=0;k<3;k++){ const u=hash(id,60+k); fq(U(xs,u),U(xs,Math.min(1,u+.05)),G,hh-4); c.fill(); } }
+    c.fillStyle=shade(b.col,.78*dim); fq(A,Bq,hh-3,hh); c.fill();
+    if(S.pal==='tw'&&hash(id,50)<.55){ const u2=.5+hash(id,51)*.42,P=U(xs-o*12,.06),Q=U(xs-o*12,u2); if(P&&Q){ const sc=hcol(['#5a7f9a','#6f8f7a','#9aa0a0','#4a6a8a'],id,52); c.fillStyle=shade(sc,dim); fq(P,Q,hh,hh+22); c.fill();
+      if(near&&Math.abs(Q[0]-P[0])>20){ c.strokeStyle='rgba(0,0,0,.18)'; c.lineWidth=1; c.beginPath(); for(let k=1;k<12;k++){ const R=U(xs-o*12,.06+(u2-.06)*k/12); c.moveTo(R[0],Yv(R,hh)); c.lineTo(R[0],Yv(R,hh+22)); } c.stroke(); } } }
+    if((S.pal==='tw'||S.pal==='th')&&hash(id,53)<.45){ const P=U(xs-o*40,.62),Q=U(xs-o*40,.76); if(P&&Q){ c.fillStyle=shade('#c8ccd2',dim); fq(P,Q,hh+(hash(id,50)<.55?22:0),hh+(hash(id,50)<.55?38:16)); c.fill(); } }
+    // 直式招牌（伸出來，正對騎士）
+    if(S.pal!=='us'&&hash(id,70)<.8){ const ds=lerp(d1,d2,.12+hash(id,71)*.4); if(ds>cd+8){ const v1=G+4,v2=Math.min(hh-2,v1+56+hash(id,72)*44),P1=proj(xs+o*3,ds,v2),P2=proj(xs+o*16,ds,v1);
+      if(P1&&P2){ const x0=Math.min(P1[0],P2[0]),wS=Math.abs(P2[0]-P1[0]),hS=P2[1]-P1[1],sc=hcol(pal.sign,id+5,73); c.fillStyle=night?sc:shade(sc,dim); if(night&&wS>4){ c.shadowColor=sc; c.shadowBlur=10; } c.fillRect(x0,P1[1],wS,hS); c.shadowBlur=0;
+        if(wS>5){ c.strokeStyle='rgba(255,255,255,.7)'; c.lineWidth=Math.max(.5,wS*.05); c.strokeRect(x0+wS*.08,P1[1]+wS*.08,wS*.84,hS-wS*.16); }
+        if(wS>7){ const tx=hcol(S.sign,id+9,74),ch=[...tx].slice(0,4); c.fillStyle='#fff'; c.font='900 '+Math.round(wS*.62)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; ch.forEach((q,i)=>c.fillText(q,x0+wS/2,P1[1]+hS*(i+.5)/Math.max(3,ch.length))); } } } } }
+  for(const b of lv.bld){ let d1=b.d,d2=b.d+b.w; for(const I of lv.inter) if(d2>I.d-38&&d1<I.d+128){ if(d1>=I.d-38) d1=I.d+128; else d2=I.d-38; }
+    if(d2-d1<16||d2-cd<6||d1-cd>1300) continue; B1.push([Math.max(d1-cd,3),()=>building(b,d1,d2)]); }
+  B1.sort((a,b)=>b[0]-a[0]); for(const [,fn] of B1) fn();
+
+  // 電線桿和電線、行道樹、騎樓前停滿的機車、走路的人
+  if(S.pal!=='us') for(const sd of [-1,1]){ const x=sd<0?-8:ROADW+8; for(let d=Math.ceil((cd+10)/150)*150;d<cd+900;d+=150){ const k=d/150; if(lv.inter.some(I=>d>I.d-40&&d<I.d+130)) continue;
+    add(d-cd,()=>{ const p=proj(x,d,0),q=proj(x,d,96); if(!p||!q) return; c.fillStyle=night?'#3a3a40':shade('#8e8c86',dim); c.fillRect(p[0]-1.5*p[2],q[1],3*p[2],p[1]-q[1]);
+      const a1=proj(x-12,d,88),a2=proj(x+12,d,88); c.fillRect(Math.min(a1[0],a2[0]),a1[1]-.8*p[2],Math.abs(a2[0]-a1[0]),1.6*p[2]);
+      if(hash(k,sd,82)<.4){ const tp=proj(x,d,74); c.fillStyle='#66696c'; rr(c,tp[0]-3.6*p[2],tp[1]-6*p[2],7.2*p[2],13*p[2],1.5*p[2]); c.fill(); }
+      c.strokeStyle='rgba(25,25,30,.8)'; c.lineWidth=clamp(p[2]*.16,.6,1.6); c.beginPath();
+      for(const wx of [-11,0,11]){ const a=proj(x+wx,d,88),b2=proj(x+wx,d+150,88),m=proj(x+wx,d+75,80); if(a&&b2&&m){ c.moveTo(a[0],a[1]); c.quadraticCurveTo(2*m[0]-(a[0]+b2[0])/2,2*m[1]-(a[1]+b2[1])/2,b2[0],b2[1]); } }
+      if(sd<0&&k%2===0){ const a=proj(x,d,88),b2=proj(ROADW+8,d+40,88),m=proj(ROADW/2,d+20,74); if(a&&b2&&m){ c.moveTo(a[0],a[1]); c.quadraticCurveTo(2*m[0]-(a[0]+b2[0])/2,2*m[1]-(a[1]+b2[1])/2,b2[0],b2[1]); } }
+      c.stroke(); }); } }
+  if(!arc) for(const sd of [-1,1]){ const x=sd<0?-18:ROADW+18; for(let d=Math.ceil(cd/110)*110;d<cd+800;d+=110){ const k=d/110; if(hash(k,sd,85)>.6||lv.inter.some(I=>d>I.d-40&&d<I.d+130)) continue;
+    add(d-cd,()=>{ const p=proj(x,d,0),q=proj(x,d,38); if(!p||!q) return; c.fillStyle='#5a4030'; c.fillRect(p[0]-1.4*p[2],q[1],2.8*p[2],p[1]-q[1]);
+      for(let i=0;i<5;i++){ const cp=proj(x+(hash(k,i,86)-.5)*22,d,46+hash(k,i,87)*18); c.fillStyle=shade(['#4f7a3a','#5f8a44','#3f6a30'][i%3],night?.4:dim); c.beginPath(); c.arc(cp[0],cp[1],(9+hash(k,i,88)*5)*p[2],0,7); c.fill(); } }); } }
+  if(arc) for(const sd of [-1,1]){ const x=sd<0?-22:ROADW+22; for(let d=Math.ceil((cd+12)/12)*12;d<cd+560;d+=12){ const k=d/12; if(hash(k,sd+5,71)>.6) continue;
+    if(lv.inter.some(I=>d>I.d-50&&d<I.d+140)||lv.stops.some(s2=>Math.abs(s2.d-d)<45)||lv.busStops.some(b=>Math.abs(b.d-d)<60)) continue;
+    add(d-cd,()=>{ const p=proj(x+(hash(k,sd,72)-.5)*6,d,0); if(p) scootSide(c,p[0],p[1],p[2],hcol(SCOL,k*2+(sd>0?1:0),73),sd<0?M:-M); }); } }
+  for(const sd of [-1,1]){ const x0=arc?(sd<0?-58:ROADW+58):(sd<0?-30:ROADW+30); for(let k=Math.floor(cd/80);k<(cd+600)/80;k++){ if(hash(k,sd,91)>S.peds*.6+.25) continue;
+    const dir=hash(k,sd,92)<.5?1:-1,d=k*80+(((t*13*dir+hash(k,sd,93)*80)%80)+80)%80; if(lv.inter.some(I=>d>I.d-36&&d<I.d+126)) continue;
+    add(d-cd,()=>{ const p=proj(x0+(hash(k,sd,94)-.5)*8,d,0); if(p) pedFront(c,p[0],p[1],p[2],hcol(SHIRT,k*3+sd,95),hcol(['#1a1410','#3a2a1a','#6a5a4a','#111'],k,96),t,k+sd*.37); }); } }
+  // 店家、客人、加油站（立在人行道上的看板）
+  for(const s2 of lv.stops){ const dz=s2.d-cd; if(dz<40) continue; add(dz,()=>{ const p=proj(ROADW+26,s2.d,0); if(!p) return; const isT=s2===tgt,isG=s2.kind==='gas',w2=60*p[2],h2=46*p[2];
+      c.fillStyle='#444'; c.fillRect(p[0]-1.5*p[2],p[1]-30*p[2],3*p[2],30*p[2]);
+      c.fillStyle=isG?'#e23b3b':s2.kind==='shop'?'#ff7a3d':'#4f9dff'; rr(c,p[0]-w2/2,p[1]-h2-28*p[2],w2,h2,6*p[2]); c.fill(); c.strokeStyle='#1a1530'; c.lineWidth=Math.max(1,p[2]*.6); c.stroke();
+      if(w2>30){ c.fillStyle='#fff'; c.font='900 '+Math.round(w2*.16)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(isG?'⛽ 加油':s2.kind==='shop'?'🍱 取餐':'🏠 送達',p[0],p[1]-h2*.75-28*p[2]); c.font='700 '+Math.round(w2*.13)+'px '+TC; c.fillText(s2.name,p[0],p[1]-h2*.4-28*p[2]); }
+      if(isT){ const ay=p[1]-h2-42*p[2]-Math.abs(Math.sin(t*5))*8; c.fillStyle='#86dc4f'; c.beginPath(); c.moveTo(p[0]-12,ay-14); c.lineTo(p[0]+12,ay-14); c.lineTo(p[0],ay); c.fill(); }
+      if(s2.kind==='cus'&&isT){ const q=proj(ROADW+12,s2.d,0); if(q) pedFront(c,q[0],q[1],q[2],'#ffd23f','#4a2a1a',t,3); } }); }
   // 公車站牌
   for(const b2 of lv.busStops) add(b2.d-cd,()=>{ const p=proj(ROADW+10,b2.d,0); if(!p) return; c.fillStyle='#555'; c.fillRect(p[0]-1.5*p[2],p[1]-50*p[2],3*p[2],50*p[2]); c.fillStyle='#2f6fd0'; c.fillRect(p[0]-7*p[2],p[1]-56*p[2],14*p[2],12*p[2]); });
   // 紅綠燈（台灣有倒數秒數）＋照相機
@@ -360,22 +509,24 @@ function drawFP(c,vx,vw,st){
       [['r','#ff3030'],['y','#ffc020'],['g','#30e060']].forEach(([k2,col],i)=>{ c.fillStyle=Lg.col===k2?col:'#3a3a3a'; if(Lg.col===k2){ c.shadowColor=col; c.shadowBlur=10; } c.beginPath(); c.arc(bx+(i-1)*9*p[2]*M,by+5*p[2],3.6*p[2],0,7); c.fill(); c.shadowBlur=0; });
       if(S.pal==='tw'){ c.fillStyle='#111'; rr(c,bx+16*p[2]*M-7*p[2],by,14*p[2],10*p[2],1.5*p[2]); c.fill(); c.fillStyle=Lg.col==='g'?'#30e060':Lg.col==='y'?'#ffc020':'#ff3030'; c.font='900 '+Math.max(5,Math.round(8*p[2]))+'px monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(Math.ceil(Lg.left)).padStart(2,'0'),bx+16*p[2]*M,by+5.5*p[2]); }
       if(I.cam){ c.fillStyle='#ffd23f'; rr(c,p[0]-6*p[2],p[1]-46*p[2],12*p[2],9*p[2],2*p[2]); c.fill(); c.fillStyle='#222'; c.beginPath(); c.arc(p[0],p[1]-41.5*p[2],2.6*p[2],0,7); c.fill(); }
-      // 路口對面的另一支燈
       const q=proj(-14,I.d+100,0); if(q){ c.fillStyle='#3a3a44'; c.fillRect(q[0]-1.4*q[2],q[1]-60*q[2],2.8*q[2],60*q[2]); } }); }
   // 停在路邊的車、攤販、陣頭、白煙
-  for(const pk of lv.parked) add(pk.d-26-cd,()=>{ const p=proj(LANE[4]+6,pk.d-26,0); if(!p) return; vehBack(c,p[0],p[1],p[2],{k:'car',w:28,col:pk.col},false,t);
+  for(const pk of lv.parked) add(pk.d-26-cd,()=>{ const p=proj(LANE[4]+6,pk.d-26,0); if(!p) return; vehBack(c,p[0],p[1],p[2],{k:'car',w:28,col:pk.col,idx:Math.floor(pk.d)},false,t);
       if(pk.door>0){ const q=proj(LANE[4]-8,pk.d-18,0); if(q){ c.fillStyle=pk.col; const dw=12*q[2]*pk.door; c.fillRect(M>0?q[0]-dw:q[0],q[1]-17*q[2],dw,13*q[2]); c.strokeStyle='#222'; c.lineWidth=1; c.strokeRect(M>0?q[0]-dw:q[0],q[1]-17*q[2],dw,13*q[2]); } } });
   for(const sl of lv.stalls) add(sl.d-sl.len/2-cd,()=>{ const p=proj(LANE[4]-4,sl.d-sl.len/2,0); if(!p) return; const w2=40*p[2],h2=30*p[2]; c.fillStyle='#6a4a2a'; c.fillRect(p[0]-w2/2,p[1]-h2,w2,h2);
       for(let i=0;i<4;i++){ c.fillStyle=i%2?'#fff':sl.col; c.fillRect(p[0]-w2*.6+i*w2*.3,p[1]-h2*1.35,w2*.3,h2*.35); } c.fillStyle='#ffd23f'; c.beginPath(); c.arc(p[0],p[1]-h2*1.5,4*p[2],0,7); c.fill(); });
-  if(lv.parade){ const pdd=lv.parade.d0+lv.parade.v*Math.max(0,simT); for(let i=0;i<10;i++){ const x=LANE[3]+(i%3)*30-10,d=pdd-lv.parade.len/2+i*13; add(d-cd,()=>{ const p=proj(x,d,0); if(!p) return; pedFront(c,p[0],p[1],p[2]*1.15,['#e23b3b','#ffd23f','#2a9d5c'][i%3],'#222',t,i); if(i%3===0){ c.fillStyle='#e23b3b'; c.fillRect(p[0]+4*p[2],p[1]-52*p[2],12*p[2],16*p[2]); c.fillStyle='#333'; c.fillRect(p[0]+3*p[2],p[1]-52*p[2],1.5*p[2],52*p[2]); } }); } }
+  if(lv.parade){ const pdd=lv.parade.d0+lv.parade.v*Math.max(0,simT); for(let i=0;i<10;i++){ const x=LANE[3]+(i%3)*30-10,d=pdd-lv.parade.len/2+i*13; add(d-cd,()=>{ const p=proj(x,d,0); if(!p) return; pedFront(c,p[0],p[1],p[2]*1.1,['#e23b3b','#ffd23f','#2a9d5c'][i%3],'#222',t,i); if(i%3===0){ c.fillStyle='#e23b3b'; c.fillRect(p[0]+4*p[2],p[1]-46*p[2],12*p[2],16*p[2]); c.fillStyle='#333'; c.fillRect(p[0]+3*p[2],p[1]-46*p[2],1.5*p[2],46*p[2]); } }); } }
   for(const s3 of lv.steam) add(s3.d-cd,()=>{ const a=.35+.3*Math.sin(t*1.5+s3.ph); if(a<.2) return; const p=proj(s3.x,s3.d,0); if(!p) return; c.fillStyle='rgba(240,240,245,'+a+')'; for(let i=0;i<4;i++){ c.beginPath(); c.arc(p[0]+Math.sin(t+i)*10*p[2],p[1]-i*12*p[2],(16+i*6)*p[2],0,7); c.fill(); } });
   // 車流
   for(const e of lv.veh){ const near=e.d-e.h/2; add(near-cd,()=>{ const p=proj(e.x,near,0); if(!p) return; vehBack(c,p[0],p[1],p[2],Object.assign({night},e),e.dir<0,t); }); }
-  const cr=[]; for(const I of lv.inter) if(I.d-cd<1100&&I.d+130-cd>0){ crossers(lv,I,simT,cr); crossPeds(lv,I,simT,cr); }
-  for(const e of cr){ const near=e.k==='ped'?e.d:e.d-e.w/2; add(near-cd,()=>{ const p=proj(e.x,near,0); if(!p) return;
-      if(e.k==='ped'){ pedFront(c,p[0],p[1],p[2],e.col,'#3a2a1a',simT,e.x); return; }
-      if(e.warn){ const q=proj(e.horiz>0?-20:ROADW+20,near,30); if(q){ c.fillStyle='#ff3030'; c.font='900 '+Math.round(30*q[2])+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('！',q[0],q[1]); } return; }
-      vehSide(c,p[0],p[1],p[2],e,e.horiz*M); }); }
+  // 路口橫向車流（被路口兩邊的房子擋住的部分不畫）
+  const cr=[]; for(const I of lv.inter) if(I.d-cd<1100&&I.d+130-cd>0){ const n0=cr.length; crossers(lv,I,simT,cr); crossPeds(lv,I,simT,cr); for(let i=n0;i<cr.length;i++) cr[i].I2=I; }
+  for(const e of cr){ const near=e.k==='ped'?e.d:e.d-e.w/2; add(near-cd,()=>{ const p=proj(e.x,near,0); if(!p) return; const I=e.I2,l=proj(-44,I.d-38,0),r=proj(ROADW+44,I.d-38,0);
+      c.save(); if(l&&r){ const a=Math.min(l[0],r[0]),b=Math.max(l[0],r[0]); c.beginPath(); c.rect(a,-50,b-a,H+100); c.clip(); }
+      if(e.k==='ped') pedFront(c,p[0],p[1],p[2],e.col,'#3a2a1a',simT,e.x);
+      else if(e.warn){ const q=proj(e.horiz>0?-20:ROADW+20,near,30); if(q){ c.fillStyle='#ff3030'; c.font='900 '+Math.round(30*q[2])+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('！',q[0],q[1]); } }
+      else vehSide(c,p[0],p[1],p[2],e,e.horiz*M);
+      c.restore(); }); }
   for(const l of st.locals||[]) add(l.d-cd,()=>{ const p=proj(l.x,l.d,0); if(!p) return; if(l.k==='dog') dogSide(c,p[0],p[1],p[2],t,Math.sign(l.vx)*M); else pedFront(c,p[0],p[1],p[2],l.col,'#3a2a1a',t,l.d); });
   // 其他外送員
   for(const r of st.riders||[]) add(r.d-cd,()=>{ const p=proj(r.x,r.d,0); if(!p) return; c.save(); if(r.ghost) c.globalAlpha=.75;
