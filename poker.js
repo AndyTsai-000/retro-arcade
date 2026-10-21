@@ -96,7 +96,11 @@ function drawCard(c,x,y,w,h,id,up,o){
   c.textAlign='center'; c.textBaseline='middle'; c.font=Math.round(w*(big?.5:.62))+'px '+TC; c.fillText(SUITS[sg],x+w*(big?.66:.6),y+h*(big?.74:.66));
   c.restore();
 }
-// 牌桌背景：經典綠桌、木框賭桌、星空、咖啡廳
+// 每種牌戲預設的場景：大老二在咖啡廳、德州撲克在賭場、十三支在木框賭桌、二十一點在半圓的二十一點桌
+const THEME={b2:{bg:'cafe',felt:'#2f7a52'},th:{bg:'casino',felt:'#1f6b4a'},'13':{bg:'wood',felt:'#3a2d57'},bj:{bg:'bjt',felt:'#1f6b4a'}};
+const savedLook=()=>{ try{ return JSON.parse(localStorage.getItem('arcade.look.poker')||'null')||{}; }catch(e){ return {}; } }; // 開始畫面左邊的圖也用自己存的造型
+const themed=(L,kind)=>{ L=L||{}; const T=THEME[kind]; return Object.assign({},L,{bg:!L.bg||L.bg==='auto'?T.bg:L.bg,felt:L.felt||T.felt}); };
+// 牌桌背景：經典綠桌、木框賭桌、星空、咖啡廳、賭場、二十一點桌
 function drawTable(c,w,h,L,t){
   const k=w/800,bg=(L&&L.bg)||'felt',felt=(L&&L.felt)||'#1f6b4a',cx=w/2,cy=h*.46,rx=w*.47,ry=h*.43;
   if(bg==='felt'){ const g=c.createRadialGradient(cx,h/2,60*k,cx,h/2,520*k); g.addColorStop(0,felt); g.addColorStop(1,'#0b0a1c'); c.fillStyle=g; c.fillRect(0,0,w,h);
@@ -106,10 +110,20 @@ function drawTable(c,w,h,L,t){
   else if(bg==='night'){ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0b0f2e'); g.addColorStop(1,'#1d1240'); c.fillStyle=g; c.fillRect(0,0,w,h);
     for(let i=0;i<70;i++){ c.globalAlpha=.4+.6*Math.abs(Math.sin((t||0)*1.3+i)); c.fillStyle='#fff'; c.fillRect((i*137)%w,(i*71)%h,1.6*k,1.6*k); } c.globalAlpha=1;
     c.fillStyle='#f6f0c8'; c.beginPath(); c.arc(w*.9,h*.12,22*k,0,7); c.fill(); c.fillStyle='#0b0f2e'; c.beginPath(); c.arc(w*.88,h*.1,20*k,0,7); c.fill(); }
+  else if(bg==='casino'){ c.fillStyle='#4a0e16'; c.fillRect(0,0,w,h); c.fillStyle='rgba(217,178,90,.16)'; const g0=34*k;
+    for(let y=0;y<h+g0;y+=g0) for(let x=((y/g0)%2)*g0/2;x<w+g0;x+=g0){ c.beginPath(); c.moveTo(x,y-7*k); c.lineTo(x+7*k,y); c.lineTo(x,y+7*k); c.lineTo(x-7*k,y); c.fill(); }
+    c.fillStyle='rgba(255,220,150,.10)'; for(let i=0;i<3;i++){ c.beginPath(); c.arc(w*(.2+i*.3),-30*k,150*k,0,7); c.fill(); } }
+  else if(bg==='bjt'){ // 二十一點桌：上面是莊家的直邊，玩家坐在下面的圓弧
+    const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#2a1620'); g.addColorStop(1,'#120a14'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    c.fillStyle='#3a1c0c'; c.beginPath(); c.ellipse(cx,-h*.04,w*.5+6*k,h*.93+16*k,0,0,Math.PI); c.fill();
+    const g2=c.createRadialGradient(cx,h*.2,30*k,cx,h*.2,w*.55); g2.addColorStop(0,felt); g2.addColorStop(1,'rgba(0,0,0,.5)');
+    c.fillStyle=felt; c.beginPath(); c.ellipse(cx,-h*.04,w*.5-8*k,h*.93,0,0,Math.PI); c.fill(); c.fillStyle=g2; c.fill();
+    c.strokeStyle='#d9b25a'; c.lineWidth=2*k; c.beginPath(); c.ellipse(cx,-h*.04,w*.33,h*.5,0,Math.PI*.08,Math.PI*.92); c.stroke();
+    c.fillStyle='rgba(217,178,90,.55)'; c.font='900 '+Math.round(13*k)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('黑傑克賠 3 比 2　・　莊家 17 點以上停牌',cx,h*.405); return; }
   else if(bg==='cafe'){ c.fillStyle='#e9d6b8'; c.fillRect(0,0,w,h); c.fillStyle='rgba(150,100,60,.12)'; for(let x=0;x<w;x+=40*k) c.fillRect(x,0,20*k,h);
     c.fillStyle='#bfe0f0'; for(const x of [.08,.82]){ c.fillRect(w*x,h*.08,w*.1,h*.22); c.strokeStyle='#8a5a3a'; c.lineWidth=4*k; c.strokeRect(w*x,h*.08,w*.1,h*.22); c.beginPath(); c.moveTo(w*(x+.05),h*.08); c.lineTo(w*(x+.05),h*.3); c.stroke(); } }
   // 橢圓牌桌：外框＋桌布
-  c.fillStyle=bg==='wood'?'#7a4a22':bg==='night'?'#2a2a4a':'#8a5a3a'; c.beginPath(); c.ellipse(cx,cy,rx+16*k,ry+16*k,0,0,7); c.fill();
+  c.fillStyle=bg==='wood'?'#7a4a22':bg==='night'?'#2a2a4a':bg==='casino'?'#2a1408':'#8a5a3a'; c.beginPath(); c.ellipse(cx,cy,rx+16*k,ry+16*k,0,0,7); c.fill();
   c.strokeStyle=bg==='night'?'#7a7ac8':'#d9b25a'; c.lineWidth=3*k; c.beginPath(); c.ellipse(cx,cy,rx+7*k,ry+7*k,0,0,7); c.stroke();
   const g2=c.createRadialGradient(cx,cy,30*k,cx,cy,rx); g2.addColorStop(0,felt); g2.addColorStop(1,'rgba(0,0,0,.55)'); c.fillStyle=felt; c.beginPath(); c.ellipse(cx,cy,rx,ry,0,0,7); c.fill(); c.fillStyle=g2; c.fill();
 }
@@ -118,11 +132,11 @@ function create(env,opts){
   const kind=GID[clamp(opts.stage||0,0,3)],humans=net?net.count:1;
   const OP=(opts.options||{}),seats=+OP.seats||6,bjSeats=+OP.bjseats||3;
   const np=net?Math.min(kind==='th'?9:kind==='bj'?7:4,net.count+(net.bots||0)):kind==='bj'?clamp(bjSeats,1,7):kind==='th'?clamp(seats,2,9):4; // 德州撲克最多 9 人、二十一點最多 7 人
-  const L=opts.look||{felt:'#1f6b4a',back:'red'}; setStyle(L); const LK=L,spd=['slow','normal','fast'].indexOf((opts.options||{}).speed||'normal'),AID=[1.5,.9,.45][spd<0?1:spd];
+  const L=themed(opts.look,kind); setStyle(L); const LK=L,spd=['slow','normal','fast'].indexOf((opts.options||{}).speed||'normal'),AID=[2.6,1.8,1][spd<0?1:spd];
   const {ctx:c,canvas}=env.canvas2d(W,H);
   const names=[]; for(let i=0;i<np;i++) names.push(i<humans?(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你')):'電腦 '+(i-humans+1));
   const isAI=p=>p>=humans,sfx=n=>env.sfx(n);
-  let G={kind,log:'',over:null},t=0,aiT=0,msg='',msgT=0,sel=new Set(),ended=false,btns=[],hits=[],pendingT=0;
+  let G={kind,log:'',over:null},t=0,aiT=0,msg='',msgT=0,sel=new Set(),ended=false,btns=[],hits=[],pendingT=0,sliders=[],drag=null,amt=0;
   const say=(s,sec)=>{ msg=s; msgT=sec||2; };
   const log=s=>{ G.log=s; };
 
@@ -171,12 +185,12 @@ function create(env,opts){
   function thPut(p,a){ a=Math.min(a,G.chips[p]); G.chips[p]-=a; G.bet[p]+=a; G.contrib[p]+=a; if(G.chips[p]===0) G.allin[p]=true; }
   const canAct=p=>!G.folded[p]&&!G.allin[p];
   const pot=()=>G.contrib.reduce((a,b)=>a+b,0);
-  function thAct(p,a){
+  function thAct(p,a,v){
     if(G.over||G.show||G.turn!==p||!canAct(p)) return '不是你的回合';
     const toCall=G.cur-G.bet[p];
     if(a==='fold'){ G.folded[p]=true; log(names[p]+' 棄牌'); sfx('click'); }
     else if(a==='call'){ if(toCall>0){ thPut(p,toCall); log(names[p]+(G.allin[p]?' 全下':' 跟注 '+toCall)); } else log(names[p]+' 過牌'); sfx('place'); }
-    else if(a==='raise'||a==='allin'){ const target=a==='allin'?G.bet[p]+G.chips[p]:G.cur+G.minR,add=Math.min(target-G.bet[p],G.chips[p]); if(add<=toCall) return thAct(p,'call');
+    else if(a==='raise'||a==='allin'){ const target=a==='allin'?G.bet[p]+G.chips[p]:Math.max(G.cur+G.minR,Math.round(+v||0)),add=Math.min(target-G.bet[p],G.chips[p]); if(add<=toCall) return thAct(p,'call');
       thPut(p,add); const raised=G.bet[p]-G.cur; if(raised>=G.minR) G.minR=raised; G.cur=Math.max(G.cur,G.bet[p]); G.acted=new Set(); log(names[p]+(G.allin[p]?' 全下 ':' 加注到 ')+G.bet[p]); sfx('item'); }
     G.acted.add(p); thAdvance(); return null; }
   function thAdvance(){
@@ -214,54 +228,70 @@ function create(env,opts){
     return w/n; }
   function thAI(p){
     const eq=thEquity(p,G.street===0?90:140),toCall=G.cur-G.bet[p],potOdds=toCall/(pot()+toCall||1),r=Math.random();
-    if(eq>.72&&r<.7||eq>.55&&r<.25) return thAct(p,G.chips[p]<=G.cur+G.minR-G.bet[p]?'allin':'raise');
+    if(eq>.72&&r<.7||eq>.55&&r<.25){ const size=Math.round(Math.max(G.minR,pot()*(eq>.72?.6+Math.random()*.6:.4+Math.random()*.3))/BB)*BB; return thAct(p,G.chips[p]<=G.cur+size-G.bet[p]?'allin':'raise',G.cur+size); }
     if(toCall===0) return thAct(p,'call');
     if(eq>potOdds+.04||toCall<=BB&&eq>.25) return thAct(p,'call');
     return thAct(p,'fold'); }
 
   /* ===== 十三支 ===== */
-  function t13Setup(){ const d=newDeck(); G.hands=[]; for(let p=0;p<np;p++) G.hands.push(d.splice(0,13).sort((a,b)=>rk(a)-rk(b)||su(a)-su(b))); G.rows=new Array(np).fill(null); G.res=null; log('把 13 張牌分成頭墩 3 張、中墩 5 張、尾墩 5 張，尾墩要最大、頭墩最小'); }
+  const R13=+OP.t13r||6;
+  function t13Setup(){ G.total=new Array(np).fill(0); G.r13=0; t13Deal(); }
+  function t13Deal(){ G.r13++; const d=newDeck(); G.hands=[]; for(let p=0;p<np;p++) G.hands.push(d.splice(0,13).sort((a,b)=>rk(a)-rk(b)||su(a)-su(b))); G.rows=new Array(np).fill(null); G.res=null; log('第 '+G.r13+' / '+R13+' 局：把 13 張牌分成頭墩 3 張、中墩 5 張、尾墩 5 張'); }
   function t13Submit(p,rows){
-    if(G.over||G.rows[p]) return '已經送出了';
+    if(G.over||G.res||G.rows[p]) return '已經送出了';
     const all=rows.flat().slice().sort((a,b)=>a-b).join(),own=G.hands[p].slice().sort((a,b)=>a-b).join();
     if(rows.length!==3||rows[0].length!==3||rows[1].length!==5||rows[2].length!==5||all!==own) return '頭墩要 3 張、中墩 5 張、尾墩 5 張';
     G.rows[p]=rows.map(r=>r.slice()); log(names[p]+' 排好了'); sfx('place');
     if(G.rows.every(Boolean)) t13Show(); return null; }
   function t13Show(){
-    const foul=G.rows.map(foul13),tot=new Array(np).fill(0),detail=[];
+    const foul=G.rows.map(foul13),tot=new Array(np).fill(0),M=[...Array(np)].map(()=>new Array(np).fill(0)),gun=[...Array(np)].map(()=>new Array(np).fill(false));
     for(let a=0;a<np;a++) for(let b=a+1;b<np;b++){ let s=0,wins=0,loss=0;
       for(let k=0;k<3;k++){ let v; if(foul[a]&&foul[b]) v=0; else if(foul[a]) v=-1; else if(foul[b]) v=1; else { const x=rowScore(G.rows[a][k]),y=rowScore(G.rows[b][k]); v=x>y?1:x<y?-1:0; } s+=v; if(v>0) wins++; if(v<0) loss++; }
-      if(wins===3||loss===3) s*=2; // 打槍：三墩全贏加倍
-      tot[a]+=s; tot[b]-=s; detail.push([a,b,s]); }
-    G.res={tot,foul,detail}; G.over={tot}; log('比牌結果出爐'); sfx('win'); }
+      if(wins===3){ s*=2; gun[a][b]=true; } else if(loss===3){ s*=2; gun[b][a]=true; } // 打槍：三墩全贏加倍
+      M[a][b]=s; M[b][a]=-s; }
+    const homer=[]; if(np>=3) for(let a=0;a<np;a++) if([...Array(np).keys()].every(b=>b===a||gun[a][b])){ homer.push(a); for(let b=0;b<np;b++) if(b!==a){ M[a][b]*=2; M[b][a]=-M[a][b]; } } // 全壘打：槍斃所有人再加倍
+    for(let a=0;a<np;a++) for(let b=0;b<np;b++) tot[a]+=M[a][b];
+    tot.forEach((v,p)=>G.total[p]+=v);
+    const guns=[]; for(let a=0;a<np;a++) for(let b=0;b<np;b++) if(gun[a][b]) guns.push([a,b]);
+    G.res={tot,foul,guns,homer,until:8}; log(homer.length?names[homer[0]]+' 全壘打！':guns.length?guns.map(([a,b])=>names[a]+' 打槍 '+names[b]).join('、'):'比牌結果出爐'); sfx('win'); }
 
   /* ===== 二十一點 ===== */
-  const BJR=6;
-  function bjSetup(){ G.chips=new Array(np).fill(1000); G.round=0; bjNewRound(); }
+  const BJR=8,BJS=+OP.bjchips||1000,MINB=+OP.bjmin||25;
+  function bjSetup(){ G.chips=new Array(np).fill(BJS); G.round=0; bjNewRound(); }
+  const bjCur=p=>G.hi[p]===1?G.sp[p].h:G.hands[p],bjBetOf=p=>G.hi[p]===1?G.sp[p].b:G.bets[p];
+  function bjEndHand(p){ if(G.sp[p]&&G.hi[p]===0){ G.hi[p]=1; log(names[p]+' 換打第二手'); if(bjTotal(G.sp[p].h)>=21||G.sp[p].aces) G.done[p]=true; } else G.done[p]=true; }
   function bjNewRound(){
     if(G.round>=BJR||G.chips.every(v=>v<=0)||(!net&&G.chips[0]<=0)){ G.over={chips:G.chips.slice()}; return; }
-    G.round++; G.phase='bet'; G.bets=new Array(np).fill(0); G.hands=[]; G.dealer=[]; G.done=new Array(np).fill(false); G.res=null; G.deck=G.deck&&G.deck.length>60?G.deck:newDeck().concat(newDeck()); // 兩副牌的牌靴，剩不多就重洗（7 人同桌也不會沒牌）
+    G.round++; G.phase='bet'; G.bets=new Array(np).fill(0); G.hands=[]; G.dealer=[]; G.done=new Array(np).fill(false); G.res=null; G.sp=new Array(np).fill(null); G.hi=new Array(np).fill(0); G.deck=G.deck&&G.deck.length>60?G.deck:newDeck().concat(newDeck()); // 兩副牌的牌靴，剩不多就重洗（7 人同桌也不會沒牌）
     log('第 '+G.round+' / '+BJR+' 局：先下注'); }
-  function bjBet(p,a){ if(G.phase!=='bet'||G.bets[p]) return '現在不能下注'; if(G.chips[p]<=0){ G.bets[p]=-1; } else G.bets[p]=Math.min(a,G.chips[p]);
+  function bjBet(p,a){ if(G.phase!=='bet'||G.bets[p]) return '現在不能下注'; if(G.chips[p]<=0){ G.bets[p]=-1; } else G.bets[p]=clamp(Math.round(+a||MINB),Math.min(MINB,G.chips[p]),G.chips[p]);
     if(G.bets[p]>0) G.chips[p]-=G.bets[p]; sfx('place'); if(G.bets.every(b=>b!==0)) bjDeal(); return null; }
   function bjDeal(){ G.phase='play'; for(let p=0;p<np;p++){ G.hands[p]=G.bets[p]>0?[G.deck.pop(),G.deck.pop()]:[]; G.done[p]=G.bets[p]<=0||bjTotal(G.hands[p])===21; } G.dealer=[G.deck.pop(),G.deck.pop()];
-    G.turn=-1; bjNext(); log('發牌了，輪流決定要牌或停牌'); }
+    G.turn=-1; const up=rk(G.dealer[0]);
+    if((up===14||up>=10)&&bjTotal(G.dealer)===21){ G.done.fill(true); log('莊家翻牌：黑傑克！'); bjDealer(); return; } // 莊家明牌是 A 或十點牌時先偷看，黑傑克就直接結算
+    bjNext(); log('發牌了，輪流決定要牌、停牌、加倍或分牌'); }
   function bjNext(){ for(let p=0;p<np;p++) if(!G.done[p]){ G.turn=p; return; } bjDealer(); }
   function bjAct(p,a){
-    if(G.phase!=='play'||G.turn!==p||G.done[p]) return '不是你的回合'; const h=G.hands[p];
-    if(a==='hit'){ h.push(G.deck.pop()); sfx('place'); const v=bjTotal(h); if(v>=21){ G.done[p]=true; log(names[p]+(v>21?' 爆了！':' 21 點')); } else log(names[p]+' 要牌（'+v+' 點）'); }
-    else if(a==='double'){ if(h.length!==2||G.chips[p]<G.bets[p]) return '只有前兩張牌、籌碼夠時才能加倍'; G.chips[p]-=G.bets[p]; G.bets[p]*=2; h.push(G.deck.pop()); G.done[p]=true; log(names[p]+' 加倍（'+bjTotal(h)+' 點）'); sfx('item'); }
-    else { G.done[p]=true; log(names[p]+' 停牌（'+bjTotal(h)+' 點）'); sfx('click'); }
+    if(G.phase!=='play'||G.turn!==p||G.done[p]) return '不是你的回合'; const h=bjCur(p),b=bjBetOf(p);
+    if(a==='hit'){ h.push(G.deck.pop()); sfx('place'); const v=bjTotal(h); if(v>=21){ log(names[p]+(v>21?' 爆了！':' 21 點')); bjEndHand(p); } else log(names[p]+' 要牌（'+v+' 點）'); }
+    else if(a==='double'){ if(h.length!==2||G.chips[p]<b) return '只有前兩張牌、籌碼夠時才能加倍'; G.chips[p]-=b; if(G.hi[p]===1) G.sp[p].b*=2; else G.bets[p]*=2; h.push(G.deck.pop()); log(names[p]+' 加倍（'+bjTotal(h)+' 點）'); sfx('item'); bjEndHand(p); }
+    else if(a==='split'){ if(!bjCanSplit(p)) return '前兩張一樣大、籌碼夠時才能分牌';
+      G.chips[p]-=G.bets[p]; const aces=rk(h[0])===14; G.sp[p]={h:[h.pop(),G.deck.pop()],b:G.bets[p],aces}; h.push(G.deck.pop()); log(names[p]+' 分牌'+(aces?'（A 分牌各補一張）':'')); sfx('item');
+      if(aces){ G.hi[p]=1; G.done[p]=true; } else if(bjTotal(h)===21) bjEndHand(p); }
+    else { log(names[p]+' 停牌（'+bjTotal(h)+' 點）'); sfx('click'); bjEndHand(p); }
     if(G.done[p]) bjNext(); return null; }
+  const bjCanSplit=p=>{ const h=G.hands[p]; return G.phase==='play'&&!G.sp[p]&&h&&h.length===2&&rk(h[0])===rk(h[1])&&G.chips[p]>=G.bets[p]; };
   function bjDealer(){ G.phase='dealer'; const d=G.dealer; while(bjTotal(d)<17) d.push(G.deck.pop());
     const dv=bjTotal(d),dbj=dv===21&&d.length===2,res=new Array(np).fill(0);
-    for(let p=0;p<np;p++){ const b=G.bets[p]; if(b<=0) continue; const h=G.hands[p],v=bjTotal(h),pbj=v===21&&h.length===2; let pay=0;
-      if(v>21) pay=0; else if(pbj&&!dbj) pay=b+Math.floor(b*1.5); else if(dv>21||v>dv) pay=b*2; else if(v===dv) pay=b; else pay=0;
-      G.chips[p]+=pay; res[p]=pay-b; }
-    G.res={res,dv,until:3.4}; log('莊家 '+(dv>21?'爆了':dv+' 點')); sfx('win'); }
-  function bjAI(p){ if(G.phase==='bet') return bjBet(p,[50,100,200][Math.floor(Math.random()*3)]);
-    const h=G.hands[p],v=bjTotal(h),up=Math.min(10,rk(G.dealer[0])>=10?(rk(G.dealer[0])===14?11:10):rk(G.dealer[0]));
-    if(h.length===2&&(v===11||v===10&&up<10)&&G.chips[p]>=G.bets[p]) return bjAct(p,'double');
+    for(let p=0;p<np;p++){ if(G.bets[p]<=0) continue; const hs=[{h:G.hands[p],b:G.bets[p]}].concat(G.sp[p]?[G.sp[p]]:[]);
+      for(const {h,b} of hs){ const v=bjTotal(h),pbj=v===21&&h.length===2&&!G.sp[p]; let pay=0; // 分牌後的 21 點不算黑傑克
+        if(v>21) pay=0; else if(dbj) pay=pbj?b:0; else if(pbj) pay=b+Math.floor(b*1.5); else if(dv>21||v>dv) pay=b*2; else if(v===dv) pay=b; else pay=0;
+        G.chips[p]+=pay; res[p]+=pay-b; } }
+    G.res={res,dv,until:4.2}; log('莊家 '+(dv>21?'爆了':dv+' 點')); sfx('win'); }
+  function bjAI(p){ if(G.phase==='bet') return bjBet(p,MINB*[1,2,4][Math.floor(Math.random()*3)]);
+    if(bjCanSplit(p)&&G.hi[p]===0&&(rk(G.hands[p][0])===14||rk(G.hands[p][0])===8)) return bjAct(p,'split'); // 電腦：A、8 一定分
+    const h=bjCur(p),v=bjTotal(h),up=Math.min(10,rk(G.dealer[0])>=10?(rk(G.dealer[0])===14?11:10):rk(G.dealer[0]));
+    if(h.length===2&&(v===11||v===10&&up<10)&&G.chips[p]>=bjBetOf(p)) return bjAct(p,'double');
     if(v<=11) return bjAct(p,'hit'); if(bjSoft(h)&&v<=17) return bjAct(p,'hit');
     if(v>=17) return bjAct(p,'stand'); return bjAct(p,up>=7?'hit':'stand'); }
 
@@ -271,13 +301,13 @@ function create(env,opts){
     if(G.over) return;
     if(kind==='b2'&&isAI(G.turn)) b2AI(G.turn);
     else if(kind==='th'&&!G.show&&isAI(G.turn)) thAI(G.turn);
-    else if(kind==='13'){ for(let p=0;p<np;p++) if(isAI(p)&&!G.rows[p]){ t13Submit(p,arrange13(G.hands[p])); break; } }
+    else if(kind==='13'&&!G.res){ for(let p=0;p<np;p++) if(isAI(p)&&!G.rows[p]){ t13Submit(p,arrange13(G.hands[p])); break; } }
     else if(kind==='bj'){ if(G.phase==='bet'){ const p=G.bets.findIndex((b,i)=>b===0&&isAI(i)); if(p>=0) bjAI(p); } else if(G.phase==='play'&&isAI(G.turn)) bjAI(G.turn); }
     broadcast(); }
   function doAct(p,a){ // 所有人的動作都經過這裡（連線時在房主這邊執行）
     let err=null;
     if(kind==='b2') err=a.t==='play'?b2Play(p,a.ids):b2Pass(p);
-    else if(kind==='th') err=thAct(p,a.t);
+    else if(kind==='th') err=thAct(p,a.t,a.v);
     else if(kind==='13') err=t13Submit(p,a.rows);
     else if(kind==='bj') err=a.t==='bet'?bjBet(p,a.v):bjAct(p,a.t);
     return err; }
@@ -311,6 +341,7 @@ function create(env,opts){
     if(G.over){ if(!ended){ ended=true; setTimeout(finish,1600); } return; }
     // 結算畫面停一下再進下一手／下一局
     if(kind==='th'&&G.show){ G.show.until-=dt; if(G.show.until<=0){ thNewHand(); broadcast(); } return; }
+    if(kind==='13'&&G.res){ G.res.until-=dt; if(G.res.until<=0){ if(G.r13>=R13) G.over={tot:G.total.slice()}; else t13Deal(); broadcast(); } return; }
     if(kind==='bj'&&G.res){ G.res.until-=dt; if(G.res.until<=0){ bjNewRound(); broadcast(); } return; }
     // 離開的人由電腦代打
     if(kind==='b2'&&left.has(G.turn)){ aiT+=dt; if(aiT>AID){ aiT=0; b2AI(G.turn); broadcast(); } return; }
@@ -321,8 +352,8 @@ function create(env,opts){
     let title,html,text='',score=null;
     if(kind==='b2'){ const w=G.over.w,list=names.map((n,p)=>[n,p===w?'出完了':'-'+G.over.pen[p]+' 分（剩 '+G.hands[p].length+' 張）',p===w?1e9:-G.over.pen[p]]).sort((a,b)=>b[2]-a[2]);
       title=w===me?'你贏了！':names[w]+' 先出完'; html=tbl({h:'結果',list}); text='輸家照剩下的張數扣分，剩 10 張以上加倍。'; }
-    else if(kind==='13'){ const tot=G.over.tot,list=names.map((n,p)=>[n,(tot[p]>0?'+':'')+tot[p]+' 墩'+(G.res.foul[p]?'（倒水）':''),tot[p]]).sort((a,b)=>b[2]-a[2]);
-      title=list[0][0]===names[me]?'你贏最多！':list[0][0]+' 贏最多'; html=tbl({h:'得分',list}); text='每墩和每位對手比，贏 +1、輸 -1；三墩全贏「打槍」加倍；排錯（倒水）三墩都算輸。'; }
+    else if(kind==='13'){ const tot=G.over.tot,list=names.map((n,p)=>[n,(tot[p]>0?'+':'')+tot[p]+' 分',tot[p]]).sort((a,b)=>b[2]-a[2]);
+      title=list[0][0]===names[me]?'你贏最多！':list[0][0]+' 贏最多'; html=tbl({h:'總分',list}); text='打完 '+R13+' 局累計分數。每墩和每位對手比，贏 +1、輸 -1；三墩全贏「打槍」加倍，槍斃所有人「全壘打」再加倍；排錯（倒水）三墩都算輸。'; }
     else { const ch=G.over.chips,list=names.map((n,p)=>[n,ch[p]+' 籌碼',ch[p]]).sort((a,b)=>b[2]-a[2]);
       title=list[0][0]===names[me]?'你是籌碼王！':list[0][0]+' 籌碼最多'; html=tbl({h:'籌碼',list}); score=ch[me]>0?ch[me]:null; text=kind==='th'?'打完 '+MAXH+' 手或只剩一人有籌碼就結束。':'打完 '+BJR+' 局就結束。'; }
     env.sfx(title.startsWith('你')?'win':'lose'); env.end({title,big:GAMES[GID.indexOf(kind)],html,text,score,next:false});
@@ -331,10 +362,14 @@ function create(env,opts){
 
   /* ===== 操作 ===== */
   function toLogical(e){ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=(r.width-W*s)/2,oy=(r.height-H*s)/2; return [(e.clientX-r.left-ox)/s,(e.clientY-r.top-oy)/s]; }
+  function slideTo(sl,x){ let v=sl.min+clamp((x-sl.x)/sl.w,0,1)*(sl.max-sl.min); v=Math.round(v/sl.step)*sl.step; if(x>=sl.x+sl.w-2) v=sl.max; amt=clamp(v,sl.min,sl.max); }
+  function onMove(e){ if(!drag) return; e.preventDefault(); slideTo(drag,toLogical(e)[0]); }
+  function onUp(){ drag=null; }
   function onDown(e){ e.preventDefault(); const [x,y]=toLogical(e);
+    for(const sl of sliders) if(x>=sl.x-14&&x<=sl.x+sl.w+14&&Math.abs(y-sl.y)<=16){ drag=sl; slideTo(sl,x); return; }
     for(const b of btns) if(!b.dis&&x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h){ sfx('click'); b.fn(); return; }
     for(let i=hits.length-1;i>=0;i--){ const h=hits[i]; if(x>=h.x&&x<h.x+h.w&&y>=h.y&&y<h.y+h.h){ h.fn(); return; } } }
-  canvas.addEventListener('pointerdown',onDown); canvas.style.touchAction='none';
+  canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); canvas.style.touchAction='none';
   const myTurn=()=>!G.over&&G.turn===me;
 
   /* ===== 畫面 ===== */
@@ -347,10 +382,15 @@ function create(env,opts){
   function hand(ids,y,o){ // 自己的手牌：可點選
     o=o||{}; const n=ids.length,cw=56,chh=80,gap=n>1?Math.min(cw+4,(560-cw)/(n-1)):0,x0=W/2-((n-1)*gap+cw)/2;
     ids.forEach((id,i)=>{ const s=sel.has(id),x=x0+i*gap,yy=y-(s?16:0); drawCard(c,x,yy,cw,chh,id,true,{sel:s,dim:o.dim&&o.dim(id)}); if(o.click) hits.push({x,y:yy,w:i===n-1?cw:gap,h:chh,fn:()=>o.click(id)}); }); }
+  // 拉桿：拖拉或點一下選金額；−／＋ 微調
+  function slider(x,y,w,min,max,step){ amt=clamp(Math.round(amt/step)*step||min,min,max); if(amt>max) amt=max; sliders.push({x,y,w,min,max,step});
+    const u=max>min?(amt-min)/(max-min):1; c.fillStyle='rgba(0,0,0,.4)'; rr(c,x,y-5,w,10,5); c.fill(); c.fillStyle='#ffd23f'; rr(c,x,y-5,Math.max(10,w*u),10,5); c.fill();
+    c.fillStyle='#fff'; c.beginPath(); c.arc(x+w*u,y,11,0,7); c.fill(); c.strokeStyle='#14122b'; c.lineWidth=2; c.stroke();
+    btn('−',x-46,y-18,36,()=>{ amt=Math.max(min,amt-step); }); btn('＋',x+w+10,y-18,36,()=>{ amt=Math.min(max,amt+step); }); }
   const toggle=id=>{ if(sel.has(id)) sel.delete(id); else sel.add(id); sfx('click'); };
 
   function draw(){
-    btns=[]; hits=[];
+    btns=[]; hits=[]; sliders=[];
     setStyle(L); drawTable(c,W,H,L,t);
     c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 16px '+TC; c.fillText(GAMES[GID.indexOf(kind)],14,20);
     if(G.log){ c.font='700 12px '+TC; c.textAlign='left'; let tx=G.log; while(c.measureText(tx).width>250&&tx.length>4) tx=tx.slice(0,-2); if(tx!==G.log) tx+='…'; const w=c.measureText(tx).width+20; c.fillStyle='rgba(11,10,28,.7)'; rr(c,10,34,w,22,11); c.fill(); c.fillStyle='#fff'; c.fillText(tx,20,45); } // 訊息放左上角，不擋到對面的人
@@ -383,27 +423,34 @@ function create(env,opts){
     c.fillStyle='#fff'; c.font='900 16px '+TC; c.textAlign='center'; c.fillText('彩池 '+(pot()),W/2,246); c.font='700 12px '+TC; c.fillStyle='#cfe8d8'; c.fillText('第 '+G.handNo+' / '+MAXH+' 手',W/2,266);
     const mine=G.hole[me]||[]; hand(mine,392); plate(me,110,330,G.folded[me]?'棄牌':G.chips[me]+' 籌碼'+(G.bet[me]?'（下注 '+G.bet[me]+'）':''),myTurn()&&!G.show);
     if(G.show&&G.show.win[me]){ c.fillStyle='#86dc4f'; c.font='900 18px '+TC; c.textAlign='center'; c.fillText('你贏 '+G.show.win[me]+(G.show.sc&&G.show.sc[me]?'（'+G.show.sc[me]+'）':''),W/2,300); }
-    else if(mine.length&&G.board.length>=3){ c.fillStyle='#cfe8d8'; c.font='700 13px '+TC; c.textAlign='center'; c.fillText('目前牌型：'+HAND_NAMES[bestN(mine.concat(G.board)).cat],W/2,300); }
-    const on=myTurn()&&!G.show&&canAct(me),toCall=on?G.cur-G.bet[me]:0;
-    btn('棄牌',430,330,70,()=>act({t:'fold'}),!on);
-    btn(toCall>0?'跟注 '+Math.min(toCall,G.chips[me]):'過牌',508,330,96,()=>act({t:'call'}),!on,true);
-    btn('加注',612,330,70,()=>act({t:'raise'}),!on||G.chips[me]<=toCall);
-    btn('全下',690,330,70,()=>act({t:'allin'}),!on);
+    else if(mine.length&&G.board.length>=3){ c.fillStyle='#cfe8d8'; c.font='700 13px '+TC; c.textAlign='center'; c.fillText('目前牌型：'+HAND_NAMES[bestN(mine.concat(G.board)).cat],110,298); }
+    const on=myTurn()&&!G.show&&canAct(me),toCall=on?G.cur-G.bet[me]:0,minT=on?G.cur+G.minR:0,maxT=on?G.bet[me]+G.chips[me]:0,canR=on&&maxT>minT;
+    if(!on) amt=0;
+    if(canR){ slider(360,302,250,minT,maxT,BB); c.fillStyle='#fff'; c.font='700 12px '+TC; c.textAlign='left'; c.fillText('拖拉選加注金額',662,302); }
+    btn('棄牌',300,336,64,()=>act({t:'fold'}),!on);
+    btn(toCall>0?'跟注 '+Math.min(toCall,G.chips[me]):'過牌',372,336,104,()=>act({t:'call'}),!on,true);
+    btn(canR?(amt>=maxT?'全下 '+amt:'加注到 '+amt):'加注',484,336,124,()=>act(amt>=maxT?{t:'allin'}:{t:'raise',v:amt}),!canR);
+    btn('全下',616,336,70,()=>act({t:'allin'}),!on);
   }
+  let arrR=-1;
   function draw13(){
     if(!G.hands) return;
+    if(!arr||arrR!==G.r13){ arr={rows:[[],[],[]]}; arrR=G.r13; sel.clear(); } // 新的一局重新排
     const done=!!G.res;
+    c.fillStyle='#ffd23f'; c.font='900 14px '+TC; c.textAlign='right'; c.fillText('第 '+G.r13+' / '+R13+' 局　總分 '+(G.total[me]>0?'+':'')+G.total[me],W-14,20);
     for(let p=0;p<np;p++){ if(p===me) continue; const s=seatOf(p),[x,y]=POS[s];
       if(done){ const rows=G.rows[p]; rows.forEach((r,k)=>r.forEach((id,i)=>drawCard(c,x-((r.length-1)*13+20)/2+i*13,(s==='t'?y-30:y-70)+k*30,20,28,id,true))); }
       else backs(x,y,13,s!=='t');
-      plate(p,x,s==='t'?(done?y+66:y+42):y+(done?42:80),done?((G.res.tot[p]>0?'+':'')+G.res.tot[p]+(G.res.foul[p]?' 倒水':'')):G.rows[p]?'排好了':'排牌中',false); }
+      plate(p,x,s==='t'?(done?y+66:y+42):y+(done?42:80),(done?((G.res.tot[p]>0?'+':'')+G.res.tot[p]+(G.res.foul[p]?' 倒水':'')):G.rows[p]?'排好了':'排牌中')+'　總 '+G.total[p],false); }
     const LBL=['頭墩','中墩','尾墩'],CAP=[3,5,5],rows=done?G.rows[me]:G.rows[me]||arr.rows;
     for(let k=0;k<3;k++){ const y=136+k*62,x0=W/2-150;
       c.fillStyle='rgba(0,0,0,.25)'; rr(c,x0-70,y-4,380,60,10); c.fill(); c.fillStyle='#ffd23f'; c.font='900 14px '+TC; c.textAlign='left'; c.fillText(LBL[k],x0-60,y+26);
       const r=rows[k]||[]; if(r.length===CAP[k]){ c.fillStyle='#cfe8d8'; c.font='700 12px '+TC; c.textAlign='right'; c.fillText(HAND_NAMES[evalHand(r).cat],x0+302,y+26); }
       for(let i=0;i<CAP[k];i++){ const x=x0+i*44; if(r[i]!=null){ drawCard(c,x,y,40,52,r[i],true); if(!done&&!G.rows[me]) hits.push({x,y,w:40,h:52,fn:()=>{ arr.rows[k]=arr.rows[k].filter(v=>v!==r[i]); sfx('click'); }}); }
         else { c.strokeStyle='rgba(255,255,255,.2)'; c.setLineDash([3,3]); rr(c,x,y,40,52,5); c.stroke(); c.setLineDash([]); if(!done&&!G.rows[me]) hits.push({x,y,w:40,h:52,fn:()=>{ const ids=[...sel].slice(0,CAP[k]-arr.rows[k].length); arr.rows[k]=arr.rows[k].concat(ids); sel.clear(); if(ids.length) sfx('place'); }}); } } }
-    if(done){ const tot=G.res.tot[me]; c.fillStyle=tot>=0?'#86dc4f':'#ff8a8a'; c.font='900 18px '+TC; c.textAlign='center'; c.fillText((G.res.foul[me]?'倒水！ ':'')+'你這局 '+(tot>0?'+':'')+tot+' 墩',W/2,330); return; }
+    if(done){ const tot=G.res.tot[me],R=G.res; c.fillStyle=tot>=0?'#86dc4f':'#ff8a8a'; c.font='900 18px '+TC; c.textAlign='center'; c.fillText((R.foul[me]?'倒水！ ':'')+'你這局 '+(tot>0?'+':'')+tot+' 分',W/2,330);
+      const gs=R.homer.length?[names[R.homer[0]]+' 全壘打！']:R.guns.map(([a,b])=>names[a]+' 打槍 '+names[b]); if(gs.length){ c.fillStyle='#ffd23f'; c.font='900 14px '+TC; c.fillText(gs.slice(0,3).join('　'),W/2,356); }
+      c.fillStyle='#cfe8d8'; c.font='700 12px '+TC; c.fillText(G.r13>=R13?'最後一局結束':'下一局馬上開始…',W/2,380); return; }
     if(G.rows[me]){ c.fillStyle='#fff'; c.font='700 15px '+TC; c.textAlign='center'; c.fillText('已送出，等其他人排好…',W/2,340); return; }
     hand(arrHand(),392,{click:toggle});
     c.fillStyle='#fff'; c.font='700 12px '+TC; c.textAlign='left'; c.fillText('點牌選取 → 點上面的空位放進去；點已放的牌拿回來',14,330);
@@ -423,27 +470,30 @@ function create(env,opts){
     const order=[...Array(np).keys()].filter(q=>q!==me),mid=Math.floor(np/2),slotOf=p=>{ if(p===me) return mid; const i=order.indexOf(p); return i<mid?i:i+1; };
     const pos=p=>{ if(np<=3){ const s=seatOf(p); return s==='b'?[W/2,300]:s==='l'?[130,250]:s==='r'?[670,250]:[670,150]; }
       const a=Math.PI*(.95-.9*slotOf(p)/(np-1)); return [400+Math.cos(a)*(np>5?340:330),170+Math.sin(a)*150+(p===me?0:10)]; };
-    for(let p=0;p<np;p++){ const [x,y]=pos(p),h=G.hands[p]||[],small=p!==me,cw=small?(np>5?28:34):52,chh=small?(np>5?40:48):74;
-      h.forEach((id,i)=>drawCard(c,x-((h.length-1)*(cw*.55)+cw)/2+i*cw*.55,y-chh,cw,chh,id,true));
-      if(h.length){ const v=bjTotal(h); c.fillStyle=v>21?'#ff8a8a':'#ffd23f'; c.font='900 '+(small?13:15)+'px '+TC; c.textAlign='center'; c.fillText(v>21?'爆了 '+v:v+' 點',x,y+12); }
-      const crowd=np>3&&p!==me,extra=crowd?String(G.chips[p]):G.chips[p]+' 籌碼'+(G.bets[p]>0?'　下注 '+G.bets[p]:''); // 人多時名牌只放籌碼，下注另一行
-      if(crowd&&G.bets[p]>0){ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('下注 '+G.bets[p],x,y+52); }
+    for(let p=0;p<np;p++){ const [x,y]=pos(p),small=p!==me,cw=small?(np>5?28:34):52,chh=small?(np>5?40:48):74,sp=G.sp&&G.sp[p];
+      const hs=sp?[[G.hands[p],x-(small?cw*.9:70)],[sp.h,x+(small?cw*.9:70)]]:[[G.hands[p]||[],x]];
+      hs.forEach(([h,hx],hiI)=>{ const scale=sp&&small?.8:1,w2=cw*scale,h2=chh*scale,on1=sp&&G.phase==='play'&&G.turn===p&&G.hi[p]===hiI;
+        h.forEach((id,i)=>drawCard(c,hx-((h.length-1)*(w2*.55)+w2)/2+i*w2*.55,y-h2,w2,h2,id,true,{sel:on1}));
+        if(h.length){ const v=bjTotal(h); c.fillStyle=v>21?'#ff8a8a':'#ffd23f'; c.font='900 '+(small?12:15)+'px '+TC; c.textAlign='center'; c.fillText(v>21?'爆了 '+v:v+' 點',hx,y+12); } });
+      const bt=G.bets[p]>0?G.bets[p]+(sp?sp.b:0):0,crowd=np>3&&p!==me,extra=crowd?String(G.chips[p]):G.chips[p]+' 籌碼'+(bt?'　下注 '+bt:''); // 人多時名牌只放籌碼，下注另一行
+      if(crowd&&bt){ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('下注 '+bt,x,y+52); }
       plate(p,x,y+(p===me?38:34),extra,G.phase==='play'&&G.turn===p||G.phase==='bet'&&!G.bets[p]&&G.chips[p]>0);
       if(G.res&&G.res.res[p]){ const v=G.res.res[p]; c.fillStyle=v>0?'#86dc4f':'#ff8a8a'; c.font='900 15px '+TC; c.fillText((v>0?'+':'')+v,x,y-(small?58:86)); } }
     c.fillStyle='#cfe8d8'; c.font='700 12px '+TC; c.textAlign='center'; c.fillText('第 '+G.round+' / '+BJR+' 局',W/2,150);
-    if(G.phase==='bet'&&!G.bets[me]&&G.chips[me]>0){ [50,100,200].forEach((v,i)=>btn('下注 '+v,W/2-170+i*116,400,104,()=>act({t:'bet',v}),G.chips[me]<1,i===1)); }
-    else if(G.phase==='play'&&G.turn===me){ const h=G.hands[me];
-      btn('要牌',W/2-170,400,104,()=>act({t:'hit'}),false,true); btn('停牌',W/2-54,400,104,()=>act({t:'stand'}),false); btn('加倍',W/2+62,400,104,()=>act({t:'double'}),h.length!==2||G.chips[me]<G.bets[me]); }
+    if(G.phase==='bet'&&!G.bets[me]&&G.chips[me]>0){ const lo=Math.min(MINB,G.chips[me]); if(G.chips[me]>lo) slider(W/2-165,422,210,lo,G.chips[me],MINB); else amt=lo;
+      btn('下注 '+amt,W/2+96,404,124,()=>act({t:'bet',v:amt}),false,true); }
+    else if(G.phase==='play'&&G.turn===me){ const h=bjCur(me); amt=0;
+      btn('要牌',W/2-226,404,100,()=>act({t:'hit'}),false,true); btn('停牌',W/2-116,404,100,()=>act({t:'stand'}),false); btn('加倍',W/2-6,404,100,()=>act({t:'double'}),h.length!==2||G.chips[me]<bjBetOf(me));
+      btn('分牌',W/2+104,404,100,()=>act({t:'split'}),!bjCanSplit(me)); }
     else if(!G.over){ c.fillStyle='#fff'; c.font='700 14px '+TC; c.textAlign='center'; c.fillText(G.phase==='bet'?'等其他人下注…':G.phase==='play'?'等 '+names[G.turn]+' 決定…':'',W/2,420); }
   }
-  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); },
+  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); },
     _dbg:{get G(){return G;},doAct,aiStep,arrange13,b2Combo,evalHand,best7,names}};
 }
 
 /* ---------- 開始畫面的示意圖 ---------- */
 function stageShow(ctx,w,h,si,t){
-  setStyle(window.__pokerLook);
-  const g=ctx.createRadialGradient(w/2,h/2,30,w/2,h/2,w*.7); g.addColorStop(0,'#1f6b4a'); g.addColorStop(1,'#0b0a1c'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  setStyle(window.__pokerLook); drawTable(ctx,w,h,themed(window.__pokerLook||savedLook(),GID[si]),t); // 背景跟著選的牌戲
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.09)+'px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText(GAMES[si],w/2,h*.1);
   const k=w/480,cw=48*k,ch=68*k,u=(t%4)/4;
   if(si===0){ // 大老二：中間依序出牌
@@ -483,14 +533,23 @@ function thumb(ctx,w,h,t){
   stages:GAMES,stageLabel:'選擇遊戲', // 這裡的「關卡」其實是四種牌戲
   stageGoal:si=>[
     '大老二：拿到最小牌（通常是梅花 3）的人先出，之後跟著出同張數、比上一手大的牌，壓不過就「過」。可以出單張、一對，或五張的順子＜同花＜葫蘆＜鐵支＜同花順。先出完的人贏，其他人照剩下的張數扣分，剩 10 張以上加倍。',
-    '德州撲克：每人兩張手牌，配合桌上五張公牌湊出最大的五張牌。每一輪可以棄牌、過牌／跟注、加注或全下，打 8 手後比籌碼。起始籌碼、盲注和人數（單機 4～9 人、連線最多 9 人）可以在下面選。',
-    '十三支：把 13 張牌分成頭墩 3 張、中墩 5 張、尾墩 5 張，尾墩要最大、頭墩最小，不然算「倒水」。和每一家逐墩比大小，贏一墩 +1、輸一墩 -1，三墩全贏「打槍」加倍。不會排可以按「自動排牌」。',
-    '二十一點：先下注，再和莊家比點數，越接近 21 越好，超過就爆。可以要牌、停牌，或在前兩張時加倍。莊家 17 點以上停牌，拿到 21 點（A＋十點牌）賠 1.5 倍。打 6 局比籌碼，最多 7 位玩家同桌。'][si],
+    '德州撲克：每人兩張手牌，配合桌上五張公牌湊出最大的五張牌。每一輪可以棄牌、過牌／跟注、加注（金額自己拉）或全下，打 8 手後比籌碼。起始籌碼、盲注和人數（單機 4～9 人、連線最多 9 人）可以在下面選。',
+    '十三支：每局把 13 張牌分成頭墩 3 張、中墩 5 張、尾墩 5 張，尾墩要最大、頭墩最小，不然算「倒水」。和每一家逐墩比大小，贏一墩 +1、輸一墩 -1，三墩全贏「打槍」加倍，槍斃所有人「全壘打」再加倍。打好幾局累計總分（局數可以選），不會排可以按「自動排牌」。',
+    '二十一點：先選金額下注，再和莊家比點數，越接近 21 越好，超過就爆。可以要牌、停牌、前兩張時加倍，兩張一樣大可以分牌。莊家 17 點以上停牌，明牌是 A 或十點牌時會先看有沒有黑傑克。拿到黑傑克（A＋十點牌）賠 1.5 倍。打 8 局比籌碼，起始籌碼和最低下注可以選，最多 7 位玩家同桌。'][si],
   options:[{key:'speed',label:'電腦速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]},
     {key:'chips',label:'起始籌碼',only:[1],def:'1000',opts:[{id:'500',label:'500'},{id:'1000',label:'1000'},{id:'2000',label:'2000'},{id:'5000',label:'5000'}]},
     {key:'blind',label:'盲注',only:[1],def:'10/20',opts:[{id:'5/10',label:'5／10'},{id:'10/20',label:'10／20'},{id:'25/50',label:'25／50'},{id:'50/100',label:'50／100'}]},
     {key:'seats',label:'單機人數',only:[1],def:'6',opts:[{id:'4',label:'4 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'},{id:'9',label:'9 人'}]},
+    {key:'t13r',label:'局數',only:[2],def:'6',opts:[{id:'4',label:'4 局'},{id:'6',label:'6 局'},{id:'8',label:'8 局'},{id:'10',label:'10 局'}]},
+    {key:'bjchips',label:'起始籌碼',only:[3],def:'1000',opts:[{id:'500',label:'500'},{id:'1000',label:'1000'},{id:'2000',label:'2000'},{id:'5000',label:'5000'}]},
+    {key:'bjmin',label:'最低下注',only:[3],def:'25',opts:[{id:'10',label:'10'},{id:'25',label:'25'},{id:'50',label:'50'},{id:'100',label:'100'}]},
     {key:'bjseats',label:'單機人數',only:[3],def:'3',opts:[2,3,4,5,6,7].map(n=>({id:String(n),label:n+' 人'}))}],
+  stageHelp:si=>{ const H=[
+      [['點牌','選取／取消選取，可以一次選好幾張'],['出牌','選好後按「出牌」；壓不過就按「過」'],['提示','幫你挑一手能出的牌'],['牌型','單張、一對，或五張：順子＜同花＜葫蘆＜鐵支＜同花順']],
+      [['棄牌','這一手不玩了'],['過牌／跟注','跟上目前的下注金額'],['加注','拖拉桿或按 −／＋ 選金額，再按「加注到 …」'],['全下','把手上籌碼全部押上']],
+      [['點牌','選取要放進墩裡的牌'],['點空位','把選好的牌放進頭墩、中墩或尾墩'],['點已放的牌','拿回手上重排'],['自動排牌','幫你排好，再按「確定」送出']],
+      [['下注','拖拉桿或按 −／＋ 選金額，再按「下注」'],['要牌／停牌','再拿一張，或不要了換下一位'],['加倍','前兩張時下注加倍，只再拿一張'],['分牌','前兩張一樣大時分成兩手各自打（A 分牌各補一張）']]][si];
+    return {help:H,touchHelp:H}; },
   help:[['點牌','選取／取消選取'],['按鈕','出牌、過、跟注、加注、要牌、停牌…'],['大老二','單張、一對、五張牌型（順子＜同花＜葫蘆＜鐵支＜同花順）'],['十三支','點牌再點空位放進墩裡，或按「自動排牌」']],
   touchHelp:[['點牌','選取／取消選取'],['按鈕','出牌、過、跟注、加注、要牌、停牌…'],['十三支','點牌再點空位放進墩裡，或按「自動排牌」']],
   touch:null,
@@ -499,10 +558,10 @@ function thumb(ctx,w,h,t){
     {key:'back',label:'牌背顏色',opts:[{id:'red',label:'紅色'},{id:'blue',label:'藍色'},{id:'purple',label:'紫色'},{id:'green',label:'綠色'},{id:'black',label:'黑色'},{id:'gold',label:'金色'}]},
     {key:'pat',label:'牌背圖案',opts:[{id:'stripe',label:'斜紋'},{id:'dots',label:'圓點'},{id:'star',label:'星星'},{id:'plain',label:'素面'}]},
     {key:'felt',label:'桌布顏色',type:'color',opts:['#1f6b4a','#1f4f7a','#6b1f3a','#3a2d57','#5a4630','#2b2b33']},
-    {key:'bg',label:'背景',opts:[{id:'felt',label:'經典牌桌'},{id:'wood',label:'木框賭桌'},{id:'night',label:'星空'},{id:'cafe',label:'咖啡廳'}]}],
+    {key:'bg',label:'背景',opts:[{id:'auto',label:'跟著牌戲'},{id:'felt',label:'經典牌桌'},{id:'casino',label:'賭場'},{id:'wood',label:'木框賭桌'},{id:'night',label:'星空'},{id:'cafe',label:'咖啡廳'}]}],
   best:{label:'最多籌碼',fmt:v=>v+' 籌碼',lower:false},
   stageShow,preview:(ctx,w,h,L,t)=>{ // 造型預覽：背景＋牌面＋牌背
-    drawTable(ctx,w,h,L,t); setStyle(L); window.__pokerLook=L; const k=w/480,cw=58*k,ch=84*k;
+    window.__pokerLook=L; drawTable(ctx,w,h,themed(L,'th'),t); setStyle(L); const k=w/480,cw=58*k,ch=84*k;
     [47,22,9,35].forEach((id,i)=>{ ctx.save(); ctx.translate(w*.36+(i-1.5)*40*k,h*.6); ctx.rotate((i-1.5)*.16); drawCard(ctx,-cw/2,-ch*.9,cw,ch,id,true); ctx.restore(); });
     drawCard(ctx,w*.66,h*.6-ch*.9,cw,ch,0,false); drawCard(ctx,w*.66+cw*.35,h*.6-ch*.85,cw,ch,0,false);
     setStyle(null); },thumb,create

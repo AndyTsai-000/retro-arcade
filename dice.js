@@ -50,13 +50,23 @@ function drawCup(c,x,y,s,lift,rot,al,noPlate){ // x,y＝底盤中心；lift＝�
   c.fillStyle='#d9b25a'; c.fillRect(-s*.07,-s*.9,s*.14,s*.12); c.beginPath(); c.arc(0,-s*.93,s*.1,0,7); c.fill();
   c.fillStyle='rgba(255,255,255,.5)'; c.beginPath(); c.arc(-s*.03,-s*.96,s*.035,0,7); c.fill();
   c.restore(); }
+// 每種骰子遊戲預設的場景：吹牛在酒吧、十八仔在夜市、妞妞在賭場、紅黑大小單雙在星空下
+const THEME={liar:{bg:'bar',felt:'#5a2a2a'},sb:{bg:'market',felt:'#1f4f7a'},nn:{bg:'casino',felt:'#1f6b4a'},rb:{bg:'night',felt:'#3a2d57'}};
+const savedLook=()=>{ try{ return JSON.parse(localStorage.getItem('arcade.look.dice')||'null')||{}; }catch(e){ return {}; } }; // 開始畫面左邊的圖也用自己存的造型
+const themed=(L,kind)=>{ L=L||{}; const T=THEME[kind]; return Object.assign({},L,{bg:!L.bg||L.bg==='auto'?T.bg:L.bg,felt:L.felt||T.felt}); };
 function drawTable(c,w,h,L,t){
   const k=w/800,bg=(L&&L.bg)||'felt',felt=(L&&L.felt)||'#5a2a2a',cx=w/2,cy=h*.46,rx=w*.47,ry=h*.43;
   if(bg==='felt'){ const g=c.createRadialGradient(cx,h/2,60*k,cx,h/2,520*k); g.addColorStop(0,felt); g.addColorStop(1,'#0b0a1c'); c.fillStyle=g; c.fillRect(0,0,w,h); return; }
   if(bg==='wood'){ c.fillStyle='#3a2416'; c.fillRect(0,0,w,h); c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=2*k; for(let y=0;y<h;y+=26*k){ c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); } }
   else if(bg==='night'){ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0b0f2e'); g.addColorStop(1,'#1d1240'); c.fillStyle=g; c.fillRect(0,0,w,h); for(let i=0;i<70;i++){ c.globalAlpha=.4+.6*Math.abs(Math.sin((t||0)*1.3+i)); c.fillStyle='#fff'; c.fillRect((i*137)%w,(i*71)%h,1.6*k,1.6*k); } c.globalAlpha=1; }
+  else if(bg==='bar'){ c.fillStyle='#3a1a14'; c.fillRect(0,0,w,h); c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=2*k; // 紅磚牆＋霓虹招牌
+    for(let y=0,r=0;y<h;y+=22*k,r++){ c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); for(let x=(r%2)*24*k;x<w;x+=48*k){ c.beginPath(); c.moveTo(x,y); c.lineTo(x,y+22*k); c.stroke(); } }
+    const fl=.75+.25*Math.sin((t||0)*5); c.save(); c.shadowColor='#ff4fa0'; c.shadowBlur=18*k; c.fillStyle='rgba(255,120,190,'+fl+')'; c.font='900 '+Math.round(26*k)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('乾杯！',w*.86,h*.08); c.restore();
+    for(const x of [.07,.93]){ c.fillStyle='rgba(255,200,60,.85)'; c.fillRect(w*x-12*k,h*.86,24*k,30*k); c.fillStyle='#fff'; c.fillRect(w*x-12*k,h*.86,24*k,7*k); c.strokeStyle='rgba(255,255,255,.6)'; c.lineWidth=3*k; c.beginPath(); c.arc(w*x+14*k,h*.86+15*k,8*k,-1.2,1.2); c.stroke(); } }
+  else if(bg==='casino'){ c.fillStyle='#4a0e16'; c.fillRect(0,0,w,h); c.fillStyle='rgba(217,178,90,.16)'; const g0=34*k;
+    for(let y=0;y<h+g0;y+=g0) for(let x=((y/g0)%2)*g0/2;x<w+g0;x+=g0){ c.beginPath(); c.moveTo(x,y-7*k); c.lineTo(x+7*k,y); c.lineTo(x,y+7*k); c.lineTo(x-7*k,y); c.fill(); } }
   else if(bg==='market'){ c.fillStyle='#2a1a30'; c.fillRect(0,0,w,h); for(let i=0;i<9;i++){ const x=w*(.06+i*.11),y=h*.08+Math.sin(i)*8*k; c.fillStyle='rgba(255,90,60,.9)'; c.beginPath(); c.ellipse(x,y,12*k,16*k,0,0,7); c.fill(); c.fillStyle='rgba(255,220,120,'+(.5+.3*Math.sin((t||0)*3+i))+')'; c.beginPath(); c.arc(x,y,6*k,0,7); c.fill(); } }
-  c.fillStyle=bg==='wood'?'#7a4a22':bg==='night'?'#2a2a4a':'#6a3a2a'; c.beginPath(); c.ellipse(cx,cy,rx+16*k,ry+16*k,0,0,7); c.fill();
+  c.fillStyle=bg==='wood'||bg==='bar'?'#7a4a22':bg==='night'?'#2a2a4a':bg==='casino'?'#2a1408':'#6a3a2a'; c.beginPath(); c.ellipse(cx,cy,rx+16*k,ry+16*k,0,0,7); c.fill();
   c.strokeStyle='#d9b25a'; c.lineWidth=3*k; c.beginPath(); c.ellipse(cx,cy,rx+7*k,ry+7*k,0,0,7); c.stroke();
   const g2=c.createRadialGradient(cx,cy,30*k,cx,cy,rx); g2.addColorStop(0,felt); g2.addColorStop(1,'rgba(0,0,0,.55)'); c.fillStyle=felt; c.beginPath(); c.ellipse(cx,cy,rx,ry,0,0,7); c.fill(); c.fillStyle=g2; c.fill(); }
 
@@ -64,7 +74,7 @@ function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
   const kind=GID[clamp(opts.stage||0,0,3)],humans=net?net.count:1,OP=opts.options||{};
   const np=net?Math.min(6,net.count+(net.bots||0)):clamp(+OP.seats||4,2,6);
-  const L=opts.look||{}; setSty(L);
+  const L=themed(opts.look,kind); setSty(L);
   const AID=[5,3.6,2.2][Math.max(0,['slow','normal','fast'].indexOf(OP.speed||'normal'))];
   const {ctx:c,canvas}=env.canvas2d(W,H);
   const names=[]; for(let i=0;i<np;i++) names.push(i<humans?(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你')):'電腦 '+(i-humans+1));
@@ -285,7 +295,7 @@ function create(env,opts){
 
 /* ---------- 開始畫面示意圖、縮圖、造型預覽 ---------- */
 function stageShow(ctx,w,h,si,t){
-  setSty(window.__diceLook); drawTable(ctx,w,h,window.__diceLook||{},t);
+  setSty(window.__diceLook); drawTable(ctx,w,h,themed(window.__diceLook||savedLook(),GID[si]),t); // 背景跟著選的遊戲
   const k=w/480,s=34*k,u=(t%3)/3;
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.09)+'px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText(GAMES[si],w/2,h*.12);
   const row=(arr,y,o)=>arr.forEach((f,i)=>drawDie(ctx,w/2-(arr.length*s*1.12-s*.12)/2+i*s*1.12,y,s,f,o&&o(f,i)));
@@ -308,23 +318,28 @@ function thumb(ctx,w,h,t){ setSty(null); drawTable(ctx,w,h,{felt:'#5a2a2a'},t); 
   stageGoal:si=>[
     '吹牛：每人一個骰盅、5 顆骰子，只看得到自己的。輪流喊「全場有幾個某點數」，下一個人要喊得更大（個數多，或同個數點數大），不相信就「開」。1 可以當任何點數（萬用），但有人喊 1 時就不算萬用。開盅後數量夠，開的人輸；不夠，喊的人輸。輸一次少一條命，撐到最後的人贏。',
     '十八仔：每局每人下注後輪流擲 4 顆骰子。要有一對，另外兩顆相加就是點數；兩對時取大的那對相加。12 點叫「十八」，3 點叫「BG」最小；四顆一樣是「一色」最大。三同一異或四顆都不同會自動重擲。點數最大的人贏彩池，打 8 局比籌碼。',
-    '妞妞：每局每人下注後擲 5 顆骰子。找出三顆加起來是 10（妞），另外兩顆相加取個位數比大小：0 叫「妞妞」最大，再來妞九、妞八…妞一；湊不出 10 是「無妞」最小；五顆一樣是「豹子」最大。遊戲會自動幫你湊最好的組合。每局輪一個人當莊家，閒家下注後各自和莊家比，一樣大算莊家贏；妞妞、豹子賠 3 倍，妞七～妞九賠 2 倍，其他賠 1 倍。打 8 局比籌碼。',
+    '妞妞：每人擲 5 顆骰子。找出三顆加起來是 10（妞），另外兩顆相加取個位數比大小：0 叫「妞妞」最大，再來妞九、妞八…妞一；湊不出 10 是「無妞」最小；五顆一樣是「豹子」最大。遊戲會自動幫你湊最好的組合。每局輪一個人當莊家，閒家下注後各自和莊家比，一樣大算莊家贏；妞妞、豹子賠 3 倍，妞七～妞九賠 2 倍，其他賠 1 倍。打 8 局比籌碼。',
     '紅黑大小單雙：每人一個骰盅、5 顆骰子。輪到你時，亮出自己的骰子，從紅黑、大小、單雙裡選一種拿掉（紅＝1、4，黑＝2、3、5、6；大＝4～6，小＝1～3；單＝1、3、5，雙＝2、4、6），所有人都要拿掉這種骰子。只剩一顆時不能看，要盲猜：亮出來和喊的不一樣就過關。骰子被拿光就少一條命，大家再重拿 5 顆開新的一輪；命用完出局，撐到最後的人贏（命數可以在開始前選）。'][si],
   options:[{key:'speed',label:'電腦速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]},
     {key:'seats',label:'單機人數',def:'4',opts:[2,3,4,5,6].map(n=>({id:String(n),label:n+' 人'}))},
     {key:'lives',label:'每人幾條命',def:'3',only:[0,3],opts:[{id:'1',label:'1 條'},{id:'3',label:'3 條'},{id:'5',label:'5 條'}]},
     {key:'chips',label:'起始籌碼',def:'1000',only:[1,2],opts:[{id:'500',label:'500'},{id:'1000',label:'1000'},{id:'2000',label:'2000'}]},
     {key:'bet',label:'每局下注',def:'50',only:[1,2],opts:[{id:'10',label:'10'},{id:'50',label:'50'},{id:'100',label:'100'}]}],
-  help:[['按鈕','喊、開、擲骰、選要拿掉的骰子'],['吹牛','先用 − ＋ 選個數、點骰子選點數，再按「喊」；不信就按「開！」']],
-  touchHelp:[['按鈕','喊、開、擲骰、選要拿掉的骰子'],['吹牛','先用 − ＋ 選個數、點骰子選點數，再按「喊」；不信就按「開！」']],
+  help:[['按鈕','喊、開、擲骰、選要拿掉的骰子']],
+  stageHelp:si=>{ const H=[
+      [['− ＋','選要喊的個數'],['點骰子','選要喊的點數（1 最大）'],['喊','送出你喊的「幾個幾」'],['開！','不相信上一個人喊的，開盅點數']],
+      [['擲骰','輪到你時按「擲骰」，骰盅搖完會自動掀開'],['看結果','牌型自動算好，最大的人贏彩池']],
+      [['擲骰','輪到你時按「擲骰」，骰盅搖完會自動掀開'],['看結果','自動找出湊成 10 的三顆並亮起來，和莊家比大小']],
+      [['紅黑大小單雙','輪到你時，從六個按鈕選一種拿掉'],['盲猜','只剩一顆時看不到自己的骰子，一樣從六個按鈕選']]][si];
+    return {help:H,touchHelp:H}; },
   touch:null,
   looks:[{key:'die',label:'骰子顏色',type:'color',opts:['#fdfcf8','#fff1c4','#ff8a8a','#2b2b36','#8ac8ff','#a8e6a1']},
     {key:'cup',label:'骰盅顏色',type:'color',opts:['#8a3a2a','#2b2b36','#2f6fd0','#c8a040','#7a4ac8','#1f6b4a']},
     {key:'felt',label:'桌布顏色',type:'color',opts:['#5a2a2a','#1f6b4a','#1f4f7a','#3a2d57','#5a4630','#2b2b33']},
-    {key:'bg',label:'背景',opts:[{id:'felt',label:'經典'},{id:'wood',label:'木框賭桌'},{id:'night',label:'星空'},{id:'market',label:'夜市'}]}],
+    {key:'bg',label:'背景',opts:[{id:'auto',label:'跟著遊戲'},{id:'felt',label:'經典'},{id:'bar',label:'酒吧'},{id:'casino',label:'賭場'},{id:'wood',label:'木框賭桌'},{id:'night',label:'星空'},{id:'market',label:'夜市'}]}],
   best:{label:'最多籌碼',fmt:v=>v+' 籌碼',lower:false},
   stageShow,thumb,create,
-  preview:(ctx,w,h,L,t)=>{ window.__diceLook=L; drawTable(ctx,w,h,L,t); setSty(L); const k=w/480,s=44*k;
+  preview:(ctx,w,h,L,t)=>{ window.__diceLook=L; drawTable(ctx,w,h,themed(L,'liar'),t); setSty(L); const k=w/480,s=44*k;
     [1,4,6,3,5].forEach((f,i)=>drawDie(ctx,w*.36+(i-2)*s*1.15-s/2,h*.55,s,f)); drawCup(ctx,w*.78,h*.78,80*k,Math.abs(Math.sin(t*2))*8*k); setSty(null); }
 };
 })();

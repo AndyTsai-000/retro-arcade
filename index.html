@@ -236,7 +236,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=120; // 每次改版加一
+window.ARCADE_V=121; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -395,8 +395,9 @@ const env={
 };
 function showCard(html){ closeStage(); document.body.classList.remove('playing'); card.innerHTML=html; ov.hidden=false; ovAt=performance.now(); }
 function on(id,fn){ const b=$('#'+id); if(b) b.addEventListener('click',fn); }
-function helpHtml(g){
-  const t=isTouch&&g.touchHelp, rows=t?g.touchHelp:g.help;
+function helpOf(g,si){ const h=g.stageHelp?g.stageHelp(si==null?stageSel:si):null; return h?{help:h.help||g.help,touchHelp:h.touchHelp||h.help}:g; }
+function helpHtml(g,si){
+  g=helpOf(g,si); const t=isTouch&&g.touchHelp, rows=t?g.touchHelp:g.help;
   return '<div class="help">'+rows.map(r=>'<div>'+(t?'<b>'+r[0]+'</b>':r[0].split(' ').map(k=>'<kbd>'+k+'</kbd>').join(' '))+'</div><span>'+r[1]+'</span>').join('')+'</div>';
 }
 function chipsHtml(g){
@@ -565,9 +566,9 @@ function startCard(){
   showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas>'+stInfo()+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+
-    '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+(g.stageGoal?g.stageGoal(stageSel):g.goal)+'</p><div class="lkhead">操作說明</div>'+helpHtml(g)+'</div></div>');
+    '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+(g.stageGoal?g.stageGoal(stageSel):g.goal)+'</p><div class="lkhead">操作說明</div><div id="sgHelp">'+helpHtml(g)+'</div></div></div>');
   closeLook(); demo(g); leftTrack(g);
-  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); const gl=$('#sgGoal'); if(gl&&g.stageGoal) gl.textContent=g.stageGoal(stageSel); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
+  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); const gl=$('#sgGoal'); if(gl&&g.stageGoal) gl.textContent=g.stageGoal(stageSel); const hb=$('#sgHelp'); if(hb&&g.stageHelp) hb.innerHTML=helpHtml(g); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
   const sel=card.querySelector('.lklist .sg.sel,.lklist .chip.sel[data-s]'); if(sel) sel.scrollIntoView({block:'nearest'});
 }
@@ -710,8 +711,9 @@ let helpPaused=false;
 function showHelp(){
   const g=cur; if(!g) return; SFX.click();
   if(state==='running'&&!Net.peer){ state='paused'; helpPaused=true; if(inst&&inst.pause) inst.pause(true); }
-  mcard.innerHTML='<h3>'+g.name+'　遊戲操作</h3><p>'+g.goal+'</p>'+helpHtml(g)+
-    (isTouch&&g.touchHelp&&g.help?'<details><summary>接鍵盤時的按鍵</summary>'+helpHtml({help:g.help})+'</details>':'')+
+  const si=inst&&lastOpts&&lastOpts.stage!=null?lastOpts.stage:stageSel,H=helpOf(g,si); /* 遊戲中就顯示正在玩的那一種 */
+  mcard.innerHTML='<h3>'+(g.stageHelp&&g.stages?g.stages[si]:g.name)+'　遊戲操作</h3><p>'+(g.stageGoal?g.stageGoal(si):g.goal)+'</p>'+helpHtml(g,si)+
+    (isTouch&&H.touchHelp&&H.help&&H.touchHelp!==H.help?'<details><summary>接鍵盤時的按鍵</summary>'+helpHtml({help:H.help})+'</details>':'')+
     '<div class="row"><button class="btn main" id="hOk">'+(helpPaused?'繼續遊戲':'知道了')+'</button></div>';
   modal.hidden=false; $('#hOk').addEventListener('click',closeHelp); $('#hOk').focus();
 }
