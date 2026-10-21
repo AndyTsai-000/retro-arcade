@@ -537,17 +537,29 @@ function drawFP(c,vx,vw,st){
 
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
-  const net=opts.net,two=!net&&opts.mode==='2p',num=net?net.count:two?2:1,me=net?net.me:0,si=clamp(opts.stage||0,0,STAGES.length-1),S=STAGES[si];
+  const net=opts.net,two=!net&&opts.mode==='2p',humans=net?net.count:two?2:1,me=net?net.me:0,host=!net||net.host,si=clamp(opts.stage||0,0,STAGES.length-1),S=STAGES[si];
   const seed=net?(Number(net.seed)>>>0)||7:Math.floor(Math.random()*1e9),lv=buildLevel(si,seed),M=S.left?-1:1;
   const {ctx:c}=env.canvas2d(W,H);
+  // 玩法：各自搶單（電腦補到 4 人）／分隊對戰／玩家同隊打電腦／玩家對決（不加電腦）；分隊時整隊淨收入相加
+  let mode=(opts.options&&opts.options.team)||'ffa'; if(humans===1&&mode==='pvp') mode='ffa'; if(mode==='coop'&&humans>3) mode='vs';
+  let num=net?Math.min(6,net.count+(net.bots||0)):4;
+  if(mode==='coop') num=humans*2; else if(mode==='pvp') num=Math.max(2,humans+humans%2); else if(mode==='vs'){ if(num%2) num=Math.min(6,num+1); if(num<2) num=2; }
+  const TEAMS=mode==='coop'?[{name:'玩家隊',col:'#ffd23f'},{name:'電腦隊',col:'#a8adc0'}]:[{name:'紅隊',col:'#ff4d4d'},{name:'藍隊',col:'#3d8bff'}];
+  const teamOf=[],cnt=[0,0]; for(let i=0;i<num;i++){ let tm=null; if(mode==='coop') tm=i<humans?0:1; else if(mode!=='ffa') tm=i<humans?i%2:(cnt[0]<=cnt[1]?0:1); if(tm!=null) cnt[tm]++; teamOf.push(tm); }
   const ALT=[{char:'boy',helmet:'#ffd23f',shirt:'#2f8a5a',bike:'#e23b3b',box:'#ff7a3d'},{char:'girl',helmet:'#ff7eb6',shirt:'#4f9dff',bike:'#f0f0e8',box:'#3ddbd9'},{char:'cat',helmet:'#b98cff',shirt:'#ffd23f',bike:'#2b2b36',box:'#ff5d8f'},{char:'bear',helmet:'#c8935a',shirt:'#ff9d3d',bike:'#2f6fd0',box:'#86dc4f'}];
-  const names=[]; for(let i=0;i<num;i++) names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你'));
-  const ps=[]; for(let n=0;n<num;n++){ const look=Object.assign({},ALT[n%4],(net?net.looks&&net.looks[n]:n===0?opts.look:null)||{});
-    ps.push({n,x:LANE[4]-14+(n%2)*-30-Math.floor(n/2)*10,d:60-n*46,wasIn:false,v:0,vx:0,fall:0,inv:0,look,remote:!!net&&n!==me,tx:0,td:0,
-      oi:0,phase:'pick',stopT:0,food:3,fuel:100,deadline:0,money:{fee:0,tip:0,fine:0,gas:0,late:0,comp:0},done:false,doneT:0,log:[],lean:0,gust:0,lastD:60-n*46,warned:{}}); }
-  let t=-3,simT=0,acc=0,ended=false,sendT=0,windT=0,windF=0,windDir=1,camD=[0,0],fx=[],introT=0,goSaid=false,endT=0,engine=null;
-  const total=p=>p.money.fee+p.money.tip-p.money.fine-p.money.gas-p.money.late-p.money.comp;
+  const BOTN=['阿凱','小芳','阿明','阿珠','小胖','阿翔'];
+  const names=[]; for(let i=0;i<num;i++) names.push(i>=humans?BOTN[(i-humans+seed%3)%BOTN.length]+'（電腦）':net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你'));
+  const ps=[]; for(let n=0;n<num;n++){ const bot=n>=humans,look=Object.assign({},ALT[n%4],(bot?null:net?net.looks&&net.looks[n]:n===0?opts.look:null)||{});
+    const sk=clamp(.5+S.stars*.06+Math.random()*.16,.5,.92);
+    ps.push({n,x:LANE[4]-14+(n%2)*-30-Math.floor(n/2)*10,d:60-n*46,wasIn:false,v:0,vx:0,fall:0,inv:0,look,bot,team:teamOf[n],remote:!!net&&(bot?!host:n!==me),tx:0,td:0,
+      ai:bot&&host?{skill:sk,lane:[252,300,180][n%3],top:.78+sk*.22,obey:Math.random()<sk,blT:3+Math.random()*6,blind:0}:null,
+      oi:0,phase:'pick',stopT:0,food:3,fuel:100,deadline:0,money:{fee:0,tip:0,fine:0,gas:0,late:0,comp:0,fix:0},done:false,doneT:0,deliv:0,lost:0,timeout:false,log:[],lean:0,gust:0,lastD:60-n*46,warned:{}}); }
+  const SHIFT=S.orders*50+30; // 這一班的時間（秒），時間到就收工
+  let t=-3,simT=0,acc=0,ended=false,sendT=0,windT=0,windF=0,windDir=1,camD=[0,0],fx=[],introT=0,goSaid=false,endT=0,engine=null,ff=false;
+  const total=p=>p.money.fee+p.money.tip-p.money.fine-p.money.gas-p.money.late-p.money.comp-p.money.fix;
   const order=p=>lv.orders[p.oi];
+  const local=p=>!p.remote&&!p.bot; // 自己這台電腦上操作的真人（音效只給他們）
+  const sfx=(p,k)=>{ if(local(p)) env.sfx(k); };
   function startOrder(p){ const o=order(p); if(!o){ p.done=true; p.doneT=t; return; } p.phase='pick'; p.food=3; p.deadline=t+((o.cus.d-p.d)/150)*1.5+18; }
   ps.forEach(startOrder); ps.forEach(p=>{ p.tx=p.x; p.td=p.d; });
   const pop=(p,txt,col)=>fx.push({k:'txt',x:p.x,d:p.d+30,txt,col,t:0,n:p.n});
@@ -556,19 +568,31 @@ function create(env,opts){
   try{ const ac=env.audio(),out=env.out(); if(ac&&out){ const o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain(); o.type='sawtooth'; f.type='lowpass'; f.frequency.value=500; g.gain.value=0; o.connect(f); f.connect(g); g.connect(out); o.start(); engine={o,g,ac}; } }catch(e){}
 
   // 按鍵：1P 方向鍵（單人時 WASD 也可以）、2P 用 WASD
-  function input(p){ const k=env.keys; let L,R,U,D;
+  function input(p,dt){ if(p.ai) return botInput(p,dt); const k=env.keys; let L,R,U,D;
     if(two){ if(p.n===0){ L=k.ArrowLeft; R=k.ArrowRight; U=k.ArrowUp; D=k.ArrowDown; } else { L=k.KeyA; R=k.KeyD; U=k.KeyW; D=k.KeyS; } }
     else { L=k.ArrowLeft||k.KeyA; R=k.ArrowRight||k.KeyD; U=k.ArrowUp||k.KeyW; D=k.ArrowDown||k.KeyS; }
     return {dir:((R?1:0)-(L?1:0))*M,gas:!!U,brake:!!D}; }
+  // 電腦外送員：往目標騎，前面有車就換車道；偶爾分心（技術越差越常分心），有的會守紅燈、有的會闖
+  function botInput(p,dt){ const ai=p.ai,o=order(p),tgt=o?(p.phase==='pick'?o.shop:o.cus):null; if(!tgt||p.done) return {dir:0,gas:false,brake:true};
+    ai.blT-=dt; if(ai.blT<=0){ ai.blT=4+Math.random()*9; ai.blind=Math.random()<(1-ai.skill)*.7?1+Math.random():0; } if(ai.blind>0) ai.blind-=dt;
+    const dist=tgt.d-p.d; let want=dist<260&&dist>-60?330:ai.lane;
+    if(ai.blind<=0&&dist>200){ const ahead=lv.veh.some(e=>e.d-p.d>0&&e.d-p.d<70+90*ai.skill&&Math.abs(e.x-p.x)<30)||lv.parked.some(pk=>pk.d-p.d>0&&pk.d-p.d<120&&Math.abs(LANE[4]+6-p.x)<34)||lv.stalls.some(sl=>sl.d-p.d>-sl.len/2&&sl.d-p.d<130&&Math.abs(LANE[4]-4-p.x)<34);
+      if(ahead){ if(!ai.dodge) ai.dodge=p.x>220?180:300; want=ai.dodge; } else ai.dodge=0; }
+    const gas=p.fuel<25?lv.gas.find(gs=>gs.d-p.d>-20&&gs.d-p.d<300):null; let stopAt=gas?gas.d:tgt.d; if(gas) want=330;
+    let brakeFor=1e9; if(ai.obey&&ai.blind<=0) for(const I of lv.inter){ const sl=I.d-12-p.d; if(sl>0&&sl<p.v*.9+40){ const L2=lightOf(I,simT); if(L2.col==='r'||L2.col==='y'&&sl>p.v*.4) brakeFor=sl; } }
+    const dd=Math.min(stopAt-p.d,brakeFor),dir=Math.abs(want-p.x)>6?(want>p.x?1:-1):0;
+    if(stopAt-p.d<-30) return {dir,gas:false,brake:true};
+    if(dd<p.v*.7+10&&dd<200) return {dir,gas:false,brake:true};
+    return {dir,gas:p.v<250*ai.top,brake:false}; }
 
-  function crash(p,why){ if(p.inv>0||p.fall>0) return; p.fall=1.3; p.inv=2.6; p.v=0; env.sfx('hurt'); env.sfx('bump');
-    const carry=p.phase==='drop'; if(carry) p.food--; fx.push({k:'star',x:p.x,d:p.d,t:0}); pop(p,why+(carry?'　餐點 -1':''),'#ff8a8a');
-    if(carry&&p.food<=0){ p.money.comp+=80; p.log.push('餐點翻了，賠償 $80'); setTimeout(()=>pop(p,'餐點全毀！賠 $80','#ff5d5d'),500); p.oi++; startOrder(p); } }
+  function crash(p,why){ if(p.inv>0||p.fall>0) return; p.fall=1.3; p.inv=2.6; p.v=0; sfx(p,'hurt'); sfx(p,'bump');
+    p.money.fix+=20; const carry=p.phase==='drop'; if(carry) p.food--; fx.push({k:'star',x:p.x,d:p.d,t:0,n:p.n}); pop(p,why+'　修車 -$20'+(carry?'　餐點 -1':''),'#ff8a8a');
+    if(carry&&p.food<=0){ p.money.comp+=80; p.lost++; p.log.push('餐點翻了，賠償 $80'); setTimeout(()=>pop(p,'餐點全毀！賠 $80','#ff5d5d'),500); p.oi++; startOrder(p); } }
   function rectHit(p,x,d,w,h){ return Math.abs(p.x-x)<(w+12)/2&&Math.abs(p.d-d)<(h+28)/2; }
-  // 自己附近才出現的突發狀況：亂穿越的行人、狗、開車門
+  // 自己附近才出現的突發狀況：亂穿越的行人、狗、開車門（只對真人）
   const locals=[];
   function localHazards(p,dt){
-    if(p.remote) return;
+    if(p.remote||p.bot) return;
     if(Math.random()<dt*S.jay*.35&&p.v>60){ const side=Math.random()<.5?1:-1; locals.push({k:'ped',x:side>0?-30:ROADW+30,d:p.d+230+Math.random()*120,vx:side*(40+Math.random()*25),col:CAR_COL[Math.floor(Math.random()*8)],face:side>0?Math.PI/2:-Math.PI/2,n:p.n}); }
     if(S.dog&&Math.random()<dt*S.dog*.25&&p.v>60){ const side=Math.random()<.5?1:-1; locals.push({k:'dog',x:side>0?-20:ROADW+20,d:p.d+220+Math.random()*100,vx:side*(80+Math.random()*40),face:side>0?Math.PI/2:-Math.PI/2,n:p.n,wig:Math.random()*6}); }
     for(const pk of lv.parked){ if(pk.trig&&!pk.done&&pk.d-p.d>60&&pk.d-p.d<150&&Math.abs(p.x-LANE[4])<70){ pk.done=true; pk.doorT=2.4; env.sfx('beep'); } }
@@ -579,7 +603,7 @@ function create(env,opts){
     if(p.done){ p.v=Math.max(0,p.v-200*dt); p.d+=p.v*dt; return; }
     if(p.inv>0) p.inv-=dt;
     if(p.fall>0){ p.fall-=dt; return; }
-    const I=input(p),rain=!!S.rain,vmax=p.fuel>0?250:55;
+    const I=input(p,dt),rain=!!S.rain,vmax=p.fuel>0?250:55;
     if(t<0){ return; }
     if(I.gas) p.v=Math.min(vmax,p.v+(p.v<0?260:150)*dt);
     else if(I.brake){ if(p.v>0) p.v=Math.max(0,p.v-(rain?170:270)*dt); else p.v=Math.max(-55,p.v-60*dt); } // 停下來再按 ↓ 可以慢慢倒車
@@ -588,14 +612,14 @@ function create(env,opts){
     p.vx=rain?lerp(p.vx,steer,Math.min(1,dt*3)):steer;
     // 風、水窪
     let push=0; if(S.wind&&windT>0) push=windDir*windF;
-    let inP=false; for(const pd of lv.puddles) if(Math.hypot(p.x-pd.x,(p.d-pd.d)*.6)<pd.r&&p.v>40){ inP=true; p.vx+=(Math.random()-.5)*400*dt; } if(inP&&!p.wasIn) env.sfx('pop'); p.wasIn=inP;
+    let inP=false; for(const pd of lv.puddles) if(Math.hypot(p.x-pd.x,(p.d-pd.d)*.6)<pd.r&&p.v>40){ inP=true; p.vx+=(Math.random()-.5)*400*dt; } if(inP&&!p.wasIn) sfx(p,'pop'); p.wasIn=inP;
     p.x=clamp(p.x+(p.vx+push)*dt,10,ROADW-10); p.lean=lerp(p.lean,I.dir*M,Math.min(1,dt*8));
     const lastD=p.d; p.d=Math.max(-40,Math.min(lv.L+200,p.d+p.v*dt));
-    p.fuel=Math.max(0,p.fuel-Math.abs(p.d-lastD)*.0075); if(p.fuel<=0&&!p.noFuel){ p.noFuel=1; pop(p,'沒油了！慢慢推去加油站','#ffd23f'); env.sfx('trap'); }
+    p.fuel=Math.max(0,p.fuel-Math.abs(p.d-lastD)*.0075); if(p.fuel<=0&&!p.noFuel){ p.noFuel=1; pop(p,'沒油了！慢慢推去加油站','#ffd23f'); sfx(p,'trap'); }
     // 路口：闖紅燈拍照
-    for(const I2 of lv.inter){ const sl=I2.d-10; if(lastD<sl&&p.d>=sl){ const L2=lightOf(I2,simT); if(L2.col==='r'&&I2.cam&&L2.p>Y_END+.4){ p.money.fine+=300; p.log.push('闖紅燈被拍，罰單 $300'); pop(p,'📸 闖紅燈！罰 $300','#ff5d5d'); env.sfx('trap'); fx.push({k:'flash',t:0,n:p.n}); } } }
-    // 坑洞
-    for(const h of lv.holes) if(Math.hypot(p.x-h.x,p.d-h.d)<h.r+5&&!h.hit){ h.hit=1; if(p.v>140){ p.v*=.6; if(p.phase==='drop'&&p.inv<=0){ if(p.food>1){ p.food--; pop(p,'坑洞！湯灑出來了','#ffb36b'); env.sfx('bump'); } else crash(p,'坑洞'); } } else env.sfx('land'); }
+    for(const I2 of lv.inter){ const sl=I2.d-10; if(lastD<sl&&p.d>=sl){ const L2=lightOf(I2,simT); if(L2.col==='r'&&I2.cam&&L2.p>Y_END+.4){ p.money.fine+=300; p.log.push('闖紅燈被拍，罰單 $300'); pop(p,'📸 闖紅燈！罰 $300','#ff5d5d'); sfx(p,'trap'); fx.push({k:'flash',t:0,n:p.n}); } } }
+    // 坑洞（每個人各自算有沒有壓過）
+    for(const h of lv.holes) if(Math.hypot(p.x-h.x,p.d-h.d)<h.r+5&&!(h.hit&1<<p.n)){ h.hit=(h.hit||0)|1<<p.n; if(p.v>140){ p.v*=.6; if(p.phase==='drop'&&p.inv<=0){ if(p.food>1){ p.food--; pop(p,'坑洞！湯灑出來了','#ffb36b'); sfx(p,'bump'); } else crash(p,'坑洞'); } } else sfx(p,'land'); }
     // 撞車、撞人
     if(p.inv<=0){
       for(const e of lv.veh) if(Math.abs(e.d-p.d)<80&&rectHit(p,e.x,e.d,e.w,e.h)){ crash(p,e.k==='bus'?'撞到公車':e.k==='scoot'||e.k==='tuk'?'撞到機車':'撞到車'); break; }
@@ -611,53 +635,70 @@ function create(env,opts){
     const atStop=st=>Math.abs(p.d-st.d)<46&&p.x>LANE[4]-44&&Math.abs(p.v)<28;
     let busyStop=null; if(tgt&&atStop(tgt)) busyStop=tgt; else for(const g of lv.gas) if(atStop(g)&&p.fuel<95) busyStop=g;
     if(busyStop){ p.stopT+=dt; if(p.stopT>=.8){ p.stopT=0;
-        if(busyStop.kind==='gas'){ const cost=Math.round((100-p.fuel)*1.3); p.money.gas+=cost; p.fuel=100; p.noFuel=0; pop(p,'加滿油 -$'+cost,'#ffd23f'); env.sfx('heal'); }
-        else if(p.phase==='pick'){ p.phase='drop'; pop(p,'取到餐了！','#86dc4f'); env.sfx('item'); }
-        else { const late=t>p.deadline,fee=o.fee; p.money.fee+=fee; let tip=0; if(!late){ tip=Math.round((p.deadline-t)*.8)+(p.food>=3?15:0); p.money.tip+=tip; }
+        if(busyStop.kind==='gas'){ const cost=Math.round((100-p.fuel)*1.3); p.money.gas+=cost; p.fuel=100; p.noFuel=0; pop(p,'加滿油 -$'+cost,'#ffd23f'); sfx(p,'heal'); }
+        else if(p.phase==='pick'){ p.phase='drop'; pop(p,'取到餐了！','#86dc4f'); sfx(p,'item'); }
+        else { const late=t>p.deadline,fee=o.fee; p.money.fee+=fee; p.deliv++; let tip=0; if(!late){ tip=Math.round((p.deadline-t)*.8)+(p.food>=3?15:0); p.money.tip+=tip; }
           if(late){ p.money.late+=Math.round(fee/2); p.log.push('超時，扣 $'+Math.round(fee/2)); }
-          pop(p,late?'送達（超時扣一半）+$'+(fee-Math.round(fee/2)):'送達！+$'+fee+(tip?'　小費 $'+tip:''),late?'#ffb36b':'#86dc4f'); env.sfx(late?'land':'lap'); p.oi++; startOrder(p); } } }
+          pop(p,late?'送達（超時扣一半）+$'+(fee-Math.round(fee/2)):'送達！+$'+fee+(tip?'　小費 $'+tip:''),late?'#ffb36b':'#86dc4f'); sfx(p,late?'land':'lap'); p.oi++; startOrder(p); } } }
     else p.stopT=0;
   }
 
-  // 連線：每個人只算自己，位置和收入傳給別人；房主決定什麼時候結束
-  const pack=p=>[p.n,Math.round(p.x),Math.round(p.d),Math.round(p.v),p.fall>0?1:0,total(p),p.done?1:0,p.oi,p.food,p.lean.toFixed(2)];
-  function apply(a){ const p=ps[a[0]]; if(!p||!p.remote) return; p.tx=a[1]; p.td=a[2]; p.v=a[3]; p.fall=a[4]?.5:0; p.netMoney=a[5]; p.done=!!a[6]; p.oi=a[7]; p.food=a[8]; p.lean=+a[9]; }
+  // 連線：每個人只算自己，電腦外送員由房主算，位置和收入傳給別人；房主決定什麼時候結束
+  const pack=p=>[p.n,Math.round(p.x),Math.round(p.d),Math.round(p.v),p.fall>0?1:0,total(p),p.done?1:0,p.oi,p.food,p.lean.toFixed(2),p.deliv,p.lost,Math.round(p.doneT*100),p.timeout?1:0];
+  function apply(a){ const p=ps[a[0]]; if(!p||!p.remote) return; p.tx=a[1]; p.td=a[2]; p.v=a[3]; p.fall=a[4]?.5:0; p.netMoney=a[5]; p.done=!!a[6]; p.oi=a[7]; p.food=a[8]; p.lean=+a[9]; p.deliv=a[10]||0; p.lost=a[11]||0; p.doneT=(a[12]||0)/100; p.timeout=!!a[13]; }
   if(net){ net.onmsg=m=>{ if(m.k) apply(m.k); if(m.ks) for(const a of m.ks) if(a[0]!==me) apply(a); if(m.end) conclude(m.end); };
     net.onleave=i=>{ const p=ps[i]; if(p){ p.done=true; p.left=true; names[i]+='（離開）'; } }; }
   const moneyOf=p=>p.remote?(p.netMoney||0):total(p);
+  const statOf=p=>[moneyOf(p),p.deliv,p.lost,Math.round(p.doneT*100)/100,p.timeout?1:0];
+  const fmtT=s=>{ s=Math.max(0,s); const m=Math.floor(s/60),r=s-m*60; return String(m).padStart(2,'0')+':'+r.toFixed(2).padStart(5,'0'); };
 
   function conclude(list){
     if(ended) return; ended=true; if(engine){ try{ engine.g.gain.value=0; }catch(e){} }
-    const mine=ps[me],net$=list?list[me]:total(mine),stars=net$>=S.target?3:net$>=S.target*.7?2:net$>=S.target*.4?1:0;
+    list=list||ps.map(statOf); const st=i=>list[i]||[0,0,0,0,1];
+    const mine=ps[me],net$=st(me)[0],stars=net$>=S.target?3:net$>=S.target*.7?2:net$>=S.target*.4?1:0;
     try{ const k='arcade.deliver.b.'+si,old=parseInt(localStorage.getItem(k),10); if(!two&&!net&&(isNaN(old)||net$>old)) localStorage.setItem(k,net$); }catch(e){}
     const m=mine.money,row=(a,b,col)=>'<tr><td>'+a+'</td><td style="text-align:right;color:'+col+'">'+b+'</td></tr>';
-    let html='<table class="ls">'+row('外送費','+$'+m.fee,'#86dc4f')+row('小費','+$'+m.tip,'#86dc4f')+row('油錢','-$'+m.gas,'#ff8a8a')+row('罰單','-$'+m.fine,'#ff8a8a')+row('超時扣款','-$'+m.late,'#ff8a8a')+row('餐點賠償','-$'+m.comp,'#ff8a8a')+'</table>';
-    let title=stars?'收工！'+'★'.repeat(stars)+'☆'.repeat(3-stars):'今天白跑了…',text='淨收入 $'+net$+'（目標 $'+S.target+'）';
-    if(num>1){ const L2=ps.map((p,i)=>[names[i],list?list[i]:moneyOf(p)]).sort((a,b)=>b[1]-a[1]);
-      html='<table class="ls"><tr><th>名次</th><th>外送員</th><th>淨收入</th></tr>'+L2.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+r[0]+'</td><td>$'+r[1]+'</td></tr>').join('')+'</table>'+(two?'':html);
-      title=L2[0][0]===names[me]&&!two?'你是外送王！':L2[0][0]+' 是外送王！'; }
-    env.sfx(stars||num>1?'win':'lose'); env.end({title,big:'$'+net$,html,text,score:two||net?null:net$,next:false});
+    const mineHtml='<table class="ls">'+row('外送費','+$'+m.fee,'#86dc4f')+row('小費','+$'+m.tip,'#86dc4f')+row('油錢','-$'+m.gas,'#ff8a8a')+row('罰單','-$'+m.fine,'#ff8a8a')+row('超時扣款','-$'+m.late,'#ff8a8a')+row('撞車修理費','-$'+m.fix,'#ff8a8a')+row('餐點賠償','-$'+m.comp,'#ff8a8a')+'</table>';
+    // 名次：淨收入高的贏；一樣多就比誰先收工
+    const R=ps.map((p,i)=>({i,name:names[i],team:p.team,money:st(i)[0],deliv:st(i)[1],lost:st(i)[2],tm:st(i)[3],out:!!st(i)[4]})).sort((a,b)=>b.money-a.money||(a.out-b.out)||a.tm-b.tm);
+    const all=lv.orders.length,safe=R.filter(r=>!r.out&&r.deliv===all&&r.lost===0).sort((a,b)=>a.tm-b.tm)[0];
+    const humanWin=R[0].i<humans;
+    let title,text='淨收入 $'+net$+'（目標 $'+S.target+'）',html='';
+    html='<table class="ls"><tr><th>名次</th><th>外送員</th><th>淨收入</th><th>送達</th><th>收工時間</th></tr>'+R.map((r,k)=>'<tr><td>'+(k+1)+'</td><td>'+(r.team!=null?'<span style="color:'+TEAMS[r.team].col+'">■</span> ':'')+r.name+'</td><td>'+(r.money<0?'-$'+(-r.money):'$'+r.money)+'</td><td>'+r.deliv+'/'+all+'</td><td>'+(r.out?'時間到':fmtT(r.tm))+'</td></tr>').join('')+'</table>';
+    if(safe) html+='<p>🏁 最速安全送達：<b>'+safe.name+'</b>（'+fmtT(safe.tm)+'，'+all+' 單全部完整送到）</p>';
+    if(mode!=='ffa'){ const sum=[0,0]; R.forEach(r=>{ if(r.team!=null) sum[r.team]+=r.money; }); const wt=sum[0]===sum[1]?-1:sum[0]>sum[1]?0:1;
+      const $f=v=>v<0?'-$'+(-v):'$'+v; html='<p>'+TEAMS[0].name+' '+$f(sum[0])+'　vs　'+TEAMS[1].name+' '+$f(sum[1])+'</p>'+html;
+      const myT=ps[me].team,ok=wt>=0&&(two?(ps[0].team===wt||ps[1].team===wt):myT===wt);
+      title=wt<0?'兩隊平手！':TEAMS[wt].name+'贏了！'+(ok&&!(two&&ps[0].team!==ps[1].team)?'你們是外送王！':''); env.sfx(ok?'win':'lose'); }
+    else { title=two?R[0].name+' 是外送王！':R[0].i===me?'你是外送王！':R[0].name+' 是外送王！'; if(!two&&!net&&R[0].i!==me) title+=' 你第 '+(R.findIndex(r=>r.i===me)+1)+' 名'; env.sfx(R[0].i===me||two&&humanWin?'win':'lose'); }
+    if(!two) html+=mineHtml;
+    if(!two&&!net) title+=stars?'　'+'★'.repeat(stars)+'☆'.repeat(3-stars):'';
+    env.end({title,big:'$'+net$,html,text,score:two||net?null:net$,next:false});
   }
 
-  function update(dt){
-    if(ended) return; dt=Math.min(dt,.05);
+  function step(dt){
     const was=t; t+=dt; introT+=dt;
-    if(was<-2&&t>=-2||was<-1&&t>=-1||was<0&&t>=0) env.sfx(t>=0?'go':'beep');
+    if(!ff&&(was<-2&&t>=-2||was<-1&&t>=-1||was<0&&t>=0)) env.sfx(t>=0?'go':'beep');
     if(t>0){ acc+=dt; while(acc>=SIM){ acc-=SIM; simT+=SIM; simStep(lv,simT); } }
     for(const pk of lv.parked) if(pk.doorT>0){ pk.doorT-=dt; pk.door=Math.min(1,pk.door+dt*4); } else if(pk.door>0) pk.door=Math.max(0,pk.door-dt*3);
-    if(S.wind&&t>0){ windT-=dt; if(windT<-4-Math.random()*4){ windT=2.2; windDir=Math.random()<.5?-1:1; windF=70+Math.random()*50; env.sfx('boost'); } }
+    if(S.wind&&t>0){ windT-=dt; if(windT<-4-Math.random()*4){ windT=2.2; windDir=Math.random()<.5?-1:1; windF=70+Math.random()*50; if(!ff) env.sfx('boost'); } }
     for(const p of ps){ localHazards(p,dt); updatePlayer(p,dt); }
     for(let i=locals.length-1;i>=0;i--){ const l=locals[i]; l.x+=l.vx*dt; if(l.k==='dog') l.d+=Math.sin(t*5+l.wig)*30*dt; if(l.x<-80||l.x>ROADW+80) locals.splice(i,1); }
     for(let i=fx.length-1;i>=0;i--){ fx[i].t+=dt; if(fx[i].t>2) fx.splice(i,1); }
+    // 下班時間到：還沒送完的收工，手上有餐沒送到要賠
+    if(t>SHIFT) for(const p of ps) if(!p.remote&&!p.done){ p.done=true; p.timeout=true; p.doneT=SHIFT; if(p.phase==='drop'){ p.money.comp+=80; p.log.push('時間到，手上的餐沒送到，賠 $80'); pop(p,'下班時間到！手上的餐沒送到 賠 $80','#ff5d5d'); } else pop(p,'下班時間到！','#ffd23f'); }
+  }
+  function update(dt){
+    if(ended) return; dt=Math.min(dt,.05);
+    // 真人都收工了，剩電腦還在送：快轉
+    ff=host&&t>0&&ps.every(p=>p.bot||p.done)&&ps.some(p=>p.bot&&!p.done);
+    for(let i=0,k=ff?10:1;i<k&&!ended;i++) step(dt);
     // 闖紅燈機車的喇叭警告
     const own=ps[me]; for(const I of lv.inter){ if(Math.abs(I.d-own.d)>420) continue; const cr=[]; crossers(lv,I,simT,cr); for(const e of cr) if(e.k==='runner'&&e.warn){ const key=I.idx+':'+Math.floor((simT+I.off)/CYC); if(!own.warned[key]){ own.warned[key]=1; env.sfx('beep'); env.sfx('beep'); } } }
     if(engine&&!ps[me].remote){ const v=Math.abs(ps[me].v); try{ engine.o.frequency.setTargetAtTime(55+v*.55,engine.ac.currentTime,.05); engine.g.gain.setTargetAtTime(t>-3&&!ps[me].done?.018+v/250*.03:0,engine.ac.currentTime,.1); }catch(e){} }
     for(let n=0;n<num;n++){ const p=ps[n]; camD[n]=camD[n]===0&&t<-2.9?p.d:lerp(camD[n]||p.d,p.d+Math.max(0,p.v)*.35,Math.min(1,dt*4)); }
-    // 時間到（每單 80 秒）也收工
-    const limit=S.orders*80+20; if(t>limit) for(const p of ps) if(!p.remote&&!p.done){ p.done=true; p.log.push('下班時間到'); }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/15; if(net.host) net.send({ks:ps.map(pack)}); else net.send({k:pack(ps[me])}); }
-      if(net.host){ const all=ps.every(p=>p.done); const first=Math.min(...ps.filter(p=>p.done&&!p.left).map(p=>p.doneT||t),1e9);
-        if(all||t-first>45){ endT+=dt; if(endT>1.5){ const list=ps.map(moneyOf); net.send({ks:ps.map(pack)}); net.send({end:list}); conclude(list); } } } }
+      if(net.host&&(ps.every(p=>p.done)||t>SHIFT+1)){ endT+=dt; if(endT>1.5){ const list=ps.map(statOf); net.send({ks:ps.map(pack)}); net.send({end:list}); conclude(list); } } }
     else if(ps.every(p=>p.done)){ endT+=dt; if(endT>1.6) conclude(null); }
   }
 
@@ -678,7 +719,7 @@ function create(env,opts){
     // 天氣、夜晚
     if(S.rain){ c.strokeStyle='rgba(190,210,255,.45)'; c.lineWidth=1.2; c.beginPath(); for(let i=0;i<80;i++){ const x=vx+((i*97+t*40)%vw),y=((i*53+t*800)%H); c.moveTo(x,y); c.lineTo(x-4,y+16); } c.stroke();
       c.fillStyle='rgba(200,220,255,.18)'; for(let i=0;i<6;i++){ c.beginPath(); c.arc(vx+((i*173)%vw),(i*97+t*20)%(H*.6),6+i%3*3,0,7); c.fill(); } }
-    if(S.wind&&windT>0){ c.fillStyle='rgba(255,255,255,.75)'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText(windDir*M>0?'強風 →→→':'←←← 強風',vx+vw/2,96); c.strokeStyle='rgba(255,255,255,.4)'; c.lineWidth=2; c.beginPath(); for(let i=0;i<10;i++){ const y=(i*61)%H,x=vx+((t*600*windDir*M+i*140)%vw+vw)%vw; c.moveTo(x,y); c.lineTo(x-40*windDir*M,y); } c.stroke(); }
+    if(S.wind&&windT>0){ c.fillStyle='rgba(255,255,255,.75)'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText(windDir*M>0?'強風 →→→':'←←← 強風',vx+vw/2,124); c.strokeStyle='rgba(255,255,255,.4)'; c.lineWidth=2; c.beginPath(); for(let i=0;i<10;i++){ const y=(i*61)%H,x=vx+((t*600*windDir*M+i*140)%vw+vw)%vw; c.moveTo(x,y); c.lineTo(x-40*windDir*M,y); } c.stroke(); }
     if(S.night){ const g=c.createRadialGradient(vx+vw/2,H*.62,40,vx+vw/2,H*.62,vw*.7); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(5,5,25,.45)'); c.fillStyle=g; c.fillRect(vx,0,vw,H); }
     else if(S.evening){ c.fillStyle='rgba(255,120,60,.07)'; c.fillRect(vx,0,vw,H); }
     // 自己的機車
@@ -690,7 +731,7 @@ function create(env,opts){
     // 飄字（畫面中間往上飄）
     let k2=0; for(const f of fx){ if(f.k==='txt'&&f.n===n){ c.globalAlpha=Math.max(0,1-f.t/2); c.fillStyle=f.col; c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.strokeStyle='#1a1530'; c.lineWidth=5; const y=H*.34-f.t*26+k2*24; c.strokeText(f.txt,vx+vw/2,y); c.fillText(f.txt,vx+vw/2,y); c.globalAlpha=1; k2++; }
       if(f.k==='flash'&&f.n===n&&f.t<.3){ c.fillStyle='rgba(255,255,255,'+(.8-f.t*2.6)+')'; c.fillRect(vx,0,vw,H); } }
-    if(two){ c.fillStyle=n===0?'#ffd23f':'#3ddbd9'; c.font='900 16px '+TC; c.textAlign='left'; c.fillText((n+1)+'P',vx+12,74); }
+    if(two){ c.fillStyle=n===0?'#ffd23f':'#3ddbd9'; c.font='900 16px '+TC; c.textAlign='left'; c.fillText((n+1)+'P',vx+12,110); }
     hud(p,vx,vw,n);
     c.restore(); }
   function hud(p,vx,vw,n,sx,sy){
@@ -704,10 +745,19 @@ function create(env,opts){
       c.fillStyle='#fff'; c.font='700 12px '+TC; c.fillText((dist>=0?'前方 '+dist+' 公尺':'已經過頭 '+(-dist)+' 公尺，倒車回去')+'　'+(left>=0?'剩 '+left+' 秒':'超時 '+(-left)+' 秒'),vx+(small?88:110),44);
       // 餐點完整度
       if(p.phase==='drop'){ for(let i=0;i<3;i++){ c.fillStyle=i<p.food?'#ffd23f':'#3a3670'; c.beginPath(); c.arc(vx+vw-(small?118:136)+i*14,24,5.5,0,Math.PI); c.fill(); c.fillRect(vx+vw-(small?124:142)+i*14,23,12,2); } } }
-    else { c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.fillText(p.done?'收工了！'+(ps.some(q=>!q.done)?'等其他人…':''):'',vx+110,32); }
+    else { c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.fillText(p.done?(p.timeout?'下班時間到！':'收工了！')+(ff?'電腦還在送，快轉中…':ps.some(q=>!q.done)?'等其他人…':''):'',vx+110,32); }
     // 油量
     const fx0=vx+vw-(small?78:88); c.fillStyle='#fff'; c.font='700 11px '+TC; c.textAlign='left'; c.fillText('油',fx0-16,44); c.fillStyle='#3a3670'; rr(c,fx0,38,small?62:72,12,5); c.fill(); c.fillStyle=p.fuel<20?'#ff5d5d':'#ffd23f'; rr(c,fx0,38,(small?62:72)*p.fuel/100,12,5); c.fill();
     c.fillStyle='#fff'; c.textAlign='right'; c.font='700 11px '+TC; c.fillText(Math.round(Math.abs(p.v)/250*60)+' km/h',vx+vw-16,22);
+    // 下班倒數（像碼錶一樣跳到小數點）
+    const left=SHIFT-Math.max(0,t),warn=left<30; c.fillStyle=warn?'rgba(120,20,30,.85)':'rgba(11,10,28,.78)'; rr(c,vx+8,66,small?112:128,28,9); c.fill();
+    c.textAlign='left'; c.textBaseline='middle'; c.fillStyle=warn&&Math.sin(t*8)>0?'#ffd23f':'#fff'; c.font='900 '+(small?15:17)+'px monospace'; c.fillText('⏳'+fmtT(left),vx+14,81);
+    // 即時排名（淨收入）
+    if(num>1){ const L=ps.map(q=>({q,m:moneyOf(q)})).sort((a,b)=>b.m-a.m),rh=17,bw=small?132:150,bx=vx+vw-bw-8;
+      c.fillStyle='rgba(11,10,28,.7)'; rr(c,bx,66,bw,8+L.length*rh,9); c.fill();
+      L.forEach((r,k)=>{ const y=74+k*rh+rh/2,isMe=r.q===p; if(r.q.team!=null){ c.fillStyle=TEAMS[r.q.team].col; c.fillRect(bx+4,y-6,3,12); }
+        c.textAlign='left'; c.fillStyle=isMe?'#ffd23f':r.q.bot?'#c9c6e6':'#fff'; c.font=(isMe?'900 ':'700 ')+'11px '+TC; c.fillText((k+1)+'. '+names[r.q.n].replace('（電腦）','').slice(0,6)+(r.q.done?' ✓':''),bx+11,y);
+        c.textAlign='right'; c.fillStyle=r.m<0?'#ff8a8a':'#86dc4f'; c.fillText(r.m<0?'-$'+(-r.m):'$'+r.m,bx+bw-8,y); }); }
     if(t<0){ c.fillStyle='rgba(11,10,28,.6)'; c.fillRect(vx,H/2-50,vw,100); c.fillStyle='#ffd23f'; c.font='900 54px '+TC; c.textAlign='center'; c.fillText(String(Math.ceil(-t)),vx+vw/2,H/2); }
     else if(t<1){ c.fillStyle='#86dc4f'; c.font='900 46px '+TC; c.textAlign='center'; c.fillText('出發！',vx+vw/2,H/2); }
   }
@@ -741,17 +791,18 @@ function preview(ctx,w,h,L,t){
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).deliver={
-  name:'街頭外送王',tag:'STREET DELIVERY',color:'#ff7a3d',online:true,maxPlayers:4,
-  desc:'騎機車在台灣和世界各地街頭送外送：取餐、送餐、躲開闖紅燈的機車和亂穿越的行人，扣掉油錢罰單看淨賺多少。',
-  goal:'到店家取餐、送到客人手上：在機車道停下來就會自動取餐／送達。越快送到小費越多；撞車會把餐點撞壞，闖紅燈遇到照相機會吃罰單，油用完要去加油站。',
+  name:'街頭外送王',tag:'STREET DELIVERY',color:'#ff7a3d',online:true,maxPlayers:4,bots:true,
+  desc:'外送員生存賽：在下班前搶著取餐、送餐，躲開馬路三寶。扣掉油錢、罰單、超時、撞車修理費，淨賺最多的就是外送王。',
+  goal:'和電腦（或朋友）比賽，在下班倒數結束前把單送完：到店家取餐、送到客人手上，在機車道停下來就會自動取餐／送達。淨收入最高的贏；全部完整送達又最快收工的拿「最速安全送達」。越快送到小費越多；撞車要付修車費還會撞壞餐點，闖紅燈遇到照相機會吃罰單，時間到手上的餐沒送到要賠錢。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人'}],
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
-  stageGoal:si=>{ const S=STAGES[si]; return S.name+'：'+S.desc+'這一趟要送 '+S.orders+' 單，淨收入 $'+S.target+' 以上拿三顆星。到店家門口的機車道停下來取餐，再送到客人門口；越快送到小費越多，撞車會撞壞餐點（全毀要賠錢），闖紅燈遇到照相機罰 $300，油用完要去加油站加。'; },
+  stageGoal:si=>{ const S=STAGES[si]; const m=S.orders*50+30; return S.name+'：'+S.desc+'下班時間 '+Math.floor(m/60)+' 分 '+(m%60)+' 秒內要送 '+S.orders+' 單，和其他外送員比淨收入，最多的就是外送王；自己淨收入 $'+S.target+' 以上拿三顆星。到店家門口的機車道停下來取餐，再送到客人門口；越快送到小費越多。撞車修理費 $20、餐點會撞壞（全毀賠 $80），闖紅燈遇到照相機罰 $300，超時扣一半外送費，油用完要去加油站加。'; },
   stageBest:i=>{ try{ const v=localStorage.getItem('arcade.deliver.b.'+i); return v==null?'':'最高 $'+v; }catch(e){ return ''; } },
   help:[['← →','左右移動（雙人時是 1P）'],['↑','加油門'],['↓','煞車；停下來再按是倒車'],['W A S D','雙人時 2P 的油門、方向、煞車'],['停在綠框裡','取餐、送餐、加油（在機車道停一下）']],
   touchHelp:[['◀ ▶','左右移動'],['▲','加油門'],['▼','煞車；停下來再按是倒車'],['停在綠框裡','取餐、送餐、加油（在機車道停一下）']],
   touch:m=>m==='2p'?{left:[{l:'◀',c:'KeyA'},{l:'▶',c:'KeyD'},{l:'▲',c:'KeyW',act:true},{l:'▼',c:'KeyS'}],right:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'},{l:'▲',c:'ArrowUp',act:true},{l:'▼',c:'ArrowDown'}]}
     :{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'▼',c:'ArrowDown'},{l:'▲',c:'ArrowUp',act:true}]},
+  options:[{key:'team',label:'玩法',def:'ffa',opts:[{id:'ffa',label:'各自搶單（電腦補到 4 人）'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],
   best:{label:'最高收入',fmt:v=>'$'+v,lower:false},
   looks:[{key:'char',label:'人物',opts:[{id:'boy',label:'男孩'},{id:'girl',label:'女孩'},{id:'cat',label:'貓耳'},{id:'bear',label:'熊熊'}]},
     {key:'helmet',label:'安全帽',type:'color',opts:['#ffd23f','#ff7eb6','#b98cff','#3ddbd9','#ffffff','#2b2b36','#ff5d4f','#86dc4f']},
