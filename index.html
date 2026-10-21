@@ -87,6 +87,10 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 @media (max-width:640px){.cats{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}.cats::-webkit-scrollbar{display:none}}
 .shelf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
 @media (max-width:640px){.shelf{grid-template-columns:minmax(0,1fr)}}
+/* 電腦版：一排 4 款（寬螢幕）、3 款（中等），卡片縮小 */
+@media (min-width:1100px){#hub{max-width:1240px}.shelf{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}}
+@media (min-width:820px) and (max-width:1099px){#hub{max-width:1000px}.shelf{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}}
+@media (min-width:820px){.cart .info{padding:10px 12px 12px;gap:6px}.cart h2{font-size:18px}.cart .desc{font-size:12.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.cart .tab{font-size:9px;padding:6px 10px}.cart .best{font-size:12px}.cart .go{padding:4px 10px;font-size:13px}.cart{box-shadow:4px 4px 0 #0b0a1c}}
 .cart{--c:var(--yellow);background:var(--panel);border:3px solid #0b0a1c;border-radius:6px;box-shadow:6px 6px 0 #0b0a1c;
   display:flex;flex-direction:column;min-width:0;padding:0;text-align:left;transition:transform .12s}
 .cart:hover{transform:translate(-2px,-2px)}
@@ -240,7 +244,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=134; // 每次改版加一
+window.ARCADE_V=135; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -249,7 +253,7 @@ window.ARCADE_V=134; // 每次改版加一
 'use strict';
 // 在 LINE、Facebook、Instagram 等 App 的內建瀏覽器裡直接就能玩，不強制跳到外部瀏覽器
 const G=window.ARCADE_GAMES||{};
-const ORDER=['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess'].filter(k=>G[k]);
+const ORDER=['kart','chess','bomb','deliver','stairs','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 // 大廳分類（每款遊戲屬於一個類別）
 const CATS=[['act','動作闖關'],['race','競速'],['ball','球類運動'],['fight','格鬥'],['board','益智桌遊']];
