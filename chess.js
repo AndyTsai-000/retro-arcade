@@ -412,7 +412,7 @@ function create(env,opts){
     for(let i=0;i<NP;i++){ PL[i].hp-=fi.dmg[i]; } fightInfo=null; battle=null; }
 
   /* ----- 操作：拖曳萌獸和裝備 ----- */
-  let drag=null,sel=null,hoverX=0,hoverY=0,btns=[];
+  let drag=null,sel=null,hoverX=-99,hoverY=-99,btns=[],tipItem=-1;
   const BENCH_Y=448,BENCH_X=480-9*54/2,SHOP_Y=508,CARD_W=132,CARD_X=258;
   function toLogical(e){ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=(r.width-W*s)/2,oy=(r.height-H*s)/2; return [(e.clientX-r.left-ox)/s,(e.clientY-r.top-oy)/s]; }
   function hexAt(x,y){ let best=null,bd=HR*.95; for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++){ const [hx,hy]=hexXY(cc,r),d=Math.hypot(x-hx,y-hy); if(d<bd){ bd=d; best=[cc,r]; } } return best; }
@@ -425,14 +425,14 @@ function create(env,opts){
     for(const b of btns) if(!b.dis&&x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h){ sfx('click'); b.fn(); return; }
     // 商店卡片
     if(y>SHOP_Y&&x>CARD_X&&x<CARD_X+5*(CARD_W+4)){ const i=Math.floor((x-CARD_X)/(CARD_W+4)); if(PL[me].alive) buy(ME,i,true); return; }
-    const ii=itemAt(x,y); if(ii>=0){ drag={kind:'item',i:ii,x,y,sx:x,sy:y}; return; }
+    const ii=itemAt(x,y); if(ii>=0){ drag={kind:'item',i:ii,x,y,sx:x,sy:y}; tipItem=ii; return; } tipItem=-1;
     const hit=unitAt(x,y); if(hit){ drag={kind:'unit',...hit,x,y,sx:x,sy:y}; sel=hit.u; return; }
     // 點對戰中的棋子看資料
     if(battle){ for(const f of battle.F){ const [fx,fy]=fpos(f); if(f.alive&&Math.hypot(x-fx,y-fy)<20){ sel={u:f.u,s:f.s,it:f.items,live:f}; return; } } }
     sel=null; }
-  function onMove(e){ if(!drag) return; e.preventDefault(); const [x,y]=toLogical(e); drag.x=x; drag.y=y; }
+  function onMove(e){ const [x,y]=toLogical(e); hoverX=x; hoverY=y; if(!drag) return; e.preventDefault(); drag.x=x; drag.y=y; }
   function onUp(e){ if(!drag) return; const d=drag; drag=null; const [x,y]=[d.x,d.y]; if(Math.hypot(x-d.sx,y-d.sy)<6) return;
-    if(d.kind==='item'){ const hit=unitAt(x,y)||(battle?null:null); if(hit){ const it=ME.items[d.i]; if(addItem(hit.u,it,ME)){ ME.items.splice(d.i,1); sfx('item'); } else say('這隻已經有 3 件裝備了'); } return; }
+    if(d.kind==='item'){ tipItem=-1; const hit=unitAt(x,y)||(battle?null:null); if(hit){ const it=ME.items[d.i]; if(addItem(hit.u,it,ME)){ ME.items.splice(d.i,1); sfx('item'); } else say('這隻已經有 3 件裝備了'); } return; }
     const u=d.u;
     const bi=benchAt(x,y);
     if(bi>=0){ const other=ME.bench[bi]; if(d.from==='bench'){ ME.bench[bi]=u; ME.bench[d.i]=other; }
@@ -509,6 +509,16 @@ function create(env,opts){
       c.fillStyle='#fff'; c.textAlign='right'; c.font='900 11px '+TC; c.fillText(p.alive?Math.max(0,p.hp):'第'+p.place,944,y); }); }
   function drawItems(){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,744,316,206,114,10); c.fill(); c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillText('裝備（拖到萌獸身上）',752,330);
     ME.items.forEach((it,i)=>{ if(drag&&drag.kind==='item'&&drag.i===i) return; drawItemIcon(c,762+(i%5)*38,354+Math.floor(i/5)*36,30,it); }); }
+  // 裝備說明：滑鼠移到裝備上（手機點一下）就顯示名稱、效果、可以合成什麼
+  function drawItemTip(){ if(drag&&Math.hypot(drag.x-drag.sx,drag.y-drag.sy)>=6) return;
+    let i=itemAt(hoverX,hoverY); if(i<0) i=tipItem; if(i<0||i>=ME.items.length) return; const id=ME.items[i],ix=762+(i%5)*38,iy=354+Math.floor(i/5)*36;
+    const lines=[]; lines.push(['t',itemName(id)+(COMP[id]?'（小裝備）':'（大裝備）')]); lines.push(['d',itemDesc(id)]);
+    if(COMP[id]){ lines.push(['h','和其他小裝備合成：']); for(const o of COMP_IDS) lines.push(['c',COMP[o].n+' → '+COMBO[comboKey(id,o)].n+'：'+itemDesc(comboKey(id,o))]); }
+    else lines.push(['h','由 '+id.split('+').map(p=>COMP[p].n).join(' ＋ ')+' 合成']);
+    const w=300; c.font='700 11px '+TC; const rows=[]; for(const [k,txt] of lines){ let line=''; for(const ch of txt){ if(c.measureText(line+ch).width>w-20){ rows.push([k,line]); line=k==='c'?'　':''; line+=ch; } else line+=ch; } if(line) rows.push([k,line]); }
+    const h=rows.length*16+14,x=744-w-8,y=clamp(iy-h/2,8,H-h-8);
+    c.fillStyle='rgba(20,18,44,.97)'; rr(c,x,y,w,h,10); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=2; c.stroke();
+    rows.forEach(([k,txt],j)=>{ c.fillStyle=k==='t'?'#ffd23f':k==='h'?'#cfe8d8':k==='c'?'#d8d0ff':'#fff'; c.font=(k==='t'?'900 13px ':'700 11px ')+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillText(txt,x+10,y+14+j*16); }); }
   function drawInfo(){ if(!sel) return; const d=defOf(sel.u); if(!d) return; const s=sel.s||1,x=8,y=46,w=190,h=390;
     c.fillStyle='rgba(20,18,44,.97)'; rr(c,x,y,w,h,10); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=2; c.stroke();
     drawCreature(c,x+40,y+50,1.8,d,{t,photo:d.photo}); stars(c,x+40,y+18,s);
@@ -540,6 +550,7 @@ function create(env,opts){
     if(drag&&Math.hypot(drag.x-drag.sx,drag.y-drag.sy)>=6){ if(drag.kind==='item') drawItemIcon(c,drag.x,drag.y,32,ME.items[drag.i]); else { const d=defOf(drag.u.u); drawCreature(c,drag.x,drag.y,1.2,d,{t,photo:d.photo}); } }
     if(phase==='fight'&&battle&&battle.over){ const win=battle.over.win!==-1&&(battle.over.win===0)!==myFlip; c.fillStyle=win?'#86dc4f':'#ff8a8a'; c.font='900 30px '+TC; c.textAlign='center'; c.strokeStyle='#1a1530'; c.lineWidth=6; const s2=battle.over.win===-1?'平手':win?'勝利！':'輸了…'; c.strokeText(s2,480,BY+HH*3.5); c.fillText(s2,480,BY+HH*3.5); }
     if(!PL[me].alive&&!ended){ c.fillStyle='rgba(11,10,28,.7)'; c.fillRect(260,180,440,80); c.fillStyle='#ffd23f'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText('你被淘汰了（第 '+PL[me].place+' 名），繼續觀戰…',480,220); }
+    drawItemTip();
     if(msgT>0&&msg){ c.font='900 15px '+TC; c.textAlign='center'; const w=c.measureText(msg).width+30; c.fillStyle='rgba(180,30,50,.92)'; rr(c,480-w/2,BENCH_Y-80,w,34,12); c.fill(); c.fillStyle='#fff'; c.fillText(msg,480,BENCH_Y-63); }
   }
   return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); },
@@ -573,7 +584,7 @@ function preview(ctx,w,h,L,t){ const k=w/480; const g=ctx.createLinearGradient(0
   goal:'每回合在商店買萌獸、拖上棋盤，三隻一樣的會自動合成升星；相同羈絆湊到 2、4 隻有加成；裝備拖到萌獸身上，兩個小裝備會合成大裝備。戰鬥自動進行，輸了扣血（階段基礎傷害＋對方存活萌獸數），100 點血扣完就淘汰，活到最後的是第一名。',
   stages:['輕鬆','普通','困難'],stageLabel:'電腦強度',
   stageGoal:si=>['輕鬆：電腦亂買亂擺、升級慢，適合先熟悉規則。','普通：電腦會湊羈絆、存利息、照時間升級。','困難：電腦每回合多 1 金幣，後期會刷商店找升星，很難纏。'][si]+'　每回合買萌獸、拖上棋盤，三隻一樣的自動升星；相同羈絆湊 2／4 隻有加成；裝備拖到萌獸身上，兩件小裝備會合成大裝備。第 1 階段（1-1～1-3）打野怪，之後每階段第 7 回合也打野怪，會掉裝備。輸了扣血＝階段基礎傷害（第 1 階段 0、第 2 階段 2、第 3 階段 5、第 4 階段 8、第 5 階段 10、第 6 階段 12、第 7 階段起 17）＋對方還活著的萌獸數（一隻 1 點，最多 10 點，星數和費用不影響），100 血扣完就淘汰。每回合準備 20 秒。',
-  help:[['點商店卡片','買萌獸（三隻一樣自動升星）'],['拖曳萌獸','上棋盤、回備戰席'],['點萌獸','看能力、技能、裝備，也可以按「賣出」'],['拖曳裝備','裝到萌獸身上；兩件小裝備合成大裝備'],['升級／刷新','4 金幣買 4 經驗；2 金幣換一批商店'],['準備好了','不用等時間到，直接開打']],
+  help:[['點商店卡片','買萌獸（三隻一樣自動升星）'],['拖曳萌獸','上棋盤、回備戰席'],['點萌獸','看能力、技能、裝備，也可以按「賣出」'],['拖曳裝備','裝到萌獸身上；兩件小裝備合成大裝備'],['滑鼠移到裝備','看裝備名稱、效果和可以合成什麼（手機點一下）'],['升級／刷新','4 金幣買 4 經驗；2 金幣換一批商店'],['準備好了','不用等時間到，直接開打']],
   touch:null,
   looks:[{key:'face',label:'萌獸照片',type:'photo',hint:'上傳人或動物的照片，你的專屬萌獸臉就會換成這張照片。'},
     {key:'cname',label:'萌獸名字',type:'text',max:6,def:'我的萌獸'},
