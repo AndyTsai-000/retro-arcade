@@ -77,9 +77,15 @@ function itemDesc(id){ const st=itemSt(id),L=[]; const N={atk:'攻擊',as:'攻�
 
 /* ---------- 經濟 ---------- */
 const XPNEED=[0,2,2,6,10,20,36,56,80],ODDS=[[],[100,0,0,0,0],[100,0,0,0,0],[75,25,0,0,0],[55,30,15,0,0],[45,33,20,2,0],[25,40,30,5,0],[19,30,35,15,1],[16,20,35,25,4],[9,15,30,30,16]];
-const isPve=r=>r<=3||r%6===3;
+// 階段：第 1 階段是 1-1～1-3（都打野怪），之後每階段 7 回合，第 7 回合打野怪
+const stageOf=r=>r<=3?[1,r]:[2+Math.floor((r-4)/7),(r-4)%7+1];
+const roundLabel=r=>stageOf(r).join('-');
+const isPve=r=>{ const [st,sub]=stageOf(r); return st===1||sub===7; };
+// 輸了扣血：階段基礎傷害（第 1 階段不扣）＋對方還活著的萌獸一隻 1 點（最多算 10 隻，星數、費用都不影響）
+const BASE_DMG=st=>st<=1?0:[0,0,2,5,8,10,12][st]||17;
+const loseDmg=(r,surv)=>{ const st=stageOf(r)[0]; return st<=1?0:BASE_DMG(st)+Math.min(10,surv); };
 // 野怪關卡
-function creeps(r){ const k=r<=3?r:Math.min(6,2+Math.floor(r/6)),lv=r<=3?0:Math.floor(r/6); const out=[];
+function creeps(r){ const st=stageOf(r)[0],k=r<=3?r:Math.min(6,2+st),lv=r<=3?0:st-1; const out=[];
   for(let i=0;i<k+1;i++) out.push({u:'creep',s:1,c:1+((i*2)%6),r:i<3?5:6,lv,big:i===0&&r>3});
   return out; }
 const CREEP={id:'creep',n:'史萊姆',cost:1,tr:[],k:'warrior',sk:{t:'strike',m:1.5},look:{body:'#86dc4f',ear:'none',acc:'slime'},hp:380,atk:32,as:.6,rng:1,arm:10,mana:200};
@@ -322,7 +328,7 @@ function create(env,opts){
     combine(ai); P.board=boardOut(ai); P.lvl=ai.level; }
 
   function startPlan(){
-    round++; phase='plan'; phT=0; phDur=round<=3?20:30; readyHum.clear(); boards={}; waitBoards=0;
+    round++; phase='plan'; phT=0; phDur=20; readyHum.clear(); boards={}; waitBoards=0;
     // 自己的收入
     if(round>1&&PL[me].alive){ const inc=5+Math.min(5,Math.floor(ME.gold/10))+(Math.abs(ME.streak)>=5?3:Math.abs(ME.streak)>=4?2:Math.abs(ME.streak)>=2?1:0);
       ME.gold+=inc; addXp(ME,2); if(!ME.locked) ME.shop=rollShop(ME,ME.level,myCustom); ME.locked=false; }
@@ -342,9 +348,9 @@ function create(env,opts){
     pairs.forEach((pr,k)=>{ const A=bset[pr[0]],Bb=pr[1]==='pve'?creeps(round):String(pr[1])[0]==='g'?bset[+String(pr[1]).slice(1)]:bset[pr[1]];
       const B2=Battle(A,flip(Bb),seed+k*101,defOf),out=B2.run(); longest=Math.max(longest,B2.t);
       const real=typeof pr[1]==='number';
-      const dmgOf=surv=>surv.length?Math.min(30,2+Math.floor(round/5)+surv.reduce((a,f)=>a+f.s,0)):0;
+      const dmgOf=surv=>loseDmg(round,surv.length);
       if(out.win===0){ res[pr[0]]='w'; if(real){ res[pr[1]]='l'; dmg[pr[1]]+=dmgOf(out.survA); } }
-      else { res[pr[0]]='l'; dmg[pr[0]]+=pr[1]==='pve'?Math.min(8,2+out.survB.length):dmgOf(out.survB); if(real){ res[pr[1]]=out.win===1?'w':'l'; if(out.win===-1) dmg[pr[1]]+=dmgOf(out.survA); } } });
+      else { res[pr[0]]='l'; dmg[pr[0]]+=dmgOf(out.survB); if(real){ res[pr[1]]=out.win===1?'w':'l'; if(out.win===-1) dmg[pr[1]]+=dmgOf(out.survA); } } });
     fightInfo={round,pairs,seed,boards:bset,dur:Math.min(34,longest/1.35+2.5),res,dmg,pve};
     if(net) net.send({t:'fight',fi:fightInfo});
     beginFight(fightInfo); }
@@ -521,7 +527,7 @@ function create(env,opts){
     // 上方：回合、階段、時間
     c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#fff'; c.font='900 16px '+TC;
     const ph=phase==='plan'?(isPve(round)?'準備：這回合打野怪':'準備階段'):phase==='fight'?(battle?'對戰：'+battle.opp:'觀戰中'):'等待其他玩家…';
-    c.fillText('第 '+round+' 回合　'+ph,480,18);
+    c.fillText('第 '+roundLabel(round)+' 回合　'+ph,480,18);
     if(phase==='plan'||phase==='fight'){ const dur=phase==='plan'?phDur:fightInfo?fightInfo.dur:1,u=clamp(1-phT/dur,0,1),left=Math.max(0,Math.ceil(dur-phT)); // 倒數秒數
       c.fillStyle='#3a3670'; rr(c,380,30,200,8,4); c.fill(); c.fillStyle=phase==='plan'?(left<=5?'#ff5d5d':'#86dc4f'):'#ff7a3d'; rr(c,380,30,200*u,8,4); c.fill();
       c.fillStyle='rgba(11,10,28,.7)'; rr(c,812,6,138,34,10); c.fill(); c.fillStyle=phase==='plan'&&left<=5?'#ff5d5d':'#fff'; c.font='900 17px '+TC; c.textAlign='center'; c.fillText((phase==='plan'?'準備 ':'戰鬥 ')+left+' 秒',881,24); }
@@ -564,9 +570,9 @@ function preview(ctx,w,h,L,t){ const k=w/480; const g=ctx.createLinearGradient(0
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).chess={
   name:'萌獸戰棋',tag:'CUTE AUTO CHESS',color:'#c56bff',online:true,maxPlayers:8,
   desc:'8 人自走棋：買萌獸、三隻合成升星、湊羈絆、合成裝備，自動對戰活到最後。還能上傳照片做出自己專屬的萌獸！',
-  goal:'每回合在商店買萌獸、拖上棋盤，三隻一樣的會自動合成升星；相同羈絆湊到 2、4 隻有加成；裝備拖到萌獸身上，兩個小裝備會合成大裝備。戰鬥自動進行，輸了扣血，100 點血扣完就淘汰，活到最後的是第一名。',
+  goal:'每回合在商店買萌獸、拖上棋盤，三隻一樣的會自動合成升星；相同羈絆湊到 2、4 隻有加成；裝備拖到萌獸身上，兩個小裝備會合成大裝備。戰鬥自動進行，輸了扣血（階段基礎傷害＋對方存活萌獸數），100 點血扣完就淘汰，活到最後的是第一名。',
   stages:['輕鬆','普通','困難'],stageLabel:'電腦強度',
-  stageGoal:si=>['輕鬆：電腦亂買亂擺、升級慢，適合先熟悉規則。','普通：電腦會湊羈絆、存利息、照時間升級。','困難：電腦每回合多 1 金幣，後期會刷商店找升星，很難纏。'][si]+'　每回合買萌獸、拖上棋盤，三隻一樣的自動升星；相同羈絆湊 2／4 隻有加成；裝備拖到萌獸身上，兩件小裝備會合成大裝備。前 3 回合和之後每 6 回合打野怪掉裝備。輸了扣血（2＋回合數／5＋對手剩下萌獸的星數），100 血扣完就淘汰。',
+  stageGoal:si=>['輕鬆：電腦亂買亂擺、升級慢，適合先熟悉規則。','普通：電腦會湊羈絆、存利息、照時間升級。','困難：電腦每回合多 1 金幣，後期會刷商店找升星，很難纏。'][si]+'　每回合買萌獸、拖上棋盤，三隻一樣的自動升星；相同羈絆湊 2／4 隻有加成；裝備拖到萌獸身上，兩件小裝備會合成大裝備。第 1 階段（1-1～1-3）打野怪，之後每階段第 7 回合也打野怪，會掉裝備。輸了扣血＝階段基礎傷害（第 1 階段 0、第 2 階段 2、第 3 階段 5、第 4 階段 8、第 5 階段 10、第 6 階段 12、第 7 階段起 17）＋對方還活著的萌獸數（一隻 1 點，最多 10 點，星數和費用不影響），100 血扣完就淘汰。每回合準備 20 秒。',
   help:[['點商店卡片','買萌獸（三隻一樣自動升星）'],['拖曳萌獸','上棋盤、回備戰席'],['點萌獸','看能力、技能、裝備，也可以按「賣出」'],['拖曳裝備','裝到萌獸身上；兩件小裝備合成大裝備'],['升級／刷新','4 金幣買 4 經驗；2 金幣換一批商店'],['準備好了','不用等時間到，直接開打']],
   touch:null,
   looks:[{key:'face',label:'萌獸照片',type:'photo',hint:'上傳人或動物的照片，你的專屬萌獸臉就會換成這張照片。'},
