@@ -151,6 +151,7 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .sndRow{display:grid;grid-template-columns:5.5em 1fr 2.5em;align-items:center;gap:10px;margin:12px 0;text-align:left}
 .sndRow input{width:100%;accent-color:var(--y,#ffd23f)}.sndRow b{text-align:right}
 .sndMute{justify-content:center;margin:6px 0 10px}.sndTip{color:var(--dim);font-size:13px}
+.lktext{flex:1;min-width:0;max-width:220px;padding:8px 12px;border-radius:10px;border:2px solid #3a3570;background:#14122b;color:#fff;font:700 15px "Noto Sans TC",sans-serif}
 .sgGoal{text-align:left;margin:6px 0 4px;color:var(--dim);font-size:14px;line-height:1.6}
 .stars{color:var(--yellow);letter-spacing:.05em}.chip.sel .stars{color:#7a3d00}
 .who{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;counter-reset:w}
@@ -239,20 +240,20 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=124; // 每次改版加一
+window.ARCADE_V=125; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
-  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
 <script>
 (function(){
 'use strict';
 // 在 LINE、Facebook、Instagram 等 App 的內建瀏覽器裡直接就能玩，不強制跳到外部瀏覽器
 const G=window.ARCADE_GAMES||{};
-const ORDER=['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver'].filter(k=>G[k]);
+const ORDER=['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 // 大廳分類（每款遊戲屬於一個類別）
 const CATS=[['act','動作闖關'],['race','競速'],['ball','球類運動'],['fight','格鬥'],['board','益智桌遊']];
-const CAT_OF={stairs:'act',bomb:'act',kart:'race',volley:'ball',dodge:'ball',soccer:'ball',bowl:'ball',baseball:'ball',purple:'fight',rummy:'board',mahjong:'board',meow:'board',poker:'board',dice:'board',deliver:'act'};
+const CAT_OF={stairs:'act',bomb:'act',kart:'race',volley:'ball',dodge:'ball',soccer:'ball',bowl:'ball',baseball:'ball',purple:'fight',rummy:'board',mahjong:'board',meow:'board',poker:'board',dice:'board',deliver:'act',chess:'board'};
 const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;};
 const isTouch=matchMedia('(pointer:coarse)').matches;
 if(isTouch) document.body.classList.add('touch');
@@ -337,6 +338,8 @@ const SONGS={
          game:{bpm:104,root:60,sc:'minor',prog:'0:m7 5:m7 10:M7 3:M7',lead:'triangle',bass:'walk',pad:'pad',drum:'swing',swing:1}},
   deliver:{menu:{bpm:112,root:59,sc:'major',prog:'0:M 4:m 9:m 7:M',lead:'pluck',bass:'pump',pad:'skank',drum:'light',swing:1},
            game:{bpm:146,root:59,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'square',bass:'root8',pad:'arp',drum:'four',dense:1}},
+  chess:{menu:{bpm:92,root:63,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'box',bass:'sparse',pad:'pad',drum:'none'},
+         game:{bpm:132,root:63,sc:'minor',prog:'0:m 5:m 8:M 10:M',lead:'pluck',bass:'root8',pad:'arp',drum:'march',dense:1}},
   dice:{menu:{bpm:96,root:64,sc:'penta',prog:'0:M 9:m 7:M 0:M',lead:'pluck',bass:'pump',pad:'arp',drum:'taiko'},
         game:{bpm:118,root:64,sc:'penta',prog:'0:M 7:M 9:m 7:M',lead:'square',bass:'pump',pad:'skank',drum:'taiko',dense:1}}
 };
@@ -542,7 +545,8 @@ function padSpec(g,mode){ return typeof g.touch==='function'?g.touch(mode):g.tou
 let lookPrev=null;
 function normLook(g,o){
   if(!g.looks) return null; o=o&&typeof o==='object'?o:{}; const r={};
-  for(const L of g.looks){ if(L.type==='photo'){ const v=o[L.key]; r[L.key]=typeof v==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(v)&&v.length<240000?v:''; continue; }
+  for(const L of g.looks){ if(L.type==='text'){ r[L.key]=String(o[L.key]==null?(L.def||''):o[L.key]).replace(/[<>&"']/g,'').slice(0,L.max||8); continue; }
+    if(L.type==='photo'){ const v=o[L.key]; r[L.key]=typeof v==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(v)&&v.length<240000?v:''; continue; }
     if(L.type==='multi'){ const got={}; for(const id of String(o[L.key]||'').split(',')){ const op=L.opts.find(x=>x.id===id); if(op&&!got[op.grp]) got[op.grp]=id; } r[L.key]=L.opts.filter(x=>got[x.grp]===x.id).map(x=>x.id).join(','); continue; }
     const ids=L.opts.map(x=>x.id||x); r[L.key]=ids.includes(o[L.key])?o[L.key]:ids[0]; }
   return r;
@@ -554,7 +558,7 @@ function photoRow(L,look){
   const v=look[L.key];
   return '<div class="lkrow"><span>'+L.label+'</span><div class="chips"><img id="phImg" class="ph" alt="個人照"'+(v?' src="'+v+'"':' hidden')+'>'+
     '<label class="chip" for="phFile">'+(v?'換一張照片':'上傳照片')+'</label><input type="file" id="phFile" accept="image/*" hidden>'+
-    '<button class="chip" id="phDel"'+(v?'':' hidden')+'>移除</button></div></div><p class="hint" id="phMsg" style="color:var(--yellow)">'+(()=>{ const n=phNote; phNote=''; return n; })()+'</p><p class="hint">選「我的照片」人物時，角色的臉會換成這張照片。照片只存在這台裝置，連線比賽時房間裡的玩家看得到。</p>';
+    '<button class="chip" id="phDel"'+(v?'':' hidden')+'>移除</button></div></div><p class="hint" id="phMsg" style="color:var(--yellow)">'+(()=>{ const n=phNote; phNote=''; return n; })()+'</p><p class="hint">'+(L.hint||'選「我的照片」人物時，角色的臉會換成這張照片。')+'照片只存在這台裝置，連線比賽時房間裡的玩家看得到。</p>';
 }
 // 自動找臉：先用瀏覽器內建的臉部偵測，沒有的話載入 face-api（只在上傳照片時才下載）
 const FACEAPI='https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14';
@@ -623,7 +627,7 @@ async function lookCard(){ closeStage();
   if(use3d&&g.load){ showCard('<h3>我的造型</h3><p>載入 3D 預覽中…</p>'); try{ await g.load(); }catch(e){ use3d=false; } if(cur!==g||state!=='ready') return; }
   closeLook();
   showCard('<h3>我的造型</h3><div class="lkSplit"><div class="lkL">'+(use3d?'<div id="lkBox" class="lk"></div><p class="hint">按住拖曳可以旋轉，滾輪可以拉近拉遠</p>':'<canvas id="lkCv" width="720" height="400" class="lk"></canvas>')+
-    '</div><div class="lklist">'+g.looks.map(L=>L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):foldRow(L.key,L.label,L.opts.map(o=>L.type==='color'
+    '</div><div class="lklist">'+g.looks.map(L=>L.type==='text'?'<div class="lkrow"><span>'+L.label+'</span><input class="lktext" data-tk="'+L.key+'" maxlength="'+(L.max||8)+'" value="'+(look[L.key]||'')+'" placeholder="'+(L.def||'')+'"></div>':L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):foldRow(L.key,L.label,L.opts.map(o=>L.type==='color'
       ?'<button class="sw'+(look[L.key]===o?' sel':'')+'" data-k="'+L.key+'" data-o="'+o+'" style="background:'+(o==='auto'?'conic-gradient(#ff5d4f,#ffd23f,#5fd068,#4f9dff,#c56bff,#ff5d4f)':o)+'" aria-label="'+(o==='auto'?'自動（照玩家順序）':'顏色 '+o)+'" title="'+(o==='auto'?'自動（照玩家順序）':'')+'"></button>'
       :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join(''))).join('')+'</div></div>'+
     '<p>選好就會自動記住，下次打開還在。</p><div class="row"><button class="btn main" id="lkOk">完成</button></div>');
@@ -631,6 +635,7 @@ async function lookCard(){ closeStage();
   else { const ctx=$('#lkCv').getContext('2d'); ctx.scale(2,2); lookPrev={g,ctx,look}; }
   const sums=()=>card.querySelectorAll('.lkf').forEach(lkSum); sums();
   card.querySelectorAll('.lkt,.lksum').forEach(t=>t.addEventListener('click',()=>{ const row=t.closest('.lkf'),f=row.classList.toggle('fold'); lkFold[row.dataset.fid]=f; save('arcade.lkfold.'+g.id,JSON.stringify(lkFold)); SFX.click(); }));
+  card.querySelectorAll('[data-tk]').forEach(inp=>inp.addEventListener('input',()=>{ look[inp.dataset.tk]=inp.value.replace(/[<>&"']/g,'').slice(0,+inp.maxLength||8); save('arcade.look.'+g.id,JSON.stringify(look)); if(lookPrev&&lookPrev.v) lookPrev.v.set(look); }));
   card.querySelectorAll('[data-mk]').forEach(b=>b.addEventListener('click',()=>{ // 複選：同一組只留一個，再按一次取下
     const L=g.looks.find(x=>x.key===b.dataset.mk),op=L.opts.find(x=>x.id===b.dataset.o),on=new Set(String(look[L.key]||'').split(',').filter(Boolean));
     if(on.has(op.id)) on.delete(op.id); else { for(const x of L.opts) if(x.grp===op.grp) on.delete(x.id); on.add(op.id); }
