@@ -244,7 +244,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=135; // 每次改版加一
+window.ARCADE_V=136; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -662,7 +662,7 @@ function open(id){
   cur=G[id]; cur.id=id; loadOpts(cur); stageSel=0; if(cur.stageLocked&&cur.stages){ while(stageSel<cur.stages.length-1&&!cur.stageLocked(stageSel+1)) stageSel++; } /* 有鎖關卡的遊戲：預設選最新解鎖的那一關 */ variantSel=cur.variants?(cur.variants.find(v=>v.def)||cur.variants[0]).id:null; // def:true 的選項是預設
   $('#hub').hidden=true; $('#play').hidden=false; $('#gName').textContent=cur.name;
   buildPad(padSpec(cur)); stage.innerHTML='';
-  startCard(); scrollTo(0,0);
+  startCard(); scrollTo(0,0); pushGuard();
 }
 // 關卡很多的遊戲（stageGrid）：左邊示意圖和開始按鈕，右邊只放關卡數字，不用一直往下拉
 function gridHtml(g){
@@ -820,8 +820,9 @@ function toGameLobby(){
   if(lastOpts&&lastOpts.stage!=null&&cur&&cur.stages) stageSel=Math.min(cur.stages.length-1,lastOpts.stage+(cur.stageLocked&&!cur.stageLocked(lastOpts.stage+1)?1:0));
   SFX.click(); startCard(); scrollTo(0,0);
 }
-function back(){
+function back(fromPop){
   const safe=f=>{ try{ f(); }catch(e){ console.error(e); } };
+  if(fromPop!==true&&history.state&&history.state.arc){ popSkip++; history.back(); } // 按畫面上的按鈕回大廳：把瀏覽器紀錄也退一格
   safe(leaveNet); safe(killInst); safe(closeLook);
   safe(()=>{ if(document.fullscreenElement||document.webkitFullscreenElement) (document.exitFullscreen||document.webkitExitFullscreen).call(document); }); // 回大廳就離開全螢幕
   cur=null; state='hub'; inst=null; helpPaused=false;
@@ -846,7 +847,22 @@ function closeHelp(){
   helpPaused=false;
 }
 $('#bHelp').addEventListener('click',showHelp);
-$('#bBack').addEventListener('click',back);
+$('#bBack').addEventListener('click',()=>back());
+// 瀏覽器／手機的「上一頁」：一次退一層（關視窗 → 暫停 → 這款遊戲的開始畫面 → 遊戲區大廳），到大廳之後再按才離開網站
+let popSkip=0;
+function pushGuard(){ if(cur&&!(history.state&&history.state.arc)) try{ history.pushState({arc:1},''); }catch(e){} }
+function backStep(){
+  if(!modal.hidden){ const b=$('#hOk')||$('#sndOk')||$('#pCancel'); if(b) b.click(); else modal.hidden=true; return; }
+  if(!cur||state==='hub') return;
+  if(state==='running'||state==='paused'||state==='coin'||state==='over'||state==='loading'){
+    if(Net.peer){ if(confirm('要離開連線遊戲嗎？')) back(true); return; }
+    if(state==='running'){ togglePause(); return; }
+    toGameLobby(); return; }
+  for(const id of ['spBack','lkOk','nLeave','nBack']){ const b=$('#'+id); if(b&&!ov.hidden&&b.offsetParent!==null){ b.click(); return; } }
+  back(true);
+}
+addEventListener('popstate',()=>{ if(popSkip>0){ popSkip--; return; } backStep(); if(cur&&state!=='hub') pushGuard(); });
+try{ if(history.state&&history.state.arc) history.replaceState(null,''); }catch(e){}
 $('#play').addEventListener('contextmenu',e=>{ if(isTouch) e.preventDefault(); }); // 手機長按不要跳出選單
 $('#bPause').addEventListener('click',togglePause);
 // 聲音設定：全部靜音、音樂音量、音效音量；遊戲中打開會先暫停（和「遊戲操作」一樣）
