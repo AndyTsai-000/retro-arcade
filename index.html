@@ -148,6 +148,9 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .sgSplit .lkL{position:static}
 .sgSplit .lklist .chips{justify-content:flex-start;padding:6px 0}
 .sgSplit .lklist .help{margin:6px 0}
+.sndRow{display:grid;grid-template-columns:5.5em 1fr 2.5em;align-items:center;gap:10px;margin:12px 0;text-align:left}
+.sndRow input{width:100%;accent-color:var(--y,#ffd23f)}.sndRow b{text-align:right}
+.sndMute{justify-content:center;margin:6px 0 10px}.sndTip{color:var(--dim);font-size:13px}
 .sgGoal{text-align:left;margin:6px 0 4px;color:var(--dim);font-size:14px;line-height:1.6}
 .stars{color:var(--yellow);letter-spacing:.05em}.chip.sel .stars{color:#7a3d00}
 .who{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;counter-reset:w}
@@ -224,7 +227,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
     <button class="btn" id="bFull" hidden>全螢幕</button>
     <button class="btn" id="bHelp"><span class="lg">遊戲</span>操作</button>
     <button class="btn" id="bPause">暫停</button>
-    <button class="btn" id="bMute">聲音：開</button>
+    <button class="btn" id="bMute">聲音設定</button>
   </div>
   <div id="wrap">
     <div id="stage"></div>
@@ -236,7 +239,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=122; // 每次改版加一
+window.ARCADE_V=123; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -260,9 +263,13 @@ function loadScript(src){
 }
 
 /* ---------- 聲音 ---------- */
-let AC=null,master=null,muted=load('arcade.mute')==='1';
+let AC=null,master=null,sfxBus=null,musBus=null,muted=load('arcade.mute')==='1';
+const volOf=(k,d)=>{ const v=parseInt(load(k),10); return isNaN(v)?d:Math.max(0,Math.min(100,v)); };
+let musVol=volOf('arcade.vol.music',70),sfxVol=volOf('arcade.vol.sfx',80); // 0～100
+function applyVol(){ if(!AC) return; master.gain.value=muted?0:1; sfxBus.gain.value=sfxVol/80; musBus.gain.value=musVol/70; }
 function audio(){
-  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=muted?0:1;master.connect(AC.destination);}catch(e){AC=null;}}
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.connect(AC.destination);
+    sfxBus=AC.createGain(); sfxBus.connect(master); musBus=AC.createGain(); musBus.connect(master); applyVol();}catch(e){AC=null;}}
   if(AC&&AC.state==='suspended') AC.resume();
   return AC;
 }
@@ -271,12 +278,12 @@ function tone(f,d,type,v,slide,delay){
   o.type=type||'square'; o.frequency.setValueAtTime(f,t);
   if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);
   g.gain.setValueAtTime(v||.06,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-  o.connect(g); g.connect(master); o.start(t); o.stop(t+d+.02);
+  o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t+d+.02);
 }
 function noise(d,v,delay){
   if(!AC) return; const n=Math.floor(AC.sampleRate*d),buf=AC.createBuffer(1,n,AC.sampleRate),a=buf.getChannelData(0);
   for(let i=0;i<n;i++) a[i]=(Math.random()*2-1)*(1-i/n);
-  const s=AC.createBufferSource(),g=AC.createGain(); s.buffer=buf; g.gain.value=v||.12; s.connect(g); g.connect(master); s.start(AC.currentTime+(delay||0));
+  const s=AC.createBufferSource(),g=AC.createGain(); s.buffer=buf; g.gain.value=v||.12; s.connect(g); g.connect(sfxBus); s.start(AC.currentTime+(delay||0));
 }
 const SFX={
   click(){tone(660,.05,'square',.04);},
@@ -393,13 +400,13 @@ const Music=(()=>{
   return { set(k){ // k＝'menu:遊戲代號'、'game:遊戲代號' 或 null
       if(k===key) return; key=k; fadeOut(); clearInterval(timer); timer=null; song=null; if(!k||!AC) return;
       const [kind,id]=k.split(':'),spec=SONGS[id]&&SONGS[id][kind]; if(!spec) return;
-      song=cache[k]||(cache[k]=compose(id,kind,spec)); bus=AC.createGain(); bus.gain.setValueAtTime(0,AC.currentTime); bus.gain.linearRampToValueAtTime(kind==='menu'?.34:.2,AC.currentTime+.6); bus.connect(master);
+      song=cache[k]||(cache[k]=compose(id,kind,spec)); bus=AC.createGain(); bus.gain.setValueAtTime(0,AC.currentTime); bus.gain.linearRampToValueAtTime(kind==='menu'?.34:.2,AC.currentTime+.6); bus.connect(musBus);
       step=0; nextT=AC.currentTime+.1; tick(); timer=setInterval(tick,90); },
     get key(){ return key; } };
 })();
 // 依目前畫面決定放哪一首：大廳不放、遊戲選單放選單曲、遊戲中放遊戲曲、暫停或結算時停
 function musicWant(){
-  if(!AC||muted||document.hidden||!cur||!cur.id) return null;
+  if(!AC||muted||!musVol||document.hidden||!cur||!cur.id) return null;
   if(state==='running'||state==='coin') return 'game:'+cur.id;
   if(state==='ready'&&!$('#play').hidden) return 'menu:'+cur.id;
   return null; }
@@ -493,7 +500,7 @@ const env={
   stage,keys,touch:isTouch,
   hit:c=>!!hits[c],
   sfx:n=>{ if(SFX[n]) SFX[n](); },
-  audio:()=>AC, out:()=>master,
+  audio:()=>AC, out:()=>sfxBus,
   canvas2d(w,h){ const c=document.createElement('canvas'),S=2; c.width=w*S;c.height=h*S;c.className='fit';stage.appendChild(c);
     const ctx=c.getContext('2d'); ctx.scale(S,S); return {canvas:c,ctx}; },
   end(res){ finish(res); }
@@ -831,8 +838,26 @@ $('#bHelp').addEventListener('click',showHelp);
 $('#bBack').addEventListener('click',back);
 $('#play').addEventListener('contextmenu',e=>{ if(isTouch) e.preventDefault(); }); // 手機長按不要跳出選單
 $('#bPause').addEventListener('click',togglePause);
-function muteLabel(){ $('#bMute').textContent='聲音：'+(muted?'關':'開'); }
-$('#bMute').addEventListener('click',()=>{ muted=!muted; save('arcade.mute',muted?'1':'0'); audio(); if(master) master.gain.value=muted?0:1; muteLabel(); });
+// 聲音設定：全部靜音、音樂音量、音效音量；遊戲中打開會先暫停（和「遊戲操作」一樣）
+function muteLabel(){ $('#bMute').textContent=muted?'聲音設定（靜音）':'聲音設定'; }
+function showSound(){
+  audio(); SFX.click();
+  if(state==='running'&&!Net.peer){ state='paused'; helpPaused=true; if(inst&&inst.pause) inst.pause(true); }
+  const row=(id,label,v)=>'<div class="sndRow"><span>'+label+'</span><input type="range" min="0" max="100" step="5" id="'+id+'" value="'+v+'"><b id="'+id+'V">'+v+'</b></div>';
+  mcard.innerHTML='<h3>聲音設定</h3><div class="chips sndMute"><button class="chip'+(muted?'':' sel')+'" data-snd="on">有聲音</button><button class="chip'+(muted?' sel':'')+'" data-snd="off">全部靜音</button></div>'+
+    row('vMus','背景音樂',musVol)+row('vSfx','遊戲音效',sfxVol)+
+    '<p class="sndTip">音量拉到 0 就是只關掉那一種。設定會自動記住。</p><div class="row"><button class="btn" id="sndTest">試聽音效</button><button class="btn main" id="sndOk">'+(helpPaused?'繼續遊戲':'完成')+'</button></div>';
+  modal.hidden=false;
+  mcard.querySelectorAll('[data-snd]').forEach(b=>b.addEventListener('click',()=>{ muted=b.dataset.snd==='off'; save('arcade.mute',muted?'1':'0'); applyVol(); muteLabel();
+    mcard.querySelectorAll('[data-snd]').forEach(x=>x.classList.toggle('sel',x===b)); if(!muted) SFX.item(); }));
+  const bindR=(id,set)=>{ const r=$('#'+id); r.addEventListener('input',()=>{ set(+r.value); $('#'+id+'V').textContent=r.value; applyVol(); }); };
+  bindR('vMus',v=>{ musVol=v; save('arcade.vol.music',v); });
+  bindR('vSfx',v=>{ sfxVol=v; save('arcade.vol.sfx',v); });
+  $('#vSfx').addEventListener('change',()=>SFX.item());
+  $('#sndTest').addEventListener('click',()=>{ SFX.item(); SFX.win(); });
+  $('#sndOk').addEventListener('click',closeHelp); $('#sndOk').focus();
+}
+$('#bMute').addEventListener('click',showSound);
 muteLabel();
 // 手機：方向鍵要放左邊還是右邊，記在這台裝置
 { const sb=$('#bSide'); let sw=load('arcade.padSide')==='right'; const show=()=>{ document.body.classList.toggle('padswap',sw); sb.textContent='方向鍵：'+(sw?'右':'左'); };
