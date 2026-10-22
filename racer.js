@@ -473,8 +473,8 @@ function makeCreate(G){ return function create(env,opts){
   function obstacleHits(k,z0,z1){ const i0=Math.floor(z0/SEGL)-1,i1=Math.floor(z1/SEGL)+1;
     for(let i=Math.max(0,i0);i<=Math.min(C.n-1,i1);i++){ const s=C.segs[i]; for(const ob of s.obs){ const oz=i*SEGL+ob.dz; if(oz<z0-80||oz>z1+80) continue;
         if(Math.abs((k.x-ob.x)*ROADW)>(ob.hw!=null?ob.hw:ob.ww*.5)+P.ww*.45) continue;
-        if(ob.gone&&ob.gone(k.i)) continue; G.onObs(k,ob,api); } } }
-  function crash(k,sec,msg){ if(k.crashT>0) return; k.crashT=sec; k.v*=.25; k.boostT=0; k.vx=0; if(k.local){ env.sfx('hurt'); if(msg) toast(k,msg); } }
+        if(ob.gone&&ob.gone(k.i)) continue; if(k.ghost>0&&!ob.good) continue; G.onObs(k,ob,api); } } }
+  function crash(k,sec,msg){ if(k.crashT>0) return; k.crashT=sec; k.ghost=sec+.8; /* 撞完有一小段時間可以穿過障礙，不會卡在路障前面一直撞 */ k.v*=.25; k.boostT=0; k.vx=0; if(k.local){ env.sfx('hurt'); if(msg) toast(k,msg); } }
   const api={crash,toast,boost:(k,s)=>{ k.boostT=Math.max(k.boostT,s); if(k.local) env.sfx('boost'); },sfx:n=>env.sfx(n),get t(){ return t; },C,P};
   // 機車的車流：位置只看比賽時間（連線大家一樣）
   const traffic=G.traffic?G.traffic(C,rng(G.id+si+'tr')):[];
@@ -484,7 +484,7 @@ function makeCreate(G){ return function create(env,opts){
       if(tt<ch.t+ch.d){ const u=(tt-ch.t)/ch.d; x=ch.from+(ch.to-ch.from)*u*u*(3-2*u); blink=Math.sign(ch.to-ch.from); dest=ch.to; break; } x=ch.to; dest=ch.to; }
     car.x=x; car.blink=blink; car.dest=dest; }
   function drive(k,inp,dt){
-    const s=segAt(C,k.z),sp=k.v/P.max,z0=k.z;
+    const s=segAt(C,k.z),sp=k.v/P.max,z0=k.z; if(k.ghost>0) k.ghost-=dt;
     if(k.crashT>0){ k.crashT-=dt; inp={steer:0,gas:false,brake:false}; k.v*=Math.exp(-2*dt); }
     // 轉向與離心力
     const air=k.airY>0;
@@ -506,12 +506,12 @@ function makeCreate(G){ return function create(env,opts){
     if(Math.abs(k.x)>P.wall){ k.x=Math.sign(k.x)*P.wall; k.vx=0; if(k.v>P.max*.3){ k.v*=.92; if(k.local&&!k.wallHit) env.sfx('bump'); } k.wallHit=true; } else k.wallHit=false;
     if(k.crashT<=0) obstacleHits(k,z0,k.z);
     // 車流
-    if(traffic.length&&k.crashT<=0) for(const car of traffic){ const cz=carZ(car,t),dz=cz-k.z; if(dz<-500||dz>500) { if(car.near&&car.near.has(k.i)&&dz<-500){ car.near.delete(k.i); if(G.nearMiss) G.nearMiss(k,api); } continue; }
+    if(traffic.length&&k.crashT<=0&&!(k.ghost>0)) for(const car of traffic){ const cz=carZ(car,t),dz=cz-k.z; if(dz<-500||dz>500) { if(car.near&&car.near.has(k.i)&&dz<-500){ car.near.delete(k.i); if(G.nearMiss) G.nearMiss(k,api); } continue; }
       const dxw=Math.abs((k.x-car.x)*ROADW); if(dxw<car.ww*.45+P.ww*.4&&Math.abs(dz)<330){ crash(k,1.4,'撞車了！'); k.z=Math.min(k.z,cz-340); if(car.near) car.near.delete(k.i); }
       else if(dxw<car.ww*.5+P.ww*.5+380&&Math.abs(dz)<200){ (car.near=car.near||new Set()).add(k.i); } }
     k.bx-=s.curve*sp*dt*90;
     if(k.fin==null&&k.z>=C.finish*SEGL){ k.fin=t; if(k.local) env.sfx('win'); }
-    k.flags=(k.crashT>0?1:0)|(k.boostT>0?2:0)|(k.slideT>0?4:0);
+    k.flags=(k.crashT>0?1:0)|(k.boostT>0?2:0)|(k.slideT>0?4:0)|(k.ghost>0?8:0);
   }
   // 電腦：照技術開，看前面障礙物換線，跑步的會跳和滑
   function aiInput(k){ const a=k.ai,s=segAt(C,k.z),inp={steer:0,gas:true,brake:false,jump:false,slide:false,use:false,max:1};
@@ -565,6 +565,7 @@ function makeCreate(G){ return function create(env,opts){
     for(const k of ks){ if(k.left) continue;
       if(k.remote){ k.tz+=k.v*dt; const f=Math.min(1,dt*10); k.z+=(k.tz-k.z)*f; k.x+=(k.tx-k.x)*f; continue; }
       if(k.auto&&!k.ai) k.ai={lane:0,skill:.97,nt:0}; let inp=k.ai?aiInput(k):humanInput(k);
+      if(k.local&&!k.ai&&k.fin==null&&(local2?env.hit(k.i===0?'KeyR':'KeyP'):env.hit('KeyR'))){ k.x=0; k.vx=0; k.crashT=0; k.ghost=1.5; k.airY=0; k.vy=0; k.v=Math.max(k.v,P.max*.25); toast(k,'回到路中央'); env.sfx('item'); }
       if(k.fin!=null){ inp={steer:0,gas:false,brake:!G.down,max:1}; if(G.down) k.v*=Math.exp(-1.5*dt); }
       drive(k,inp,dt); }
     for(let a=0;a<NK;a++) for(let b=a+1;b<NK;b++){ const A=ks[a],B=ks[b]; if(A.left||B.left||A.remote&&B.remote) continue; const dz=B.z-A.z,dxw=(B.x-A.x)*ROADW; if(Math.abs(dz)<220&&Math.abs(dxw)<P.ww*.9){ const push=(P.ww*.9-Math.abs(dxw))/ROADW*.5*Math.sign(dxw||1); if(!A.remote) A.x-=push; if(!B.remote) B.x+=push; } }
@@ -577,7 +578,7 @@ function makeCreate(G){ return function create(env,opts){
   }
   // 每段要畫的動態物件：選手、車流
   function itemsFor(view){ const items={},add=(z,it)=>{ const i=Math.floor(z/SEGL); it.f=(z-i*SEGL)/SEGL; (items[i]=items[i]||[]).push(it); };
-    for(const k of ks){ if(k.left) continue; const mine=k===view; add(k.z,{x:k.x,ww:P.ww,air:k.airY,d:(px,py,w)=>{ G.drawBack(c,px,py,w,{look:k.look,lean:k.lean,crash:k.flags&1,boost:k.flags&2,slide:k.flags&4,night:TH.night,spd:k.v/P.max,num:k.i+1,air:0,col:COLORS[k.i%6]},t+k.i);
+    for(const k of ks){ if(k.left) continue; const mine=k===view; add(k.z,{x:k.x,ww:P.ww,air:k.airY,d:(px,py,w)=>{ const gh=(k.flags&8)&&Math.floor(t*10)%2; if(gh) c.globalAlpha=.45; G.drawBack(c,px,py,w,{look:k.look,lean:k.lean,crash:k.flags&1,boost:k.flags&2,slide:k.flags&4,night:TH.night,spd:k.v/P.max,num:k.i+1,air:0,col:COLORS[k.i%6]},t+k.i); c.globalAlpha=1;
       if(!mine||t<3){ c.font='900 '+Math.max(9,Math.min(16,w*.13))+'px '+TC; c.textAlign='center'; c.textBaseline='bottom'; const tc=k.team!=null?TEAMS[k.team].col:'#fff'; c.lineWidth=3; c.strokeStyle='#0b0a1c'; const nm=mine?(local2?(k.i+1)+'P':'你'):k.name;
         if(w>18){ c.strokeText(nm,px,py-w*G.tagH); c.fillStyle=mine?'#ffd23f':tc; c.fillText(nm,px,py-w*G.tagH); } } }}); }
     for(const car of traffic){ const z=carZ(car,t); if(z<0||z>C.n*SEGL) continue; add(z,{x:car.x,ww:car.ww,d:(px,py,w)=>OBS.car.d(c,px,py,w,TH,t,car)}); }
@@ -798,7 +799,7 @@ function register(G){
     name:G.name,tag:{moto:'MOTO RACE',sled:'SNOW SLED',jet:'JET SKI',run:'ANIMAL RUN'}[G.id],color:{moto:'#ff6a3d',sled:'#7ac4f4',jet:'#3a9ad8',run:'#ff8ac0'}[G.id],online:true,maxPlayers:6,bots:true,
     desc:G.desc,goal:G.goal,stages:G.stages.map(s=>s.name),stars:G.stages.map(s=>s.stars),
     options:[{key:'team',label:'雙人／連線玩法',def:'ffa',opts:[{id:'ffa',label:'各自分開'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],
-    modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],help:G.help,touchHelp:G.touchHelp,touch:G.touch,looks:G.looks,
+    modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],help:G.help.concat([['R','卡住或跑偏時回到路中央（雙人 1P 按 R、2P 按 P）']]),touchHelp:G.touchHelp.concat([['回正','卡住或跑偏時回到路中央']]),touch:{left:G.touch.left,right:G.touch.right.concat([{l:'回正',c:'KeyR'}])},looks:G.looks,
     best:{label:'最快紀錄',fmt:v=>fmtTime(v),lower:true},
     stageBest:i=>{ const v=getRec(i); return v==null?'':fmtTime(v); },
     hubBest:()=>{ let i=0; try{ i=Math.max(0,G.stages.findIndex(s=>s.name===localStorage.getItem('arcade.'+G.id+'.last'))); }catch(e){} const v=getRec(i); return v==null?'尚無紀錄':'最快紀錄 <b>'+G.stages[i].name+' '+fmtTime(v)+'</b>'; },
