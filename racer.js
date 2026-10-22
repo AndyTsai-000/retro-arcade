@@ -483,6 +483,12 @@ function makeCreate(G){ return function create(env,opts){
     for(const ch of car.ch){ if(tt<ch.t-1) break; if(tt<ch.t){ blink=Math.sign(ch.to-ch.from); dest=ch.to; x=ch.from; break; }
       if(tt<ch.t+ch.d){ const u=(tt-ch.t)/ch.d; x=ch.from+(ch.to-ch.from)*u*u*(3-2*u); blink=Math.sign(ch.to-ch.from); dest=ch.to; break; } x=ch.to; dest=ch.to; }
     car.x=x; car.blink=blink; car.dest=dest; }
+  // 回到路中央：挑前面一段沒有路障、車子的車道
+  function safeLane(k){ const zi=Math.floor(k.z/SEGL); let best=0,bs=-1;
+    for(const L of [0,-.6,.6]){ let near=99; for(let j=0;j<20;j++){ const s2=C.segs[Math.min(C.n-1,zi+j)]; for(const ob of s2.obs) if(!ob.good&&Math.abs((L-ob.x)*ROADW)<(ob.hw!=null?ob.hw:ob.ww*.5)+P.ww) near=Math.min(near,j); }
+      for(const car of traffic){ const dz=(carZ(car,t)-k.z)/SEGL; if(dz>-3&&dz<20&&Math.abs((L-car.x)*ROADW)<car.ww*.5+P.ww) near=Math.min(near,Math.max(0,dz)); }
+      if(near>bs){ bs=near; best=L; } }
+    return best; }
   function drive(k,inp,dt){
     const s=segAt(C,k.z),sp=k.v/P.max,z0=k.z; if(k.ghost>0) k.ghost-=dt;
     if(k.crashT>0){ k.crashT-=dt; inp={steer:0,gas:false,brake:false}; k.v*=Math.exp(-2*dt); }
@@ -565,7 +571,7 @@ function makeCreate(G){ return function create(env,opts){
     for(const k of ks){ if(k.left) continue;
       if(k.remote){ k.tz+=k.v*dt; const f=Math.min(1,dt*10); k.z+=(k.tz-k.z)*f; k.x+=(k.tx-k.x)*f; continue; }
       if(k.auto&&!k.ai) k.ai={lane:0,skill:.97,nt:0}; let inp=k.ai?aiInput(k):humanInput(k);
-      if(k.local&&!k.ai&&k.fin==null&&(local2?env.hit(k.i===0?'KeyR':'KeyP'):env.hit('KeyR'))){ k.x=0; k.vx=0; k.crashT=0; k.ghost=1.5; k.airY=0; k.vy=0; k.v=Math.max(k.v,P.max*.25); toast(k,'回到路中央'); env.sfx('item'); }
+      if(k.local&&!k.ai&&k.fin==null&&(local2?env.hit(k.i===0?'KeyR':'Backspace'):env.hit('KeyR')||env.hit('Backspace'))){ k.x=safeLane(k); k.vx=0; k.crashT=0; k.ghost=1.5; k.airY=0; k.vy=0; k.v=Math.max(k.v,P.max*.25); toast(k,'回到路中央！'); env.sfx('item'); }
       if(k.fin!=null){ inp={steer:0,gas:false,brake:!G.down,max:1}; if(G.down) k.v*=Math.exp(-1.5*dt); }
       drive(k,inp,dt); }
     for(let a=0;a<NK;a++) for(let b=a+1;b<NK;b++){ const A=ks[a],B=ks[b]; if(A.left||B.left||A.remote&&B.remote) continue; const dz=B.z-A.z,dxw=(B.x-A.x)*ROADW; if(Math.abs(dz)<220&&Math.abs(dxw)<P.ww*.9){ const push=(P.ww*.9-Math.abs(dxw))/ROADW*.5*Math.sign(dxw||1); if(!A.remote) A.x-=push; if(!B.remote) B.x+=push; } }
@@ -799,7 +805,7 @@ function register(G){
     name:G.name,tag:{moto:'MOTO RACE',sled:'SNOW SLED',jet:'JET SKI',run:'ANIMAL RUN'}[G.id],color:{moto:'#ff6a3d',sled:'#7ac4f4',jet:'#3a9ad8',run:'#ff8ac0'}[G.id],online:true,maxPlayers:6,bots:true,
     desc:G.desc,goal:G.goal,stages:G.stages.map(s=>s.name),stars:G.stages.map(s=>s.stars),
     options:[{key:'team',label:'雙人／連線玩法',def:'ffa',opts:[{id:'ffa',label:'各自分開'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],
-    modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],help:G.help.concat([['R','卡住或跑偏時回到路中央（雙人 1P 按 R、2P 按 P）']]),touchHelp:G.touchHelp.concat([['回正','卡住或跑偏時回到路中央']]),touch:{left:G.touch.left,right:G.touch.right.concat([{l:'回正',c:'KeyR'}])},looks:G.looks,
+    modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],help:G.help.concat([['R','卡住或跑偏時回到路中央（雙人 1P 按 R、2P 按 Backspace）']]),touchHelp:G.touchHelp.concat([['回正','卡住或跑偏時回到路中央']]),touch:{left:G.touch.left,right:G.touch.right.concat([{l:'回正',c:'KeyR'}])},looks:G.looks,
     best:{label:'最快紀錄',fmt:v=>fmtTime(v),lower:true},
     stageBest:i=>{ const v=getRec(i); return v==null?'':fmtTime(v); },
     hubBest:()=>{ let i=0; try{ i=Math.max(0,G.stages.findIndex(s=>s.name===localStorage.getItem('arcade.'+G.id+'.last'))); }catch(e){} const v=getRec(i); return v==null?'尚無紀錄':'最快紀錄 <b>'+G.stages[i].name+' '+fmtTime(v)+'</b>'; },
