@@ -21,7 +21,7 @@ const BOTLOOK=i=>({char:['cat','bunny','chef','pirate','ninja','crown','bow','ca
 // 名單、分隊（各自分開／分隊對戰／玩家對決／玩家同隊打電腦，最多 4 人）
 function roster(opts){ const net=opts.net,local2=!net&&opts.mode==='2p',humans=net?net.count:local2?2:1;
   let mode=(opts.options&&opts.options.team)||'ffa'; if(!net&&!local2) mode='ffa'; if(mode==='coop'&&humans>2) mode='vs';
-  let n=net?Math.min(4,net.count+(net.bots||0)):4;
+  let n=net?Math.min(4,net.count+(net.bots||0)):clamp(+(opts.options&&opts.options.seats)||4,2,4); // 單機可以選 2～4 人
   if(mode==='coop') n=humans*2; else if(mode==='pvp') n=Math.max(2,humans+humans%2); else if(mode==='vs'&&n%2) n=Math.min(4,n+1);
   n=clamp(Math.max(n,humans),2,4);
   const TEAMS=mode==='coop'?[{name:'玩家隊',col:'#ffd23f'},{name:'電腦隊',col:'#a8adc0'}]:[{name:'紅隊',col:'#ff5d5d'},{name:'藍隊',col:'#4f9dff'}];
@@ -29,10 +29,10 @@ function roster(opts){ const net=opts.net,local2=!net&&opts.mode==='2p',humans=n
   const names=[],looks=[]; for(let i=0;i<n;i++){ const h=i<humans; names.push(h?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1));
     const L=h?(net?net.looks&&net.looks[i]:i===0?opts.look:null):null; looks.push(L&&Object.keys(L).length?L:h?{char:'cap',color:'auto'}:BOTLOOK(i)); }
   return {net,local2,humans,mode,n,team,TEAMS,names,looks,host:!net||net.host,me:net?net.me:0}; }
-function readInput(env,i,local2){ const K=env.keys,h=c=>env.hit(c); let L,R,U,D,J,A,S;
+function readInput(env,i,local2,spaceAtk){ const K=env.keys,h=c=>env.hit(c); let L,R,U,D,J,A,S;
   if(local2&&i===0){ L=K.KeyA; R=K.KeyD; U=K.KeyW; D=K.KeyS; J=h('KeyW'); A=h('KeyF'); S=h('KeyG'); }
   else if(local2){ L=K.ArrowLeft; R=K.ArrowRight; U=K.ArrowUp; D=K.ArrowDown; J=h('ArrowUp'); A=h('Comma')||h('KeyK'); S=h('Period')||h('KeyL'); }
-  else { L=K.ArrowLeft; R=K.ArrowRight; U=K.ArrowUp; D=K.ArrowDown; J=h('ArrowUp')||h('Space'); A=h('KeyX')||h('KeyJ'); S=h('KeyC')||h('KeyK'); }
+  else { L=K.ArrowLeft; R=K.ArrowRight; U=K.ArrowUp; D=K.ArrowDown; J=h('ArrowUp')||(!spaceAtk&&h('Space')); A=h('KeyX')||h('KeyJ')||(spaceAtk&&h('Space')); S=h('KeyC')||h('KeyK'); }
   return {mx:(R?1:0)-(L?1:0),my:(D?1:0)-(U?1:0),jump:!!J,atk:!!A,sp:!!S,down:!!D}; }
 const NOIN={mx:0,my:0,jump:false,atk:false,sp:false,down:false};
 // 開場：大箭頭標出自己
@@ -78,7 +78,7 @@ const ISLE_TH={grass:{sky:['#7ac8ff','#e0f4ff'],top:'#5fbf4a',dirt:'#8a6040',pla
   rainbow:{sky:['#120c30','#3a2a6a'],top:'#ff8ad0',dirt:'#7a5aff',plat:'#ffd23f',stars:1}};
 // 招式：持續時間、命中時段、判定框（以面向為準的 x 範圍、y 範圍，腳底為 0）、傷害、基礎擊退、成長、角度
 const MOVES={
-  jab:{dur:.26,a:.05,b:.14,box:[10,46,-46,-14],dmg:3,kb:110,gr:.55,ang:30},
+  jab:{dur:.22,a:.04,b:.12,box:[10,46,-46,-14],dmg:3,kb:110,gr:.55,ang:30},
   jab3:{dur:.36,a:.08,b:.18,box:[10,52,-48,-12],dmg:6,kb:200,gr:1.1,ang:38},
   air:{dur:.36,a:.07,b:.22,box:[-14,46,-48,4],dmg:7,kb:190,gr:1.15,ang:40},
   smash:{dur:.62,a:.3,b:.42,box:[8,64,-50,-8],dmg:14,kb:320,gr:2.3,ang:35},
@@ -123,13 +123,17 @@ function createIsle(env,opts){
       const run=f.ground?(ice?1.4:9):4.5,top=f.atk&&f.ground?60:300;
       if(!f.shield) f.vx+=(inp.mx*top-f.vx)*Math.min(1,run*dt); else f.vx*=Math.exp(-10*dt);
       if(inp.mx&&!f.atk) f.face=inp.mx;
-      if(inp.jump&&!f.shield&&!(f.atk&&f.atk.k==='smash')){ if(f.ground){ f.vy=-720*(ST.hz==='lowg'?.85:1); f.ground=false; snd('spring'); } else if(f.jumps>0){ f.jumps--; f.vy=-640*(ST.hz==='lowg'?.85:1); fx('puff',f.x,f.y); snd('spring'); } }
+      // 按鍵緩衝：早按 0.25 秒內也算，能動的那一刻馬上執行（按了比較靈敏）
+      if(inp.jump) f.bj=.25; if(inp.atk) f.ba=.25; if(inp.sp) f.bs=.25; f.bj=(f.bj||0)-dt; f.ba=(f.ba||0)-dt; f.bs=(f.bs||0)-dt;
+      if(f.bj>0&&!f.shield&&!(f.atk&&f.atk.k==='smash')&&(f.ground||f.jumps>0)){ f.bj=0; if(f.ground){ f.vy=-720*(ST.hz==='lowg'?.85:1); f.ground=false; snd('spring'); } else if(f.jumps>0){ f.jumps--; f.vy=-640*(ST.hz==='lowg'?.85:1); fx('puff',f.x,f.y); snd('spring'); } }
       const onP=f.ground?onPlat(f,P):null; // 薄平台上按 ↓ 穿下去；主島上按 ↓ 是防禦
       if(inp.down&&onP&&!onP.main&&!inp.atk&&!inp.sp){ f.drop=.3; f.ground=false; f.y+=3; }
       f.shield=inp.down&&f.ground&&onP&&onP.main&&!f.atk&&f.shp>.05;
       if(!f.shield&&f.shp<1) f.shp=Math.min(1,f.shp+dt*.12);
       if(inp.down&&!f.ground&&f.vy>-60&&!f.atk) f.vy=Math.max(f.vy,780);
-      if(inp.atk||inp.sp) startAtk(f,inp);
+      if((f.ba>0||f.bs>0)&&!f.atk&&f.cd<=0){ const offStage=(f.x<P[0].x-4||f.x>P[0].x+P[0].w+4||f.y>MAINY+8)&&!f.ground;
+        const want=Object.assign({},inp,{atk:f.ba>0&&!(f.bs>0),sp:f.bs>0}); if(want.sp&&offStage&&!f.upUsed) want.my=-1; // 被打飛在場外按必殺：自動往上衝回場
+        const had=f.item; startAtk(f,want); if(f.atk||f.item!==had){ f.ba=0; f.bs=0; } }
     }
     // 攻擊進行
     if(f.atk){ const M=MOVES[f.atk.k]; f.atk.t+=dt;
@@ -370,7 +374,7 @@ function createPillow(env,opts){
     b.vx=dx/d*kn*boost*dz; b.vy=dy/d*kn*boost*dz; b.stun=.35; b.inv=.9; /* 被打中後短暫無敵，不會被連續狂打 */ b.hits++; b.hs++; a.score+=pts; let msg='+'+pts;
     if(b.hits>=3&&b.dizzy<=0){ b.dizzy=1.7; b.hits=0; a.score+=2; msg='+'+(pts+2)+' 暈了！'; snd('boom'); } else snd('hurt');
     fx('hit',b.x,b.y-20,{s:msg}); featherBurst(b.x,b.y-18,kind==='bomb'?18:10); if(host&&net) ev.push(['fe',R1(b.x),R1(b.y-18),kind==='bomb'?18:10]); }
-  function swing(f){ if(f.cd>0||f.stun>0||f.dizzy>0||f.fall>0) return; f.swing=.28; f.cd=.6; f.didHit=false; snd('click'); }
+  function swing(f){ if(f.cd>0||f.stun>0||f.dizzy>0||f.fall>0) return; f.swing=.28; f.cd=.45; f.didHit=false; snd('click'); }
   function throwP(f){ if(f.cd>0||f.stun>0||f.dizzy>0||f.fall>0) return;
     if(f.bomb){ f.bomb=false; proj.push({id:nextId++,k:'fbomb',x:f.x+f.fx*24,y:f.y+f.fy*24,vx:0,vy:0,own:f.i,t:0}); f.cd=.4; snd('place'); return; }
     if(!f.pillow) return; f.pillow=false; const d=Math.hypot(f.fx,f.fy)||1; proj.push({id:nextId++,k:'pillow',x:f.x+f.fx/d*18,y:f.y-14+f.fy/d*18,vx:f.fx/d*600,vy:f.fy/d*600,own:f.i,t:0,big:f.big>0}); f.cd=.35; snd('place'); }
@@ -384,7 +388,12 @@ function createPillow(env,opts){
     if(mx||my){ if(f.stun<=0&&f.dizzy<=0){ f.fx=mx/l; f.fy=my/l; } f.dir=Math.abs(mx)>Math.abs(my)?(mx<0?2:3):(my<0?0:1); }
     const nx=f.x+f.vx*dt,ny=f.y+f.vy*dt; if(!blocked(nx,f.y,14)) f.x=nx; else f.vx*=-.3; if(!blocked(f.x,ny,14)) f.y=ny; else f.vy*=-.3;
     if(zoneAt(f.x,f.y,'hole')&&!client){ f.fall=1.6; f.score=Math.max(0,f.score-1); f.hs++; fx('txt',f.x,f.y-30,{s:'掉下去了 -1'}); snd('die'); f.pillow=true; return; }
-    if(inp.atk) swing(f); if(inp.sp) throwP(f);
+    if(inp.atk) f.ba=.25; if(inp.sp) f.bs=.25; f.ba=(f.ba||0)-dt; f.bs=(f.bs||0)-dt;
+    if(f.ba>0&&f.cd<=0&&f.stun<=0&&f.dizzy<=0){ // 攻擊鍵：自動轉向最近的對手，近的揮、遠的丟
+      let tg=null,td=1e9; for(const g of F){ if(!foe(f,g)||g.fall>0) continue; const d=Math.hypot(g.x-f.x,g.y-f.y); if(d<td){ td=d; tg=g; } }
+      if(tg&&td<360){ f.fx=(tg.x-f.x)/(td||1); f.fy=(tg.y-f.y)/(td||1); f.dir=Math.abs(f.fx)>Math.abs(f.fy)?(f.fx<0?2:3):(f.fy<0?0:1); }
+      const reach=(f.pillow?(f.big>0?80:54):34)+20; f.ba=0; if(tg&&td>reach&&f.pillow&&td<360) throwP(f); else swing(f); }
+    if(f.bs>0&&f.cd<=0&&f.stun<=0&&f.dizzy<=0){ f.bs=0; if(f.bomb) throwP(f); else if(f.pillow){ throwP(f); } }
     if(f.swing>0){ f.swing-=dt; if(!f.didHit&&f.swing<.18&&!client){ f.didHit=true; const r=f.pillow?(f.big>0?80:54):34;
         for(const g of F){ if(!foe(f,g)||g.fall>0) continue; const dx=g.x-f.x,dy=g.y-f.y,d=Math.hypot(dx,dy); if(d>r+12) continue; if((dx*f.fx+dy*f.fy)/(d||1)<.15&&d>18) continue; hitP(f,g,f.pillow?(f.big>0?520:330):170,f.pillow?1:1,'swing'); } } }
     // 撿地上的枕頭、道具
@@ -440,7 +449,7 @@ function createPillow(env,opts){
     const steps=Math.max(1,Math.ceil(dt/(1/60))),h=dt/steps;
     for(let s=0;s<steps;s++){ t+=h; if(!client) timeLeft-=h;
       for(const f of F){ let inp=NOIN;
-        if(f.local){ inp=readInput(env,local2?f.i:0,local2); if(s>0) inp={...inp,atk:false,sp:false}; if(client){ if(inp.atk) sentHit.a++; if(inp.sp) sentHit.s++; myIn=inp; if(inp.atk&&f.swing<=0&&f.cd<=0&&f.stun<=0&&f.dizzy<=0){ f.swing=.28; f.cd=.42; f.didHit=true; } inp={...inp,atk:false,sp:false}; } }
+        if(f.local){ inp=readInput(env,local2?f.i:0,local2,true); if(s>0) inp={...inp,atk:false,sp:false}; if(client){ if(inp.atk) sentHit.a++; if(inp.sp) sentHit.s++; myIn=inp; if(inp.atk&&f.swing<=0&&f.cd<=0&&f.stun<=0&&f.dizzy<=0){ f.swing=.28; f.cd=.45; f.didHit=true; } inp={...inp,atk:false,sp:false}; } }
         else if(f.remote){ if(client){ f.x+=f.vx*h; f.y+=f.vy*h; continue; } const b=inBuf[f.i]||NOIN; inp={...b,jump:false}; if(inBuf[f.i]) inBuf[f.i].atk=inBuf[f.i].sp=false; }
         else if(f.ai){ if(client){ f.x+=f.vx*h; f.y+=f.vy*h; continue; } inp=aiInput(f,h); }
         stepF(f,inp,h); }
@@ -545,11 +554,11 @@ G.isle={name:'浮島大混戰',tag:'PARTY BRAWL',color:'#ff8a3d',online:true,max
   goal:'把對手打出場外！每被打一下 ％ 會增加，％ 越高飛越遠。被打飛時用二段跳和「↑＋特殊」（往上衝的上勾拳）飛回島上。最後還有命的人（或隊伍）獲勝。',
   stages:ISLE.map(s=>s.name),stars:ISLE.map(s=>s.stars),
   stageGoal:si=>{ const s=ISLE[si],h={lava:'熔岩會定時上漲，要跳到高的平台上。',ice:'地面結冰很滑，不好停。',conveyor:'地面是輸送帶，會把人往一邊送，方向會換。',lowg:'太空低重力，跳得很高、飛得也遠。',cannon:'兩邊會射砲彈過來，碰到會爆炸。',wind:'定時颳強風，把人往一邊吹。'}[s.hz]||''; return s.name+'：把對手打出場外！'+(h?h:'')+(s.plats.some(p=>p[3])?'有會移動的平台。':''); },
-  options:[{key:'stock',label:'每人幾條命',def:'3',opts:[{id:'2',label:'2 條'},{id:'3',label:'3 條'},{id:'5',label:'5 條'}]},{key:'items',label:'道具',def:'on',opts:[{id:'on',label:'有'},{id:'off',label:'沒有'}]},LVOPT,TEAMOPT],
+  options:[{key:'seats',label:'人數',def:'4',opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}]},{key:'stock',label:'每人幾條命',def:'3',opts:[{id:'2',label:'2 條'},{id:'3',label:'3 條'},{id:'5',label:'5 條'}]},{key:'items',label:'道具',def:'on',opts:[{id:'on',label:'有'},{id:'off',label:'沒有'}]},LVOPT,TEAMOPT],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  help:[['← →','移動'],['↑ 或 空白鍵','跳（空中可以再跳一次）'],['↓','地上：防禦／在薄平台上連按跳穿下去；空中：快速落下'],['X','攻擊（地上連按三連擊、空中踢擊；拿著球棒／炸彈時揮棒、丟炸彈）'],['C','特殊：重擊（要蓄一下）；↑＋C 往上衝的上勾拳（回場用）；空中 ↓＋C 往下砸'],['W A S D F G','雙人 1P：F 攻擊、G 特殊'],['↑ ↓ ← → , .','雙人 2P：, 攻擊、. 特殊']],
-  touchHelp:[['方向盤','移動，↓ 防禦'],['跳','跳，空中再按一次二段跳'],['攻擊','連按三連擊、空中踢擊'],['特殊','重擊；按著 ↑ 再按是上勾拳回場']],
-  touch:{left:'dpad',right:[{l:'跳',c:'Space'},{l:'攻擊',c:'KeyX',act:true},{l:'特殊',c:'KeyC'}]},
+  help:[['← →','移動'],['↑ 或 空白鍵','跳（空中可以再跳一次）'],['X','攻擊（連按三連擊；拿到球棒、炸彈會自動揮棒、丟炸彈）'],['C','必殺：大力重擊；被打飛到場外時按 C 會自動往上衝回島上'],['↓','島上：防禦；薄平台上：穿下去'],['W A S D F G','雙人 1P：W 跳、F 攻擊、G 必殺'],['↑ ↓ ← → , .','雙人 2P：↑ 跳、, 攻擊、. 必殺']],
+  touchHelp:[['方向盤','移動，↓ 防禦'],['跳','跳，空中再按一次二段跳'],['攻擊','連按三連擊'],['必殺','大力重擊；被打飛時按這個飛回來']],
+  touch:{left:'dpad',right:[{l:'跳',c:'Space'},{l:'攻擊',c:'KeyX',act:true},{l:'必殺',c:'KeyC'}]},
   get looks(){ return LOOKS(); },
   hubBest:()=>{ const n=ISLE.filter(s=>hasWin('isle',s.name)).length; return n?'贏過 <b>'+n+' / '+ISLE.length+'</b> 座浮島':'尚無紀錄'; },
   stageBest:i=>hasWin('isle',ISLE[i].name)?'★ 贏過':'',
@@ -569,11 +578,11 @@ G.pillow={name:'羽毛枕頭戰',tag:'PILLOW FIGHT',color:'#9ab8ff',online:true,
   stages:PILLOW.map(s=>s.name),stars:PILLOW.map(s=>s.stars),
   stageGoal:si=>{ const s=PILLOW[si],z=new Set((s.zones||[]).map(x=>x[0])),h=[]; if(z.has('tramp')) h.push('彈跳床上跑得快、被打飛得更遠'); if(z.has('ice')) h.push('冰面很滑'); if(z.has('water')) h.push('水裡走得慢'); if(z.has('hole')) h.push('有會掉下去的洞（掉下去扣 1 分）');
     return s.name+'：揮枕頭、丟枕頭，時間內打中最多下的人贏。'+(h.length?h.join('，')+'。':''); },
-  options:[{key:'ptime',label:'時間',def:'90',opts:[{id:'60',label:'60 秒'},{id:'90',label:'90 秒'},{id:'120',label:'120 秒'}]},LVOPT,TEAMOPT],
+  options:[{key:'seats',label:'人數',def:'4',opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}]},{key:'ptime',label:'時間',def:'90',opts:[{id:'60',label:'60 秒'},{id:'90',label:'90 秒'},{id:'120',label:'120 秒'}]},LVOPT,TEAMOPT],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  help:[['↑ ↓ ← →','移動'],['X','揮枕頭（沒枕頭時推人）'],['C','丟枕頭；拿著羽毛炸彈時放下炸彈'],['W A S D F G','雙人 1P：F 揮、G 丟'],['↑ ↓ ← → , .','雙人 2P：, 揮、. 丟']],
-  touchHelp:[['方向盤','移動'],['揮','揮枕頭'],['丟','丟枕頭、放羽毛炸彈']],
-  touch:{left:'dpad',right:[{l:'揮',c:'KeyX',act:true},{l:'丟',c:'KeyC'}]},
+  help:[['↑ ↓ ← →','移動'],['X 或 空白鍵','攻擊：會自動對準最近的對手，靠近時揮枕頭、離遠時丟枕頭'],['C','放羽毛炸彈（撿到時）；沒有炸彈時是丟枕頭'],['W A S D F G','雙人 1P：F 攻擊、G 炸彈'],['↑ ↓ ← → , .','雙人 2P：, 攻擊、. 炸彈']],
+  touchHelp:[['方向盤','移動'],['攻擊','自動對準最近的對手：近的揮、遠的丟'],['炸彈','放羽毛炸彈（撿到時）']],
+  touch:{left:'dpad',right:[{l:'攻擊',c:'KeyX',act:true},{l:'炸彈',c:'KeyC'}]},
   get looks(){ return LOOKS(); },
   hubBest:()=>{ const n=PILLOW.filter(s=>hasWin('pillow',s.name)).length; return n?'贏過 <b>'+n+' / '+PILLOW.length+'</b> 個房間':'尚無紀錄'; },
   stageBest:i=>hasWin('pillow',PILLOW[i].name)?'★ 贏過':'',
