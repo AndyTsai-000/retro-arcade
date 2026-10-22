@@ -27,55 +27,69 @@ const COURT={park:{floor:'#5a6a7a',line:'#f4f4f4',paint:'#3a6a9a',bg:'park'},sch
   port:{floor:'#5a6068',line:'#ffffff',paint:'#2f6f9a',bg:'port'},gym:{floor:'#d8a060',line:'#ffffff',paint:'#a83a2a',bg:'gym',wood:1},neon:{floor:'#1e1a30',line:'#3ddbd9',paint:'#5a1a5a',bg:'neon',night:1},arena:{floor:'#c89050',line:'#ffffff',paint:'#4a2a7a',bg:'arena',wood:1}};
 
 /* ---------- 寫實球員（側面看，face 1 朝右、-1 朝左） ---------- */
-function limb(c,a,b,w,col){ c.strokeStyle=col; c.lineWidth=w; c.lineCap='round'; c.beginPath(); c.moveTo(a[0],a[1]); c.lineTo(b[0],b[1]); c.stroke(); }
+// 粗細漸變的肢體（大腿、小腿、手臂），兩端圓頭
+function taper(c,a,b,wa,wb,col){ const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,nx=-dy/l,ny=dx/l; c.fillStyle=col; c.beginPath(); c.moveTo(a[0]+nx*wa/2,a[1]+ny*wa/2); c.lineTo(b[0]+nx*wb/2,b[1]+ny*wb/2); c.lineTo(b[0]-nx*wb/2,b[1]-ny*wb/2); c.lineTo(a[0]-nx*wa/2,a[1]-ny*wa/2); c.closePath(); c.fill(); c.beginPath(); c.arc(a[0],a[1],wa/2,0,7); c.arc(b[0],b[1],wb/2,0,7); c.fill();
+  c.strokeStyle='rgba(255,255,255,.16)'; c.lineWidth=Math.max(.8,wa*.16); c.beginPath(); c.moveTo(a[0]+nx*wa*.22,a[1]+ny*wa*.22); c.lineTo(b[0]+nx*wb*.22,b[1]+ny*wb*.22); c.stroke(); }
 function joint(p,len,ang){ return [p[0]+Math.sin(ang)*len,p[1]+Math.cos(ang)*len]; } // ang 0＝往下
+// 寫實球員（側面，face 1 朝右）：身高約 92、頭身比約 1:7.5
 function drawBaller(c,x,y,z,s,o){ // (x,y) 腳下地面螢幕座標、z 跳起來的高度（螢幕像素）
-  const f=o.face||1,t=o.t||0,pose=o.pose||'idle',sk=o.skin||SKINS[1],jc=o.col||'#e23b3b',j2=o.col2||'#fff',sh=o.shorts||shade(jc,.75),shoe=o.shoe||'#f4f4f4';
+  const f=o.face||1,t=o.t||0,pose=o.pose||'idle',sk=o.skin||SKINS[1],jc=o.col||'#e23b3b',j2=o.col2||'#fff',sh=o.shorts||shade(jc,.8),shoe=o.shoe||'#f4f4f4',skD=shade(sk,.78);
   c.save(); c.translate(x,y);
-  c.fillStyle='rgba(0,0,0,'+(.32-Math.min(.2,z/300))+')'; c.beginPath(); c.ellipse(0,0,(13-Math.min(6,z/20))*s,4*s,0,0,7); c.fill();
+  c.fillStyle='rgba(0,0,0,'+(.32-Math.min(.2,z/300))+')'; c.beginPath(); c.ellipse(0,0,(15-Math.min(6,z/20))*s,4.5*s,0,0,7); c.fill();
   c.translate(0,-z); c.scale(s*f,s);
-  if(pose==='fall'){ c.rotate(-1.35); c.translate(18,6); }
-  // 姿勢：髖、肩的位置與四肢角度
-  const ph=t*11,run=pose==='run'||pose==='dribble',crouch=pose==='defend'?5:pose==='shootPrep'?6:0;
-  const hip=[0,-36+crouch],sh2=[pose==='defend'?3:1,-58+crouch];
-  let lA,lB,kA,kB,aA,aB,eA,eB; // 前腿、後腿（大腿角、膝角），前手、後手（上臂角、前臂角）
-  if(run){ const sw=Math.sin(ph)*.75; lA=sw; lB=-sw; kA=-Math.max(0,-Math.cos(ph))*1.1; kB=-Math.max(0,Math.cos(ph))*1.1; aA=-sw*.8; aB=sw*.8; eA=-1.2; eB=-1.2; }
-  else if(pose==='defend'){ lA=.55; lB=-.45; kA=-.7; kB=-.6; aA=-1.4; aB=-1.1; eA=-.3; eB=-.3; }
-  else if(pose==='shoot'||pose==='shootPrep'){ lA=.1; lB=-.15; kA=pose==='shootPrep'?-.8:-.1; kB=pose==='shootPrep'?-.8:-.25; aA=-2.85; aB=-2.6; eA=-.4; eB=-.6; }
-  else if(pose==='dunk'){ lA=.5; lB=-.6; kA=-1.6; kB=-.9; aA=-2.95; aB=-.6; eA=-.1; eB=-.6; }
-  else if(pose==='jump'){ lA=.3; lB=-.3; kA=-1.1; kB=-.8; aA=-2.8; aB=-2.9; eA=-.2; eB=-.2; }
-  else { const br=Math.sin(t*2)*.04; lA=.12; lB=-.1; kA=-.12; kB=-.08; aA=.25+br; aB=-.15; eA=-.5; eB=-.4; }
-  if(pose==='dribble'){ aA=.55; eA=.15; }
-  // 後面的手腳先畫
-  const kneeB=joint(hip,17,lB),footB=joint(kneeB,17,lB+kB); limb(c,hip,kneeB,8.5,shade(sk,.85)); limb(c,kneeB,footB,7,shade(sk,.85));
-  c.fillStyle=shade(shoe,.85); rr(c,footB[0]-3,footB[1]-2.5,11,5,2.5); c.fill();
-  const elB=joint(sh2,12,aB),haB=joint(elB,12,aB+eB); limb(c,sh2,elB,6.5,shade(sk,.85)); limb(c,elB,haB,5.5,shade(sk,.85));
-  // 球褲、球衣
-  c.fillStyle=sh; c.beginPath(); c.moveTo(-8,hip[1]-4); c.lineTo(8,hip[1]-4); c.lineTo(10,hip[1]+12); c.lineTo(-10,hip[1]+12); c.closePath(); c.fill();
-  c.fillStyle=j2; c.fillRect(-10,hip[1]+9,20,2);
-  const tg=c.createLinearGradient(-9,0,9,0); tg.addColorStop(0,shade(jc,.8)); tg.addColorStop(.5,jc); tg.addColorStop(1,shade(jc,.7)); c.fillStyle=tg;
-  c.beginPath(); c.moveTo(sh2[0]-8,sh2[1]); c.quadraticCurveTo(sh2[0],sh2[1]+3,sh2[0]+8,sh2[1]); c.lineTo(hip[0]+8,hip[1]-2); c.lineTo(hip[0]-8,hip[1]-2); c.closePath(); c.fill();
-  c.strokeStyle=j2; c.lineWidth=1.6; c.beginPath(); c.moveTo(sh2[0]-6,sh2[1]); c.quadraticCurveTo(sh2[0],sh2[1]+6,sh2[0]+6,sh2[1]); c.stroke();
-  c.save(); c.scale(f,1); c.fillStyle=j2; c.font='900 9px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(o.num||''),0,(sh2[1]+hip[1])/2+1); c.restore();
-  // 前面的腿
-  const kneeA=joint(hip,17,lA),footA=joint(kneeA,17,lA+kA); limb(c,hip,kneeA,9,sk); limb(c,kneeA,footA,7.5,sk);
-  if(o.sock){ limb(c,joint(kneeA,11,lA+kA),footA,7.8,'#f4f4f4'); }
-  c.fillStyle=shoe; rr(c,footA[0]-3,footA[1]-2.5,12,5.5,2.6); c.fill(); c.fillStyle=shade(shoe,.6); c.fillRect(footA[0]-3,footA[1]+1.5,12,1.4);
-  // 頭：側臉、耳朵、頭髮
-  const hd=[sh2[0]+1.5,sh2[1]-9]; c.fillStyle=sk; c.fillRect(hd[0]-2.5,sh2[1]-4,5,5);
-  c.beginPath(); c.ellipse(hd[0],hd[1],6.4,7.4,0,0,7); c.fill(); c.beginPath(); c.moveTo(hd[0]+5.5,hd[1]-1); c.lineTo(hd[0]+8,hd[1]+1.6); c.lineTo(hd[0]+5.6,hd[1]+2.4); c.fill();
-  c.fillStyle=shade(sk,.8); c.beginPath(); c.ellipse(hd[0]-1.6,hd[1]+.6,1.6,2.2,0,0,7); c.fill();
-  c.fillStyle='#1a1418'; c.beginPath(); c.ellipse(hd[0]+3.6,hd[1]-.8,.9,1.1,0,0,7); c.fill(); c.strokeStyle='#1a1418'; c.lineWidth=.8; c.beginPath(); c.moveTo(hd[0]+2.4,hd[1]-2.6); c.lineTo(hd[0]+5.2,hd[1]-2.9); c.stroke();
-  c.strokeStyle=shade(sk,.6); c.beginPath(); c.moveTo(hd[0]+3.8,hd[1]+4); c.lineTo(hd[0]+5.6,hd[1]+3.7); c.stroke();
+  if(pose==='fall'){ c.rotate(-1.35); c.translate(24,8); }
+  const ph=t*10,run=pose==='run'||pose==='dribble',crouch=pose==='defend'?7:pose==='shootPrep'?8:run?3:0,lean=pose==='defend'?.22:run?.16:pose==='dunk'?.1:0;
+  const hip=[0,-45+crouch];
+  let lA,lB,kA,kB,aA,aB,eA,eB;
+  if(run){ const sw=Math.sin(ph)*.7; lA=sw; lB=-sw; kA=-Math.max(0,-Math.cos(ph))*1.2-.1; kB=-Math.max(0,Math.cos(ph))*1.2-.1; aA=-sw*.9; aB=sw*.9; eA=-1.3; eB=-1.3; }
+  else if(pose==='defend'){ lA=.6; lB=-.5; kA=-.8; kB=-.7; aA=-1.5; aB=-1.2; eA=-.3; eB=-.3; }
+  else if(pose==='shoot'||pose==='shootPrep'){ lA=.08; lB=-.12; kA=pose==='shootPrep'?-.9:-.08; kB=pose==='shootPrep'?-.9:-.2; aA=-2.9; aB=-2.55; eA=-.35; eB=-.7; }
+  else if(pose==='dunk'){ lA=.55; lB=-.55; kA=-1.6; kB=-.9; aA=-3; aB=-.7; eA=-.1; eB=-.7; }
+  else if(pose==='jump'){ lA=.3; lB=-.3; kA=-1.1; kB=-.8; aA=-2.85; aB=-2.95; eA=-.15; eB=-.15; }
+  else { const br=Math.sin(t*2)*.04; lA=.1; lB=-.1; kA=-.1; kB=-.06; aA=.18+br; aB=-.12; eA=-.35; eB=-.3; }
+  if(pose==='dribble'){ aA=.5; eA=-.05; }
+  // 上半身前傾：肩膀位置跟著傾斜
+  const tl=27,shp=[hip[0]+Math.sin(lean)*tl,hip[1]-Math.cos(lean)*tl];
+  const leg=(la,ka,col,back)=>{ const kn=joint(hip,23,la),an=joint(kn,22,la+ka); taper(c,hip,kn,11,7.6,col); taper(c,kn,joint(kn,9,la+ka),7.8,6.8,col); taper(c,joint(kn,8,la+ka),an,6.6,4.4,col);
+    if(o.sock) taper(c,joint(an,-6,la+ka),an,5,4.8,back?'#d8d8d8':'#f4f4f4');
+    // 高筒球鞋：鞋面、鞋底
+    c.save(); c.translate(an[0],an[1]); const sc2=back?shade(shoe,.82):shoe; c.fillStyle=sc2; c.beginPath(); c.moveTo(-4,-4); c.lineTo(3,-4.5); c.quadraticCurveTo(8,-2,11.5,0); c.lineTo(11.5,2.6); c.lineTo(-4.5,2.6); c.closePath(); c.fill();
+    c.fillStyle=back?'#bbbbbb':'#fafafa'; c.fillRect(-4.5,2.4,16,2); c.fillStyle=shade(sc2,.6); c.fillRect(-2,-1,7,1); c.restore(); return kn; };
+  const arm=(aa,ea,col)=>{ const el=joint(shp,15,aa),ha=joint(el,14,aa+ea); taper(c,shp,el,6.8,5.4,col); taper(c,el,ha,5.2,3.8,col); c.fillStyle=col; c.beginPath(); c.ellipse(ha[0],ha[1],3,3.5,aa+ea,0,7); c.fill(); return ha; };
+  // 後腳、後手
+  leg(lB,kB,skD,true); arm(aB,eB,skD);
+  taper(c,hip,joint(hip,15,lB),12.5,10.5,shade(sh,.8));
+  // 軀幹（背心）
+  const ux=Math.sin(lean),uy=-Math.cos(lean),px2=-uy,py2=ux,P2=(a,b)=>[hip[0]+ux*a+px2*b,hip[1]+uy*a+py2*b];
+  const ga=P2(14,-9),gb=P2(14,9),tg=c.createLinearGradient(ga[0],ga[1],gb[0],gb[1]); tg.addColorStop(0,shade(jc,.72)); tg.addColorStop(.55,jc); tg.addColorStop(1,shade(jc,1.15)); c.fillStyle=tg;
+  const T=[P2(-1,-7),P2(12,-8),P2(25,-7.5),P2(28,-4),P2(28,5),P2(23,8.5),P2(12,7.6),P2(-1,7)]; c.beginPath(); c.moveTo(T[0][0],T[0][1]); for(let i=1;i<T.length;i++) c.lineTo(T[i][0],T[i][1]); c.closePath(); c.fill();
+  const L2=(pts)=>{ c.beginPath(); c.moveTo(pts[0][0],pts[0][1]); c.quadraticCurveTo(pts[1][0],pts[1][1],pts[2][0],pts[2][1]); c.stroke(); };
+  c.strokeStyle=j2; c.lineWidth=1.4; L2([P2(27,-1),P2(22,4),P2(27,7)]); L2([P2(25,-5),P2(18,-2),P2(19,4)]);
+  c.save(); const nc=P2(13,0); c.translate(nc[0],nc[1]); c.scale(f,1); c.fillStyle=j2; c.font='900 10px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(o.num||''),0,0); c.restore();
+  // 球褲（寬鬆到膝蓋）
+  c.fillStyle=shade(sh,.9); c.beginPath(); c.ellipse(hip[0],hip[1]-1,9,6,0,0,7); c.fill();
+  // 前腳、前腳的褲管
+  leg(lA,kA,sk,false); taper(c,hip,joint(hip,15,lA),13.5,11.5,sh); c.strokeStyle=j2; c.lineWidth=1.2; const k1=joint(hip,14.5,lA); c.beginPath(); c.moveTo(k1[0]-Math.cos(lA)*6,k1[1]+Math.sin(lA)*6); c.lineTo(k1[0]+Math.cos(lA)*6,k1[1]-Math.sin(lA)*6); c.stroke();
+  // 脖子、頭
+  const nk=P2(30,1.5),hd=P2(37.5,2.5); taper(c,P2(26,0),nk,7,6,shade(sk,.9));
+  c.save(); c.translate(hd[0],hd[1]); c.rotate(lean*.6);
+  c.fillStyle=sk; c.beginPath(); c.ellipse(0,0,6.2,7.4,0,0,7); c.fill(); c.beginPath(); c.moveTo(1,5.5); c.quadraticCurveTo(5.5,6,6,3); c.lineTo(5,6.8); c.quadraticCurveTo(2,8.2,-1,7); c.fill();
+  c.beginPath(); c.moveTo(5.6,-1.5); c.quadraticCurveTo(8.2,1.2,6.2,2.4); c.fill();
+  c.fillStyle=skD; c.beginPath(); c.ellipse(-1.2,.6,1.5,2.2,0,0,7); c.fill();
+  c.fillStyle='#fff'; c.beginPath(); c.ellipse(3.6,-1.3,1.4,.9,0,0,7); c.fill(); c.fillStyle='#2a1a12'; c.beginPath(); c.arc(4.2,-1.3,.75,0,7); c.fill();
+  c.strokeStyle=o.hairCol||'#1a1410'; c.lineWidth=.9; c.beginPath(); c.moveTo(2,-3.2); c.lineTo(5.4,-3.1); c.stroke();
+  c.strokeStyle=shade(sk,.55); c.lineWidth=.8; c.beginPath(); c.moveTo(3.8,4.2); c.lineTo(5.6,4); c.stroke();
+  c.fillStyle='rgba(0,0,0,.08)'; c.beginPath(); c.ellipse(-2,2,4,5,0,0,7); c.fill();
   const hc=o.hairCol||'#1a1410',hs=o.hair||0; c.fillStyle=hc;
-  if(hs===0){ c.beginPath(); c.ellipse(hd[0]-.6,hd[1]-3.2,6.6,4.8,-.15,Math.PI*.95,Math.PI*2.05); c.fill(); }
-  else if(hs===1){ c.beginPath(); c.ellipse(hd[0]-.5,hd[1]-3,7.4,6.2,0,Math.PI*.9,Math.PI*2.1); c.fill(); c.beginPath(); c.arc(hd[0]-6,hd[1]-.5,3.6,0,7); c.fill(); } // 爆炸頭
-  else if(hs===2){ c.beginPath(); c.ellipse(hd[0]-.6,hd[1]-3.5,6.6,4.6,-.1,Math.PI*.95,Math.PI*2.05); c.fill(); c.beginPath(); c.moveTo(hd[0]-5,hd[1]-3); c.quadraticCurveTo(hd[0]-11,hd[1]+2,hd[0]-9,hd[1]+9); c.lineTo(hd[0]-6,hd[1]+2); c.fill(); } // 綁辮子
-  else if(hs===3){ c.fillStyle=o.band||j2; c.fillRect(hd[0]-6.6,hd[1]-4.5,13.4,3); c.fillStyle=hc; c.beginPath(); c.ellipse(hd[0]-.6,hd[1]-5.5,6.2,3.4,0,Math.PI,0); c.fill(); } // 頭帶
-  else { c.fillStyle=shade(sk,.92); c.beginPath(); c.ellipse(hd[0]-.4,hd[1]-3.6,6.4,4,0,Math.PI,0); c.fill(); } // 光頭
-  // 前面的手
-  const elA=joint(sh2,12,aA),haA=joint(elA,12,aA+eA); limb(c,sh2,elA,7,sk); limb(c,elA,haA,6,sk); c.fillStyle=sk; c.beginPath(); c.arc(haA[0],haA[1],3.2,0,7); c.fill();
-  if(o.sleeve){ limb(c,sh2,joint(sh2,7,aA),7.6,o.sleeve); }
+  if(hs===0){ c.beginPath(); c.moveTo(-6.4,1); c.quadraticCurveTo(-7.4,-7.6,0,-7.9); c.quadraticCurveTo(5.8,-7.8,6.4,-3.4); c.lineTo(4,-4.6); c.quadraticCurveTo(-1,-4.2,-3,-1); c.lineTo(-4,2); c.closePath(); c.fill(); }
+  else if(hs===1){ c.beginPath(); c.arc(-1,-3.6,7.6,Math.PI*.75,Math.PI*2.05); c.quadraticCurveTo(2,-4,-3,-1); c.lineTo(-5,3); c.closePath(); c.fill(); c.beginPath(); c.arc(-5,-1,4,0,7); c.fill(); }
+  else if(hs===2){ c.beginPath(); c.moveTo(-6.4,1); c.quadraticCurveTo(-7.4,-7.6,0,-7.9); c.quadraticCurveTo(5.8,-7.8,6.4,-3.4); c.lineTo(3,-4.6); c.quadraticCurveTo(-2,-4,-4,0); c.closePath(); c.fill(); for(let i=0;i<3;i++){ c.beginPath(); c.ellipse(-6.5-i*.6,2+i*3.4,1.8,2.2,0,0,7); c.fill(); } }
+  else if(hs===3){ c.beginPath(); c.moveTo(-6.4,0); c.quadraticCurveTo(-6.8,-7.4,0,-7.6); c.quadraticCurveTo(5.4,-7.4,6.2,-4); c.lineTo(-4,-2); c.closePath(); c.fill(); c.fillStyle=o.band||j2; c.save(); c.rotate(-.12); c.fillRect(-6.6,-5.2,13.2,2.6); c.restore(); }
+  else { c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(-.6,-4,5.8,3.6,0,Math.PI,0); c.fill(); c.fillStyle='rgba(255,255,255,.25)'; c.beginPath(); c.ellipse(-1,-5.6,2.4,1.2,0,0,7); c.fill(); }
+  c.restore();
+  // 肩膀（三角肌）、前手
+  c.fillStyle=sk; c.beginPath(); c.arc(shp[0]+1,shp[1]+1,4.4,0,7); c.fill();
+  const haA=arm(aA,eA,sk);
   c.restore();
   return {hand:[x+haA[0]*s*f,y-z+haA[1]*s],head:[x+hd[0]*s*f,y-z+hd[1]*s]}; }
 function drawBallSpr(c,x,y,r,t){ const g=c.createRadialGradient(x-r*.35,y-r*.4,r*.1,x,y,r); g.addColorStop(0,'#ffb36a'); g.addColorStop(.6,'#e8701e'); g.addColorStop(1,'#a8480e'); c.fillStyle=g; c.beginPath(); c.arc(x,y,r,0,7); c.fill();
@@ -163,15 +177,15 @@ function create(env,opts){
   function startShot(p,special){ if(p.z>2||p.fallT>0) return;
     const d=distHoop(p),mv=Math.hypot(p.vx,p.vy);
     if(special){ p.act='dunk'; p.actT=0; p.vz=520; p.dunkFrom=[p.x,p.y]; ball.dunk={p:p.i,special:true}; return; }
-    if(d<115&&mv>60){ p.act='dunk'; p.actT=0; p.vz=430; p.dunkFrom=[p.x,p.y]; ball.dunk={p:p.i}; return; }
+    if(d<135){ p.act='dunk'; p.actT=0; p.vz=430; p.dunkFrom=[p.x,p.y]; ball.dunk={p:p.i}; return; }
     p.act='shoot'; p.actT=0; p.vz=380; p.relQ=null; }
   function doPass(p,dirX,dirY){ const mates=teammates(p); let best=null,bs=-1e9; const dl=Math.hypot(dirX,dirY);
     for(const q of mates){ const dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||1,al=dl?(dx*dirX+dy*dirY)/(d*dl):0; const sc=al*2-d/400; if(sc>bs){ bs=sc; best=q; } }
     if(!best) return; ball.pass={from:[p.x,p.y,40],to:best.i,t:0,T:Math.hypot(best.x-p.x,best.y-p.y)/700+.12}; ball.h=-1; lastTouch=p.i; sfx('click'); }
   function trySteal(p){ const hd=holder(); if(!hd||hd.tm===p.tm||p.fallT>0) return; const d=Math.hypot(hd.x-p.x,hd.y-p.y); if(d>34){ p.stunT=.15; return; }
-    if(Math.random()<.22+p.skill*.25-(hd.act?-.15:0)){ ball.h=p.i; hd.fallT=.75; hd.act=null; lastTouch=p.i; if(p.tm!==pos){ pos=p.tm; cleared=false; clock=12; } meter[p.tm]=Math.min(1,meter[p.tm]+.25); sfx('hurt'); say((p.tm===0?'':'')+'抄截成功！',1.2); }
+    if(Math.random()<.22+p.skill*.25-(hd.act?-.15:0)){ ball.h=p.i; hd.fallT=.75; hd.act=null; lastTouch=p.i; if(p.tm!==pos){ pos=p.tm; cleared=true; clock=12; } meter[p.tm]=Math.min(1,meter[p.tm]+.25); sfx('hurt'); say((p.tm===0?'':'')+'抄截成功！',1.2); }
     else { p.stunT=.45; p.fallT=0; sfx('bump'); } }
-  function changePossession(team,why){ pos=team; cleared=false; clock=12; if(why) say(why); }
+  function changePossession(team,why){ pos=team; cleared=true; clock=12; if(why) say(why); }
   function scored(sh){ score[sh.tm]+=sh.pts; swish=1; sfx('win'); meter[sh.tm]=Math.min(1,meter[sh.tm]+.34); say(P[sh.by].name+' 得 '+sh.pts+' 分！',1.6);
     if(score[sh.tm]>=TARGET||sudden){ over={win:sh.tm}; return; } pause=1.3; pendingCheck=1-sh.tm; }
   let pendingCheck=-1;
@@ -186,7 +200,7 @@ function create(env,opts){
         if(blocked){ ball.h=-1; ball.x=p.x; ball.y=p.y; ball.z=RIMZ; ball.vx=-260; ball.vy=(Math.random()-.5)*200; ball.vz=120; p.act=null; sfx('bump'); say('蓋火鍋！',1.3); }
         else { if(!cleared&&p.tm===pos){ say('要先清球'); ball.h=p.i; p.act=null; } else { ball.h=-1; ball.x=HX; ball.y=HY; ball.z=RIMZ-5; ball.vx=ball.vy=0; ball.vz=-60; scored({tm:p.tm,pts:sp?2:1,by:p.i}); p.act='hang'; p.actT=0; sfx('boom'); if(sp) meter[p.tm]=0; } } } }
     if(p.act==='hang'){ p.actT+=dt; if(p.actT>.35) p.act=null; }
-    if(p.act==='shoot'){ p.actT+=dt; if(holder()===p&&p.vz<-60&&p.relQ==null){ p.relQ=.2; release(p,.2); } }
+    if(p.act==='shoot'){ p.actT+=dt; if(holder()===p&&p.vz<=0&&p.relQ==null){ p.relQ=.72+Math.random()*.3*p.skill; release(p,p.relQ); } }
     if(p.act==='block'){ p.actT+=dt; if(p.z<=0&&p.actT>.1) p.act=null; }
     p.vz-=1300*dt; p.z=Math.max(0,p.z+p.vz*dt); if(p.z<=0){ p.vz=0; if(p.act==='shoot'&&p.actT>.2) p.act=null; }
     p.x=clamp(p.x+p.vx*dt,40,800); p.y=clamp(p.y+p.vy*dt,10,630);
@@ -202,7 +216,6 @@ function create(env,opts){
     if(hd.tm===p.tm){ // 進攻
       if(hd===p){ const d=distHoop(p),open=foes(p).every(q=>Math.hypot(q.x-p.x,q.y-p.y)>70);
         if(!cleared){ go(HX-ARC-40,HY+(p.y<HY?-60:60)); return inp; }
-        if(meter[p.tm]>=1&&d<ARC+40&&Math.random()<.02) { inp.special=true; return inp; }
         const lane=foes(p).every(q=>{ const t2=((q.x-p.x)*(HX-p.x)+(q.y-p.y)*(HY-p.y))/((HX-p.x)**2+(HY-p.y)**2||1); if(t2<0||t2>1) return true; const px=p.x+(HX-p.x)*t2,py=p.y+(HY-p.y)*t2; return Math.hypot(q.x-px,q.y-py)>35; });
         if(lane&&d<260&&sk>.3){ go(HX-20,HY); if(d<110&&Math.random()<.2) inp.shoot=true; return inp; }
         if((open&&(d>ARC+5&&d<ARC+70||d<200)&&p.aiT<=0)||clock<2.5){ inp.shoot=true; p.aiT=1; return inp; }
@@ -215,25 +228,22 @@ function create(env,opts){
     if(opp===hd&&opp.act==='shoot'&&opp.actT<.2&&Math.hypot(opp.x-p.x,opp.y-p.y)<60&&p.z<1&&Math.random()<sk*.6) inp.jump=true;
     return inp; }
   // 人類輸入
-  const KM=[{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['KeyJ','KeyX'],p:['KeyK','KeyC'],j:['KeyL','Space'],x:['KeyI','KeyV']},
-    {u:'KeyW',d:'KeyS',l:'KeyA',r:'KeyD',s:['KeyF'],p:['KeyG'],j:['KeyH'],x:['KeyR']},{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['Comma'],p:['Period'],j:['Slash'],x:['KeyM']}];
+  const KM=[{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['KeyJ','KeyX','Space'],p:['KeyK','KeyC'],j:[],x:[]},
+    {u:'KeyW',d:'KeyS',l:'KeyA',r:'KeyD',s:['KeyF'],p:['KeyG'],j:[],x:[]},{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['Enter'],p:['ShiftRight'],j:[],x:[]}];
   function readIn(h){ const m=local2?KM[h+1]:KM[0],K=env.keys,any=a=>a.some(k=>env.hit(k)),held=a=>a.some(k=>K[k]);
     return {mx:(K[m.r]?1:0)-(K[m.l]?1:0),my:(K[m.d]?1:0)-(K[m.u]?1:0),shoot:any(m.s),shootHeld:held(m.s),pass:any(m.p),jump:any(m.j),special:any(m.x)}; }
   const remoteIn={mx:0,my:0,shoot:false,shootHeld:false,pass:false,jump:false,special:false};
-  function humanAct(p,inp,cc){ const hd=holder();
-    if(hd===p){ if(inp.special&&meter[p.tm]>=1){ startShot(p,true); return; } if(inp.shoot) startShot(p,false); if(inp.pass) doPass(p,inp.mx||p.face,inp.my); }
-    else if(hd&&hd.tm===p.tm){ if(inp.pass){ /* 叫球：持球的隊友把球傳給我 */ ball.pass={from:[hd.x,hd.y,40],to:p.i,t:0,T:Math.hypot(hd.x-p.x,hd.y-p.y)/700+.12}; ball.h=-1; sfx('click'); } }
-    else { if(inp.shoot) trySteal(p); if(inp.pass){ // 換人：換到離球最近的隊友
-        const mates=P.filter(q=>q.tm===p.tm&&!ctrl.some(o=>o!==cc&&o.pi===q.i)).sort((a,b)=>Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y)); if(mates[0]) cc.pi=mates[0].i; } }
-    if(inp.jump&&p.z<1&&!p.act&&p.fallT<=0){ p.vz=400; p.act='block'; p.actT=0; }
-    // 出手時機：按住投籃鍵跳起來，放開那一刻出手（最高點最準）
-    if(p.act==='shoot'&&holder()===p&&p.relQ==null&&!inp.shootHeld&&p.actT>.05){ const apex=380/1300,q=1-Math.abs(p.actT-apex)/apex; p.relQ=q; release(p,q); showQ=q; showQT=1; } }
+  function humanAct(p,inp,cc){ const hd=holder(),canJump=p.z<1&&!p.act&&p.fallT<=0;
+    if(hd===p){ if(inp.shoot) startShot(p,false); else if(inp.pass) doPass(p,inp.mx||p.face,inp.my); return; } // 進攻：投籃（靠近籃框自動上籃／灌籃）、傳球
+    if(hd&&hd.tm===p.tm){ if(inp.pass){ ball.pass={from:[hd.x,hd.y,40],to:p.i,t:0,T:Math.hypot(hd.x-p.x,hd.y-p.y)/700+.12}; ball.h=-1; sfx('click'); } return; } // 隊友持球：按傳球叫球
+    if(inp.shoot){ const near=hd&&Math.hypot(hd.x-p.x,hd.y-p.y)<45; // 防守：同一顆鍵，對手起跳就蓋火鍋，靠近就抄球，球在空中就跳起來搶
+      if(hd&&near&&hd.act==='shoot'&&canJump){ p.vz=400; p.act='block'; p.actT=0; } else if(near) trySteal(p); else if(!hd&&canJump){ p.vz=400; p.act='block'; p.actT=0; } }
+    if(inp.pass){ const mates=P.filter(q=>q.tm===p.tm&&!ctrl.some(o=>o!==cc&&o.pi===q.i)).sort((a,b)=>Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y)); if(mates[0]) cc.pi=mates[0].i; } }
   let showQ=0,showQT=0;
   function aiAct(p,inp){ const hd=holder();
     if(hd===p){ if(inp.special&&meter[p.tm]>=1) startShot(p,true); else if(inp.shoot) startShot(p,false); else if(inp.pass) doPass(p,inp.mx,inp.my); }
     else if(inp.shoot) trySteal(p);
-    if(inp.jump&&p.z<1&&!p.act&&p.fallT<=0){ p.vz=400; p.act='block'; p.actT=0; }
-    if(p.act==='shoot'&&holder()===p&&p.relQ==null){ const apex=380/1300; p.aiRel=p.aiRel??apex+(Math.random()-.5)*(1-p.skill)*.35; if(p.actT>=p.aiRel){ p.relQ=1-Math.abs(p.actT-apex)/apex; release(p,p.relQ); p.aiRel=null; } } }
+    if(inp.jump&&p.z<1&&!p.act&&p.fallT<=0){ p.vz=400; p.act='block'; p.actT=0; } }
   // 球
   function stepBall(dt){
     if(ball.h>=0){ const p=P[ball.h]; ball.x=p.x+p.face*12; ball.y=p.y+2; const dr=p.pose==='dribble'||p.pose==='idle'; ball.z=p.act==='shoot'||p.act==='dunk'||p.z>2?p.z+66:dr?Math.abs(Math.sin(t*9))*28+4:30; ball.vx=ball.vy=ball.vz=0; return; }
@@ -293,10 +303,10 @@ function create(env,opts){
     drawCourt(c,CT,t,swish);
     drawHoop(c,CT,t,swish,false);
     // 依深度排序畫球員和球
-    const items=P.map(p=>({y:p.y,f:()=>{ const s=SC(p.y),cc=ctrl.find(o=>o.pi===p.i); const r=drawBaller(c,SX(p.x),SY(p.y),p.z*.9,s*1.15,Object.assign({face:p.face,pose:p.pose,t:t+p.i*.7},p.look));
+    const items=P.map(p=>({y:p.y,f:()=>{ const s=SC(p.y),cc=ctrl.find(o=>o.pi===p.i); const r=drawBaller(c,SX(p.x),SY(p.y),p.z*.9,s*.95,Object.assign({face:p.face,pose:p.pose,t:t+p.i*.7},p.look));
       if(cc){ const hi=ctrl.indexOf(cc),col=hi===0?'#ffd23f':'#3ddbd9'; c.strokeStyle=col; c.lineWidth=2.5; c.beginPath(); c.ellipse(SX(p.x),SY(p.y),15*s,5*s,0,0,7); c.stroke();
-        c.fillStyle=col; c.font='900 12px '+TC; c.textAlign='center'; c.textBaseline='bottom'; const tag=local2||coop&&ctrl.length>1?(hi+1)+'P':'你'; c.fillText(tag,SX(p.x),SY(p.y)-p.z*.9-80*s); c.beginPath(); c.moveTo(SX(p.x)-5,SY(p.y)-p.z*.9-78*s); c.lineTo(SX(p.x)+5,SY(p.y)-p.z*.9-78*s); c.lineTo(SX(p.x),SY(p.y)-p.z*.9-72*s); c.fill();
-        if(introT>0||pause>0&&t<3){ const yy=SY(p.y)-p.z*.9-100*s+Math.sin(t*8)*5; c.fillStyle=col; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.beginPath(); c.moveTo(SX(p.x)-14,yy-20); c.lineTo(SX(p.x)+14,yy-20); c.lineTo(SX(p.x),yy); c.closePath(); c.stroke(); c.fill(); } }
+        c.fillStyle=col; c.font='900 12px '+TC; c.textAlign='center'; c.textBaseline='bottom'; const tag=local2||coop&&ctrl.length>1?(hi+1)+'P':'你'; c.fillText(tag,SX(p.x),SY(p.y)-p.z*.9-96*s); c.beginPath(); c.moveTo(SX(p.x)-5,SY(p.y)-p.z*.9-94*s); c.lineTo(SX(p.x)+5,SY(p.y)-p.z*.9-94*s); c.lineTo(SX(p.x),SY(p.y)-p.z*.9-88*s); c.fill();
+        if(introT>0||pause>0&&t<3){ const yy=SY(p.y)-p.z*.9-118*s+Math.sin(t*8)*5; c.fillStyle=col; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.beginPath(); c.moveTo(SX(p.x)-14,yy-20); c.lineTo(SX(p.x)+14,yy-20); c.lineTo(SX(p.x),yy); c.closePath(); c.stroke(); c.fill(); } }
       else if(p.tm===0&&!coop&&local2===false){} } }));
     items.push({y:ball.y+.5,f:()=>{ const s=SC(ball.y); c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(SX(ball.x),SY(ball.y),7*s,2.5*s,0,0,7); c.fill(); drawBallSpr(c,SX(ball.x),SY(ball.y)-ball.z*.9-6*s,6.5*s,t); }});
     items.sort((a,b)=>a.y-b.y); for(const it of items) it.f();
@@ -308,12 +318,7 @@ function create(env,opts){
     c.font='900 24px '+PIX; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText(score[0]+' - '+score[1],W/2,40);
     const tm=Math.max(0,Math.ceil(time)); c.font='700 11px '+TC; c.fillStyle='#cfe8d8'; c.fillText((sudden?'決勝球　':Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0')+'　')+'搶 '+TARGET+' 分',W/2,54);
     c.textAlign='left'; c.fillStyle=clock<4?'#ff8a8a':'#fff'; c.font='900 15px '+PIX; c.fillText(String(Math.max(0,Math.ceil(clock))),W/2-166,46); c.font='700 9px '+TC; c.fillText('進攻時間',W/2-128,47);
-    // 必殺氣力
-    for(let tm2=0;tm2<2;tm2++){ const x=tm2?W-160:16,y=H-20; c.fillStyle='rgba(11,10,28,.7)'; rr(c,x,y-12,144,22,10); c.fill(); c.fillStyle=meter[tm2]>=1?'hsl('+(t*300%360)+',90%,60%)':'#ff9d3d'; rr(c,x+4,y-8,136*meter[tm2],14,7); c.fill(); c.fillStyle='#fff'; c.font='900 10px '+TC; c.textAlign='center'; c.fillText(meter[tm2]>=1?'必殺灌籃 OK！':'必殺',x+72,y); }
     if(!cleared&&ctrl.some(o=>o.tm===pos)){ c.fillStyle='rgba(180,30,50,.85)'; rr(c,W/2-120,68,240,24,12); c.fill(); c.fillStyle='#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('先把球運到弧頂外（清球）',W/2,80); }
-    if(showQT>0){ c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-80,96,160,22,10); c.fill(); c.fillStyle=showQ>.8?'#5fd068':showQ>.5?'#ffd23f':'#ff8a8a'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText(showQ>.8?'完美出手！':showQ>.5?'出手不錯':'出手太早／太晚',W/2,107); }
-    // 投籃時機條
-    for(const cc of ctrl){ const p=P[cc.pi]; if(p.act==='shoot'&&holder()===p&&p.relQ==null){ const apex=380/1300,u=clamp(p.actT/(apex*2),0,1),x=SX(p.x)+22,y=SY(p.y)-90; c.fillStyle='rgba(11,10,28,.7)'; c.fillRect(x,y,8,50); c.fillStyle='#5fd068'; c.fillRect(x,y+20,8,10); c.fillStyle='#fff'; c.fillRect(x-2,y+50-u*50,12,3); } }
     if(msgT>0&&msg){ c.font='900 20px '+TC; c.textAlign='center'; c.lineWidth=5; c.strokeStyle='#0b0a1c'; c.strokeText(msg,W/2,H*.42); c.fillStyle='#ffd23f'; c.fillText(msg,W/2,H*.42); }
     if(introT>0){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,W/2-210,170,420,90,16); c.fill(); c.fillStyle='#ffd23f'; c.font='900 24px '+TC; c.textAlign='center'; c.fillText('對手：'+ST.name,W/2,200); c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText('3 對 3 半場鬥牛：先拿到 '+TARGET+' 分的贏',W/2,228); c.fillText(pos===0?'你們先攻':'對手先攻',W/2,248); } }
   return {update,draw,destroy(){},_dbg:{P,get ball(){return ball;},get score(){return score;},ctrl,get over(){return over;}}};
@@ -321,31 +326,31 @@ function create(env,opts){
 
 /* ---------- 開始畫面、縮圖、造型預覽 ---------- */
 function stageShow(ctx,w,h,si,t){ const ST=STAGES[si]; ctx.save(); ctx.scale(w/W,h/H); drawCourt(ctx,COURT[ST.court],t,0); drawHoop(ctx,COURT[ST.court],t,0,false); drawHoop(ctx,COURT[ST.court],t,0,true);
-  ST.names.forEach((nm,k)=>{ const x=420+k*110,y=330+(k%2)*60,pose=['defend','dribble','idle'][k]; drawBaller(ctx,x,y,0,1.7,{face:-1,pose,t:t+k,col:ST.col,col2:ST.col2,skin:SKINS[(si+k*3)%6],hair:(si+k)%5,hairCol:HAIRC[(si*2+k)%6],num:[3,10,33][k],band:ST.col2,shoe:k%2?'#1e1e24':'#f4f4f4'});
+  ST.names.forEach((nm,k)=>{ const x=420+k*110,y=330+(k%2)*60,pose=['defend','dribble','idle'][k]; drawBaller(ctx,x,y,0,1.3,{face:-1,pose,t:t+k,col:ST.col,col2:ST.col2,skin:SKINS[(si+k*3)%6],hair:(si+k)%5,hairCol:HAIRC[(si*2+k)%6],num:[3,10,33][k],band:ST.col2,shoe:k%2?'#1e1e24':'#f4f4f4'});
     ctx.fillStyle='#fff'; ctx.font='900 16px '+TC; ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle='#0b0a1c'; ctx.strokeText(nm,x,y+24); ctx.fillText(nm,x,y+24); });
-  const u=(t%2.4)/2.4,bx=lerp(200,SX(HX),u),by=lerp(330,SY(HY)-RIMZ*.9,u)-Math.sin(u*Math.PI)*90; drawBaller(ctx,200,380,u<.15?u*200:0,1.7,{face:1,pose:u<.2?'shoot':'idle',t,col:'#3d8bff',num:7}); drawBallSpr(ctx,bx,by,9,t);
+  const u=(t%2.4)/2.4,bx=lerp(200,SX(HX),u),by=lerp(330,SY(HY)-RIMZ*.9,u)-Math.sin(u*Math.PI)*90; drawBaller(ctx,200,380,u<.15?u*200:0,1.3,{face:1,pose:u<.2?'shoot':'idle',t,col:'#3d8bff',num:7}); drawBallSpr(ctx,bx,by,9,t);
   ctx.fillStyle='rgba(11,10,28,.7)'; rr(ctx,16,190,330,40,12); ctx.fill(); ctx.fillStyle=ST.col; ctx.font='900 22px '+TC; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText('對手：'+ST.name,28,210); ctx.restore(); }
 function thumb(ctx,w,h,t){ ctx.save(); ctx.scale(w/W,h/H); drawCourt(ctx,COURT.gym,t,0); drawHoop(ctx,COURT.gym,t,0,false); drawHoop(ctx,COURT.gym,t,0,true);
-  const u=(t%2)/2; drawBaller(ctx,560,400,Math.sin(Math.min(1,u*1.4)*Math.PI)*120,2,{face:1,pose:u<.7?'dunk':'idle',t,col:'#3d8bff',num:7,hair:3,band:'#ffffff'}); drawBaller(ctx,700,420,u>.2&&u<.7?60:0,2,{face:-1,pose:u>.2&&u<.7?'jump':'defend',t,col:'#e23b3b',num:23,skin:SKINS[3],hair:1});
+  const u=(t%2)/2; drawBaller(ctx,560,400,Math.sin(Math.min(1,u*1.4)*Math.PI)*120,1.5,{face:1,pose:u<.7?'dunk':'idle',t,col:'#3d8bff',num:7,hair:3,band:'#ffffff'}); drawBaller(ctx,700,420,u>.2&&u<.7?60:0,1.5,{face:-1,pose:u>.2&&u<.7?'jump':'defend',t,col:'#e23b3b',num:23,skin:SKINS[3],hair:1});
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 64px '+TC; ctx.lineWidth=10; ctx.strokeStyle='#0b0a1c'; ctx.strokeText('鬥魂籃球',W/2,110); ctx.fillStyle='#ff9d3d'; ctx.fillText('鬥魂籃球',W/2,110); ctx.restore(); }
 function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); drawCourt(ctx,COURT.park,t,0); L=L||{};
   const o={col:L.color||'#3d8bff',skin:SKINS[+(L.skin||1)],hair:+(L.hair||0),hairCol:HAIRC[+(L.hairCol||0)],shoe:L.shoe||'#f4f4f4',num:7};
-  drawBaller(ctx,260,440,0,2.6,Object.assign({face:1,pose:'idle',t},o)); drawBaller(ctx,540,440,Math.abs(Math.sin(t*2))*20,2.6,Object.assign({face:1,pose:'dribble',t},o)); drawBallSpr(ctx,575,440-Math.abs(Math.sin(t*9))*60-10,14,t); ctx.restore(); }
+  drawBaller(ctx,260,440,0,2,Object.assign({face:1,pose:'idle',t},o)); drawBaller(ctx,540,440,Math.abs(Math.sin(t*2))*20,2,Object.assign({face:1,pose:'dribble',t},o)); drawBallSpr(ctx,575,440-Math.abs(Math.sin(t*9))*60-10,14,t); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bball={
   coin:o=>({verb:'先攻',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1&&(o.options||{}).team!=='coop'?(o.net.names[1]||'玩家 2'):STAGES[o.stage||0].name]:o.mode==='2p'&&(o.options||{}).team!=='coop'?['1P 隊','2P 隊']:['你的隊伍',STAGES[o.stage||0].name]}),
   name:'鬥魂籃球',tag:'BASKETBALL',color:'#ff9d3d',online:true,maxPlayers:2,
-  desc:'3 對 3 半場鬥牛，寫實的街頭籃球。運球、傳球、跳投抓時機、灌籃、蓋火鍋，沒有犯規可以推人抄球，集滿氣放必殺灌籃。10 支對手、10 種球場，單人、雙人對打或兩人同隊打電腦。',
-  goal:'先拿到設定的分數（或時間到分數多）的隊伍贏。弧頂內投進 1 分、弧頂外 2 分。搶到籃板或抄到球要先把球運到弧頂外（清球）才能投。進攻時限 12 秒。按住「投」跳起來，在最高點放開最準；跑向籃框按「投」會灌籃。',
+  desc:'3 對 3 半場鬥牛，寫實的街頭籃球。操作很簡單：移動、投籃、傳球，靠近籃框按投籃就是上籃或灌籃。10 支對手、10 種球場，單人、雙人對打或兩人同隊打電腦。',
+  goal:'先拿到設定的分數（或時間到分數多）的隊伍贏。弧頂內投進 1 分、弧頂外 2 分，每次進攻要在 12 秒內出手。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageShow,
   stageBest:i=>{ try{ return localStorage.getItem('arcade.bball.w.'+i)?'★ 贏過':''; }catch(e){ return ''; } },
-  stageGoal:si=>'對手：'+STAGES[si].name+'（'+'★'.repeat(STAGES[si].stars)+'）。先拿到設定分數的隊伍贏；弧頂內 1 分、外 2 分；搶到球要先清到外線；12 秒內要出手。',
+  stageGoal:si=>'對手：'+STAGES[si].name+'（'+'★'.repeat(STAGES[si].stars)+'）。先拿到設定分數的隊伍贏；弧頂內 1 分、外 2 分。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   options:[{key:'to',label:'搶幾分',def:'11',opts:[{id:'7',label:'7 分'},{id:'11',label:'11 分'},{id:'21',label:'21 分'}]},{key:'time',label:'時間',def:'4',opts:[{id:'3',label:'3 分鐘'},{id:'4',label:'4 分鐘'},{id:'6',label:'6 分鐘'}]},
     {key:'team',label:'雙人／連線玩法',def:'pvp',opts:[{id:'pvp',label:'玩家對打'},{id:'coop',label:'兩人同隊打電腦'}]}],
-  help:[['↑ ↓ ← →','移動'],['J 或 X','投籃（按住跳起來，最高點放開最準）；跑向籃框是灌籃；防守時抄球、推人'],['K 或 C','傳球；隊友持球時叫球；防守時換人'],['L 或 空白鍵','跳（蓋火鍋、搶籃板）'],['I 或 V','必殺灌籃（氣力條滿時）'],['W A S D F G H R','雙人 1P：移動、投、傳、跳、必殺'],['↑ ↓ ← → , . / M','雙人 2P：移動、投、傳、跳、必殺']],
-  touchHelp:[['方向盤','移動'],['投','按住跳起來，最高點放開最準；防守時抄球'],['傳','傳球；防守時換人'],['跳','蓋火鍋、搶籃板'],['必殺','氣力條滿時必殺灌籃']],
-  touch:{left:'dpad',right:[{l:'必殺',c:'KeyI'},{l:'跳',c:'KeyL'},{l:'傳',c:'KeyK'},{l:'投',c:'KeyJ',act:true}]},
+  help:[['↑ ↓ ← →','移動'],['J 或 空白鍵','投籃（靠近籃框會自動上籃或灌籃）；防守時抄球、蓋火鍋'],['K','傳球；防守時換人'],['雙人 1P','W A S D 移動、F 投籃、G 傳球'],['雙人 2P','方向鍵移動、Enter 投籃、右 Shift 傳球']],
+  touchHelp:[['方向盤','移動'],['投籃','靠近籃框會自動上籃或灌籃；防守時抄球、蓋火鍋'],['傳球','傳球；防守時換人']],
+  touch:{left:'dpad',right:[{l:'傳球',c:'KeyK'},{l:'投籃',c:'KeyJ',act:true}]},
   looks:[{key:'color',label:'球衣顏色',type:'color',opts:['#3d8bff','#e23b3b','#2e9e4f','#ffd23f','#7a5aff','#ff9d3d','#1e1e24','#f4f4f4']},
     {key:'skin',label:'膚色',opts:SKINS.map((c2,i)=>({id:String(i),label:['白皙','自然','小麥','古銅','深色','淡色'][i]}))},
     {key:'hair',label:'髮型',opts:[{id:'0',label:'短髮'},{id:'1',label:'爆炸頭'},{id:'2',label:'綁辮子'},{id:'3',label:'頭帶'},{id:'4',label:'光頭'}]},
