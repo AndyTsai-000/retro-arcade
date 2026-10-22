@@ -460,7 +460,11 @@ function create(env,opts){
   function btn(label,x,y,w,fn,dis,main){ btns.push({label,x,y,w,h:36,fn,dis,main}); }
   function drawBtns(){ for(const b of btns){ c.fillStyle=b.dis?'rgba(20,18,40,.6)':b.main?'#ffd23f':'#2b2759'; rr(c,b.x,b.y,b.w,b.h,10); c.fill(); c.strokeStyle=b.dis?'#3a3570':'#0b0a1c'; c.lineWidth=2; c.stroke();
     c.fillStyle=b.dis?'#6b6799':b.main?'#14122b':'#fff'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(b.label,b.x+b.w/2,b.y+b.h/2+1); } }
-  function plate(p,x,y,extra,active){ const s=names[p]+(extra?'　'+extra:''); c.font='700 13px '+TC; const w=c.measureText(s).width+20;
+  function plate(p,x,y,extra,active,bank){ const s=names[p]+(extra?'　'+extra:''); c.font=(bank?'900 ':'700 ')+'13px '+TC; const w=c.measureText(s).width+20+(bank?18:0);
+    if(bank){ // 莊家：紅底金框，左邊一顆「莊」字金幣
+      c.fillStyle='#c8202a'; rr(c,x-w/2,y-13,w,26,13); c.fill(); c.strokeStyle=active?'#fff':'#ffd23f'; c.lineWidth=2.5; c.stroke();
+      c.fillStyle='#ffd23f'; c.beginPath(); c.arc(x-w/2+4,y,13,0,7); c.fill(); c.strokeStyle='#8a5a10'; c.lineWidth=1.5; c.stroke(); c.fillStyle='#a8141c'; c.font='900 14px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('莊',x-w/2+4,y+1);
+      c.fillStyle='#ffe58a'; c.font='900 13px '+TC; c.fillText(s,x+9,y+1); return; }
     c.fillStyle=active?'rgba(255,210,63,.95)':'rgba(11,10,28,.7)'; rr(c,x-w/2,y-12,w,24,12); c.fill(); c.fillStyle=active?'#14122b':'#fff'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(s,x,y+1); }
   function backs(x,y,n,vertical){ const k=Math.min(n,13); for(let i=0;i<k;i++){ const o=(i-(k-1)/2)*(vertical?7:9); drawCard(c,vertical?x-14:x+o-14,vertical?y+o-20:y-20,28,40,0,false,{back:L.back}); } }
   function hand(ids,y,o){ // 自己的手牌：可點選
@@ -585,15 +589,16 @@ function create(env,opts){
     ord.forEach((id,i)=>drawCard(c,x-(cw*sp*4+cw+gp)/2+i*cw*sp+(tri&&i>=3?gp:0),y,cw,ch,id,up,{back:L.back})); } // 開牌時 3 張和 2 張中間空一格
   let nnBeep=-1;
   function drawNN(){ if(!G.chips) return; const bk=G.banker,R2=G.res;
-    c.fillStyle='rgba(11,10,28,.7)'; rr(c,W-206,8,196,46,12); c.fill(); c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('莊家：'+names[bk],W-108,24); c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.fillText('第 '+G.round+' / '+NNR+' 局　最低下注 '+NNMIN,W-108,43);
+    c.fillStyle='rgba(11,10,28,.7)'; rr(c,W-206,8,196,46,12); c.fill(); c.fillStyle='#ff8a7a'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('莊家：'+names[bk],W-108,24); c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.fillText('第 '+G.round+' / '+NNR+' 局　最低下注 '+NNMIN,W-108,43);
     for(let p=0;p<np;p++){ if(p===me) continue; const pos=thPos(p),x=pos.x,y=pos.y+(pos.top?18:-6),inR=nnIn(p),done=G.sub&&G.sub[p];
       if(G.hands[p]&&G.hands[p].length) nnCards(p,x,y-30,30,42,!!R2,.72);
       if(R2&&R2.ev[p]){ const e=R2.ev[p]; c.fillStyle=e.cat>=8?'#ffd23f':'#fff'; c.font='900 13px '+TC; c.textAlign='center'; const rv=R2.res[p]; c.fillText(NNCAT(e)+(nnMul(e)>1?' ×'+nnMul(e):'')+(rv?'　':''),x-(rv?18:0),y+22); if(rv){ c.fillStyle=rv>0?'#86dc4f':'#ff8a8a'; c.textAlign='left'; c.fillText((rv>0?'+':'')+rv,x+c.measureText(NNCAT(e)).width/2-6,y+22); c.textAlign='center'; } }
       else if(done&&G.phase==='arr'){ c.fillStyle='#86dc4f'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('亮牌好了',x,y+22); }
-      plate(p,x,y+40,(p===bk?'莊 ':'')+G.chips[p]+(G.bets[p]>0?'　押 '+G.bets[p]:''),G.phase==='bet'&&G.bets[p]===0&&p!==bk||G.phase==='arr'&&inR&&!done);
+      if(p===bk&&G.hands[p]&&G.hands[p].length){ c.strokeStyle='#ffd23f'; c.lineWidth=3; rr(c,x-82,y-36,164,50,10); c.stroke(); } // 莊家的牌框金邊
+      plate(p,x,y+40,G.chips[p]+(G.bets[p]>0?'　押 '+G.bets[p]:''),G.phase==='bet'&&G.bets[p]===0&&p!==bk||G.phase==='arr'&&inR&&!done,p===bk);
     }
     // 自己
-    plate(me,W/2,486,(me===bk?'莊家　':'')+G.chips[me]+' 籌碼'+(G.bets[me]>0?'　押 '+G.bets[me]:''),G.phase==='bet'&&G.bets[me]===0&&me!==bk||G.phase==='arr'&&nnIn(me)&&!G.sub[me]);
+    plate(me,W/2,486,G.chips[me]+' 籌碼'+(G.bets[me]>0?'　押 '+G.bets[me]:''),G.phase==='bet'&&G.bets[me]===0&&me!==bk||G.phase==='arr'&&nnIn(me)&&!G.sub[me],me===bk);
     const mh=G.hands[me]||[];
     if(R2&&mh.length){ nnCards(me,W/2,380,56,80,true,1.06); const e=R2.ev[me]; c.fillStyle=e.cat>=8?'#ffd23f':'#fff'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText(NNCAT(e)+(nnMul(e)>1?'（'+nnMul(e)+' 倍）':''),W/2,356);
       if(R2.res[me]){ c.fillStyle=R2.res[me]>0?'#86dc4f':'#ff8a8a'; c.font='900 18px '+TC; c.fillText(me===bk?'莊家這局 '+(R2.res[me]>0?'+':'')+R2.res[me]:(R2.res[me]>0?'贏了 +':'輸了 ')+R2.res[me],W/2,330); } }
