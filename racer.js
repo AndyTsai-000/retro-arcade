@@ -106,26 +106,138 @@ function faceFront(c,x,y,r,o,t){ // 大眼睛（兩個亮點）、腮紅、ω �
   for(const s of [-1,1]){ if(blink){ c.strokeStyle='#14122b'; c.lineWidth=Math.max(1,r*.08); c.beginPath(); c.moveTo(x+s*r*.32-r*.12,y); c.lineTo(x+s*r*.32+r*.12,y); c.stroke(); } else { c.fillStyle='#14122b'; c.beginPath(); c.ellipse(x+s*r*.32,y,r*.13,r*.18,0,0,7); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(x+s*r*.32-r*.04,y-r*.07,r*.05,0,7); c.arc(x+s*r*.32+r*.04,y+r*.06,r*.025,0,7); c.fill(); }
     c.fillStyle='rgba(255,120,140,.45)'; c.beginPath(); c.ellipse(x+s*r*.52,y+r*.26,r*.13,r*.08,0,0,7); c.fill(); }
   c.strokeStyle='#14122b'; c.lineWidth=Math.max(1,r*.06); c.beginPath(); c.arc(x-r*.07,y+r*.28,r*.07,0,Math.PI); c.arc(x+r*.07,y+r*.28,r*.07,0,Math.PI); c.stroke(); }
-// 機車（後面看）：w＝車寬像素
-function motoBack(c,x,y,w,o,t){ const L=o.look||{},lean=o.lean||0,bc=L.bike||o.col||'#ff4d4d'; c.save(); c.translate(x,y); c.rotate(lean*.5);
-  if(o.crash){ c.rotate(Math.sin(t*14)*.8); }
-  c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(0,0,w*.4,w*.07,0,0,7); c.fill();
-  c.fillStyle='#1a1a1e'; rr(c,-w*.12,-w*.42,w*.24,w*.42,w*.1); c.fill(); // 後輪
-  c.fillStyle=bc; rr(c,-w*.3,-w*.72,w*.6,w*.36,w*.12); c.fill(); c.fillStyle='rgba(255,255,255,.25)'; rr(c,-w*.26,-w*.7,w*.52,w*.08,w*.04); c.fill();
-  c.fillStyle='#ff2a2a'; rr(c,-w*.12,-w*.5,w*.24,w*.07,w*.03); c.fill(); if(o.night) glow(c,0,-w*.47,w*.35,'rgba(255,40,40,.45)');
-  c.fillStyle='#9aa0aa'; rr(c,w*.18,-w*.4,w*.16,w*.08,w*.04); c.fill();
-  if(o.boost){ c.fillStyle='rgba(80,200,255,.85)'; c.beginPath(); c.moveTo(w*.22,-w*.36); c.lineTo(w*.4+Math.random()*w*.1,-w*.33); c.lineTo(w*.22,-w*.3); c.fill(); }
+// 機車（寫實版）：車款 scooter 一般輕型機車、sport 重型機車、dirt 越野機車；後面看（比賽中）、正面（頒獎台）、側面（造型預覽）
+const MOTO_NITRO={blue:['#7ad8ff','#ffffff'],fire:['#ffb02a','#ff5a1a'],green:['#7aff8a','#e8ffe0']};
+const decoSet=L=>new Set(String((L&&L.deco)||'').split(','));
+function mTire(c,x,y,hw,h,knob){ c.fillStyle='#16161a'; rr(c,x-hw,y-h,hw*2,h,hw*.9); c.fill(); c.fillStyle='rgba(255,255,255,.09)'; for(let i=1;i<7;i++) c.fillRect(x-hw*.75,y-h+i*h/7,hw*1.5,Math.max(1,h*.025));
+  if(knob){ c.fillStyle='#26262c'; for(let i=0;i<7;i++){ c.fillRect(x-hw*1.2,y-h+i*h/7+h*.02,hw*.32,h*.07); c.fillRect(x+hw*.88,y-h+i*h/7+h*.02,hw*.32,h*.07); } } }
+function mHelmet(c,x,y,r,L,front,t){ const hc=L.helm||'#ffd23f',st=L.helmet||(L.body==='dirt'?'mx':L.body==='scooter'?'half':'full'),D=decoSet(L);
+  if(D.has('horns')) for(const s of [-1,1]){ c.fillStyle='#c0262a'; c.beginPath(); c.moveTo(x+s*r*.45,y-r*.75); c.quadraticCurveTo(x+s*r*1.25,y-r*1.2,x+s*r*1.05,y-r*1.75); c.lineTo(x+s*r*.15,y-r*.92); c.closePath(); c.fill(); }
+  if(D.has('catears')) for(const s of [-1,1]){ c.fillStyle=hc; c.beginPath(); c.moveTo(x+s*r*.92,y-r*.35); c.lineTo(x+s*r*.72,y-r*1.42); c.lineTo(x+s*r*.12,y-r*.95); c.closePath(); c.fill(); c.fillStyle='#ffb0c0'; c.beginPath(); c.moveTo(x+s*r*.72,y-r*.62); c.lineTo(x+s*r*.66,y-r*1.15); c.lineTo(x+s*r*.38,y-r*.9); c.closePath(); c.fill(); }
+  if(D.has('mohawk')){ c.fillStyle='#ff3bd4'; c.beginPath(); c.moveTo(x-r*.16,y-r*.6); for(let i=0;i<6;i++){ c.lineTo(x-r*.16+(i%2)*r*.32,y-r*(.95+i*.12)); } c.lineTo(x+r*.16,y-r*.6); c.closePath(); c.fill(); }
+  c.fillStyle=hc; c.beginPath(); c.arc(x,y,r,0,7); c.fill();
+  if(st==='mx'){ c.beginPath(); c.moveTo(x-r*.95,y-r*.42); c.lineTo(x+r*.95,y-r*.42); c.lineTo(x+r*1.15,y-r*.18); c.lineTo(x-r*1.15,y-r*.18); c.closePath(); c.fill(); }
+  if(front){
+    if(st==='half'){ faceFront(c,x,y+r*.22,r*.66,L,t); c.fillStyle=hc; c.beginPath(); c.arc(x,y,r,Math.PI*1.05,Math.PI*1.95); c.fill(); }
+    else { c.fillStyle='#141a28'; rr(c,x-r*.74,y-r*.22,r*1.48,r*.6,r*.25); c.fill(); c.fillStyle='rgba(140,210,255,.35)'; c.fillRect(x-r*.6,y-r*.16,r*.55,r*.11);
+      if(st==='mx'){ c.fillStyle='#ff7a1a'; c.fillRect(x-r*1.02,y-r*.12,r*2.04,r*.13); c.fillStyle='#202028'; rr(c,x-r*.45,y+r*.42,r*.9,r*.45,r*.15); c.fill(); } } }
+  else { if(st==='mx'){ c.fillStyle='#ff7a1a'; c.fillRect(x-r,y-r*.05,r*2,r*.16); } c.fillStyle='rgba(0,0,0,.22)'; c.fillRect(x-r*.9,y+r*.45,r*1.8,r*.12); }
+  if(D.has('stripe')){ c.fillStyle='rgba(255,255,255,.85)'; c.fillRect(x-r*.12,y-r*.98,r*.24,r*1.3); }
+  c.fillStyle='rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(x-r*.38,y-r*.45,r*.3,r*.15,-.5,0,7); c.fill();
+  c.strokeStyle='#14122b'; c.lineWidth=Math.max(1,r*.07); c.beginPath(); c.arc(x,y,r,0,7); c.stroke();
+  if(D.has('duck')){ const b=Math.sin((t||0)*5)*r*.05; c.fillStyle='#ffd23f'; c.beginPath(); c.ellipse(x,y-r*1.1+b,r*.42,r*.28,0,0,7); c.fill(); c.beginPath(); c.arc(x+r*.2,y-r*1.4+b,r*.22,0,7); c.fill(); c.fillStyle='#ff8a1a'; c.beginPath(); c.moveTo(x+r*.38,y-r*1.42+b); c.lineTo(x+r*.6,y-r*1.36+b); c.lineTo(x+r*.38,y-r*1.32+b); c.fill(); c.fillStyle='#14122b'; c.beginPath(); c.arc(x+r*.26,y-r*1.46+b,r*.04,0,7); c.fill(); } }
+function mFlame(c,x,y,w,h,dir){ c.fillStyle='#ff8a1a'; c.beginPath(); c.moveTo(x,y); for(let i=0;i<4;i++){ c.quadraticCurveTo(x+dir*w*(i+.5)/4,y-h*(i%2?1:.6),x+dir*w*(i+1)/4,y-h*.15); } c.lineTo(x,y+h*.2); c.fill(); c.fillStyle='#ffd23f'; c.beginPath(); c.moveTo(x,y); c.quadraticCurveTo(x+dir*w*.2,y-h*.5,x+dir*w*.45,y-h*.05); c.lineTo(x,y+h*.1); c.fill(); }
+function mNumber(c,x,y,r,n){ c.fillStyle='#fff'; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); c.strokeStyle='#14122b'; c.lineWidth=Math.max(1,r*.12); c.stroke(); c.fillStyle='#14122b'; c.font='900 '+Math.max(5,Math.round(r*1.3))+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(n||7),x,y+r*.08); }
+function mExhaustFlame(c,ex,ey,w,L,t,dx,dy){ const N=L.nitro||'blue',cols=N==='rainbow'?['hsl('+(t*600%360)+',100%,60%)','#fff']:MOTO_NITRO[N]||MOTO_NITRO.blue,l=w*(.12+Math.random()*.07);
+  c.fillStyle=cols[0]; c.beginPath(); c.ellipse(ex+(dx||0)*l*.5,ey+(dy||1)*l*.5,w*.04,l*.6,dx?Math.PI/2:0,0,7); c.fill(); c.fillStyle=cols[1]; c.beginPath(); c.ellipse(ex+(dx||0)*l*.3,ey+(dy||1)*l*.3,w*.02,l*.3,dx?Math.PI/2:0,0,7); c.fill(); }
+// 騎士（後面看）：重機趴低、速克達坐直、越野半站
+function mRiderBack(c,w,type,L,t){ const su=L.suit||'#2f3a5a',dk=shade(su,.7);
+  if(type==='sport'){ c.fillStyle=dk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.1,-w*.58); c.lineTo(s*w*.3,-w*.46); c.lineTo(s*w*.27,-w*.36); c.lineTo(s*w*.1,-w*.48); c.fill(); c.fillStyle='#1a1a1e'; rr(c,s*w*.3-w*.04,-w*.4,w*.08,w*.1,w*.02); c.fill(); c.fillStyle=dk; }
+    c.fillStyle=su; c.beginPath(); c.ellipse(0,-w*.68,w*.17,w*.14,0,0,7); c.fill(); c.fillStyle=dk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.13,-w*.74); c.lineTo(s*w*.27,-w*.66); c.lineTo(s*w*.25,-w*.6); c.lineTo(s*w*.12,-w*.66); c.fill(); }
+    c.fillStyle='rgba(255,255,255,.25)'; c.fillRect(-w*.02,-w*.8,w*.04,w*.22); return -w*.86; }
+  if(type==='scooter'){ c.fillStyle=dk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.14,-w*.88); c.lineTo(s*w*.28,-w*.76); c.lineTo(s*w*.25,-w*.7); c.lineTo(s*w*.12,-w*.8); c.fill(); }
+    c.fillStyle=su; rr(c,-w*.17,-w*1.0,w*.34,w*.42,w*.12); c.fill(); c.fillStyle='rgba(0,0,0,.12)'; c.fillRect(-w*.17,-w*.66,w*.34,w*.05); return -w*1.1; }
+  c.fillStyle=dk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.08,-w*.62); c.lineTo(s*w*.22,-w*.5); c.lineTo(s*w*.16,-w*.38); c.lineTo(s*w*.06,-w*.5); c.fill(); c.fillStyle='#1a1a1e'; rr(c,s*w*.18-w*.04,-w*.42,w*.08,w*.12,w*.02); c.fill(); c.fillStyle=dk; }
+  c.fillStyle=su; rr(c,-w*.15,-w*.98,w*.3,w*.4,w*.1); c.fill(); c.fillStyle=dk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.13,-w*.92); c.lineTo(s*w*.34,-w*.86); c.lineTo(s*w*.34,-w*.8); c.lineTo(s*w*.13,-w*.82); c.fill(); }
+  c.fillStyle='#fff'; c.font='900 '+Math.max(5,Math.round(w*.12))+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String((L.num)||'7'),0,-w*.8); return -w*1.08; }
+function motoBack(c,x,y,w,o,t){ const L=o.look||{},type=L.body||'sport',bc=L.bike||o.col||'#ff4d4d',D=decoSet(L),S=type==='scooter',X=type==='dirt';
+  c.save(); c.translate(x,y);
+  if(D.has('glow')) glow(c,0,-w*.02,w*.6,'rgba(80,220,255,.6)');
+  c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(0,0,w*.42,w*.07,0,0,7); c.fill();
+  c.rotate((o.lean||0)*.45); if(o.crash) c.rotate(Math.sin(t*14)*.8);
+  const tw=S?w*.07:X?w*.065:w*.12,th=S?w*.3:X?w*.48:w*.42; mTire(c,0,0,tw,th,X);
+  let ex,ey;
+  if(X){ ex=w*.17; ey=-w*.62; c.fillStyle='#b8bcc4'; c.beginPath(); c.moveTo(w*.12,-w*.3); c.lineTo(w*.2,-w*.3); c.lineTo(w*.21,-w*.62); c.lineTo(w*.13,-w*.62); c.fill(); c.fillStyle='#1a1a1e'; c.beginPath(); c.ellipse(ex,ey,w*.04,w*.02,0,0,7); c.fill(); }
+  else if(S){ ex=w*.26; ey=-w*.14; c.fillStyle='#8a8e96'; rr(c,w*.08,-w*.19,w*.18,w*.08,w*.035); c.fill(); c.fillStyle='#5a5e66'; rr(c,w*.08,-w*.19,w*.06,w*.08,w*.02); c.fill(); }
+  else { ex=w*.19; ey=-w*.24; c.fillStyle='#2a2a30'; rr(c,w*.12,-w*.3,w*.14,w*.11,w*.035); c.fill(); c.fillStyle='#c8ccd4'; c.beginPath(); c.ellipse(ex,ey,w*.05,w*.04,0,0,7); c.fill(); c.fillStyle='#16161a'; c.beginPath(); c.ellipse(ex,ey,w*.028,w*.02,0,0,7); c.fill(); }
+  if(o.boost) mExhaustFlame(c,ex,ey,w,L,t,X?0:.0,X?-1:1);
+  // 車身後段、尾燈、車牌、方向燈
+  let tailTop;
+  if(S){ c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.22,-w*.2); c.quadraticCurveTo(-w*.27,-w*.5,0,-w*.55); c.quadraticCurveTo(w*.27,-w*.5,w*.22,-w*.2); c.closePath(); c.fill(); c.fillStyle='rgba(255,255,255,.25)'; c.beginPath(); c.ellipse(-w*.1,-w*.44,w*.08,w*.035,-.3,0,7); c.fill();
+    c.fillStyle='#e8202a'; rr(c,-w*.14,-w*.37,w*.28,w*.055,w*.025); c.fill(); c.fillStyle='#ffa020'; c.fillRect(-w*.21,-w*.355,w*.05,w*.03); c.fillRect(w*.16,-w*.355,w*.05,w*.03);
+    c.fillStyle='#f4f4f4'; rr(c,-w*.09,-w*.29,w*.18,w*.085,w*.012); c.fill(); c.fillStyle='#2a2a40'; c.fillRect(-w*.06,-w*.26,w*.12,w*.025);
+    c.strokeStyle='#5a5e66'; c.lineWidth=Math.max(1,w*.022); c.beginPath(); c.moveTo(-w*.19,-w*.57); c.lineTo(w*.19,-w*.57); c.stroke(); tailTop=-w*.58; }
+  else if(X){ c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.08,-th); c.lineTo(w*.08,-th); c.lineTo(w*.05,-th-w*.2); c.lineTo(-w*.05,-th-w*.2); c.closePath(); c.fill();
+    c.fillStyle='#e8202a'; c.fillRect(-w*.03,-th-w*.12,w*.06,w*.025);
+    c.fillStyle=shade(bc,.85); c.beginPath(); c.moveTo(-w*.16,-w*.38); c.lineTo(w*.16,-w*.38); c.lineTo(w*.11,-w*.6); c.lineTo(-w*.11,-w*.6); c.closePath(); c.fill();
+    c.fillStyle='#f4f4f4'; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.16,-w*.4); c.lineTo(s*w*.27,-w*.46); c.lineTo(s*w*.22,-w*.63); c.lineTo(s*w*.11,-w*.6); c.closePath(); c.fill(); } tailTop=-w*.62; }
+  else { c.fillStyle=shade(bc,.78); c.beginPath(); c.moveTo(-w*.32,-w*.2); c.lineTo(w*.32,-w*.2); c.lineTo(w*.27,-w*.46); c.lineTo(-w*.27,-w*.46); c.closePath(); c.fill();
+    c.fillStyle='#22222a'; rr(c,-w*.14,-w*.47,w*.28,w*.05,w*.02); c.fill();
+    c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.15,-w*.44); c.lineTo(w*.15,-w*.44); c.lineTo(w*.06,-w*.66); c.lineTo(-w*.06,-w*.66); c.closePath(); c.fill(); c.fillStyle='rgba(255,255,255,.22)'; c.beginPath(); c.moveTo(-w*.1,-w*.47); c.lineTo(-w*.04,-w*.47); c.lineTo(-w*.03,-w*.63); c.fill();
+    c.fillStyle='#e8202a'; c.beginPath(); c.moveTo(-w*.11,-w*.5); c.lineTo(w*.11,-w*.5); c.lineTo(w*.08,-w*.545); c.lineTo(-w*.08,-w*.545); c.closePath(); c.fill();
+    c.fillStyle='#3a3a40'; c.fillRect(-w*.012,-w*.44,w*.024,w*.1); c.fillStyle='#f4f4f4'; rr(c,-w*.075,-w*.35,w*.15,w*.065,w*.01); c.fill(); c.fillStyle='#2a2a40'; c.fillRect(-w*.05,-w*.325,w*.1,w*.02);
+    c.fillStyle='#ffa020'; c.fillRect(-w*.13,-w*.33,w*.04,w*.025); c.fillRect(w*.09,-w*.33,w*.04,w*.025); tailTop=-w*.66; }
+  if(o.night){ glow(c,0,S?-w*.34:X?-th-w*.11:-w*.52,w*.32,'rgba(255,40,40,.5)'); }
+  if(D.has('flame')){ if(X) for(const s of [-1,1]) mFlame(c,s*w*.12,-w*.45,w*.12,w*.07,s); else for(const s of [-1,1]) mFlame(c,s*(S?w*.08:w*.06),-w*(S?.3:.26),w*.2,w*.08,s); }
+  if(D.has('num')) mNumber(c,0,S?-w*.47:X?-w*.5:-w*.58,w*.055,o.num);
+  if(D.has('side')) for(const s of [-1,1]){ c.fillStyle='#2a2a30'; rr(c,s*w*.36-w*.075,-w*.52,w*.15,w*.24,w*.035); c.fill(); c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(s*w*.36-w*.06,-w*.5,w*.12,w*.025); c.fillStyle='#e8202a'; c.fillRect(s*w*.36-w*.03,-w*.32,w*.06,w*.02); }
   // 騎士
-  c.fillStyle=L.suit||'#2f3a5a'; rr(c,-w*.24,-w*1.05,w*.48,w*.42,w*.14); c.fill(); c.fillStyle=shade(L.suit||'#2f3a5a',.8); c.fillRect(-w*.3,-w*.72,w*.14,w*.12); c.fillRect(w*.16,-w*.72,w*.14,w*.12);
-  c.fillStyle='#14122b'; c.fillRect(-w*.32,-w*.98,w*.08,w*.08); c.fillRect(w*.24,-w*.98,w*.08,w*.08);
-  headBack(c,0,-w*1.25,w*.27,{helm:L.helm||'#ffd23f'}); c.fillStyle='#14122b'; c.fillRect(-w*.27,-w*1.24,w*.54,w*.05);
+  const headY=mRiderBack(c,w,type,L,t);
+  if(D.has('box')){ const by=tailTop-w*.02; c.fillStyle='#2a2a30'; rr(c,-w*.14,by-w*.17,w*.28,w*.18,w*.04); c.fill(); c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(-w*.12,by-w*.15,w*.24,w*.03); c.fillStyle='#e8202a'; c.fillRect(-w*.08,by-w*.05,w*.16,w*.025); }
+  mHelmet(c,0,headY,w*.13,L,false,t);
+  if(D.has('flag')){ const fx=w*.2,fy=tailTop; c.strokeStyle='#d8d8e0'; c.lineWidth=Math.max(1,w*.012); c.beginPath(); c.moveTo(fx,fy); c.lineTo(fx,fy-w*.75); c.stroke(); const wv=Math.sin(t*10)*w*.03; c.fillStyle=L.bike||'#ff4d4d'; c.beginPath(); c.moveTo(fx,fy-w*.75); c.quadraticCurveTo(fx+w*.12,fy-w*.72+wv,fx+w*.24,fy-w*.7); c.lineTo(fx,fy-w*.6); c.closePath(); c.fill(); }
   c.restore(); }
-function motoFront(c,x,y,w,L,t){ L=L||{}; c.save(); c.translate(x,y); c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(0,0,w*.4,w*.07,0,0,7); c.fill();
-  c.fillStyle='#1a1a1e'; rr(c,-w*.11,-w*.4,w*.22,w*.4,w*.1); c.fill(); c.fillStyle=L.bike||'#ff4d4d'; rr(c,-w*.32,-w*.7,w*.64,w*.34,w*.14); c.fill(); c.fillStyle='#fff6c8'; c.beginPath(); c.arc(0,-w*.55,w*.09,0,7); c.fill();
-  c.strokeStyle='#3a3a48'; c.lineWidth=w*.04; c.beginPath(); c.moveTo(-w*.42,-w*.78); c.lineTo(w*.42,-w*.78); c.stroke();
-  c.fillStyle=L.suit||'#2f3a5a'; rr(c,-w*.24,-w*1.08,w*.48,w*.36,w*.14); c.fill(); c.fillStyle='#14122b'; c.beginPath(); c.arc(-w*.42,-w*.78,w*.06,0,7); c.arc(w*.42,-w*.78,w*.06,0,7); c.fill();
-  c.fillStyle=L.helm||'#ffd23f'; c.beginPath(); c.arc(0,-w*1.32,w*.32,0,7); c.fill(); faceFront(c,0,-w*1.28,w*.25,L,t); c.fillStyle=L.helm||'#ffd23f'; c.beginPath(); c.arc(0,-w*1.32,w*.32,Math.PI*1.05,Math.PI*1.95); c.fill();
-  c.strokeStyle='#14122b'; c.lineWidth=Math.max(1,w*.025); c.beginPath(); c.arc(0,-w*1.32,w*.32,0,7); c.stroke(); c.restore(); }
+function motoFront(c,x,y,w,L,t){ L=L||{}; const type=L.body||'sport',bc=L.bike||'#ff4d4d',D=decoSet(L),S=type==='scooter',X=type==='dirt',su=L.suit||'#2f3a5a';
+  c.save(); c.translate(x,y); if(D.has('glow')) glow(c,0,0,w*.6,'rgba(80,220,255,.55)'); c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(0,0,w*.4,w*.07,0,0,7); c.fill();
+  mTire(c,0,0,S?w*.07:X?w*.065:w*.1,S?w*.3:X?w*.5:w*.4,X);
+  if(X){ c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.1,-w*.54); c.lineTo(w*.1,-w*.54); c.lineTo(w*.06,-w*.6); c.lineTo(-w*.06,-w*.6); c.fill(); c.fillStyle='#b8bcc4'; c.fillRect(-w*.1,-w*.62,w*.035,w*.3); c.fillRect(w*.065,-w*.62,w*.035,w*.3);
+    c.fillStyle='#f4f4f4'; rr(c,-w*.13,-w*.86,w*.26,w*.24,w*.04); c.fill(); mNumber(c,0,-w*.74,w*.07,L.num); c.fillStyle='#fff6c8'; c.fillRect(-w*.05,-w*.65,w*.1,w*.03); }
+  else if(S){ c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.2,-w*.25); c.quadraticCurveTo(-w*.24,-w*.75,0,-w*.8); c.quadraticCurveTo(w*.24,-w*.75,w*.2,-w*.25); c.closePath(); c.fill(); c.fillStyle='#fff6c8'; c.beginPath(); c.ellipse(0,-w*.66,w*.09,w*.05,0,0,7); c.fill(); glow(c,0,-w*.66,w*.25,'rgba(255,250,200,.4)');
+    c.fillStyle='#ffa020'; c.fillRect(-w*.19,-w*.62,w*.05,w*.03); c.fillRect(w*.14,-w*.62,w*.05,w*.03); }
+  else { c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.3,-w*.28); c.lineTo(w*.3,-w*.28); c.lineTo(w*.22,-w*.7); c.lineTo(0,-w*.82); c.lineTo(-w*.22,-w*.7); c.closePath(); c.fill(); c.fillStyle='rgba(140,200,240,.55)'; c.beginPath(); c.moveTo(-w*.12,-w*.74); c.lineTo(0,-w*.92); c.lineTo(w*.12,-w*.74); c.closePath(); c.fill();
+    c.fillStyle='#fff6c8'; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.04,-w*.62); c.lineTo(s*w*.18,-w*.58); c.lineTo(s*w*.15,-w*.53); c.lineTo(s*w*.04,-w*.55); c.closePath(); c.fill(); } glow(c,0,-w*.57,w*.25,'rgba(255,250,200,.4)'); if(D.has('num')) mNumber(c,0,-w*.42,w*.06,L.num); }
+  if(D.has('flame')) for(const s of [-1,1]) mFlame(c,s*w*.06,-w*(X?.45:.38),w*.18,w*.07,s);
+  c.strokeStyle='#3a3a48'; c.lineWidth=Math.max(1,w*.03); const hb=X?-w*.88:S?-w*.82:-w*.74,hw2=X?w*.4:S?w*.3:w*.28; c.beginPath(); c.moveTo(-hw2,hb); c.lineTo(hw2,hb); c.stroke();
+  if(!X){ for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*hw2*.8,hb); c.lineTo(s*hw2*1.15,hb-w*.12); c.stroke(); c.fillStyle='#2a2a30'; c.beginPath(); c.ellipse(s*hw2*1.2,hb-w*.14,w*.05,w*.03,0,0,7); c.fill(); } }
+  const top=X?-w*1.25:S?-w*1.22:-w*1.05; c.fillStyle=su; rr(c,-w*.17,top+w*.12,w*.34,(hb-top)-w*.04,w*.12); c.fill(); c.fillStyle=shade(su,.7); for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.14,top+w*.18); c.lineTo(s*hw2,hb); c.lineTo(s*hw2*.85,hb+w*.04); c.lineTo(s*w*.1,top+w*.28); c.fill(); }
+  c.fillStyle='#1a1a1e'; for(const s of [-1,1]){ c.beginPath(); c.arc(s*hw2,hb,w*.04,0,7); c.fill(); }
+  mHelmet(c,0,top,w*.15,L,true,t); c.restore(); }
+function motoSide(c,x,y,w,L,t){ L=L||{}; const type=L.body||'sport',bc=L.bike||'#ff4d4d',D=decoSet(L),S=type==='scooter',X=type==='dirt',su=L.suit||'#2f3a5a',dk=shade(su,.7);
+  c.save(); c.translate(x,y); if(D.has('glow')) glow(c,0,-w*.05,w*.7,'rgba(80,220,255,.5)');
+  c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(0,0,w*.6,w*.06,0,0,7); c.fill();
+  const r=S?w*.13:X?w*.2:w*.17,rx=S?-w*.34:-w*.36,fx=S?w*.32:X?w*.4:w*.36,spin=t*8;
+  const wheel=(cx)=>{ c.fillStyle='#16161a'; c.beginPath(); c.arc(cx,-r,r,0,7); c.fill(); if(X){ c.fillStyle='#26262c'; for(let i=0;i<16;i++){ const a=i/16*Math.PI*2+spin*.1; c.fillRect(cx+Math.cos(a)*r*1.02-r*.06,-r+Math.sin(a)*r*1.02-r*.06,r*.12,r*.12); } }
+    c.fillStyle=X?'#c8ccd4':'#9aa0aa'; c.beginPath(); c.arc(cx,-r,r*.68,0,7); c.fill(); c.fillStyle='#16161a'; c.beginPath(); c.arc(cx,-r,r*.6,0,7); c.fill();
+    c.strokeStyle=X?'#c8ccd4':bc; c.lineWidth=Math.max(1,r*(X?.04:.12)); for(let i=0;i<(X?12:5);i++){ const a=spin+i/(X?12:5)*Math.PI*2; c.beginPath(); c.moveTo(cx,-r); c.lineTo(cx+Math.cos(a)*r*.6,-r+Math.sin(a)*r*.6); c.stroke(); }
+    c.fillStyle='#c8ccd4'; c.beginPath(); c.arc(cx,-r,r*.14,0,7); c.fill(); c.fillStyle='#8a8e96'; c.beginPath(); c.arc(cx,-r,r*.45,0,7); c.lineWidth=Math.max(1,r*.06); c.strokeStyle='#8a8e96'; c.stroke(); };
+  wheel(rx); wheel(fx);
+  if(S){ // 速克達：前擋、低踏板、圓車尾
+    c.fillStyle='#2a2a30'; c.fillRect(rx,-r*1.15,w*.32,w*.05);
+    c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.48,-w*.32); c.quadraticCurveTo(-w*.5,-w*.52,-w*.3,-w*.55); c.lineTo(-w*.02,-w*.5); c.lineTo(w*.02,-w*.22); c.lineTo(-w*.22,-w*.16); c.closePath(); c.fill();
+    c.fillRect(-w*.04,-w*.2,w*.24,w*.07); c.beginPath(); c.moveTo(w*.14,-w*.18); c.lineTo(w*.26,-w*.68); c.lineTo(w*.36,-w*.66); c.lineTo(w*.3,-w*.2); c.closePath(); c.fill();
+    c.fillStyle='#1a1a1e'; rr(c,-w*.4,-w*.6,w*.34,w*.07,w*.03); c.fill(); c.fillStyle='#e8202a'; c.fillRect(-w*.5,-w*.38,w*.04,w*.05); c.fillStyle='#fff6c8'; c.fillRect(w*.33,-w*.6,w*.04,w*.05);
+    c.strokeStyle='#3a3a48'; c.lineWidth=Math.max(1,w*.02); c.beginPath(); c.moveTo(w*.3,-w*.68); c.lineTo(w*.24,-w*.8); c.lineTo(w*.14,-w*.8); c.stroke(); c.fillStyle='#8a8e96'; rr(c,-w*.42,-w*.18,w*.2,w*.06,w*.03); c.fill(); }
+  else if(X){ // 越野：細高車架、長避震、高擋泥板
+    c.strokeStyle='#b8bcc4'; c.lineWidth=Math.max(1,w*.03); c.beginPath(); c.moveTo(fx,-r); c.lineTo(w*.24,-w*.66); c.moveTo(rx,-r); c.lineTo(-w*.04,-w*.4); c.stroke();
+    c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.5,-w*.6); c.lineTo(-w*.18,-w*.58); c.lineTo(w*.2,-w*.66); c.lineTo(w*.24,-w*.56); c.lineTo(-w*.06,-w*.42); c.lineTo(-w*.3,-w*.5); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(w*.3,-w*.5); c.lineTo(w*.52,-w*.52); c.lineTo(w*.44,-w*.46); c.closePath(); c.fill(); c.fillStyle='#f4f4f4'; rr(c,-w*.3,-w*.55,w*.14,w*.1,w*.02); c.fill(); mNumber(c,-w*.23,-w*.5,w*.04,L.num);
+    c.fillStyle='#1a1a1e'; rr(c,-w*.36,-w*.66,w*.42,w*.05,w*.02); c.fill(); c.fillStyle='#c8ccd4'; c.beginPath(); c.moveTo(-w*.06,-w*.4); c.quadraticCurveTo(-w*.3,-w*.42,-w*.46,-w*.56); c.lineTo(-w*.48,-w*.52); c.quadraticCurveTo(-w*.3,-w*.36,-w*.06,-w*.34); c.fill();
+    c.strokeStyle='#3a3a48'; c.lineWidth=Math.max(1,w*.02); c.beginPath(); c.moveTo(w*.24,-w*.66); c.lineTo(w*.2,-w*.78); c.stroke(); }
+  else { // 重機：整流罩、油箱、尖車尾、擋風鏡
+    c.fillStyle='#2a2a30'; c.beginPath(); c.moveTo(rx,-r); c.lineTo(-w*.02,-w*.3); c.lineTo(-w*.02,-w*.24); c.lineTo(rx,-r*.85); c.fill();
+    c.fillStyle=shade(bc,.85); c.beginPath(); c.moveTo(-w*.06,-w*.24); c.lineTo(w*.3,-w*.26); c.lineTo(w*.46,-w*.5); c.lineTo(w*.4,-w*.68); c.lineTo(w*.2,-w*.62); c.lineTo(-w*.04,-w*.42); c.closePath(); c.fill();
+    c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.04,-w*.48); c.quadraticCurveTo(w*.1,-w*.66,w*.24,-w*.6); c.lineTo(w*.2,-w*.48); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(-w*.1,-w*.5); c.lineTo(-w*.54,-w*.62); c.lineTo(-w*.52,-w*.56); c.lineTo(-w*.12,-w*.42); c.closePath(); c.fill();
+    c.fillStyle='rgba(140,200,240,.6)'; c.beginPath(); c.moveTo(w*.34,-w*.66); c.lineTo(w*.26,-w*.8); c.lineTo(w*.4,-w*.7); c.closePath(); c.fill();
+    c.fillStyle='#fff6c8'; c.beginPath(); c.moveTo(w*.42,-w*.6); c.lineTo(w*.47,-w*.52); c.lineTo(w*.43,-w*.5); c.closePath(); c.fill(); c.fillStyle='#e8202a'; c.fillRect(-w*.54,-w*.62,w*.04,w*.03);
+    c.fillStyle='#1a1a1e'; rr(c,-w*.3,-w*.56,w*.26,w*.05,w*.02); c.fill(); c.fillStyle='#2a2a30'; rr(c,-w*.38,-w*.4,w*.2,w*.08,w*.03); c.fill(); c.fillStyle='#c8ccd4'; c.beginPath(); c.ellipse(-w*.38,-w*.36,w*.02,w*.04,0,0,7); c.fill();
+    if(D.has('num')) mNumber(c,w*.24,-w*.42,w*.05,L.num); }
+  if(D.has('flame')) mFlame(c,S?w*.0:w*.02,S?-w*.4:-w*.4,w*.3,w*.08,1);
+  if(D.has('box')){ c.fillStyle='#2a2a30'; rr(c,-w*.5,S?-w*.78:-w*.8,w*.2,w*.18,w*.04); c.fill(); }
+  if(D.has('side')){ c.fillStyle='#2a2a30'; rr(c,-w*.46,-w*.5,w*.24,w*.18,w*.04); c.fill(); }
+  // 騎士側面
+  c.lineCap='round';
+  let hip,sh,head,hand,knee,foot;
+  if(S){ hip=[-w*.18,-w*.62]; sh=[-w*.14,-w*1.0]; head=[-w*.1,-w*1.14]; hand=[w*.16,-w*.8]; knee=[w*.04,-w*.56]; foot=[w*.06,-w*.27]; }
+  else if(X){ hip=[-w*.14,-w*.78]; sh=[w*.04,-w*1.08]; head=[w*.1,-w*1.2]; hand=[w*.2,-w*.8]; knee=[w*.04,-w*.6]; foot=[-w*.06,-w*.42]; }
+  else { hip=[-w*.18,-w*.62]; sh=[w*.1,-w*.84]; head=[w*.2,-w*.9]; hand=[w*.3,-w*.66]; knee=[w*.04,-w*.5]; foot=[-w*.12,-w*.36]; }
+  const limb=(a,b,wd,col)=>{ c.strokeStyle=col; c.lineWidth=wd; c.beginPath(); c.moveTo(a[0],a[1]); c.lineTo(b[0],b[1]); c.stroke(); };
+  limb(hip,knee,w*.1,dk); limb(knee,foot,w*.085,dk); c.fillStyle='#1a1a1e'; rr(c,foot[0]-w*.05,foot[1]-w*.03,w*.11,w*.06,w*.02); c.fill();
+  limb(hip,sh,w*.17,su); limb(sh,hand,w*.075,dk); c.fillStyle='#1a1a1e'; c.beginPath(); c.arc(hand[0],hand[1],w*.035,0,7); c.fill();
+  if(D.has('flag')){ c.strokeStyle='#d8d8e0'; c.lineWidth=Math.max(1,w*.012); c.beginPath(); c.moveTo(-w*.46,-w*.6); c.lineTo(-w*.5,-w*1.3); c.stroke(); const wv=Math.sin(t*10)*w*.03; c.fillStyle=bc; c.beginPath(); c.moveTo(-w*.5,-w*1.3); c.quadraticCurveTo(-w*.62,-w*1.27+wv,-w*.74,-w*1.25); c.lineTo(-w*.49,-w*1.15); c.closePath(); c.fill(); }
+  c.lineCap='butt'; mHelmet(c,head[0],head[1],w*.13,L,false,t);
+  c.restore(); }
+
 // 雪橇
 function sledBack(c,x,y,w,o,t){ const L=o.look||{}; c.save(); c.translate(x,y); c.rotate((o.lean||0)*.35); if(o.crash) c.rotate(t*12);
   c.fillStyle='rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(0,0,w*.48,w*.08,0,0,7); c.fill();
@@ -139,17 +251,89 @@ function sledFront(c,x,y,w,L,t){ L=L||{}; c.save(); c.translate(x,y); c.fillStyl
   c.fillStyle=L.coat||'#3d8bff'; rr(c,-w*.28,-w*.7,w*.56,w*.44,w*.18); c.fill(); c.fillStyle=L.scarf||'#ff4d4d'; c.fillRect(-w*.22,-w*.72,w*.44,w*.09);
   faceFront(c,0,-w*.95,w*.28,L,t); c.fillStyle=L.hat||'#ffd23f'; c.beginPath(); c.arc(0,-w*1.0,w*.29,Math.PI*1.02,Math.PI*1.98); c.fill(); c.fillStyle='#fff'; c.fillRect(-w*.29,-w*1.04,w*.58,w*.06); c.beginPath(); c.arc(0,-w*1.3,w*.08,0,7); c.fill(); c.restore(); }
 // 水上摩托車
-function jetBack(c,x,y,w,o,t){ const L=o.look||{}; c.save(); c.translate(x,y); c.rotate((o.lean||0)*.45); if(o.crash) c.rotate(Math.sin(t*12)*.9);
-  c.fillStyle='rgba(255,255,255,.85)'; for(let i=0;i<5;i++){ const a=Math.random(); c.beginPath(); c.arc((i-2)*w*.15,-w*.05-a*w*.15*(o.spd||0),w*.1*(.5+a),0,7); c.fill(); }
-  c.fillStyle=L.hull||'#ffd23f'; c.beginPath(); c.moveTo(-w*.48,-w*.12); c.lineTo(w*.48,-w*.12); c.lineTo(w*.38,w*.02); c.lineTo(-w*.38,w*.02); c.fill(); rr(c,-w*.36,-w*.42,w*.72,w*.32,w*.12); c.fill(); c.fillStyle='rgba(0,0,0,.25)'; c.fillRect(-w*.48,-w*.14,w*.96,w*.04);
-  c.fillStyle='#ff2a2a'; c.fillRect(-w*.3,-w*.35,w*.1,w*.05); c.fillRect(w*.2,-w*.35,w*.1,w*.05);
-  if(o.boost){ c.fillStyle='rgba(120,220,255,.9)'; c.beginPath(); c.moveTo(-w*.2,0); c.lineTo(0,w*.12+Math.random()*w*.08); c.lineTo(w*.2,0); c.fill(); }
-  c.fillStyle=L.vest||'#ff7a1a'; rr(c,-w*.24,-w*.82,w*.48,w*.44,w*.15); c.fill(); c.fillStyle='rgba(255,255,255,.6)'; c.fillRect(-w*.24,-w*.66,w*.48,w*.04);
-  headBack(c,0,-w*1.0,w*.24,{helm:L.helm||'#f4f4f4'}); c.restore(); }
-function jetFront(c,x,y,w,L,t){ L=L||{}; c.save(); c.translate(x,y); c.fillStyle='rgba(120,200,255,.6)'; c.beginPath(); c.ellipse(0,0,w*.55,w*.08,0,0,7); c.fill();
-  c.fillStyle=L.hull||'#ffd23f'; c.beginPath(); c.moveTo(-w*.45,-w*.12); c.lineTo(0,-w*.02); c.lineTo(w*.45,-w*.12); c.lineTo(w*.3,-w*.42); c.lineTo(-w*.3,-w*.42); c.fill(); c.strokeStyle='#3a3a48'; c.lineWidth=w*.04; c.beginPath(); c.moveTo(-w*.4,-w*.6); c.lineTo(w*.4,-w*.6); c.stroke();
-  c.fillStyle=L.vest||'#ff7a1a'; rr(c,-w*.24,-w*.86,w*.48,w*.44,w*.15); c.fill(); c.fillStyle=L.helm||'#f4f4f4'; c.beginPath(); c.arc(0,-w*1.08,w*.3,0,7); c.fill(); faceFront(c,0,-w*1.04,w*.23,L,t);
-  c.fillStyle=L.helm||'#f4f4f4'; c.beginPath(); c.arc(0,-w*1.08,w*.3,Math.PI*1.05,Math.PI*1.95); c.fill(); c.strokeStyle='#14122b'; c.lineWidth=Math.max(1,w*.02); c.beginPath(); c.arc(0,-w*1.08,w*.3,0,7); c.stroke(); c.restore(); }
+// 快艇（寫實版）：pwc 坐式水上摩托車、stand 站立式水上摩托、speed 競速快艇；後面看（比賽中）、正面（頒獎台）、側面（造型預覽）
+function jSpray(c,w,amt,t,boost,L){ const N=L.nitro||'blue',col=boost?(N==='rainbow'?'hsl('+(t*600%360)+',100%,75%)':N==='fire'?'#ffd8a0':N==='green'?'#d8ffd8':'#d8f4ff'):'#ffffff';
+  for(let i=0;i<7;i++){ const a=(i-3)/3,r=w*(.025+Math.random()*.03)*(.5+amt); c.fillStyle=i%3?'rgba(255,255,255,.7)':col; c.beginPath(); c.arc(a*w*.22,w*.01-Math.random()*w*.08*amt,r,0,7); c.fill(); } // 船尾小浪花，不要蓋住船
+  if(boost){ c.fillStyle=col; c.globalAlpha=.8; c.beginPath(); c.moveTo(-w*.08,-w*.05); c.quadraticCurveTo(0,-w*(.6+Math.random()*.15),w*.08,-w*.05); c.fill(); c.globalAlpha=1; } }
+function sharkMouth(c,x,y,w,dir){ c.fillStyle='#c0262a'; c.beginPath(); c.moveTo(x,y); c.quadraticCurveTo(x+dir*w*.5,y+w*.18,x+dir*w,y); c.quadraticCurveTo(x+dir*w*.5,y+w*.05,x,y); c.fill(); c.fillStyle='#fff'; for(let i=0;i<5;i++){ const xx=x+dir*w*(.12+i*.17); c.beginPath(); c.moveTo(xx,y+w*.02); c.lineTo(xx+dir*w*.05,y+w*.1); c.lineTo(xx+dir*w*.1,y+w*.03); c.fill(); } c.fillStyle='#14122b'; c.beginPath(); c.arc(x+dir*w*.1,y-w*.12,w*.04,0,7); c.fill(); }
+function jRiderBack(c,w,type,L,t,seatY){ const v=L.vest||'#ff7a1a',sk='#2a3a5a';
+  if(type==='stand'){ c.fillStyle=sk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.04,seatY); c.lineTo(s*w*.12,seatY-w*.05); c.lineTo(s*w*.1,seatY-w*.32); c.lineTo(s*w*.02,seatY-w*.32); c.closePath(); c.fill(); }
+    c.fillStyle=v; rr(c,-w*.15,seatY-w*.66,w*.3,w*.36,w*.1); c.fill(); c.fillStyle='rgba(255,255,255,.7)'; c.fillRect(-w*.15,seatY-w*.5,w*.3,w*.03);
+    c.fillStyle=sk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.12,seatY-w*.62); c.lineTo(s*w*.22,seatY-w*.5); c.lineTo(s*w*.18,seatY-w*.44); c.lineTo(s*w*.1,seatY-w*.55); c.fill(); } return seatY-w*.76; }
+  if(type==='speed'){ c.fillStyle=v; rr(c,-w*.15,seatY-w*.32,w*.3,w*.3,w*.1); c.fill(); c.fillStyle='rgba(255,255,255,.7)'; c.fillRect(-w*.15,seatY-w*.2,w*.3,w*.025); return seatY-w*.42; }
+  c.fillStyle=sk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.12,seatY); c.lineTo(s*w*.26,seatY-w*.04); c.lineTo(s*w*.24,seatY+w*.06); c.lineTo(s*w*.1,seatY+w*.06); c.fill(); }
+  c.fillStyle=v; rr(c,-w*.16,seatY-w*.42,w*.32,w*.4,w*.11); c.fill(); c.fillStyle='rgba(255,255,255,.7)'; c.fillRect(-w*.16,seatY-w*.26,w*.32,w*.03);
+  c.fillStyle=sk; for(const s of [-1,1]){ c.beginPath(); c.moveTo(s*w*.13,seatY-w*.38); c.lineTo(s*w*.27,seatY-w*.26); c.lineTo(s*w*.24,seatY-w*.2); c.lineTo(s*w*.11,seatY-w*.3); c.fill(); } return seatY-w*.52; }
+function jetBack(c,x,y,w,o,t){ const L=o.look||{},type=L.boat||'pwc',hc=L.hull||'#ffd23f',D=decoSet(L),P=type==='pwc',ST=type==='stand',SP=type==='speed';
+  c.save(); c.translate(x,y); if(D.has('glow')) glow(c,0,-w*.02,w*.7,'rgba(80,220,255,.6)');
+  c.fillStyle='rgba(20,60,110,.35)'; c.beginPath(); c.ellipse(0,w*.02,w*.55,w*.08,0,0,7); c.fill();
+  c.rotate((o.lean||0)*.45); if(o.crash) c.rotate(Math.sin(t*12)*.9);
+  const hw=SP?w*.5:ST?w*.26:w*.44,deck=SP?-w*.34:ST?-w*.22:-w*.3;
+  // 船身：V 字船底、甲板邊、尾板
+  c.fillStyle=shade(hc,.72); c.beginPath(); c.moveTo(-hw,deck); c.lineTo(hw,deck); c.lineTo(hw*.7,-w*.04); c.lineTo(0,w*.03); c.lineTo(-hw*.7,-w*.04); c.closePath(); c.fill();
+  c.fillStyle=hc; c.beginPath(); c.moveTo(-hw,deck); c.lineTo(hw,deck); c.lineTo(hw*.86,deck+w*.1); c.lineTo(-hw*.86,deck+w*.1); c.closePath(); c.fill();
+  c.fillStyle='#f4f4f4'; c.fillRect(-hw*.86,deck+w*.1,hw*1.72,w*.025);
+  if(D.has('stripe')){ c.fillStyle='rgba(255,255,255,.85)'; c.fillRect(-hw*.86,deck+w*.135,hw*1.72,w*.02); c.fillStyle='#14122b'; c.fillRect(-hw*.86,deck+w*.16,hw*1.72,w*.015); }
+  if(D.has('flame')) for(const s of [-1,1]) mFlame(c,s*hw*.2,deck+w*.2,hw*.6,w*.07,s);
+  if(D.has('shark')){ sharkMouth(c,-hw*.65,deck+w*.2,hw*.45,1); sharkMouth(c,hw*.65,deck+w*.2,hw*.45,-1); }
+  // 噴嘴、引擎
+  if(SP){ c.fillStyle='#1e1e24'; rr(c,-w*.1,deck-w*.3,w*.2,w*.3,w*.05); c.fill(); c.fillStyle=hc; c.fillRect(-w*.1,deck-w*.24,w*.2,w*.04); c.fillStyle='#3a3a44'; c.fillRect(-w*.03,deck,w*.06,w*.22);
+    c.fillStyle='rgba(140,200,240,.55)'; c.beginPath(); c.moveTo(-hw*.7,deck-w*.02); c.lineTo(hw*.7,deck-w*.02); c.lineTo(hw*.55,deck-w*.16); c.lineTo(-hw*.55,deck-w*.16); c.closePath(); c.fill(); }
+  else { c.fillStyle='#2a2a30'; c.beginPath(); c.ellipse(0,deck+w*.2,w*.06,w*.04,0,0,7); c.fill(); c.fillStyle='#e8202a'; c.fillRect(-hw*.6,deck+w*.04,w*.06,w*.03); c.fillRect(hw*.6-w*.06,deck+w*.04,w*.06,w*.03); }
+  if(o.night) glow(c,0,deck,w*.3,'rgba(255,40,40,.35)');
+  if(D.has('num')) mNumber(c,SP?hw*.6:0,deck+w*.06,w*.05,o.num);
+  // 浪花
+  jSpray(c,w,(o.spd||0),t,o.boost,L);
+  // 座墊、騎士
+  let seatY=deck;
+  if(P){ c.fillStyle='#22222a'; rr(c,-w*.14,deck-w*.08,w*.28,w*.1,w*.04); c.fill(); seatY=deck-w*.06; }
+  if(ST){ c.strokeStyle='#3a3a48'; c.lineWidth=Math.max(1,w*.025); c.beginPath(); c.moveTo(0,deck); c.lineTo(0,deck-w*.55); c.moveTo(-w*.2,deck-w*.55); c.lineTo(w*.2,deck-w*.55); c.stroke(); }
+  const headY=jRiderBack(c,w,type,L,t,SP?deck-w*.04:seatY);
+  if(D.has('wing')&&SP){ c.fillStyle=hc; c.fillRect(-hw*.8,deck-w*.42,hw*1.6,w*.04); c.fillStyle='#2a2a30'; c.fillRect(-hw*.7,deck-w*.38,w*.03,w*.36); c.fillRect(hw*.7-w*.03,deck-w*.38,w*.03,w*.36); }
+  mHelmet(c,0,headY,w*.12,L,false,t);
+  if(D.has('flag')||D.has('wing')&&!SP){ const fx=hw*.7,fy=deck; c.strokeStyle='#d8d8e0'; c.lineWidth=Math.max(1,w*.012); c.beginPath(); c.moveTo(fx,fy); c.lineTo(fx,fy-w*.8); c.stroke(); const wv=Math.sin(t*10)*w*.03; c.fillStyle=D.has('flag')?'#ff7a1a':hc; c.beginPath(); c.moveTo(fx,fy-w*.8); c.quadraticCurveTo(fx+w*.12,fy-w*.77+wv,fx+w*.24,fy-w*.75); c.lineTo(fx,fy-w*.66); c.closePath(); c.fill(); }
+  if(D.has('light')){ const on=Math.floor(t*4)%2; c.fillStyle=on?'#ff3b3b':'#3d8bff'; c.beginPath(); c.arc(-hw*.7,deck-w*.08,w*.03,0,7); c.fill(); glow(c,-hw*.7,deck-w*.08,w*.12,on?'rgba(255,60,60,.5)':'rgba(60,140,255,.5)'); }
+  c.restore(); }
+function jetFront(c,x,y,w,L,t){ L=L||{}; const type=L.boat||'pwc',hc=L.hull||'#ffd23f',D=decoSet(L),SP=type==='speed',ST=type==='stand',v=L.vest||'#ff7a1a';
+  c.save(); c.translate(x,y); if(D.has('glow')) glow(c,0,0,w*.65,'rgba(80,220,255,.55)'); c.fillStyle='rgba(120,200,255,.6)'; c.beginPath(); c.ellipse(0,0,w*.6,w*.08,0,0,7); c.fill();
+  const hw=SP?w*.48:ST?w*.25:w*.42;
+  c.fillStyle=hc; c.beginPath(); c.moveTo(-hw,-w*.3); c.lineTo(0,-w*.36); c.lineTo(hw,-w*.3); c.lineTo(hw*.5,-w*.06); c.lineTo(0,0); c.lineTo(-hw*.5,-w*.06); c.closePath(); c.fill();
+  c.fillStyle=shade(hc,.78); c.beginPath(); c.moveTo(0,-w*.36); c.lineTo(hw*.5,-w*.06); c.lineTo(0,0); c.closePath(); c.fill();
+  if(D.has('shark')){ sharkMouth(c,-hw*.55,-w*.2,hw*.5,1); sharkMouth(c,hw*.55,-w*.2,hw*.5,-1); }
+  if(D.has('num')) mNumber(c,0,-w*.24,w*.06,L.num);
+  if(SP){ c.fillStyle='rgba(140,200,240,.6)'; c.beginPath(); c.moveTo(-hw*.7,-w*.36); c.lineTo(hw*.7,-w*.36); c.lineTo(hw*.5,-w*.5); c.lineTo(-hw*.5,-w*.5); c.closePath(); c.fill(); }
+  else { c.strokeStyle='#3a3a48'; c.lineWidth=Math.max(1,w*.03); const hb=ST?-w*.82:-w*.52; c.beginPath(); c.moveTo(-w*.26,hb); c.lineTo(w*.26,hb); c.stroke(); if(ST){ c.beginPath(); c.moveTo(0,hb); c.lineTo(0,-w*.36); c.stroke(); } }
+  const top=SP?-w*.78:ST?-w*1.18:-w*.92; c.fillStyle=v; rr(c,-w*.16,top+w*.12,w*.32,SP?w*.28:w*.38,w*.1); c.fill(); c.fillStyle='rgba(255,255,255,.7)'; c.fillRect(-w*.16,top+w*.28,w*.32,w*.03);
+  mHelmet(c,0,top,w*.14,L,true,t); c.restore(); }
+function jetSide(c,x,y,w,L,t){ L=L||{}; const type=L.boat||'pwc',hc=L.hull||'#ffd23f',D=decoSet(L),SP=type==='speed',ST=type==='stand',v=L.vest||'#ff7a1a',sk='#2a3a5a';
+  c.save(); c.translate(x,y); if(D.has('glow')) glow(c,0,-w*.05,w*.75,'rgba(80,220,255,.5)');
+  const L2=SP?w*.62:ST?w*.46:w*.54,hh=SP?w*.24:w*.2;
+  // 船身側面：船頭翹起
+  c.fillStyle=shade(hc,.75); c.beginPath(); c.moveTo(-L2,-hh*.2); c.lineTo(L2*.6,-hh*.1); c.quadraticCurveTo(L2*.95,-hh*.3,L2,-hh); c.lineTo(-L2,-hh); c.closePath(); c.fill();
+  c.fillStyle=hc; c.beginPath(); c.moveTo(-L2,-hh); c.lineTo(L2,-hh); c.quadraticCurveTo(L2*.7,-hh*1.35,L2*.2,-hh*1.25); c.lineTo(-L2,-hh*1.15); c.closePath(); c.fill();
+  c.fillStyle='#f4f4f4'; c.fillRect(-L2,-hh*.62,L2*1.6,w*.02);
+  if(D.has('stripe')){ c.fillStyle='#14122b'; c.fillRect(-L2,-hh*.55,L2*1.6,w*.015); }
+  if(D.has('flame')) mFlame(c,-L2*.4,-hh*.5,L2*.8,w*.08,1);
+  if(D.has('shark')) sharkMouth(c,L2*.85,-hh*.5,L2*.4,-1);
+  if(D.has('num')) mNumber(c,-L2*.1,-hh*.62,w*.05,L.num);
+  if(SP){ c.fillStyle='#1e1e24'; rr(c,-L2-w*.1,-hh*1.6,w*.14,hh*1.4,w*.04); c.fill(); c.fillStyle=hc; c.fillRect(-L2-w*.1,-hh*1.45,w*.14,w*.03); c.fillStyle='#3a3a44'; c.fillRect(-L2-w*.06,-hh*.2,w*.05,hh*.6);
+    c.fillStyle='rgba(140,200,240,.6)'; c.beginPath(); c.moveTo(L2*.15,-hh*1.25); c.lineTo(-L2*.05,-hh*1.85); c.lineTo(-L2*.12,-hh*1.25); c.closePath(); c.fill(); if(D.has('wing')){ c.fillStyle=hc; c.fillRect(-L2*.95,-hh*2.1,L2*.4,w*.04); c.fillRect(-L2*.8,-hh*2.1,w*.03,hh*.9); } }
+  else { c.fillStyle='#22222a'; rr(c,-L2*.5,-hh*1.35,L2*.6,w*.07,w*.03); c.fill(); c.strokeStyle='#3a3a48'; c.lineWidth=Math.max(1,w*.025); c.beginPath(); if(ST){ c.moveTo(L2*.55,-hh*1.15); c.lineTo(L2*.2,-hh*1.15-w*.55); c.lineTo(L2*.3,-hh*1.15-w*.6); } else { c.moveTo(L2*.3,-hh*1.2); c.lineTo(L2*.22,-hh*1.2-w*.22); c.lineTo(L2*.32,-hh*1.2-w*.24); } c.stroke(); }
+  // 騎士
+  c.lineCap='round'; const limb=(a,b,wd,col)=>{ c.strokeStyle=col; c.lineWidth=wd; c.beginPath(); c.moveTo(a[0],a[1]); c.lineTo(b[0],b[1]); c.stroke(); };
+  const base=-hh*1.25; let hip,sh,hd,hand,knee,foot;
+  if(ST){ foot=[L2*.05,base]; knee=[L2*.1,base-w*.2]; hip=[-L2*.05,base-w*.38]; sh=[L2*.08,base-w*.68]; hd=[L2*.14,base-w*.82]; hand=[L2*.3,base-w*.6]; }
+  else if(SP){ hip=[-L2*.35,base]; knee=[-L2*.1,base-w*.08]; foot=[L2*.05,base+w*.02]; sh=[-L2*.32,base-w*.32]; hd=[-L2*.28,base-w*.46]; hand=[-L2*.05,base-w*.2]; }
+  else { hip=[-L2*.25,base-w*.08]; knee=[L2*.0,base-w*.16]; foot=[-L2*.05,base+w*.02]; sh=[-L2*.15,base-w*.44]; hd=[-L2*.1,base-w*.58]; hand=[L2*.22,base-w*.3]; }
+  limb(hip,knee,w*.09,sk); limb(knee,foot,w*.08,sk); limb(hip,sh,w*.17,v); limb(sh,hand,w*.07,sk); c.fillStyle='#1a1a1e'; c.beginPath(); c.arc(hand[0],hand[1],w*.03,0,7); c.fill();
+  c.lineCap='butt'; mHelmet(c,hd[0],hd[1],w*.12,L,false,t);
+  if(D.has('flag')){ c.strokeStyle='#d8d8e0'; c.lineWidth=Math.max(1,w*.012); c.beginPath(); c.moveTo(-L2*.85,-hh*1.15); c.lineTo(-L2*.9,-hh*1.15-w*.7); c.stroke(); const wv=Math.sin(t*10)*w*.03; c.fillStyle='#ff7a1a'; c.beginPath(); c.moveTo(-L2*.9,-hh*1.15-w*.7); c.quadraticCurveTo(-L2*1.05,-hh*1.15-w*.67+wv,-L2*1.2,-hh*1.15-w*.65); c.lineTo(-L2*.89,-hh*1.15-w*.56); c.closePath(); c.fill(); }
+  if(D.has('light')){ const on=Math.floor(t*4)%2; c.fillStyle=on?'#ff3b3b':'#3d8bff'; c.beginPath(); c.arc(-L2*.6,-hh*1.3,w*.03,0,7); c.fill(); }
+  // 水花
+  c.fillStyle='rgba(255,255,255,.85)'; for(let i=0;i<7;i++){ c.beginPath(); c.arc(-L2-i*w*.06,-hh*.2-Math.sin(t*8+i)*w*.04,w*.04+(i%3)*w*.01,0,7); c.fill(); }
+  c.fillStyle='rgba(60,150,220,.5)'; c.fillRect(-L2*1.4,-hh*.15,L2*2.8,w*.06);
+  c.restore(); }
+
 // 動物
 const ANIMALS={cat:{fur:'#f4b45a',ear:'pt',tail:'long',name:'貓咪'},dog:{fur:'#c8905a',ear:'flop',tail:'short',name:'小狗'},bunny:{fur:'#f4f0f0',ear:'long',tail:'puff',name:'兔子'},bear:{fur:'#9a6a42',ear:'round',tail:'puff',name:'小熊'},
   panda:{fur:'#ffffff',ear:'round',tail:'puff',dark:'#2a2a30',name:'熊貓'},fox:{fur:'#ff8a3a',ear:'pt',tail:'fluffy',name:'狐狸'},penguin:{fur:'#2a2a3a',ear:'none',tail:'none',belly:'#fff',name:'企鵝'},frog:{fur:'#6fcf5a',ear:'eyes',tail:'none',name:'青蛙'}};
@@ -461,12 +645,16 @@ const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',
   onObs(k,ob,A){ if(ob.k==='can'){ ob.taken.add(k.i); if(k.charges<3) k.charges++; A.toast(k,'拿到氮氣瓶'); if(k.local) A.sfx('item'); return; } A.crash(k,1.2,'撞到路障了！'); },
   nearMiss(k,A){ k.gauge=(k.gauge||0)+.34; if(k.gauge>=1){ k.gauge=0; if(k.charges<3) k.charges++; A.toast(k,'驚險超車！氮氣 +1'); if(k.local) A.sfx('item'); } else if(k.local) A.toast(k,'驚險超車！'); },
   gaugeOf:k=>k.gauge||0,
-  drawBack:(c,x,y,w,o,t)=>motoBack(c,x,y,w/1.0,o,t),drawFront:motoFront,
-  botLook:i=>({bike:COLORS[(i+1)%6],helm:['#ffd23f','#ffffff','#3ddbd9','#ff7eb6','#5fd068','#ff9d3d'][i%6],suit:['#2f3a5a','#5a2f3a','#2f5a3a','#3a2f5a','#5a4a2f','#2f4a5a'][i%6]}),
-  looks:[{key:'bike',label:'車身顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#1e1e24']},
-    {key:'helm',label:'安全帽',type:'color',opts:['#ffd23f','#ffffff','#ff4d4d','#3ddbd9','#ff7eb6','#5fd068','#1e1e24']},
-    {key:'suit',label:'騎士服',type:'color',opts:['#2f3a5a','#5a2f3a','#2f5a3a','#e8e8e8','#ff9d3d','#3d8bff']}],
-  desc:'Q 版機車騎士在市區、海岸、山路、霓虹夜街和雨天高速公路飆車。閃過車流、驚險超車集滿氮氣，撿氮氣瓶加速；雨天路滑、霧天看不遠。共 15 關，單人、雙人分割畫面或開房間連線。',
+  drawBack:motoBack,drawFront:motoFront,drawSide:motoSide,
+  botLook:i=>({body:['sport','scooter','dirt'][i%3],bike:COLORS[(i+1)%6],helmet:['full','half','mx'][i%3],helm:['#ffd23f','#ffffff','#3ddbd9','#ff7eb6','#5fd068','#ff9d3d'][i%6],suit:['#2f3a5a','#5a2f3a','#2f5a3a','#3a2f5a','#5a4a2f','#2f4a5a'][i%6],deco:['num','flame,box','glow','stripe,flag','num,catears','side'][i%6],nitro:['blue','fire','green','rainbow'][i%4],num:String(i+2)}),
+  looks:[{key:'body',label:'車款',opts:[{id:'scooter',label:'一般輕型機車'},{id:'sport',label:'重型機車'},{id:'dirt',label:'越野機車'}]},
+    {key:'bike',label:'車身顏色',type:'color',opts:['#ff4d4d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#3d8bff','#c56bff','#f4f4f4','#1e1e24']},
+    {key:'helmet',label:'安全帽',opts:[{id:'full',label:'全罩式'},{id:'half',label:'半罩式'},{id:'mx',label:'越野帽'}]},
+    {key:'helm',label:'安全帽顏色',type:'color',opts:['#ffd23f','#ffffff','#ff4d4d','#3ddbd9','#ff7eb6','#5fd068','#1e1e24']},
+    {key:'suit',label:'騎士服',type:'color',opts:['#2f3a5a','#5a2f3a','#2f5a3a','#e8e8e8','#ff9d3d','#3d8bff','#1e1e24']},
+    {key:'deco',label:'配件',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'box',label:'後箱',grp:'車上'},{id:'side',label:'側箱',grp:'車上'},{id:'flag',label:'旗子',grp:'車上'},{id:'flame',label:'火焰彩繪',grp:'車身'},{id:'num',label:'賽車號碼',grp:'車身'},{id:'stripe',label:'安全帽條紋',grp:'車身'},{id:'glow',label:'霓虹底燈',grp:'燈光'},{id:'catears',label:'貓耳',grp:'帽飾'},{id:'horns',label:'惡魔角',grp:'帽飾'},{id:'mohawk',label:'莫西幹',grp:'帽飾'},{id:'duck',label:'小鴨',grp:'帽飾'}]},
+    {key:'nitro',label:'加速特效',opts:[{id:'blue',label:'藍焰'},{id:'fire',label:'火焰'},{id:'green',label:'綠焰'},{id:'rainbow',label:'彩虹'}]}],
+  desc:'騎一般輕型機車、重型機車或越野機車，在市區、海岸、山路、霓虹夜街和雨天高速公路飆車（造型可選車款和後箱、側箱、彩繪、霓虹底燈等配件）。閃過車流、驚險超車集滿氮氣，撿氮氣瓶加速；雨天路滑、霧天看不遠。共 15 關，單人、雙人分割畫面或開房間連線。',
   goal:'從起點騎到終點，前 3 名過關。路上有一般車輛，撞到會摔車；從車旁邊驚險超車三次可以集到一瓶氮氣，路上也撿得到氮氣瓶（最多存 3 瓶）。',
   help:[['↑ ↓','油門、煞車'],['← →','轉向'],['X','用氮氣加速'],['W A S D Q','雙人 1P（左半畫面），Q 用氮氣'],['↑ ↓ ← → Enter','雙人 2P（右半畫面），Enter 用氮氣']],
   touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車'],['氮氣','用氮氣加速']],
@@ -533,11 +721,16 @@ const JET={id:'jet',name:'浪尖快艇賽',camH:820,kmh:120,engine:'square',tagH
     if(ob.ramp){ if(k.airY<=0){ k.vy=800+k.v*.1; k.airY=1; A.toast(k,'飛越浪頭！'); if(k.local) A.sfx('spring'); } return; }
     if(k.airY>120) return; A.crash(k,1,ob.k==='log'?'撞到漂流木！':'撞到礁石！'); },
   onLand(k,A){ k.boostT=Math.max(k.boostT,.6); },
-  drawBack:jetBack,drawFront:jetFront,
-  botLook:i=>({hull:COLORS[(i+2)%6],vest:['#ff7a1a','#ffd23f','#5fd068','#ff4d4d','#3d8bff','#c56bff'][i%6],helm:['#ffffff','#1e1e24','#ff4d4d','#3ddbd9','#ffd23f','#ff7eb6'][i%6]}),
-  looks:[{key:'hull',label:'船身顏色',type:'color',opts:['#ffd23f','#ff4d4d','#3d8bff','#5fd068','#c56bff','#ffffff','#1e1e24']},{key:'vest',label:'救生衣',type:'color',opts:['#ff7a1a','#ffd23f','#5fd068','#ff4d4d','#3d8bff']},
-    {key:'helm',label:'安全帽',type:'color',opts:['#ffffff','#1e1e24','#ff4d4d','#3ddbd9','#ffd23f','#ff7eb6']}],
-  desc:'騎水上摩托車在海灣、河道、紅樹林、冰山海域和颱風巨浪裡競速。水面會甩尾滑行，浪頭跳台能飛起來，穿過加速圈存渦輪，閃開礁石和漂流木。共 15 關，單人、雙人或連線。',
+  drawBack:jetBack,drawFront:jetFront,drawSide:jetSide,
+  botLook:i=>({boat:['pwc','speed','stand'][i%3],hull:COLORS[(i+2)%6],vest:['#ff7a1a','#ffd23f','#5fd068','#ff4d4d','#3d8bff','#c56bff'][i%6],helmet:['full','half','mx'][(i+1)%3],helm:['#ffffff','#1e1e24','#ff4d4d','#3ddbd9','#ffd23f','#ff7eb6'][i%6],deco:['shark','num,flag','stripe,glow','flame','wing,num','light,duck'][i%6],nitro:['blue','fire','green','rainbow'][(i+1)%4],num:String(i+2)}),
+  looks:[{key:'boat',label:'船型',opts:[{id:'pwc',label:'坐式水上摩托車'},{id:'stand',label:'站立式水上摩托'},{id:'speed',label:'競速快艇'}]},
+    {key:'hull',label:'船身顏色',type:'color',opts:['#ffd23f','#ff4d4d','#3d8bff','#5fd068','#c56bff','#ff9d3d','#ffffff','#1e1e24']},
+    {key:'vest',label:'救生衣',type:'color',opts:['#ff7a1a','#ffd23f','#5fd068','#ff4d4d','#3d8bff']},
+    {key:'helmet',label:'安全帽',opts:[{id:'full',label:'全罩式'},{id:'half',label:'半罩式'},{id:'mx',label:'越野帽'}]},
+    {key:'helm',label:'安全帽顏色',type:'color',opts:['#ffffff','#1e1e24','#ff4d4d','#3ddbd9','#ffd23f','#ff7eb6']},
+    {key:'deco',label:'配件',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'flag',label:'旗子',grp:'船上'},{id:'wing',label:'尾翼',grp:'船上'},{id:'light',label:'警示燈',grp:'船上'},{id:'shark',label:'鯊魚嘴彩繪',grp:'船身'},{id:'flame',label:'火焰彩繪',grp:'船身'},{id:'num',label:'賽艇號碼',grp:'船身'},{id:'stripe',label:'賽車條紋',grp:'船身'},{id:'glow',label:'霓虹水底燈',grp:'燈光'},{id:'catears',label:'貓耳',grp:'帽飾'},{id:'horns',label:'惡魔角',grp:'帽飾'},{id:'mohawk',label:'莫西幹',grp:'帽飾'},{id:'duck',label:'小鴨',grp:'帽飾'}]},
+    {key:'nitro',label:'加速特效',opts:[{id:'blue',label:'藍焰'},{id:'fire',label:'火焰'},{id:'green',label:'綠焰'},{id:'rainbow',label:'彩虹'}]}],
+  desc:'騎坐式、站立式水上摩托車或競速快艇（造型可選船型和鯊魚嘴彩繪、尾翼、霓虹水底燈等配件），在海灣、河道、紅樹林、冰山海域和颱風巨浪裡競速。水面會甩尾滑行，浪頭跳台能飛起來，穿過加速圈存渦輪，閃開礁石和漂流木。共 15 關，單人、雙人或連線。',
   goal:'沿著浮標水道衝到終點，前 3 名過關。水上轉彎會滑，要提早轉；穿過橘色加速圈可以存一次渦輪（最多 3 次），按 X 使用；從浪頭跳台飛起落地會小加速。撞到礁石、漂流木會翻船減速。',
   help:[['↑ ↓','油門、煞車'],['← →','轉向（會滑行）'],['X','渦輪加速'],['W A S D Q','雙人 1P（左半畫面）'],['↑ ↓ ← → Enter','雙人 2P（右半畫面）']],
   touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車'],['渦輪','渦輪加速']],
@@ -604,8 +797,9 @@ function register(G){
     stageShow:(ctx,w,h,si,t)=>{ demo(G,ctx,w,h,si,t,G.__look); const S=G.stages[si]; ctx.fillStyle='rgba(11,10,28,.65)'; rr(ctx,8,8,Math.min(w-16,170+S.name.length*10),30,10); ctx.fill(); ctx.fillStyle='#ffd23f'; ctx.font='900 16px '+TC; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText(S.name+'　'+'★'.repeat(S.stars),18,24); },
     thumb:(ctx,w,h,t)=>{ demo(G,ctx,w,h,0,t+3); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.13)+'px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#0b0a1c'; ctx.strokeText(G.name,w/2,h*.15); ctx.fillStyle='#ffd23f'; ctx.fillText(G.name,w/2,h*.15); },
     preview:(ctx,w,h,L,t)=>{ G.__look=L; const C=courseOf(G,0); drawBack(ctx,w,h,C.TH,-t*15,0,t); ctx.fillStyle=C.TH.ground[0]; ctx.fillRect(0,h*.72,w,h*.28);
-      G.drawFront(ctx,w*.32,h*.92,h*.42,L,t); G.drawBack(ctx,w*.72,h*.92,h*.42,{look:L,lean:Math.sin(t)*.3,spd:.6,num:1},t);
-      ctx.fillStyle='rgba(11,10,28,.6)'; ctx.font='700 12px '+TC; ctx.textAlign='center'; ctx.fillText('正面',w*.32,h*.97); ctx.fillText('背面（比賽中）',w*.72,h*.97); },
+      if(G.drawSide){ G.drawSide(ctx,w*.36,h*.86,h*.5,L,t); G.drawBack(ctx,w*.8,h*.9,h*.34,{look:L,lean:Math.sin(t)*.25,spd:.6,num:(L&&L.num)||1,boost:Math.sin(t*1.5)>.6},t); }
+      else { G.drawFront(ctx,w*.32,h*.92,h*.42,L,t); G.drawBack(ctx,w*.72,h*.92,h*.42,{look:L,lean:Math.sin(t)*.3,spd:.6,num:1},t); }
+      ctx.fillStyle='rgba(11,10,28,.6)'; ctx.font='700 12px '+TC; ctx.textAlign='center'; ctx.fillText(G.drawSide?'側面':'正面',G.drawSide?w*.36:w*.32,h*.97); ctx.fillText('背面（比賽中）',G.drawSide?w*.8:w*.72,h*.97); },
     create:makeCreate(G),_G:G,_course:i=>courseOf(G,i)};
 }
 [MOTO,SLED,JET,RUN].forEach(register);
