@@ -27,69 +27,85 @@ const COURT={park:{floor:'#5a6a7a',line:'#f4f4f4',paint:'#3a6a9a',bg:'park'},sch
   port:{floor:'#5a6068',line:'#ffffff',paint:'#2f6f9a',bg:'port'},gym:{floor:'#d8a060',line:'#ffffff',paint:'#a83a2a',bg:'gym',wood:1},neon:{floor:'#1e1a30',line:'#3ddbd9',paint:'#5a1a5a',bg:'neon',night:1},arena:{floor:'#c89050',line:'#ffffff',paint:'#4a2a7a',bg:'arena',wood:1}};
 
 /* ---------- 寫實球員（側面看，face 1 朝右、-1 朝左） ---------- */
-// 粗細漸變的肢體（大腿、小腿、手臂），兩端圓頭
-function taper(c,a,b,wa,wb,col){ const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,nx=-dy/l,ny=dx/l; c.fillStyle=col; c.beginPath(); c.moveTo(a[0]+nx*wa/2,a[1]+ny*wa/2); c.lineTo(b[0]+nx*wb/2,b[1]+ny*wb/2); c.lineTo(b[0]-nx*wb/2,b[1]-ny*wb/2); c.lineTo(a[0]-nx*wa/2,a[1]-ny*wa/2); c.closePath(); c.fill(); c.beginPath(); c.arc(a[0],a[1],wa/2,0,7); c.arc(b[0],b[1],wb/2,0,7); c.fill();
-  c.strokeStyle='rgba(255,255,255,.16)'; c.lineWidth=Math.max(.8,wa*.16); c.beginPath(); c.moveTo(a[0]+nx*wa*.22,a[1]+ny*wa*.22); c.lineTo(b[0]+nx*wb*.22,b[1]+ny*wb*.22); c.stroke(); }
-function joint(p,len,ang){ return [p[0]+Math.sin(ang)*len,p[1]+Math.cos(ang)*len]; } // ang 0＝往下
-// 寫實球員（側面，face 1 朝右）：身高約 92、頭身比約 1:7.5
+// 漫畫風：每個部位先描一圈深色墨線再上色，陰影用一塊平塗的暗色（賽璐璐上色）
+const INK='#1a1418';
+function taper(c,a,b,wa,wb,col,shd){ const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,nx=-dy/l,ny=dx/l;
+  const path=()=>{ c.beginPath(); c.moveTo(a[0]+nx*wa/2,a[1]+ny*wa/2); c.lineTo(b[0]+nx*wb/2,b[1]+ny*wb/2); c.arc(b[0],b[1],wb/2,Math.atan2(ny,nx),Math.atan2(ny,nx)+Math.PI,true); c.lineTo(a[0]-nx*wa/2,a[1]-ny*wa/2); c.arc(a[0],a[1],wa/2,Math.atan2(-ny,-nx),Math.atan2(-ny,-nx)+Math.PI,true); c.closePath(); };
+  path(); c.strokeStyle=INK; c.lineWidth=2; c.lineJoin='round'; c.stroke(); c.fillStyle=col; c.fill();
+  if(shd){ c.fillStyle=shd; c.beginPath(); c.moveTo(a[0]-nx*wa*.08,a[1]-ny*wa*.08); c.lineTo(b[0]-nx*wb*.08,b[1]-ny*wb*.08); c.lineTo(b[0]-nx*wb*.42,b[1]-ny*wb*.42); c.lineTo(a[0]-nx*wa*.42,a[1]-ny*wa*.42); c.closePath(); c.fill(); } }
+function chain(c,pts,ws,col,shd){ const segs=[]; for(let i=0;i+1<pts.length;i++) segs.push([pts[i],pts[i+1],ws[i],ws[i+1]]);
+  const path=(a,b,wa,wb)=>{ const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,nx=-dy/l,ny=dx/l; c.beginPath(); c.moveTo(a[0]+nx*wa/2,a[1]+ny*wa/2); c.lineTo(b[0]+nx*wb/2,b[1]+ny*wb/2); c.arc(b[0],b[1],wb/2,Math.atan2(ny,nx),Math.atan2(ny,nx)+Math.PI,true); c.lineTo(a[0]-nx*wa/2,a[1]-ny*wa/2); c.arc(a[0],a[1],wa/2,Math.atan2(-ny,-nx),Math.atan2(-ny,-nx)+Math.PI,true); c.closePath(); return [nx,ny]; };
+  c.strokeStyle=INK; c.lineWidth=2; c.lineJoin='round'; for(const g of segs){ path(...g); c.stroke(); } c.fillStyle=col; for(const g of segs){ path(...g); c.fill(); }
+  if(shd){ c.fillStyle=shd; for(const [a,b,wa,wb] of segs){ const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,nx=-dy/l,ny=dx/l; c.beginPath(); c.moveTo(a[0]-nx*wa*.1,a[1]-ny*wa*.1); c.lineTo(b[0]-nx*wb*.1,b[1]-ny*wb*.1); c.lineTo(b[0]-nx*wb*.42,b[1]-ny*wb*.42); c.lineTo(a[0]-nx*wa*.42,a[1]-ny*wa*.42); c.closePath(); c.fill(); } } }
+function joint(p,len,ang){ return [p[0]+Math.sin(ang)*len,p[1]+Math.cos(ang)*len]; } // ang 0＝往下、正值往臉朝的方向
+function inkFill(c,col,w){ c.strokeStyle=INK; c.lineWidth=w||2; c.lineJoin='round'; c.stroke(); c.fillStyle=col; c.fill(); }
+// 漫畫風球員（側面，face 1 朝右）：頭身約 1:6，手腳擺動左右相反、跑步時身體上下起伏
 function drawBaller(c,x,y,z,s,o){ // (x,y) 腳下地面螢幕座標、z 跳起來的高度（螢幕像素）
-  const f=o.face||1,t=o.t||0,pose=o.pose||'idle',sk=o.skin||SKINS[1],jc=o.col||'#e23b3b',j2=o.col2||'#fff',sh=o.shorts||shade(jc,.8),shoe=o.shoe||'#f4f4f4',skD=shade(sk,.78);
+  const f=o.face||1,t=o.t||0,pose=o.pose||'idle',sk=o.skin||SKINS[1],skS=shade(sk,.8),jc=o.col||'#e23b3b',jS=shade(jc,.72),j2=o.col2||'#fff',sh=o.shorts||shade(jc,.88),shS=shade(sh,.72),shoe=o.shoe||'#f4f4f4';
   c.save(); c.translate(x,y);
   c.fillStyle='rgba(0,0,0,'+(.32-Math.min(.2,z/300))+')'; c.beginPath(); c.ellipse(0,0,(15-Math.min(6,z/20))*s,4.5*s,0,0,7); c.fill();
   c.translate(0,-z); c.scale(s*f,s);
   if(pose==='fall'){ c.rotate(-1.35); c.translate(24,8); }
-  const ph=t*10,run=pose==='run'||pose==='dribble',crouch=pose==='defend'?7:pose==='shootPrep'?8:run?3:0,lean=pose==='defend'?.22:run?.16:pose==='dunk'?.1:0;
-  const hip=[0,-45+crouch];
+  const ph=t*11,run=pose==='run'||pose==='dribble',sw=Math.sin(ph);
+  const bob=run?-Math.abs(Math.cos(ph))*2.2:pose==='idle'?Math.sin(t*2.4)*.4:0;
+  const crouch=pose==='defend'?7:pose==='shootPrep'?8:run?2:0,lean=pose==='defend'?.2:run?.2:pose==='dunk'?.12:pose==='shootPrep'?.1:0;
+  const hip=[0,-43+crouch+bob];
+  // 角度：前腳 A／後腳 B；手 A 在前、B 在後。跑步時同側手腳相反方向擺
   let lA,lB,kA,kB,aA,aB,eA,eB;
-  if(run){ const sw=Math.sin(ph)*.7; lA=sw; lB=-sw; kA=-Math.max(0,-Math.cos(ph))*1.2-.1; kB=-Math.max(0,Math.cos(ph))*1.2-.1; aA=-sw*.9; aB=sw*.9; eA=-1.3; eB=-1.3; }
-  else if(pose==='defend'){ lA=.6; lB=-.5; kA=-.8; kB=-.7; aA=-1.5; aB=-1.2; eA=-.3; eB=-.3; }
-  else if(pose==='shoot'||pose==='shootPrep'){ lA=.08; lB=-.12; kA=pose==='shootPrep'?-.9:-.08; kB=pose==='shootPrep'?-.9:-.2; aA=-2.9; aB=-2.55; eA=-.35; eB=-.7; }
-  else if(pose==='dunk'){ lA=.55; lB=-.55; kA=-1.6; kB=-.9; aA=-3; aB=-.7; eA=-.1; eB=-.7; }
-  else if(pose==='jump'){ lA=.3; lB=-.3; kA=-1.1; kB=-.8; aA=-2.85; aB=-2.95; eA=-.15; eB=-.15; }
-  else { const br=Math.sin(t*2)*.04; lA=.1; lB=-.1; kA=-.1; kB=-.06; aA=.18+br; aB=-.12; eA=-.35; eB=-.3; }
-  if(pose==='dribble'){ aA=.5; eA=-.05; }
-  // 上半身前傾：肩膀位置跟著傾斜
-  const tl=27,shp=[hip[0]+Math.sin(lean)*tl,hip[1]-Math.cos(lean)*tl];
-  const leg=(la,ka,col,back)=>{ const kn=joint(hip,23,la),an=joint(kn,22,la+ka); taper(c,hip,kn,11,7.6,col); taper(c,kn,joint(kn,9,la+ka),7.8,6.8,col); taper(c,joint(kn,8,la+ka),an,6.6,4.4,col);
-    if(o.sock) taper(c,joint(an,-6,la+ka),an,5,4.8,back?'#d8d8d8':'#f4f4f4');
-    // 高筒球鞋：鞋面、鞋底
-    c.save(); c.translate(an[0],an[1]); const sc2=back?shade(shoe,.82):shoe; c.fillStyle=sc2; c.beginPath(); c.moveTo(-4,-4); c.lineTo(3,-4.5); c.quadraticCurveTo(8,-2,11.5,0); c.lineTo(11.5,2.6); c.lineTo(-4.5,2.6); c.closePath(); c.fill();
-    c.fillStyle=back?'#bbbbbb':'#fafafa'; c.fillRect(-4.5,2.4,16,2); c.fillStyle=shade(sc2,.6); c.fillRect(-2,-1,7,1); c.restore(); return kn; };
-  const arm=(aa,ea,col)=>{ const el=joint(shp,15,aa),ha=joint(el,14,aa+ea); taper(c,shp,el,6.8,5.4,col); taper(c,el,ha,5.2,3.8,col); c.fillStyle=col; c.beginPath(); c.ellipse(ha[0],ha[1],3,3.5,aa+ea,0,7); c.fill(); return ha; };
-  // 後腳、後手
-  leg(lB,kB,skD,true); arm(aB,eB,skD);
-  taper(c,hip,joint(hip,15,lB),12.5,10.5,shade(sh,.8));
-  // 軀幹（背心）
-  const ux=Math.sin(lean),uy=-Math.cos(lean),px2=-uy,py2=ux,P2=(a,b)=>[hip[0]+ux*a+px2*b,hip[1]+uy*a+py2*b];
-  const ga=P2(14,-9),gb=P2(14,9),tg=c.createLinearGradient(ga[0],ga[1],gb[0],gb[1]); tg.addColorStop(0,shade(jc,.72)); tg.addColorStop(.55,jc); tg.addColorStop(1,shade(jc,1.15)); c.fillStyle=tg;
-  const T=[P2(-1,-7),P2(12,-8),P2(25,-7.5),P2(28,-4),P2(28,5),P2(23,8.5),P2(12,7.6),P2(-1,7)]; c.beginPath(); c.moveTo(T[0][0],T[0][1]); for(let i=1;i<T.length;i++) c.lineTo(T[i][0],T[i][1]); c.closePath(); c.fill();
-  const L2=(pts)=>{ c.beginPath(); c.moveTo(pts[0][0],pts[0][1]); c.quadraticCurveTo(pts[1][0],pts[1][1],pts[2][0],pts[2][1]); c.stroke(); };
-  c.strokeStyle=j2; c.lineWidth=1.4; L2([P2(27,-1),P2(22,4),P2(27,7)]); L2([P2(25,-5),P2(18,-2),P2(19,4)]);
-  c.save(); const nc=P2(13,0); c.translate(nc[0],nc[1]); c.scale(f,1); c.fillStyle=j2; c.font='900 10px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(o.num||''),0,0); c.restore();
-  // 球褲（寬鬆到膝蓋）
-  c.fillStyle=shade(sh,.9); c.beginPath(); c.ellipse(hip[0],hip[1]-1,9,6,0,0,7); c.fill();
-  // 前腳、前腳的褲管
-  leg(lA,kA,sk,false); taper(c,hip,joint(hip,15,lA),13.5,11.5,sh); c.strokeStyle=j2; c.lineWidth=1.2; const k1=joint(hip,14.5,lA); c.beginPath(); c.moveTo(k1[0]-Math.cos(lA)*6,k1[1]+Math.sin(lA)*6); c.lineTo(k1[0]+Math.cos(lA)*6,k1[1]-Math.sin(lA)*6); c.stroke();
-  // 脖子、頭
-  const nk=P2(30,1.5),hd=P2(37.5,2.5); taper(c,P2(26,0),nk,7,6,shade(sk,.9));
-  c.save(); c.translate(hd[0],hd[1]); c.rotate(lean*.6);
-  c.fillStyle=sk; c.beginPath(); c.ellipse(0,0,6.2,7.4,0,0,7); c.fill(); c.beginPath(); c.moveTo(1,5.5); c.quadraticCurveTo(5.5,6,6,3); c.lineTo(5,6.8); c.quadraticCurveTo(2,8.2,-1,7); c.fill();
-  c.beginPath(); c.moveTo(5.6,-1.5); c.quadraticCurveTo(8.2,1.2,6.2,2.4); c.fill();
-  c.fillStyle=skD; c.beginPath(); c.ellipse(-1.2,.6,1.5,2.2,0,0,7); c.fill();
-  c.fillStyle='#fff'; c.beginPath(); c.ellipse(3.6,-1.3,1.4,.9,0,0,7); c.fill(); c.fillStyle='#2a1a12'; c.beginPath(); c.arc(4.2,-1.3,.75,0,7); c.fill();
-  c.strokeStyle=o.hairCol||'#1a1410'; c.lineWidth=.9; c.beginPath(); c.moveTo(2,-3.2); c.lineTo(5.4,-3.1); c.stroke();
-  c.strokeStyle=shade(sk,.55); c.lineWidth=.8; c.beginPath(); c.moveTo(3.8,4.2); c.lineTo(5.6,4); c.stroke();
-  c.fillStyle='rgba(0,0,0,.08)'; c.beginPath(); c.ellipse(-2,2,4,5,0,0,7); c.fill();
-  const hc=o.hairCol||'#1a1410',hs=o.hair||0; c.fillStyle=hc;
-  if(hs===0){ c.beginPath(); c.moveTo(-6.4,1); c.quadraticCurveTo(-7.4,-7.6,0,-7.9); c.quadraticCurveTo(5.8,-7.8,6.4,-3.4); c.lineTo(4,-4.6); c.quadraticCurveTo(-1,-4.2,-3,-1); c.lineTo(-4,2); c.closePath(); c.fill(); }
-  else if(hs===1){ c.beginPath(); c.arc(-1,-3.6,7.6,Math.PI*.75,Math.PI*2.05); c.quadraticCurveTo(2,-4,-3,-1); c.lineTo(-5,3); c.closePath(); c.fill(); c.beginPath(); c.arc(-5,-1,4,0,7); c.fill(); }
-  else if(hs===2){ c.beginPath(); c.moveTo(-6.4,1); c.quadraticCurveTo(-7.4,-7.6,0,-7.9); c.quadraticCurveTo(5.8,-7.8,6.4,-3.4); c.lineTo(3,-4.6); c.quadraticCurveTo(-2,-4,-4,0); c.closePath(); c.fill(); for(let i=0;i<3;i++){ c.beginPath(); c.ellipse(-6.5-i*.6,2+i*3.4,1.8,2.2,0,0,7); c.fill(); } }
-  else if(hs===3){ c.beginPath(); c.moveTo(-6.4,0); c.quadraticCurveTo(-6.8,-7.4,0,-7.6); c.quadraticCurveTo(5.4,-7.4,6.2,-4); c.lineTo(-4,-2); c.closePath(); c.fill(); c.fillStyle=o.band||j2; c.save(); c.rotate(-.12); c.fillRect(-6.6,-5.2,13.2,2.6); c.restore(); }
-  else { c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(-.6,-4,5.8,3.6,0,Math.PI,0); c.fill(); c.fillStyle='rgba(255,255,255,.25)'; c.beginPath(); c.ellipse(-1,-5.6,2.4,1.2,0,0,7); c.fill(); }
+  if(run){ lA=sw*.72; lB=-sw*.72; kA=-Math.max(0,Math.cos(ph))*1.35-.12; kB=-Math.max(0,-Math.cos(ph))*1.35-.12; aA=-sw*.85; aB=sw*.85; eA=1.35; eB=1.35; }
+  else if(pose==='defend'){ lA=.55; lB=-.5; kA=-.85; kB=-.75; aA=1.25; aB=1.7; eA=.45; eB=.3; }
+  else if(pose==='shootPrep'){ lA=.2; lB=-.05; kA=-.95; kB=-.9; aA=1.9; aB=1.7; eA=1.1; eB=1.2; }
+  else if(pose==='shoot'){ lA=.06; lB=-.1; kA=-.12; kB=-.3; aA=2.75; aB=2.45; eA=.35; eB=.75; }
+  else if(pose==='dunk'){ lA=.5; lB=-.45; kA=-1.5; kB=-.6; aA=2.95; aB=-.5; eA=.15; eB=.6; }
+  else if(pose==='jump'){ lA=.3; lB=-.25; kA=-1.15; kB=-.75; aA=2.9; aB=3.05; eA=.12; eB=.08; }
+  else { const br=Math.sin(t*2.4)*.05; lA=.1; lB=-.08; kA=-.12; kB=-.08; aA=.16+br; aB=-.1-br; eA=.32; eB=.25; }
+  if(pose==='dribble'){ aA=.55+Math.abs(Math.sin(t*9))*.25; eA=.35; }
+  const tl=26,shp=[hip[0]+Math.sin(lean)*tl,hip[1]-Math.cos(lean)*tl];
+  const leg=(la,ka,back)=>{ const col=back?skS:sk,kn=joint(hip,21,la),an=joint(kn,21,la+ka);
+    chain(c,[hip,kn,an],[10.5,7.3,4.6],col,back?null:skS);
+    if(o.sock) taper(c,joint(an,-6,la+ka),an,5,4.8,back?'#cfcfcf':'#f4f4f4');
+    c.save(); c.translate(an[0],an[1]); c.rotate((la+ka)*.35); const sc2=back?shade(shoe,.82):shoe; c.beginPath(); c.moveTo(-4,-4.5); c.lineTo(3,-5); c.quadraticCurveTo(9,-2.5,12,.5); c.lineTo(12,3.6); c.lineTo(-4.6,3.6); c.closePath(); inkFill(c,sc2,1.8);
+    c.fillStyle=back?'#bdbdbd':'#ffffff'; c.fillRect(-4.2,1.6,15.8,1.8); c.fillStyle=o.col2&&!back?jc:shade(sc2,.6); c.beginPath(); c.moveTo(-1,-1.5); c.lineTo(6,-2.5); c.lineTo(6,-.6); c.lineTo(-1,.2); c.fill(); c.restore(); };
+  const arm=(aa,ea,back)=>{ const col=back?skS:sk,el=joint(shp,14,aa),ha=joint(el,13,aa+ea),hd2=0; chain(c,[shp,el,ha],[6.8,5.2,4],col,back?null:skS); c.beginPath(); c.ellipse(ha[0],ha[1],3.3,3.8,-(aa+ea),0,7); inkFill(c,col,1.6); return ha; };
+  // 後面的手腳（顏色暗一點）
+  leg(lB,kB,true); arm(aB,eB,true);
+  taper(c,hip,joint(hip,10,lB),12.5,10.5,shS);
+  // 軀幹：背心＋平塗陰影＋滾邊
+  const ux=Math.sin(lean),uy=-Math.cos(lean),px2=-uy,py2=ux,P2=(a,b)=>[hip[0]+ux*a+px2*b,hip[1]+uy*a+py2*b],poly=pts=>{ c.beginPath(); c.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) c.lineTo(pts[i][0],pts[i][1]); c.closePath(); };
+  poly([P2(-1,-7.5),P2(13,-8.5),P2(24,-8),P2(27.5,-4.5),P2(27.5,5),P2(23,9),P2(13,8.4),P2(-1,7.5)]); inkFill(c,jc,2.2);
+  poly([P2(-1,-7.5),P2(13,-8.5),P2(24,-8),P2(26,-5.5),P2(14,-4),P2(-1,-3.5)]); c.fillStyle=jS; c.fill();
+  c.strokeStyle=j2; c.lineWidth=1.6; c.beginPath(); const q1=P2(27,-1.5),q2=P2(21.5,3.5),q3=P2(26.5,7.5); c.moveTo(q1[0],q1[1]); c.quadraticCurveTo(q2[0],q2[1],q3[0],q3[1]); c.stroke();
+  c.save(); const nc=P2(12,1.5); c.translate(nc[0],nc[1]); c.scale(f,1); c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=2.4; c.strokeStyle=INK; c.strokeText(String(o.num||''),0,0); c.fillStyle=j2; c.fillText(String(o.num||''),0,0); c.restore();
+  // 前腳＋寬鬆球褲
+  c.beginPath(); c.ellipse(hip[0],hip[1]-.5,9.5,6.2,0,0,7); inkFill(c,sh,2);
+  leg(lA,kA,false); taper(c,hip,joint(hip,11,lA),13.5,11.5,sh,shS);
+  const k1=joint(hip,13.8,lA); c.strokeStyle=j2; c.lineWidth=1.5; c.beginPath(); c.moveTo(k1[0]-Math.cos(lA)*5.6,k1[1]+Math.sin(lA)*5.6); c.lineTo(k1[0]+Math.cos(lA)*5.6,k1[1]-Math.sin(lA)*5.6); c.stroke();
+  // 脖子、頭（漫畫臉：大眼睛、粗眉、刺刺頭髮）
+  const nk=P2(29,1.5),hd=P2(37,2.4); taper(c,P2(25.5,.5),nk,6.6,5.8,sk,skS);
+  c.save(); c.translate(hd[0],hd[1]); c.rotate(lean*.5);
+  c.beginPath(); c.moveTo(-6.4,-1); c.quadraticCurveTo(-6.8,-8.4,0,-8.6); c.quadraticCurveTo(6.6,-8.4,6.9,-1.5); c.lineTo(7.8,1.6); c.lineTo(6.6,2.4); c.quadraticCurveTo(6.4,6.2,3.4,7.6); c.quadraticCurveTo(-1.5,8.6,-4.6,5.4); c.quadraticCurveTo(-7,3,-6.4,-1); inkFill(c,sk,2);
+  c.fillStyle=skS; c.beginPath(); c.moveTo(-4.6,5.4); c.quadraticCurveTo(-1,7.8,3.4,7.6); c.quadraticCurveTo(0,6,-2.4,2.6); c.closePath(); c.fill();
+  c.beginPath(); c.ellipse(-1.6,.8,1.7,2.4,0,0,7); inkFill(c,sk,1.3); c.strokeStyle=skS; c.lineWidth=.8; c.beginPath(); c.arc(-1.5,.9,1,-.8,2.2); c.stroke();
+  // 眼睛
+  c.beginPath(); c.moveTo(1.6,-2.6); c.quadraticCurveTo(4,-3.6,6.1,-2.6); c.lineTo(5.9,.2); c.quadraticCurveTo(3.8,.9,1.9,.2); c.closePath(); c.fillStyle='#fff'; c.fill();
+  c.fillStyle=o.eye||'#3a2414'; c.beginPath(); c.ellipse(4.5,-1.2,1.5,1.9,0,0,7); c.fill(); c.fillStyle=INK; c.beginPath(); c.arc(4.7,-1.1,.8,0,7); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(5,-2,.55,0,7); c.fill();
+  c.strokeStyle=INK; c.lineWidth=1.5; c.lineCap='round'; c.beginPath(); c.moveTo(1.4,-2.5); c.quadraticCurveTo(4,-3.9,6.4,-2.5); c.stroke();
+  c.lineWidth=1.7; c.beginPath(); c.moveTo(1.2,-4.8); c.lineTo(6.4,-4.4); c.stroke();
+  c.lineWidth=1; c.beginPath(); c.moveTo(4.6,4.5); c.lineTo(6.2,4.3); c.stroke();
+  // 頭髮
+  const hc=o.hairCol||'#1a1410',hs=o.hair||0,hH=shade(hc,1.9);
+  c.beginPath();
+  if(hs===0){ c.moveTo(-7,2); c.lineTo(-9.5,-1); c.lineTo(-7.4,-3); c.lineTo(-10,-6.5); c.lineTo(-6,-7.4); c.lineTo(-6.8,-11.2); c.lineTo(-2,-9.6); c.lineTo(0,-12.6); c.lineTo(2.4,-9.6); c.lineTo(6.4,-11); c.lineTo(5.6,-7.6); c.lineTo(8.8,-6.2); c.lineTo(6.6,-4.4); c.lineTo(4,-5.4); c.lineTo(1.8,-4.4); c.lineTo(-.6,-5.4); c.lineTo(-2.8,-3.4); c.lineTo(-4.4,-.6); c.closePath(); }
+  else if(hs===1){ c.arc(-1,-4.4,8.4,Math.PI*.72,Math.PI*2.08); c.quadraticCurveTo(3,-4.6,-1.4,-3.2); c.lineTo(-4.2,1); c.closePath(); c.moveTo(-4,-2); c.arc(-6.4,-1,4.4,0,7); }
+  else if(hs===2){ c.moveTo(-6.6,1); c.quadraticCurveTo(-8,-8.4,0,-9.2); c.quadraticCurveTo(7,-9,7.2,-4); c.lineTo(3,-5.2); c.quadraticCurveTo(-2,-4.6,-4.2,0); c.closePath(); c.moveTo(-6,0); c.quadraticCurveTo(-11,4,-9,12); c.lineTo(-7,11.6); c.quadraticCurveTo(-8,5,-4.4,1.4); c.closePath(); }
+  else if(hs===3){ c.moveTo(-6.8,0); c.lineTo(-9,-4); c.lineTo(-6.6,-6); c.lineTo(-8,-10); c.lineTo(-3,-9); c.lineTo(-1,-12); c.lineTo(1.6,-9); c.lineTo(5.6,-10.4); c.lineTo(5,-7.4); c.lineTo(7,-6); c.lineTo(-4,-3.6); c.closePath(); }
+  else { c.ellipse(-.4,-4.4,6.4,4,0,Math.PI,0); }
+  if(hs===4){ c.fillStyle='rgba(0,0,0,.14)'; c.fill(); c.fillStyle='rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-1.4,-6,2.6,1.2,-.2,0,7); c.fill(); }
+  else { inkFill(c,hc,2); c.strokeStyle=hH; c.lineWidth=1.1; c.beginPath(); c.moveTo(-4.6,-7.6); c.quadraticCurveTo(-2,-9,.8,-8.4); c.stroke(); }
+  if(hs===3){ c.save(); c.rotate(-.1); c.beginPath(); c.rect(-6.8,-5.6,13.8,2.8); inkFill(c,o.band||j2,1.4); c.restore(); }
   c.restore();
-  // 肩膀（三角肌）、前手
-  c.fillStyle=sk; c.beginPath(); c.arc(shp[0]+1,shp[1]+1,4.4,0,7); c.fill();
-  const haA=arm(aA,eA,sk);
+  // 肩膀、前手
+    const haA=arm(aA,eA,false);
   c.restore();
   return {hand:[x+haA[0]*s*f,y-z+haA[1]*s],head:[x+hd[0]*s*f,y-z+hd[1]*s]}; }
 function drawBallSpr(c,x,y,r,t){ const g=c.createRadialGradient(x-r*.35,y-r*.4,r*.1,x,y,r); g.addColorStop(0,'#ffb36a'); g.addColorStop(.6,'#e8701e'); g.addColorStop(1,'#a8480e'); c.fillStyle=g; c.beginPath(); c.arc(x,y,r,0,7); c.fill();
@@ -147,7 +163,9 @@ function create(env,opts){
   const myL=opts.look||{},jcol=myL.color||'#3d8bff',myHair=+(myL.hair||0),mySkin=SKINS[+(myL.skin||1)]||SKINS[1];
   // 誰控制誰：team 0＝自己（左邊進攻往右），team 1＝對手；雙人對打時 team 1 由 2P 控制
   const humanTeams=net?(net.count>1?(coop?[0,0]:[0,1]):[0]):local2?(coop?[0,0]:[0,1]):[0];
-  const P=[]; for(let tm=0;tm<2;tm++) for(let k=0;k<3;k++){ const mine=tm===0,foeCol=ST.col;
+  // 對手球衣跟自己撞色時換一個顏色，才分得出兩隊
+  const near=(a,b)=>{ const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16); return Math.abs((A>>16)-(B>>16))+Math.abs((A>>8&255)-(B>>8&255))+Math.abs((A&255)-(B&255))<150; },FOE=near(jcol,ST.col)?(near(jcol,'#e23b3b')?'#2e9e4f':'#e23b3b'):ST.col;
+  const P=[]; for(let tm=0;tm<2;tm++) for(let k=0;k<3;k++){ const mine=tm===0,foeCol=FOE;
     P.push({i:P.length,tm,k,x:0,y:0,z:0,vx:0,vy:0,vz:0,face:tm?-1:1,pose:'idle',act:null,actT:0,fallT:0,stunT:0,
       look:mine?{col:k===0?jcol:jcol,col2:'#ffffff',skin:k===0?mySkin:SKINS[(k*2+1)%6],hair:k===0?myHair:(k+1)%5,hairCol:HAIRC[k===0?+(myL.hairCol||0):(k*2)%6],shoe:myL.shoe||'#f4f4f4',num:[7,23,11][k],sleeve:k===1?'#ffffff':null,sock:k===2}
         :{col:foeCol,col2:ST.col2,skin:SKINS[(si+k*3)%6],hair:(si+k)%5,hairCol:HAIRC[(si*2+k)%6],shoe:k%2?'#1e1e24':'#f4f4f4',num:[3,10,33][k],sock:k===1,band:ST.col2},
@@ -303,17 +321,19 @@ function create(env,opts){
     drawCourt(c,CT,t,swish);
     drawHoop(c,CT,t,swish,false);
     // 依深度排序畫球員和球
-    const items=P.map(p=>({y:p.y,f:()=>{ const s=SC(p.y),cc=ctrl.find(o=>o.pi===p.i); const r=drawBaller(c,SX(p.x),SY(p.y),p.z*.9,s*.95,Object.assign({face:p.face,pose:p.pose,t:t+p.i*.7},p.look));
+    let handAt=null; const items=P.map(p=>({y:p.y,f:()=>{ const s=SC(p.y),cc=ctrl.find(o=>o.pi===p.i); const r=drawBaller(c,SX(p.x),SY(p.y),p.z*.9,s*.95,Object.assign({face:p.face,pose:p.pose,t},p.look)); if(ball.h===p.i) handAt=r.hand;
       if(cc){ const hi=ctrl.indexOf(cc),col=hi===0?'#ffd23f':'#3ddbd9'; c.strokeStyle=col; c.lineWidth=2.5; c.beginPath(); c.ellipse(SX(p.x),SY(p.y),15*s,5*s,0,0,7); c.stroke();
         c.fillStyle=col; c.font='900 12px '+TC; c.textAlign='center'; c.textBaseline='bottom'; const tag=local2||coop&&ctrl.length>1?(hi+1)+'P':'你'; c.fillText(tag,SX(p.x),SY(p.y)-p.z*.9-96*s); c.beginPath(); c.moveTo(SX(p.x)-5,SY(p.y)-p.z*.9-94*s); c.lineTo(SX(p.x)+5,SY(p.y)-p.z*.9-94*s); c.lineTo(SX(p.x),SY(p.y)-p.z*.9-88*s); c.fill();
         if(introT>0||pause>0&&t<3){ const yy=SY(p.y)-p.z*.9-118*s+Math.sin(t*8)*5; c.fillStyle=col; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.beginPath(); c.moveTo(SX(p.x)-14,yy-20); c.lineTo(SX(p.x)+14,yy-20); c.lineTo(SX(p.x),yy); c.closePath(); c.stroke(); c.fill(); } }
       else if(p.tm===0&&!coop&&local2===false){} } }));
-    items.push({y:ball.y+.5,f:()=>{ const s=SC(ball.y); c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(SX(ball.x),SY(ball.y),7*s,2.5*s,0,0,7); c.fill(); drawBallSpr(c,SX(ball.x),SY(ball.y)-ball.z*.9-6*s,6.5*s,t); }});
+    items.push({y:ball.y+.5,f:()=>{ const s=SC(ball.y),hp=ball.h>=0?P[ball.h]:null; let bx=SX(ball.x),by=SY(ball.y)-ball.z*.9-6*s;
+      if(hp&&handAt){ const dr=(hp.pose==='dribble'||hp.pose==='idle'||hp.pose==='run')&&hp.z<2&&!hp.act; bx=handAt[0]+hp.face*2*s; if(dr){ const fy=SY(hp.y)-6*s,u=Math.abs(Math.sin(t*9)); by=lerp(fy,handAt[1]+7*s,u); } else by=handAt[1]-6*s; }
+      c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(bx,SY(ball.y),7*s,2.5*s,0,0,7); c.fill(); drawBallSpr(c,bx,by,6.5*s,t); }});
     items.sort((a,b)=>a.y-b.y); for(const it of items) it.f();
     drawHoop(c,CT,t,swish,true);
     // 計分板
     c.fillStyle='rgba(11,10,28,.82)'; rr(c,W/2-190,6,380,54,12); c.fill();
-    c.fillStyle=jcol; c.fillRect(W/2-180,14,8,38); c.fillStyle=ST.col; c.fillRect(W/2+172,14,8,38);
+    c.fillStyle=jcol; c.fillRect(W/2-180,14,8,38); c.fillStyle=FOE; c.fillRect(W/2+172,14,8,38);
     c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillText(local2&&!coop?'1P 隊':'你的隊伍',W/2-166,24); c.textAlign='right'; c.fillText(local2&&!coop?'2P 隊':ST.name,W/2+166,24);
     c.font='900 24px '+PIX; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText(score[0]+' - '+score[1],W/2,40);
     const tm=Math.max(0,Math.ceil(time)); c.font='700 11px '+TC; c.fillStyle='#cfe8d8'; c.fillText((sudden?'決勝球　':Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0')+'　')+'搶 '+TARGET+' 分',W/2,54);
@@ -357,6 +377,6 @@ function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); drawCourt(ctx,COU
     {key:'hairCol',label:'髮色',opts:HAIRC.map((c2,i)=>({id:String(i),label:['黑','深棕','棕','金','銀','紅'][i]}))},
     {key:'shoe',label:'球鞋',type:'color',opts:['#f4f4f4','#1e1e24','#e23b3b','#3d8bff','#ffd23f','#5fd068']}],
   best:{label:'已打敗',fmt:v=>v+' / '+STAGES.length+' 隊',lower:false},
-  preview,thumb,create
+  preview,thumb,create,_draw:drawBaller
 };
 })();
