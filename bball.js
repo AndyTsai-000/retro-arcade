@@ -1,4 +1,4 @@
-// 鬥魂籃球：3 對 3 半場鬥牛（3x3 規則：弧頂內 1 分、外 2 分、搶到球要先清到外線、進攻時限 12 秒）。
+// 鬥魂籃球：3 對 3 半場鬥牛（3x3 規則：三分線內 1 分、外 2 分、搶到球要先清到外線、進攻時限 12 秒）。
 // 鬥魂風格：沒有犯規，可以推人抄球；集滿氣可以放必殺灌籃。畫面走寫實風，球員是真人比例。
 // 單人控制一名球員（隊友電腦），雙人可對打或同隊打電腦；連線由房主運算，另一邊送按鍵（同鬥魂足球）。
 (function(){
@@ -185,14 +185,12 @@ function create(env,opts){
   const teammates=p=>P.filter(q=>q.tm===p.tm&&q!==p),foes=p=>P.filter(q=>q.tm!==p.tm);
   // 投籃：成功率看距離、出手時機、防守干擾、球員能力
   function release(p,quality,special){ const d=distHoop(p),two=!inArc(p)&&!special;
-    if(!cleared&&p.tm!==pos){ cleared=true; }
-    if(!cleared){ say('要先把球運到弧頂外（清球）'); return; }
     let base=special?.97:d<110?.78:d<200?.56:d<ARC?.46:.36; base*=lerp(.45,1.12,clamp(quality,0,1))*(.85+p.skill*.25);
     let contest=0; for(const q of foes(p)){ const dd=Math.hypot(q.x-p.x,q.y-p.y); if(dd<60) contest=Math.max(contest,(q.z>15?.55:.25)*(1-dd/60)); } base*=1-contest;
     const make=Math.random()<clamp(base,.03,.98),T=special?.5:.55+d/900;
     ball.shot={from:[p.x,p.y,p.z+70],t:0,T,make,pts:special?2:two?2:1,by:p.i,tm:p.tm,special,peak:special?20:60+d*.25,dunk:d<120&&!special};
     ball.h=-1; lastTouch=p.i; p.act=null; sfx(special?'boost':'place'); if(special){ meter[p.tm]=0; say('必殺灌籃！',1.4); } }
-  function startShot(p,special){ if(p.z>2||p.fallT>0) return;
+  function startShot(p,special){ if(p.z>2||p.fallT>0) return; if(!cleared&&p.tm===pos){ say('換邊了，要先把球運到三分線外',1.4); return; }
     const d=distHoop(p),mv=Math.hypot(p.vx,p.vy);
     if(special){ p.act='dunk'; p.actT=0; p.vz=520; p.dunkFrom=[p.x,p.y]; ball.dunk={p:p.i,special:true}; return; }
     if(d<135){ p.act='dunk'; p.actT=0; p.vz=430; p.dunkFrom=[p.x,p.y]; ball.dunk={p:p.i}; return; }
@@ -201,9 +199,9 @@ function create(env,opts){
     for(const q of mates){ const dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||1,al=dl?(dx*dirX+dy*dirY)/(d*dl):0; const sc=al*2-d/400; if(sc>bs){ bs=sc; best=q; } }
     if(!best) return; ball.pass={from:[p.x,p.y,40],to:best.i,t:0,T:Math.hypot(best.x-p.x,best.y-p.y)/700+.12}; ball.h=-1; lastTouch=p.i; sfx('click'); }
   function trySteal(p){ const hd=holder(); if(!hd||hd.tm===p.tm||p.fallT>0) return; const d=Math.hypot(hd.x-p.x,hd.y-p.y); if(d>34){ p.stunT=.15; return; }
-    if(Math.random()<.22+p.skill*.25-(hd.act?-.15:0)){ ball.h=p.i; hd.fallT=.75; hd.act=null; lastTouch=p.i; if(p.tm!==pos){ pos=p.tm; cleared=true; clock=12; } meter[p.tm]=Math.min(1,meter[p.tm]+.25); sfx('hurt'); say((p.tm===0?'':'')+'抄截成功！',1.2); }
+    if(Math.random()<.22+p.skill*.25-(hd.act?-.15:0)){ ball.h=p.i; hd.fallT=.75; hd.act=null; lastTouch=p.i; if(p.tm!==pos){ pos=p.tm; cleared=false; clock=12; } meter[p.tm]=Math.min(1,meter[p.tm]+.25); sfx('hurt'); say((p.tm===0?'':'')+'抄截成功！',1.2); }
     else { p.stunT=.45; p.fallT=0; sfx('bump'); } }
-  function changePossession(team,why){ pos=team; cleared=true; clock=12; if(why) say(why); }
+  function changePossession(team,why){ pos=team; cleared=false; clock=12; if(why) say(why); }
   function scored(sh){ score[sh.tm]+=sh.pts; swish=1; sfx('win'); meter[sh.tm]=Math.min(1,meter[sh.tm]+.34); say(P[sh.by].name+' 得 '+sh.pts+' 分！',1.6);
     if(score[sh.tm]>=TARGET||sudden){ over={win:sh.tm}; return; } pause=1.3; pendingCheck=1-sh.tm; }
   let pendingCheck=-1;
@@ -216,7 +214,7 @@ function create(env,opts){
         let blocked=false; if(!ball.dunk.special) for(const q of foes(p)) if(q.z>30&&Math.hypot(q.x-p.x,q.y-p.y)<40&&Math.random()<(ctrl.some(o=>o.pi===q.i)?.55:.2+q.skill*.2)) blocked=true;
         const sp=ball.dunk.special; ball.dunk=null;
         if(blocked){ ball.h=-1; ball.x=p.x; ball.y=p.y; ball.z=RIMZ; ball.vx=-260; ball.vy=(Math.random()-.5)*200; ball.vz=120; p.act=null; sfx('bump'); say('蓋火鍋！',1.3); }
-        else { if(!cleared&&p.tm===pos){ say('要先清球'); ball.h=p.i; p.act=null; } else { ball.h=-1; ball.x=HX; ball.y=HY; ball.z=RIMZ-5; ball.vx=ball.vy=0; ball.vz=-60; scored({tm:p.tm,pts:sp?2:1,by:p.i}); p.act='hang'; p.actT=0; sfx('boom'); if(sp) meter[p.tm]=0; } } } }
+        else { if(!cleared&&p.tm===pos){ say('換邊了，要先把球運到三分線外',1.4); ball.h=p.i; p.act=null; } else { ball.h=-1; ball.x=HX; ball.y=HY; ball.z=RIMZ-5; ball.vx=ball.vy=0; ball.vz=-60; scored({tm:p.tm,pts:sp?2:1,by:p.i}); p.act='hang'; p.actT=0; sfx('boom'); if(sp) meter[p.tm]=0; } } } }
     if(p.act==='hang'){ p.actT+=dt; if(p.actT>.35) p.act=null; }
     if(p.act==='shoot'){ p.actT+=dt; if(holder()===p&&p.vz<=0&&p.relQ==null){ p.relQ=.72+Math.random()*.3*p.skill; release(p,p.relQ); } }
     if(p.act==='block'){ p.actT+=dt; if(p.z<=0&&p.actT>.1) p.act=null; }
@@ -269,7 +267,7 @@ function create(env,opts){
       for(const f of foes(q)){ if(f.fallT>0) continue; if(Math.hypot(f.x-ball.x,f.y-ball.y)<16&&u>.2&&u<.85&&Math.random()<.04+f.skill*.05){ ball.pass=null; ball.h=f.i; changePossession(f.tm,'傳球被抄走！'); sfx('hurt'); return; } }
       if(u>=1){ ball.pass=null; ball.h=q.i; } return; }
     if(ball.shot){ const s=ball.shot; s.t+=dt; const u=Math.min(1,s.t/s.T); ball.x=lerp(s.from[0],HX,u); ball.y=lerp(s.from[1],HY,u); ball.z=lerp(s.from[2],RIMZ+6,u)+Math.sin(u*Math.PI)*s.peak;
-      if(u<.35&&!s.special) for(const f of P){ if(f.tm===s.tm||f.z<25) continue; s.tried=s.tried||{}; if(s.tried[f.i]) continue; const hb=ctrl.some(o=>o.pi===f.i)?42:30; if(Math.hypot(f.x-ball.x,f.y-ball.y)<hb&&Math.abs(f.z+75-ball.z)<hb&&(s.tried[f.i]=1)&&Math.random()<(ctrl.some(o=>o.pi===f.i)?.55:.2+f.skill*.2)){ ball.shot=null; ball.vx=-200-Math.random()*150; ball.vy=(Math.random()-.5)*300; ball.vz=150; sfx('bump'); say('蓋火鍋！',1.3); meter[f.tm]=Math.min(1,meter[f.tm]+.25); changePossession(f.tm); return; } }
+      if(u<.35&&!s.special) for(const f of P){ if(f.tm===s.tm||f.z<25) continue; s.tried=s.tried||{}; if(s.tried[f.i]) continue; const hb=ctrl.some(o=>o.pi===f.i)?42:30; if(Math.hypot(f.x-ball.x,f.y-ball.y)<hb&&Math.abs(f.z+75-ball.z)<hb&&(s.tried[f.i]=1)&&Math.random()<(ctrl.some(o=>o.pi===f.i)?.55:.2+f.skill*.2)){ ball.shot=null; ball.vx=-200-Math.random()*150; ball.vy=(Math.random()-.5)*300; ball.vz=150; sfx('bump'); say('蓋火鍋！',1.3); meter[f.tm]=Math.min(1,meter[f.tm]+.25); return; } /* 球權看誰搶到，防守方搶到才要清球 */ }
       if(u>=1){ ball.shot=null;
         if(s.make){ ball.x=HX; ball.y=HY; ball.z=RIMZ-4; ball.vx=0; ball.vy=0; ball.vz=-80; if(!cleared&&s.tm===pos){} scored(s); }
         else { const a=Math.random()*Math.PI*.9+Math.PI*.55; ball.vx=Math.cos(a)*200; ball.vy=Math.sin(a)*240; ball.vz=200+Math.random()*120; sfx('bump'); } }
@@ -310,13 +308,13 @@ function create(env,opts){
     for(let a=0;a<6;a++) for(let b=a+1;b<6;b++){ const A=P[a],B=P[b],dx=B.x-A.x,dy=B.y-A.y,d=Math.hypot(dx,dy); if(d<22&&d>.1){ const k=(22-d)/2/d; A.x-=dx*k; A.y-=dy*k; B.x+=dx*k; B.y+=dy*k; } }
     stepBall(dt);
     // 進攻方投進要先清球：拿到球後運到弧頂外就算清好
-    const hd=holder(); if(hd&&hd.tm===pos&&!cleared&&!inArc(hd)){ cleared=true; if(ctrl.some(o=>o.tm===pos)) say('清球完成，可以進攻了',1.2); }
+    const hd=holder(); if(hd&&hd.tm===pos&&!cleared&&!inArc(hd)){ cleared=true; if(ctrl.some(o=>o.tm===pos)) say('到三分線外了，可以進攻！',1.2); }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/20; net.send({s:pk()}); evq=[]; } } }
   function finish(){ const w=over.win,meWin=!local2&&w===0||coop&&w===0;
     const html='<table class="ls"><tr><th>隊伍</th><th>得分</th></tr><tr><td>'+(local2&&!coop?'1P 隊':'你的隊伍')+'</td><td>'+score[0]+'</td></tr><tr><td>'+(local2&&!coop?'2P 隊':ST.name)+'</td><td>'+score[1]+'</td></tr></table>';
     const title=local2&&!coop?(w===0?'1P 隊獲勝！':'2P 隊獲勝！'):net&&!coop?(w===(net.me===0?0:1)?'你贏了！':'對手獲勝'):meWin?'你贏了！':ST.name+' 獲勝';
     if(meWin&&!net&&!local2){ try{ const k='arcade.bball.best',old=+localStorage.getItem(k)||0; if(si+1>old) localStorage.setItem(k,String(si+1)); localStorage.setItem('arcade.bball.w.'+si,'1'); }catch(e){} }
-    env.sfx(title.includes('贏')||title.includes('獲勝！')?'win':'lose'); env.end({title,big:score[0]+' : '+score[1],html,text:'先拿到 '+TARGET+' 分或時間到分數多的贏。弧頂內 1 分、外 2 分，必殺灌籃 2 分。',score:meWin&&!net&&!local2?si+1:null,next:meWin&&!net&&!local2&&si<STAGES.length-1}); }
+    env.sfx(title.includes('贏')||title.includes('獲勝！')?'win':'lose'); env.end({title,big:score[0]+' : '+score[1],html,text:'先拿到 '+TARGET+' 分或時間到分數多的贏。三分線內 1 分、外 2 分，必殺灌籃 2 分。',score:meWin&&!net&&!local2?si+1:null,next:meWin&&!net&&!local2&&si<STAGES.length-1}); }
   function draw(){
     drawCourt(c,CT,t,swish);
     drawHoop(c,CT,t,swish,false);
@@ -338,7 +336,7 @@ function create(env,opts){
     c.font='900 24px '+PIX; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText(score[0]+' - '+score[1],W/2,40);
     const tm=Math.max(0,Math.ceil(time)); c.font='700 11px '+TC; c.fillStyle='#cfe8d8'; c.fillText((sudden?'決勝球　':Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0')+'　')+'搶 '+TARGET+' 分',W/2,54);
     c.textAlign='left'; c.fillStyle=clock<4?'#ff8a8a':'#fff'; c.font='900 15px '+PIX; c.fillText(String(Math.max(0,Math.ceil(clock))),W/2-166,46); c.font='700 9px '+TC; c.fillText('進攻時間',W/2-128,47);
-    if(!cleared&&ctrl.some(o=>o.tm===pos)){ c.fillStyle='rgba(180,30,50,.85)'; rr(c,W/2-120,68,240,24,12); c.fill(); c.fillStyle='#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('先把球運到弧頂外（清球）',W/2,80); }
+    if(!cleared&&ctrl.some(o=>o.tm===pos)){ c.fillStyle='rgba(180,30,50,.85)'; rr(c,W/2-120,68,240,24,12); c.fill(); c.fillStyle='#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('換邊了：先把球運到三分線外',W/2,80); }
     if(msgT>0&&msg){ c.font='900 20px '+TC; c.textAlign='center'; c.lineWidth=5; c.strokeStyle='#0b0a1c'; c.strokeText(msg,W/2,H*.42); c.fillStyle='#ffd23f'; c.fillText(msg,W/2,H*.42); }
     if(introT>0){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,W/2-210,170,420,90,16); c.fill(); c.fillStyle='#ffd23f'; c.font='900 24px '+TC; c.textAlign='center'; c.fillText('對手：'+ST.name,W/2,200); c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText('3 對 3 半場鬥牛：先拿到 '+TARGET+' 分的贏',W/2,228); c.fillText(pos===0?'你們先攻':'對手先攻',W/2,248); } }
   return {update,draw,destroy(){},_dbg:{P,get ball(){return ball;},get score(){return score;},ctrl,get over(){return over;}}};
@@ -360,11 +358,11 @@ function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); drawCourt(ctx,COU
   coin:o=>({verb:'先攻',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1&&(o.options||{}).team!=='coop'?(o.net.names[1]||'玩家 2'):STAGES[o.stage||0].name]:o.mode==='2p'&&(o.options||{}).team!=='coop'?['1P 隊','2P 隊']:['你的隊伍',STAGES[o.stage||0].name]}),
   name:'鬥魂籃球',tag:'BASKETBALL',color:'#ff9d3d',online:true,maxPlayers:2,
   desc:'3 對 3 半場鬥牛，寫實的街頭籃球。操作很簡單：移動、投籃、傳球，靠近籃框按投籃就是上籃或灌籃。10 支對手、10 種球場，單人、雙人對打或兩人同隊打電腦。',
-  goal:'先拿到設定的分數（或時間到分數多）的隊伍贏。弧頂內投進 1 分、弧頂外 2 分，每次進攻要在 12 秒內出手。',
+  goal:'先拿到設定的分數（或時間到分數多）的隊伍贏。三分線內投進 1 分、外 2 分。跟正式規則一樣：抄截、蓋火鍋後搶到或搶到防守籃板，換邊後要先把球運到三分線外才能進攻；每次進攻要在 12 秒內出手。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageShow,
   stageBest:i=>{ try{ return localStorage.getItem('arcade.bball.w.'+i)?'★ 贏過':''; }catch(e){ return ''; } },
-  stageGoal:si=>'對手：'+STAGES[si].name+'（'+'★'.repeat(STAGES[si].stars)+'）。先拿到設定分數的隊伍贏；弧頂內 1 分、外 2 分。',
+  stageGoal:si=>'對手：'+STAGES[si].name+'（'+'★'.repeat(STAGES[si].stars)+'）。先拿到設定分數的隊伍贏；三分線內 1 分、外 2 分。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   options:[{key:'to',label:'搶幾分',def:'11',opts:[{id:'7',label:'7 分'},{id:'11',label:'11 分'},{id:'21',label:'21 分'}]},{key:'time',label:'時間',def:'4',opts:[{id:'3',label:'3 分鐘'},{id:'4',label:'4 分鐘'},{id:'6',label:'6 分鐘'}]},
     {key:'team',label:'雙人／連線玩法',def:'pvp',opts:[{id:'pvp',label:'玩家對打'},{id:'coop',label:'兩人同隊打電腦'}]}],
