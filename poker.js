@@ -301,7 +301,7 @@ function create(env,opts){
     if(v>=17) return bjAct(p,'stand'); return bjAct(p,up>=7?'hit':'stand'); }
 
   /* ===== 賽馬：四張 A 當馬，翻到什麼花色那匹馬就前進一格 ===== */
-  const HRL=clamp(+OP.hrlen||6,5,8),HRB=+OP.hrbet||50,HRR=+OP.hrr||8,HRPEN=OP.hrpen||'back',HRSTART=1000,FLIP=[1.6,1.1,.7][spd<0?1:spd];
+  const HRL=clamp(+OP.hrlen||6,5,8),HRB=+OP.hrbet||50,HRR=+OP.hrr||8,HRPEN=OP.hrpen||'back',HRSTART=1000,FLIP=[2.4,1.7,1.2][spd<0?1:spd]; // 翻牌間隔（使用者覺得太快，看不清楚發生什麼事）
   const LANES=[3,2,1,0],SUN=['梅花','方塊','紅心','黑桃']; // 由上到下：黑桃、紅心、方塊、梅花
   function hrSetup(){ G.chips=new Array(np).fill(HRSTART); G.round=0; G.pool=0; hrNewRace(); }
   function hrNewRace(){ if(G.round>=HRR||!G.chips.some(v=>v>=HRB)){ G.over={chips:G.chips.slice()}; return; }
@@ -317,14 +317,15 @@ function create(env,opts){
       cell.up=true; const s2=su(cell.id); G.last={id:cell.id,s:s2,pen:j};
       if(HRPEN==='back'){ G.pos[s2]=Math.max(0,G.pos[s2]-1); G.log='翻開賽道第 '+j+' 格：'+SUN[s2]+SUITS[s2]+' 退後一格！'; }
       else { let tot=0; for(let p=0;p<np;p++) if(G.bet[p]===s2){ const f=Math.min(G.chips[p],Math.round(HRB/2)); G.chips[p]-=f; G.pool+=f; tot+=f; } G.log='翻開賽道第 '+j+' 格：押 '+SUN[s2]+' 的人罰 '+Math.round(HRB/2)+' 籌碼進彩池'+(tot?'':'（沒人押）'); }
-      sfx('bump'); return; }
+      sfx('bump'); return 'pen'; }
     if(!G.deck.length){ G.deck=shuffle(G.disc); G.disc=[]; }
     const id=G.deck.pop(); G.disc.push(id); const s2=su(id); G.pos[s2]++; G.last={id,s:s2}; sfx('place');
     if(G.pos[s2]>HRL){ // 衝過終點
       const win=[...Array(np).keys()].filter(p=>G.bet[p]===s2),pay={};
       if(win.length){ const share=Math.floor(G.pool/win.length); for(const p of win){ G.chips[p]+=share; pay[p]=share; } G.pool-=share*win.length; }
       G.phase='done'; G.res={win:s2,pay,until:5.5,none:!win.length}; G.log=SUN[s2]+SUITS[s2]+' 衝過終點！'+(win.length?win.map(p=>names[p]).join('、')+' 押中，平分彩池':'沒人押中，彩池留到下一場'); sfx('win'); return; }
-    G.log='翻到 '+SUN[s2]+SUITS[s2]+RN(rk(id))+'，'+SUN[s2]+'前進一格'; }
+    G.log='翻到 '+SUN[s2]+SUITS[s2]+RN(rk(id))+'，'+SUN[s2]+'前進一格';
+    for(let j=1;j<=HRL;j++) if(!G.track[j-1].up&&G.pos.every(v=>v>=j)) return 'pre'; } // 接下來要翻賽道牌：多停一下
   function hrAI(p){ const w=[1,1,1,1]; return hrBet(p,(Math.random()*4)|0); }
 
   /* ===== 共用：誰該動作、電腦、連線 ===== */
@@ -378,7 +379,7 @@ function create(env,opts){
     if(kind==='13'&&G.res){ G.res.until-=dt; if(G.res.until<=0){ if(G.r13>=R13) G.over={tot:G.total.slice()}; else t13Deal(); broadcast(); } return; }
     if(kind==='bj'&&G.res){ G.res.until-=dt; if(G.res.until<=0){ bjNewRound(); broadcast(); } return; }
     if(kind==='hr'){ if(G.res){ G.res.until-=dt; if(G.res.until<=0){ hrNewRace(); broadcast(); } return; }
-      if(G.phase==='run'){ G.flipT-=dt; if(G.flipT<=0){ G.flipT=FLIP; hrStep(); broadcast(); } return; } }
+      if(G.phase==='run'){ G.flipT-=dt; if(G.flipT<=0){ const r=hrStep(); G.flipT=FLIP*(r==='pen'?2.2:r==='pre'?1.6:1); broadcast(); } return; } }
     // 離開的人由電腦代打
     if(kind==='b2'&&left.has(G.turn)){ aiT+=dt; if(aiT>AID){ aiT=0; b2AI(G.turn); broadcast(); } return; }
     aiT+=dt; if(aiT>AID){ aiT=0; aiStep(); }
@@ -497,7 +498,7 @@ function create(env,opts){
     btn('確定',652,340,80,()=>{ act({rows:arr.rows}); },!full,true);
   }
   // 賽馬：上面一排是賽道牌，下面四條跑道，A 在跑道上往右跑；馬的位置用動畫慢慢移過去
-  const hrShown=[0,0,0,0];
+  const hrShown=[0,0,0,0]; let hrPenSeen=null,hrPenT=0;
   function drawHR(){ if(!G.pos) return;
     const x0=96,cw=Math.min(78,560/(HRL+2)),ly=168,lh=54,cardW=Math.min(48,cw*.66),cardH=cardW*1.4,colX=j=>x0+j*cw+cw/2;
     c.fillStyle='rgba(11,10,28,.6)'; rr(c,x0-6,ly-cardH*.8-20,cw*(HRL+2)+12,cardH*.8+14,10); c.fill(); // 賽道牌那一排墊深色底，不和看台混在一起
@@ -511,7 +512,7 @@ function create(env,opts){
       const who=[...Array(np).keys()].filter(p=>G.bet[p]===s2); c.textAlign='left'; c.font='700 11px '+TC; c.fillStyle='#ffe8a8'; c.fillText(who.map(p=>p===me?'你':names[p]).join('、'),x0+cw*(HRL+2)+8,y+lh/2-2); c.textAlign='center'; }
     // 終點線（黑白格）
     const fx=x0+(HRL+1)*cw; for(let r=0;r<Math.ceil(4*lh/8);r++) for(let q=0;q<2;q++){ c.fillStyle=(r+q)%2?'#14122b':'#fff'; c.fillRect(fx-8+q*4,ly+r*8,4,8); }
-    for(let li=0;li<4;li++){ const s2=LANES[li],y=ly+li*lh; hrShown[s2]+=(G.pos[s2]-hrShown[s2])*Math.min(1,.16); const x=colX(hrShown[s2]),bob=G.phase==='run'?Math.abs(Math.sin(t*9+li))*3:0,win=G.res&&G.res.win===s2;
+    for(let li=0;li<4;li++){ const s2=LANES[li],y=ly+li*lh; hrShown[s2]+=(G.pos[s2]-hrShown[s2])*.07; const x=colX(hrShown[s2]),bob=G.phase==='run'?Math.abs(Math.sin(t*9+li))*3:0,win=G.res&&G.res.win===s2;
       drawCard(c,x-17,y+3-bob,34,lh-10,s2*13+12,true,{sel:win,hl:G.last&&G.last.s===s2&&!G.last.pen});
       c.font='16px '+TC; c.fillText('🐎',x+24,y+lh/2-4-bob); }
     // 牌堆和剛翻的牌
@@ -523,6 +524,10 @@ function create(env,opts){
     const px0=300,pw=Math.min(122,(W-px0-10)/Math.min(np,4)); [...Array(np).keys()].forEach((p,i)=>{ const x=px0+(i%4)*pw+pw/2,y=by+14+Math.floor(i/4)*28,b=G.bet[p];
       plate(p,x,y,G.chips[p]+(b>=0?' '+SUITS[b]:''),G.phase==='bet'&&b===-1);
       if(G.res&&G.res.pay[p]){ c.fillStyle='#86dc4f'; c.font='900 12px '+TC; c.fillText('+'+G.res.pay[p],x,y-18); } });
+    // 翻開賽道牌：中間跳出大字提示
+    if(G.last&&G.last.pen){ if(hrPenSeen!==G.last){ hrPenSeen=G.last; hrPenT=2.4; } }
+    if(hrPenT>0&&G.last&&G.last.pen&&!G.res){ hrPenT-=1/60; const a=Math.min(1,hrPenT*2),s2=G.last.s; c.globalAlpha=a; c.fillStyle='#7a1420'; rr(c,10,8,W-220,50,14); c.fill(); // 放在最上面，不擋住跑道上的馬
+      c.fillStyle='#fff'; c.font='900 19px '+TC; c.fillText('賽道第 '+G.last.pen+' 格翻開：'+SUITS[s2]+' '+SUN[s2]+'　'+(HRPEN==='back'?SUN[s2]+'退後一格！':'押'+SUN[s2]+'的人罰籌碼！'),10+(W-220)/2,33); c.globalAlpha=1; }
     if(G.phase==='bet'&&G.bet[me]===-1){ c.fillStyle='rgba(11,10,28,.82)'; rr(c,W/2-250,ly+40,500,120,16); c.fill(); c.fillStyle='#fff'; c.font='900 16px '+TC; c.fillText('押哪一匹馬？（下注 '+HRB+'）',W/2,ly+62);
       [3,2,1,0].forEach((s2,i)=>btn(SUITS[s2]+' '+SUN[s2],W/2-236+i*120,ly+86,110,()=>act({t:'bet',s:s2}),false,true)); }
     else if(G.phase==='bet'){ c.fillStyle='#fff'; c.font='700 14px '+TC; c.fillText(G.bet[me]===-2?'籌碼不夠，這場在旁邊看':'等其他人下注…',W/2,ly+4*lh+2); }
