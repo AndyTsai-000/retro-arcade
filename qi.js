@@ -200,13 +200,16 @@ function xqSearch(b0,s,ms,maxD,noise){ const b=b0.slice(),t0=performance.now(),M
 const MJN=['帥','仕','相','俥','傌','炮','兵','將','士','象','車','馬','包','卒'],MJT=[1,2,3,5,4,6,7];
 const MJSEQ=[[0,1,2],[3,4,5],[7,8,9],[10,11,12]];
 const tile=(c,x,y,r,k,o)=>piece(c,x,y,r,k>=7?1:0,MJT[k%7],o);
-function mjSh(a,need,noSeq){ let best=9;
+// 32 張：帥將各 1、兵卒各 5、其他各 2。胡牌＝一組（順子或三兵／三卒）＋一對（同字，或帥將配對）
+const MJC=[1,2,2,2,2,2,5,1,2,2,2,2,2,5];
+function mjSh(a,need,noJ){ let best=9;
   const rec=(i,s,pt,pr)=>{ while(i<14&&!a[i]) i++;
     if(i>=14){ const v=2*(need-s)-Math.min(pt,Math.max(0,need-s))-(pr?1:0); if(v<best) best=v; return; }
     if(a[i]>=3){ a[i]-=3; rec(i,s+1,pt,pr); a[i]+=3; }
-    if(!noSeq){ const q=MJSEQ.find(x=>x[0]===i); if(q&&a[q[1]]&&a[q[2]]){ a[i]--; a[q[1]]--; a[q[2]]--; rec(i,s+1,pt,pr); a[i]++; a[q[1]]++; a[q[2]]++; } }
+    const q=MJSEQ.find(x=>x[0]===i); if(q&&a[q[1]]&&a[q[2]]){ a[i]--; a[q[1]]--; a[q[2]]--; rec(i,s+1,pt,pr); a[i]++; a[q[1]]++; a[q[2]]++; }
     if(a[i]>=2){ a[i]-=2; if(!pr) rec(i,s,pt,true); rec(i,s,pt+1,pr); a[i]+=2; }
-    if(!noSeq){ const q=MJSEQ.find(x=>x.includes(i)); if(q) for(const j of q) if(j>i&&a[j]){ a[i]--; a[j]--; rec(i,s,pt+1,pr); a[i]++; a[j]++; } }
+    if(i===0&&a[7]&&!noJ){ a[0]--; a[7]--; if(!pr) rec(i,s,pt,true); rec(i,s,pt+1,pr); a[0]++; a[7]++; }
+    const q2=MJSEQ.find(x=>x.includes(i)); if(q2) for(const j of q2) if(j>i&&a[j]){ a[i]--; a[j]--; rec(i,s,pt+1,pr); a[i]++; a[j]++; }
     a[i]--; rec(i,s,pt,pr); a[i]++; };
   rec(0,0,0,false); return best; }
 
@@ -483,32 +486,32 @@ function create(env,opts){
   function mjMod(){
     const HN=+OP.mjh||8,BASE=3;
     const cnt=h=>{ const a=new Array(14).fill(0); for(const k of h) a[k]++; return a; };
-    const melds=p=>G.meld[p].length,need=p=>2-melds(p),closed=p=>G.meld[p].every(m=>m.t==='ankan');
-    const shOf=(p,a)=>{ a=a||cnt(G.hand[p]); let v=mjSh(a,need(p)); if(!melds(p)){ let pr=0; for(const x of a) pr+=x>>1; v=Math.min(v,3-Math.min(4,pr)); } return v; };
+    const melds=p=>G.meld[p].length,need=p=>1-melds(p);
+    const shOf=(p,a)=>{ a=a||cnt(G.hand[p]); let v=mjSh(a,need(p)); if(!melds(p)) v=Math.min(v,4-Math.max(a[6],a[13])); return v; }; // 五兵、五卒也能胡
     const canWin=(p,extra)=>{ const a=cnt(G.hand[p]); if(extra!=null) a[extra]++; return shOf(p,a)===-1; };
-    function visible(p){ const v=new Array(14).fill(0); for(const k of G.hand[p]) v[k]++; for(let q=0;q<np;q++){ for(const k of G.river[q]) v[k]++; for(const m of G.meld[q]) for(const k of m.k) v[k]++; } return v; }
-    function waits(p){ const a=cnt(G.hand[p]),out=[]; for(let k=0;k<14;k++){ if(a[k]>=4) continue; a[k]++; if(shOf(p,a)===-1) out.push(k); a[k]--; } return out; }
+    function visible(p){ const v=new Array(14).fill(0); for(const k of G.hand[p]) v[k]++; for(let q=0;q<np;q++){ for(const k of G.river[q]) v[k]++; for(const m of G.meld[q]) for(const k of m.k) v[k]++; } return v.map((x,k)=>MJC[k]-x); } // 還沒看到的張數
+    function waits(p){ const a=cnt(G.hand[p]),out=[]; for(let k=0;k<14;k++){ if(a[k]>=MJC[k]) continue; a[k]++; if(shOf(p,a)===-1) out.push(k); a[k]--; } return out; }
     function aiDiscard(p){ const a=cnt(G.hand[p]),vis=visible(p),ds=[];
-      for(let k=0;k<14;k++){ if(!a[k]) continue; a[k]--; const s=shOf(p,a); let acc=0; for(let x=0;x<14;x++){ const u=4-vis[x]; if(u<=0) continue; a[x]++; if(shOf(p,a)<s) acc+=u; a[x]--; } a[k]++;
-        ds.push({k,v:-s*100+acc*(LV?3:1)+(LV===2?vis[k]*.8:0)+Math.random()*[60,2,.5][LV]}); }
+      for(let k=0;k<14;k++){ if(!a[k]) continue; a[k]--; const s=shOf(p,a); let acc=0; for(let x=0;x<14;x++){ const u=vis[x]; if(u<=0) continue; a[x]++; if(shOf(p,a)<s) acc+=u; a[x]--; } a[k]++;
+        ds.push({k,v:-s*100+acc*(LV?3:1)+(LV===2?(MJC[k]-vis[k])*.8:0)+Math.random()*[60,2,.5][LV]}); }
       ds.sort((x,y)=>y.v-x.v); return ds[0].k; }
     function aiClaim(q,o,k){ if(o.includes('hu')) return 'hu'; if(LV===0&&Math.random()<.5) return 'pass';
       const cur=shOf(q); let best='pass',bv=cur;
-      for(const op of o){ const a=cnt(G.hand[q]); if(op==='pon') a[k]-=2; else if(op==='kan') a[k]-=3; else for(const x of MJSEQ[+op.slice(3)]) if(x!==k) a[x]--;
-        const n2=need(q)-1; let v=9; if(op==='kan') v=mjSh(a,n2); else for(let x=0;x<14;x++) if(a[x]){ a[x]--; v=Math.min(v,mjSh(a,n2)); a[x]++; }
+      for(const op of o){ const a=cnt(G.hand[q]); if(op==='pon') a[k]-=2; else for(const x of MJSEQ[+op.slice(3)]) if(x!==k) a[x]--;
+        const n2=need(q)-1; let v=9; for(let x=0;x<14;x++) if(a[x]){ a[x]--; v=Math.min(v,mjSh(a,n2)); a[x]++; }
         if(v<bv){ bv=v; best=op; } }
       return best; }
     function claimOpts(q,k,from){ const a=cnt(G.hand[q]),o=[]; if(canWin(q,k)) o.push('hu');
-      if(G.wall.length){ if(a[k]>=3) o.push('kan'); if(a[k]>=2) o.push('pon'); if(q===(from+1)%np) MJSEQ.forEach((s,j)=>{ if(s.includes(k)&&s.every(x=>x===k||a[x])) o.push('chi'+j); }); }
+      if(G.wall.length&&!melds(q)){ if(a[k]>=2) o.push('pon'); if(q===(from+1)%np) MJSEQ.forEach((s,j)=>{ if(s.includes(k)&&s.every(x=>x===k||a[x])) o.push('chi'+j); }); }
       return o; }
     const sortH=p=>G.hand[p].sort((a,b)=>a-b);
-    function drawTile(p,kan){ if(!G.wall.length){ G.show={draw:true,until:4}; G.phase='show'; G.turn=-1; log('牌摸完了，流局'); G.snd='lose'; return; }
-      const k=G.wall.pop(); G.hand[p].push(k); sortH(p); G.drawn=k; G.turn=p; G.phase='discard'; G.kanFlag=!!kan; }
-    function deal(){ const w=[]; for(let k=0;k<14;k++) for(let i=0;i<4;i++) w.push(k); G.wall=shuffle(w); G.hand=[]; G.meld=[]; G.river=[];
-      for(let p=0;p<np;p++){ G.hand[p]=G.wall.splice(-7); sortH(p); G.meld[p]=[]; G.river[p]=[]; }
-      G.show=null; G.claim=null; G.lastD=null; drawTile(G.dealer); log('第 '+(G.hno+1)+' 局，'+names[G.dealer]+' 當莊'); }
+    function drawTile(p){ if(!G.wall.length){ G.show={draw:true,until:4}; G.phase='show'; G.turn=-1; log('牌摸完了，流局'); G.snd='lose'; return; }
+      const k=G.wall.pop(); G.hand[p].push(k); sortH(p); G.drawn=k; G.turn=p; G.phase='discard'; }
+    function deal(){ const w=[]; for(let k=0;k<14;k++) for(let i=0;i<MJC[k];i++) w.push(k); G.wall=shuffle(w); G.hand=[]; G.meld=[]; G.river=[];
+      for(let p=0;p<np;p++){ G.hand[p]=G.wall.splice(-4); sortH(p); G.meld[p]=[]; G.river[p]=[]; }
+      G.show=null; G.claim=null; G.lastD=null; G.nd=0; G.called=false; drawTile(G.dealer); log('第 '+(G.hno+1)+' 局，'+names[G.dealer]+' 當莊'); }
     function discard(p,k){ const h=G.hand[p],ix=h.indexOf(k); if(ix<0) return '手上沒有這張';
-      h.splice(ix,1); G.river[p].push(k); G.drawn=-1; G.lastD={k,p}; G.snd='place'; G.kanFlag=false; log(names[p]+' 打出「'+MJN[k]+'」');
+      h.splice(ix,1); G.river[p].push(k); G.drawn=-1; G.lastD={k,p}; G.snd='place'; G.nd++; log(names[p]+' 打出「'+MJN[k]+'」');
       const opts={},resp={}; let any=false;
       for(let d=1;d<np;d++){ const q=(p+d)%np,o=claimOpts(q,k,p); if(!o.length) continue; any=true; opts[q]=o; if(isAI(q)) resp[q]=aiClaim(q,o,k); }
       if(!any){ drawTile((p+1)%np); return null; }
@@ -516,24 +519,24 @@ function create(env,opts){
     function resolve(){ const C=G.claim; for(const q in C.opts) if(!C.resp[q]) return;
       const order=[]; for(let d=1;d<np;d++) order.push((C.from+d)%np); const pick=f=>order.find(q=>C.resp[q]&&f(C.resp[q]));
       let q=pick(r=>r==='hu'); G.claim=null; if(q!=null) return win(q,C.from,C.k);
-      q=pick(r=>r==='pon'||r==='kan'); if(q==null) q=pick(r=>r.startsWith('chi'));
+      q=pick(r=>r==='pon'); if(q==null) q=pick(r=>r.startsWith('chi'));
       if(q==null){ drawTile((C.from+1)%np); return; }
       const r=C.resp[q],k=C.k,h=G.hand[q],take=x=>h.splice(h.indexOf(x),1); G.river[C.from].pop(); G.lastD=null;
-      if(r==='pon'){ take(k); take(k); G.meld[q].push({t:'pon',k:[k,k,k]}); log(names[q]+' 碰「'+MJN[k]+'」'); }
-      else if(r==='kan'){ take(k); take(k); take(k); G.meld[q].push({t:'kan',k:[k,k,k,k]}); log(names[q]+' 槓「'+MJN[k]+'」'); }
+      G.called=true; if(r==='pon'){ take(k); take(k); G.meld[q].push({t:'pon',k:[k,k,k]}); log(names[q]+' 碰「'+MJN[k]+'」'); }
       else { const s=MJSEQ[+r.slice(3)]; for(const x of s) if(x!==k) take(x); G.meld[q].push({t:'chi',k:s.slice()}); log(names[q]+' 吃 '+s.map(x=>MJN[x]).join('')); }
-      G.snd='item'; G.turn=q; G.phase='discard'; G.drawn=-1; if(r==='kan') drawTile(q,true); }
+      G.snd='item'; G.turn=q; G.phase='discard'; G.drawn=-1; }
     function win(p,from,k){ const self=from<0,a=cnt(G.hand[p]); if(!self) a[k]++;
       const all=G.hand[p].slice(); if(!self) all.push(k); for(const m of G.meld[p]) all.push(...m.k);
-      let pr=0; for(const x of a) pr+=x>>1; const pairs=!melds(p)&&pr>=4,normal=mjSh(a.slice(),need(p))===-1,tai=[];
-      if(self) tai.push(['自摸',1]); if(closed(p)) tai.push(['門清',1]); if(all.every(x=>x<7)||all.every(x=>x>=7)) tai.push(['清一色',2]);
-      if(pairs) tai.push(['四對',2]); else if(normal&&mjSh(a.slice(),need(p),true)===-1&&G.meld[p].every(m=>m.t!=='chi')) tai.push(['碰碰胡',1]);
-      const kans=G.meld[p].filter(m=>m.t==='kan'||m.t==='ankan').length; if(kans) tai.push(['槓',kans]);
-      if(self&&G.kanFlag) tai.push(['槓上開花',1]); if(self&&!G.wall.length) tai.push(['海底撈月',1]);
+      const five=!melds(p)&&(a[6]===5||a[13]===5),tai=[];
+      if(self&&p===G.dealer&&G.nd===0) tai.push(['天胡',6]); else if(self&&p!==G.dealer&&!G.river[p].length&&!G.called&&G.nd<np) tai.push(['地胡',6]); else tai.push(self?['自摸',2]:['胡牌',1]);
+      if(five) tai.push([a[6]===5?'五兵合縱':'五卒連橫',5]);
+      else if(mjSh(a.slice(),need(p),true)!==-1) tai.push(['將帥聽令',2]);
+      if(all.every(x=>x<7)) tai.push(['紅一色',1]); else if(all.every(x=>x>=7)) tai.push(['黑一色',1]);
+      if(self&&!G.wall.length) tai.push(['海底撈月',1]);
       const T=tai.reduce((s,x)=>s+x[1],0),pay=new Array(np).fill(0);
       for(const q of self?[...Array(np).keys()].filter(q=>q!==p):[from]){ const v=BASE+T+(p===G.dealer||q===G.dealer?1:0); pay[q]-=v; pay[p]+=v; }
       for(let q=0;q<np;q++) G.pts[q]+=pay[q];
-      G.show={win:p,from,k,self,tai:tai.length?tai:[['平胡',0]],pay,hand:G.hand[p].slice(),melds:G.meld[p].map(m=>m.k.slice()),until:7};
+      G.show={win:p,from,k,self,tai,pay,hand:G.hand[p].slice(),melds:G.meld[p].map(m=>m.k.slice()),until:7};
       G.phase='show'; G.turn=-1; G.snd='win'; log(names[p]+(self?' 自摸！':' 胡了！'+names[from]+' 放槍')); return null; }
     function nextHand(){ const S=G.show; if(!(S.draw||S.win===G.dealer)) G.dealer=(G.dealer+1)%np; G.hno++;
       if(G.hno>=HN){ G.over={rank:[...Array(np).keys()].sort((a,b)=>G.pts[b]-G.pts[a]),why:'打完 '+HN+' 局，比總分'}; return; } deal(); }
@@ -542,7 +545,7 @@ function create(env,opts){
     const spot=p=>SPOT[(p-view()+np)%np];
     const HR=22,HG=48;
     function myLayout(){ const V=view(),h=G.hand[V].slice(),dr=G.turn===V&&G.phase==='discard'&&G.drawn>=0?G.drawn:-1; if(dr>=0) h.splice(h.indexOf(dr),1);
-      const mw=G.meld[V].reduce((s,m)=>s+m.k.length*31+10,0),n=h.length+(dr>=0?1:0),w=n*HG+(dr>=0?14:0),x0=Math.max(30+mw+HR,420-w/2+HR);
+      const mw=G.meld[V].reduce((s,m)=>s+m.k.length*35+10,0),n=h.length+(dr>=0?1:0),w=n*HG+(dr>=0?14:0),x0=Math.max(30+mw+HR,420-w/2+HR);
       const out=h.map((k,j)=>({k,x:x0+j*HG,y:452})); if(dr>=0) out.push({k:dr,x:x0+h.length*HG+14,y:452,drawn:true}); return out; }
     function riverPos(p,j){ const s=spot(p),row=Math.floor(j/8),col=j%8;
       if(s==='b') return [296+col*26,300+row*26]; if(s==='t') return [504-col*26,162-row*26];
@@ -559,14 +562,10 @@ function create(env,opts){
         if(G.phase!=='discard'||G.turn!==p) return '還沒輪到你';
         if(a.t==='dis') return discard(p,a.k|0);
         if(a.t==='tsumo') return canWin(p)?win(p,-1,G.drawn):'還不能胡';
-        if(a.t==='ankan'){ const k=a.k|0; if(cnt(G.hand[p])[k]<4) return '要四張一樣才能暗槓'; if(!G.wall.length) return '沒牌了，不能槓'; for(let i=0;i<4;i++) G.hand[p].splice(G.hand[p].indexOf(k),1); G.meld[p].push({t:'ankan',k:[k,k,k,k]}); log(names[p]+' 暗槓'); G.snd='item'; drawTile(p,true); return null; }
-        if(a.t==='kakan'){ const k=a.k|0,m=G.meld[p].find(x=>x.t==='pon'&&x.k[0]===k); if(!m||!G.hand[p].includes(k)) return '不能加槓'; if(!G.wall.length) return '沒牌了，不能槓'; G.hand[p].splice(G.hand[p].indexOf(k),1); m.t='kan'; m.k.push(k); log(names[p]+' 加槓「'+MJN[k]+'」'); G.snd='item'; drawTile(p,true); return null; }
         return '不能這樣做'; },
       tick(dt){ if(G.phase==='show'&&!G.over){ G.show.until-=dt; if(G.show.until<=0){ nextHand(); return true; } } return false; },
       ai(p){ if(G.phase==='claim') return {t:'claim',c:aiClaim(p,G.claim.opts[p],G.claim.k)};
-        if(canWin(p)) return {t:'tsumo'}; const a=cnt(G.hand[p]),s0=shOf(p);
-        if(LV>0&&G.wall.length){ for(let k=0;k<14;k++) if(a[k]===4){ const b=a.slice(); b[k]=0; if(mjSh(b,need(p)-1)<=s0) return {t:'ankan',k}; }
-          for(const m of G.meld[p]) if(m.t==='pon'&&a[m.k[0]]) return {t:'kakan',k:m.k[0]}; }
+        if(canWin(p)) return {t:'tsumo'};
         return {t:'dis',k:aiDiscard(p)}; },
       fallback:p=>G.phase==='claim'?{t:'claim',c:'pass'}:{t:'dis',k:G.hand[p][G.hand[p].length-1]},
       draw(){ const V=view(),a=actor();
@@ -577,16 +576,16 @@ function create(env,opts){
           if(s==='t'){ const w=n*27,x0=400-w/2+13; for(let j=0;j<n;j++) piece(c,x0+j*27,38,13,0,0,{back:true}); let mx=x0+n*27+10; for(const m of M){ for(const k of m.k){ tile(c,mx,38,13,k); mx+=27; } mx+=8; } plate(p,x0-24,38,'r'); }
           else { const x=s==='r'?712:88,y0=130; for(let j=0;j<n;j++) piece(c,x,y0+j*27,13,0,0,{back:true}); let my=y0+n*27+10; for(const m of M){ for(const k of m.k){ tile(c,x,my,13,k); my+=27; } my+=8; } plate(p,x,y0-30,'c'); } }
         // 自己
-        let mx=26; for(const m of G.meld[V]){ for(const k of m.k){ tile(c,mx,458,15,k,{al:m.t==='ankan'?.85:null}); mx+=31; } mx+=10; }
+        let mx=26; for(const m of G.meld[V]){ for(const k of m.k){ tile(c,mx,458,16,k); mx+=35; } mx+=10; }
         const lay=myLayout(),hv=hover&&a===V&&G.phase==='discard'?lay.find(o=>Math.hypot(hover[0]-o.x,hover[1]-o.y)<HR):null;
         for(const o of lay) tile(c,o.x,o.y-(o===hv?10:0),HR,o.k,{hl:o.drawn?'rgba(255,210,63,.8)':null});
         plate(V,26,418,'l');
         if(G.phase!=='show'&&G.hand[V].length%3===1){ const w=waits(V); if(w.length){ c.fillStyle='rgba(11,10,28,.75)'; const tx='聽：'+w.map(k=>MJN[k]).join('、'); c.font='900 13px '+TC; const tw=c.measureText(tx).width+20; rr(c,640-tw/2,404,tw,24,12); c.fill(); c.fillStyle='#86dc4f'; c.textAlign='center'; c.fillText(tx,640,417); } }
         // 按鈕
         if(a===V&&a>=0){ const B=[];
-          if(G.phase==='claim'){ const o=G.claim.opts[a],k=G.claim.k; for(const op of o) B.push([op==='hu'?'胡！':op==='pon'?'碰':op==='kan'?'槓':'吃 '+MJSEQ[+op.slice(3)].map(x=>MJN[x]).join(''),()=>act({t:'claim',c:op}),op==='hu']); B.push(['過',()=>act({t:'claim',c:'pass'})]);
+          if(G.phase==='claim'){ const o=G.claim.opts[a],k=G.claim.k; for(const op of o) B.push([op==='hu'?'胡！':op==='pon'?'碰':'吃 '+MJSEQ[+op.slice(3)].map(x=>MJN[x]).join(''),()=>act({t:'claim',c:op}),op==='hu']); B.push(['過',()=>act({t:'claim',c:'pass'})]);
             c.fillStyle='#fff'; c.font='900 14px '+TC; c.textAlign='right'; c.fillText(names[G.claim.from]+' 打出「'+MJN[k]+'」，要叫嗎？',780,346); }
-          else { if(canWin(a)) B.push(['自摸！',()=>act({t:'tsumo'}),true]); const ca=cnt(G.hand[a]); if(G.wall.length){ for(let k=0;k<14;k++) if(ca[k]===4) B.push(['暗槓 '+MJN[k],()=>act({t:'ankan',k})]); for(const m of G.meld[a]) if(m.t==='pon'&&ca[m.k[0]]) B.push(['加槓 '+MJN[m.k[0]],()=>act({t:'kakan',k:m.k[0]})]); } }
+          else if(canWin(a)) B.push(['自摸！',()=>act({t:'tsumo'}),true]);
           let bx=790; for(let j=B.length-1;j>=0;j--){ c.font='900 15px '+TC; const w=Math.max(64,c.measureText(B[j][0]).width+26); bx-=w; btn(B[j][0],bx,358,w,B[j][1],false,B[j][2]); bx-=8; } }
         // 結算
         const S=G.show; if(S){ c.fillStyle='rgba(11,10,28,.86)'; rr(c,190,120,420,220,18); c.fill(); c.textAlign='center'; c.textBaseline='middle';
@@ -711,9 +710,9 @@ function stageShow(ctx,w,h,si,t){
     for(let r=0;r<=4;r++){ ctx.beginPath(); ctx.moveTo(ox,oy+r*cs); ctx.lineTo(ox+8*cs,oy+r*cs); ctx.stroke(); } for(let q=0;q<=8;q++){ ctx.beginPath(); ctx.moveTo(ox+q*cs,oy); ctx.lineTo(ox+q*cs,oy+4*cs); ctx.stroke(); }
     const up={3:[0,5],9:[1,1],12:[1,6],18:[0,2],22:[1,7],27:[0,1]},fl=Math.floor(u*6)%6,keys=Object.keys(up);
     for(let i=0;i<32;i++){ const x=ox+(i&7)*cs+cs/2,y=oy+(i>>3)*cs+cs/2,v=up[i],j=keys.indexOf(String(i)); if(v&&j<=fl) piece(ctx,x,y,cs*.4,v[0],v[1]); else piece(ctx,x,y,cs*.4,0,0,{back:true}); } }
-  else { const r=h*.075,hand=[0,1,2,3,4,5,6,6]; const n=Math.floor(u*10); ctx.fillStyle='rgba(0,0,0,.25)'; rr(ctx,w*.06,h*.24,w*.88,h*.66,18*k); ctx.fill();
-    hand.forEach((kk,j)=>tile(ctx,w/2+(j-3.5)*r*2.2,h*.72-(j>=6&&n>5?Math.sin(t*6)*3*k:0),r,kk,{hl:n>=8&&j<=7?'#86dc4f':null}));
-    [7,7,12,10].forEach((kk,j)=>tile(ctx,w*.3+j*r*1.6,h*.4,r*.7,kk)); ctx.fillStyle='#86dc4f'; ctx.font='900 '+Math.round(h*.06)+'px '+TC; if(n>=8) ctx.fillText('帥仕相＋俥傌炮＋兵兵　胡！',w/2,h*.88); }
+  else { const r=h*.09,hand=[0,1,2,6,6]; const n=Math.floor(u*10); ctx.fillStyle='rgba(0,0,0,.25)'; rr(ctx,w*.06,h*.24,w*.88,h*.66,18*k); ctx.fill();
+    hand.forEach((kk,j)=>tile(ctx,w/2+(j-2)*r*2.3,h*.72-(j===4&&n>5?Math.sin(t*6)*3*k:0),r,kk,{hl:n>=8?'#86dc4f':null}));
+    [7,7,12,10].forEach((kk,j)=>tile(ctx,w*.3+j*r*1.6,h*.4,r*.7,kk)); ctx.fillStyle='#86dc4f'; ctx.font='900 '+Math.round(h*.06)+'px '+TC; if(n>=8) ctx.fillText('帥仕相＋兵兵　胡！',w/2,h*.88); }
 }
 function thumb(ctx,w,h,t){ drawBg(ctx,w,h,'tea',t); const k=w/480;
   const S=h*.5,x0=w*.06,y0=h*.3; gridBoard(ctx,x0,y0,S,7,'#dcae66',[[3,3]]); const cs=S/7; [[2,3,1],[3,3,2],[3,2,1],[4,4,2],[2,4,1]].forEach(([x,y,cl])=>stone(ctx,x0+cs/2+x*cs,y0+cs/2+y*cs,cs*.46,cl));
@@ -733,7 +732,7 @@ function thumb(ctx,w,h,t){ drawBg(ctx,w,h,'tea',t); const k=w/480;
     '跳棋：每人 10 顆彈珠，從自己的角出發，先把全部彈珠移到正對面的角就贏。每次可以走到旁邊的空洞，或跳過旁邊一顆棋子（自己的、別人的都可以）落到後面的空洞，還能一直連跳。對面的角被別人的彈珠卡住時，只要那個角全部填滿、裡面有你的彈珠就算到家。2～6 人，有人到家就結束，其他人照離終點的遠近排名。',
     '象棋：紅先黑後，把對方的帥（將）將死就贏。帥仕不出九宮、相象不過河、馬走日會被絆馬腳、象走田會被塞象眼、車直走、炮要隔一顆棋子才能吃、兵過河後可以橫走；兩個帥不能在同一直線上直接見面。對方無棋可走也算贏；同一局面重複三次或 60 回合沒吃子算和棋。',
     '暗棋：32 顆棋子全部蓋著放在半張棋盤（4×8）上，第一個翻棋的人翻到什麼顏色就執那一色。每回合可以翻一顆棋，或把自己的棋子往上下左右走一格、吃掉旁邊的對手棋子。大小：帥將＞仕士＞相象＞俥車＞傌馬＞炮包＞兵卒，大的吃小的、一樣大可以互吃；但兵卒可以吃帥將，帥將不能吃兵卒。炮包要隔一顆棋子（不論遠近，蓋著的也算）才能吃，而且什麼都能吃。把對方吃光或讓對方無棋可走就贏；連續 50 步沒有翻棋或吃子算和棋。',
-    '象棋麻將：用象棋子當麻將牌，帥仕相俥傌炮兵、將士象車馬包卒各 4 張，共 56 張。每人 7 張，輪流摸一張打一張，湊成「兩組＋一對」或「四對」就胡。一組是三張一樣（刻子），或同色的帥仕相、俥傌炮、將士象、車馬包（順子）。上家打的牌可以「吃」成順子，任何人打的都可以「碰」或「槓」。計分：底 3 分、每台 1 分；自摸、門清、碰碰胡、槓、槓上開花、海底撈月各 1 台，清一色、四對各 2 台，莊家多 1 台。放槍的人付，自摸其他人都付，打完設定的局數比總分。'][si],
+    '象棋麻將（32 張）：一副象棋當麻將牌，帥、將各 1 張，兵、卒各 5 張，其他各 2 張。莊家 5 張先打，其他人 4 張，輪流摸一張打一張，湊成「一組＋一對」就胡。一組是同色的帥仕相、俥傌炮、將士象、車馬包（順子），或三兵、三卒（刻子）；一對是兩張一樣，帥和將也能配成一對；五兵、五卒也算胡。上家打的牌可以「吃」成順子，兩張一樣時可以「碰」。台數：放槍胡 1 台、自摸 2 台、天胡地胡 6 台、將帥聽令（帥將當對子）2 台、五兵合縱／五卒連橫 5 台、紅一色／黑一色 1 台、海底撈月 1 台，莊家多 1 台；底 3 分、每台 1 分。放槍的人付，自摸其他人都付，打完設定的局數比總分。'][si],
   modes:[{id:'1p',label:'對電腦'},{id:'2p',label:'兩人同一台'}],
   coin:o=>{ const s=o.stage||0; if(s===2||s===5) return null; return {verb:['執黑先下','執黑先下','','執紅先走','先翻棋'][s],names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}; },
   options:[{key:'lv',label:'電腦強度',def:'normal',opts:[{id:'easy',label:'簡單'},{id:'normal',label:'中等'},{id:'hard',label:'困難'}]},
@@ -749,9 +748,9 @@ function thumb(ctx,w,h,t){ drawBg(ctx,w,h,'tea',t); const k=w/480;
       [['點自己的彈珠','選取，能去的洞會亮起黃點'],['點黃點','走過去（連跳會自動照路線跳）'],U],
       [['點自己的棋子','選取，能走的位置亮綠點、能吃的亮紅圈'],['點綠點／紅圈','走棋或吃子'],U,R],
       [['點蓋著的棋','翻開'],['點自己的棋子','選取，再點旁邊的格子走過去或吃子'],U,R],
-      [['點手牌','打出那一張（剛摸的那張在最右邊）'],['自摸／胡','湊成兩組＋一對或四對時出現'],['吃／碰／槓','別人打牌時能叫就會跳出按鈕，不要就按「過」'],['聽','手牌上面會提示你在等哪幾張']]][si];
+      [['點手牌','打出那一張（剛摸的那張在最右邊）'],['自摸／胡','湊成一組＋一對時出現'],['吃／碰','別人打牌時能叫就會跳出按鈕，不要就按「過」'],['聽','手牌上面會提示你在等哪幾張']]][si];
     return {help:H,touchHelp:H}; },
-  help:[['點棋盤','下子、選棋子、走棋'],['按鈕','虛手、悔棋、認輸、吃碰槓胡']],
+  help:[['點棋盤','下子、選棋子、走棋'],['按鈕','虛手、悔棋、認輸、吃碰胡']],
   touch:null,
   looks:[{key:'board',label:'棋盤顏色',type:'color',opts:['#dcae66','#e8c48a','#c98f4e','#a8763e','#d9d0b8','#9fb8a0']},
     {key:'felt',label:'麻將桌布',type:'color',opts:['#2f6b4f','#1f4f7a','#6b1f3a','#3a2d57','#5a4630','#2b2b33']},
