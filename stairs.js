@@ -215,6 +215,11 @@ function create(env,opts){
       }
       if(p.life<=0||p.y-PH>cam+H){ p.dead=.001; p.depth=floor; p.why=p.life<=0?'血量歸零了。':'掉出畫面了。'; p.vy=p.life<=0?-260:0; lastOut=p.n; env.sfx('die'); sendT=0; }
     }
+    // 玩家互推：碰在一起就互相推開，往對方走可以把他推出去（連線時只推自己的角色）
+    for(let i=0;i<ps.length;i++) for(let j=i+1;j<ps.length;j++){ const a2=ps[i],b2=ps[j]; if(a2.dead||b2.dead||a2.remote&&b2.remote) continue;
+      const dx=b2.x-a2.x; if(Math.abs(a2.y-b2.y)>PH*.8||Math.abs(dx)>=PW) continue;
+      const over=PW-Math.abs(dx),sgn=dx>=0?1:-1,wa=a2.remote?0:b2.remote?1:.5,wb=b2.remote?0:a2.remote?1:.5;
+      a2.x=Math.max(WALL+PW/2,Math.min(W-WALL-PW/2,a2.x-sgn*over*wa)); b2.x=Math.max(WALL+PW/2,Math.min(W-WALL-PW/2,b2.x+sgn*over*wb)); }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/15; if(net.host) net.send({ks:ps.map(pack)}); else net.send({k:pack(ps[me])}); } }
     if(!alive){ overT+=dt; if(overT>1.1){
       if(net){ if(net.host){ const d=ps.map(p=>p.depth),last=lastOut<0?0:lastOut; net.send({ks:ps.map(pack)}); net.send({end:[last,d]}); conclude(last,d); } }

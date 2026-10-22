@@ -29,7 +29,28 @@ const STAGES=[
   {name:'古代神殿',info:'兩圈菱形的石柱環繞祭壇，石像擋住很多去路。',solid:(x,y)=>{ const d=Math.abs(x-7)+Math.abs(y-6); return (d===3||d===7)&&x!==7&&y!==6||(x===0||x===14)&&(y===4||y===8); },box:.68,drop:.42,
    g:['#d8c9a0','#cfbf94'],s:['#8a7a5a','#e8dcc0'],b:['#b08a5a','#806040'],rocks:14,rk:'statue'},
   {name:'太空站',info:'像迷宮一樣的走道，轉角很多，水晶完全炸不掉，最難的地圖。',solid:(x,y)=>(x%4===2&&y%4!==0&&y%4!==2)||(y%4===2&&x%4===0&&x>0&&x<14)||(x%4===2&&y===6),box:.7,drop:.45,
-   g:['#2a3048','#262b42'],s:['#6a7aa0','#c8d4f0'],b:['#5a6a8a','#3a4a6a'],rocks:16,rk:'crystal'}
+   g:['#2a3048','#262b42'],s:['#6a7aa0','#c8d4f0'],b:['#5a6a8a','#3a4a6a'],rocks:16,rk:'crystal'},
+  // 第 11～20 關（參考同類水球遊戲常見的場景：海底、萬聖節、蘑菇、庭園、雪地、玩具、天空、礦坑、海灘、廟會）
+  {name:'海底世界',info:'海底的貝殼小屋排成直排，珊瑚擋在路中間。',solid:(x,y)=>x%3===1&&y%2===1,box:.72,drop:.44,
+   g:['#3a8ab8','#3482b0'],s:['#ff7a5a','#f4e0c0'],b:['#7ad0e8','#3a9ac0'],rocks:12,rk:'coral'},
+  {name:'萬聖節墓園',info:'一排排墓碑小屋，南瓜燈到處都是，中間留一條直路。',solid:(x,y)=>y%3===1&&x%2===1&&x!==7,box:.7,drop:.42,
+   g:['#3a4a3a','#344234'],s:['#6a4a8a','#c8c0d8'],b:['#8a6a4a','#5a4430'],rocks:14,rk:'pumpkin'},
+  {name:'蘑菇森林',info:'兩圈蘑菇屋圍成圓環，繞圈追人很刺激。',solid:(x,y)=>{ const d=(x-7)*(x-7)+(y-6)*(y-6); return (d>=8&&d<=10)||(d>=29&&d<=34); },box:.72,drop:.44,
+   g:['#7ac85a','#70bc50'],s:['#e8402a','#f4ead2'],b:['#c8a06a','#8a6a3a'],rocks:12,rk:'mushroom'},
+  {name:'日式庭園',info:'長長的木屋和石燈籠，走道又窄又長。',solid:(x,y)=>(x%4===1&&y%3!==0)||(x%4===3&&y%6===3),box:.68,drop:.42,
+   g:['#c8b878','#bcac6c'],s:['#3a3a48','#f4ecd8'],b:['#8a6a4a','#5a4430'],rocks:10,rk:'lantern'},
+  {name:'雪人村',info:'九個十字形的小木屋，雪人站在路口。',solid:(x,y)=>{ for(const cx of [2,7,12]) for(const cy of [2,6,10]) if((x===cx&&Math.abs(y-cy)<=1)||(y===cy&&Math.abs(x-cx)<=1)) return !(x===cx&&y===cy&&cx===7&&cy===6); return false; },box:.7,drop:.44,
+   g:['#f4f8ff','#e8f0fa'],s:['#c0392b','#8a5a32'],b:['#a8d0e8','#6a9ac0'],rocks:10,rk:'snowman'},
+  {name:'玩具工廠',info:'兩條長長的輸送帶隔開上中下三區，中間一排機台。',solid:(x,y)=>((y===3||y===9)&&x%4!==0)||(x===7&&y%2===0&&y>0&&y<12),box:.7,drop:.46,
+   g:['#d8d0c0','#cfc6b4'],s:['#3d8bff','#ffd23f'],b:['#ff9d3d','#c86a1a'],rocks:12,rk:'robot'},
+  {name:'天空之城',info:'一小塊一小塊的浮空房子，雲朵擋路，空隙很多。',solid:(x,y)=>(x%5===1||x%5===3)&&(y%4===1||y%4===3),box:.66,drop:.46,
+   g:['#bfe6ff','#b2dcf8'],s:['#ffd23f','#ffffff'],b:['#f4e8c8','#c8b088'],rocks:12,rk:'cloud'},
+  {name:'黃金礦坑',info:'斜斜排列的坑道柱子，礦車到處停，路線很難預測。',solid:(x,y)=>(x+y)%4===1&&x%2===1,box:.74,drop:.42,
+   g:['#8a6a4a','#7f6042'],s:['#5a4a3a','#a8784a'],b:['#c8903a','#8a5a1a'],rocks:14,rk:'cart'},
+  {name:'夏日海灘',info:'海邊小屋很少，陽傘一大堆，視野開闊。',solid:(x,y)=>x%3===1&&y%3===1&&(x+y)%2===0,box:.76,drop:.5,
+   g:['#f4e0a0','#ecd696'],s:['#3d8bff','#fff4dc'],b:['#ffb86b','#e08a3a'],rocks:16,rk:'parasol'},
+  {name:'夜市廟會',info:'三排攤位中間留了缺口，紅燈籠一路掛著，最熱鬧也最擠。',solid:(x,y)=>y%4===2&&x>=1&&x<=13&&x%4!==3,box:.74,drop:.45,
+   g:['#4a3a4a','#423444'],s:['#c8202a','#f4d8a0'],b:['#e8a040','#a86a20'],rocks:14,rk:'redlantern'}
 ];
 // 電腦強度：想多久出手一次、看到機會放水球的機率、一開始的水球威力與數量
 // hunt：會不會瞄準玩家放水球、去刺破被困的人；itemR：多遠內的道具會去撿；cap：水球數與威力上限；slow：移動速度倍率；flee：看到危險後多久才反應
@@ -195,6 +216,24 @@ function drawRock(ctx,st,x,y,t){
   else if(k==='gift'){ ctx.fillStyle='#ff5d8f'; ctx.fillRect(cx-14,cy-10,28,24); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.strokeRect(cx-14,cy-10,28,24); ctx.fillStyle='#ffd23f'; ctx.fillRect(cx-3,cy-10,6,24); ctx.fillRect(cx-14,cy-1,28,5); ctx.beginPath(); ctx.ellipse(cx-6,cy-13,6,4,-.5,0,7); ctx.ellipse(cx+6,cy-13,6,4,.5,0,7); ctx.fill(); ol(); }
   else if(k==='statue'){ ctx.fillStyle='#b8ad94'; ctx.fillRect(cx-13,cy+6,26,9); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.strokeRect(cx-13,cy+6,26,9); ctx.fillStyle='#d8ccb0'; ctx.beginPath(); ctx.ellipse(cx,cy,9,8,0,0,7); ctx.fill(); ol(); ctx.beginPath(); ctx.arc(cx,cy-11,7,0,7); ctx.fill(); ol(); ctx.fillStyle='#2a2030'; ctx.fillRect(cx-4,cy-12,2,2); ctx.fillRect(cx+2,cy-12,2,2); ctx.beginPath(); ctx.moveTo(cx-7,cy-16); ctx.lineTo(cx,cy-21); ctx.lineTo(cx+7,cy-16); ctx.fill(); }
   else if(k==='crystal'){ const tw=(Math.sin((t||0)*3+x)+1)/2; ctx.fillStyle='#7fe8ff'; ctx.beginPath(); ctx.moveTo(cx,cy-18); ctx.lineTo(cx+8,cy-4); ctx.lineTo(cx+5,cy+13); ctx.lineTo(cx-5,cy+13); ctx.lineTo(cx-8,cy-4); ctx.closePath(); ctx.fill(); ol(); ctx.fillStyle='#b98cff'; ctx.beginPath(); ctx.moveTo(cx-9,cy-6); ctx.lineTo(cx-4,cy+2); ctx.lineTo(cx-7,cy+13); ctx.lineTo(cx-14,cy+13); ctx.lineTo(cx-14,cy); ctx.closePath(); ctx.fill(); ol(); ctx.fillStyle='rgba(255,255,255,'+(.4+tw*.5)+')'; ctx.beginPath(); ctx.moveTo(cx-2,cy-12); ctx.lineTo(cx+2,cy-6); ctx.lineTo(cx-1,cy+4); ctx.closePath(); ctx.fill(); }
+  else if(k==='coral'){ const cl=['#ff6f8f','#ff9a4a','#b07aff']; [[-8,10,-.4],[0,16,0],[8,12,.4]].forEach(([dx,h,a],n)=>{ ctx.save(); ctx.translate(cx+dx,cy+13); ctx.rotate(a); ctx.fillStyle=cl[n]; ctx.beginPath(); ctx.ellipse(0,-h/2,4,h/2+2,0,0,7); ctx.fill(); ol(); ctx.restore(); });
+    ctx.fillStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(cx+10,cy-12+Math.sin((t||0)*3)*2,2.4,0,7); ctx.arc(cx+14,cy-18+Math.sin((t||0)*3+1)*2,1.6,0,7); ctx.fill(); }
+  else if(k==='pumpkin'){ ctx.fillStyle='#ff8a1a'; ctx.beginPath(); ctx.ellipse(cx,cy+3,15,12,0,0,7); ctx.fill(); ol(); ctx.strokeStyle='#c85a0a'; ctx.lineWidth=1.4; for(const dx of [-6,0,6]){ ctx.beginPath(); ctx.ellipse(cx+dx,cy+3,4,11,0,0,7); ctx.stroke(); }
+    ctx.fillStyle='#3a5a2a'; ctx.fillRect(cx-2,cy-12,4,6); const lit=.6+.4*Math.sin((t||0)*4+x); ctx.fillStyle='rgba(255,220,80,'+lit+')'; ctx.beginPath(); ctx.moveTo(cx-8,cy); ctx.lineTo(cx-4,cy-4); ctx.lineTo(cx-2,cy); ctx.fill(); ctx.beginPath(); ctx.moveTo(cx+8,cy); ctx.lineTo(cx+4,cy-4); ctx.lineTo(cx+2,cy); ctx.fill(); ctx.fillRect(cx-6,cy+5,12,3); }
+  else if(k==='mushroom'){ ctx.fillStyle='#f4ead2'; ctx.fillRect(cx-5,cy-2,10,15); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.4; ctx.strokeRect(cx-5,cy-2,10,15); ctx.fillStyle='#e8402a'; ctx.beginPath(); ctx.ellipse(cx,cy-2,16,12,0,Math.PI,0); ctx.closePath(); ctx.fill(); ol();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cx-7,cy-8,3,0,7); ctx.arc(cx+5,cy-10,3.5,0,7); ctx.arc(cx+11,cy-4,2,0,7); ctx.fill(); }
+  else if(k==='lantern'){ ctx.fillStyle='#a8a49a'; ctx.fillRect(cx-4,cy,8,14); ctx.fillRect(cx-10,cy+10,20,4); ctx.fillRect(cx-9,cy-6,18,7); ctx.beginPath(); ctx.moveTo(cx-14,cy-6); ctx.lineTo(cx,cy-16); ctx.lineTo(cx+14,cy-6); ctx.fill(); ol(); ctx.fillStyle='rgba(255,220,120,.85)'; ctx.fillRect(cx-4,cy-5,8,5); }
+  else if(k==='snowman'){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cx,cy+6,11,0,7); ctx.fill(); ol(); ctx.beginPath(); ctx.arc(cx,cy-9,8,0,7); ctx.fill(); ol(); ctx.fillStyle='#2a2030'; ctx.beginPath(); ctx.arc(cx-3,cy-10,1.3,0,7); ctx.arc(cx+3,cy-10,1.3,0,7); ctx.fill();
+    ctx.fillStyle='#ff8a1a'; ctx.beginPath(); ctx.moveTo(cx,cy-8); ctx.lineTo(cx+7,cy-7); ctx.lineTo(cx,cy-6); ctx.fill(); ctx.fillStyle='#e23b3b'; ctx.fillRect(cx-8,cy-3,16,3); ctx.fillStyle='#2a2030'; ctx.fillRect(cx-7,cy-19,14,3); ctx.fillRect(cx-5,cy-25,10,7); }
+  else if(k==='robot'){ ctx.fillStyle='#9aa0b0'; ctx.fillRect(cx-11,cy-4,22,17); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.strokeRect(cx-11,cy-4,22,17); ctx.fillStyle='#c8ccd8'; ctx.fillRect(cx-8,cy-17,16,13); ctx.strokeRect(cx-8,cy-17,16,13);
+    const blink=Math.sin((t||0)*5+x)>0; ctx.fillStyle=blink?'#3ddbd9':'#2a6a6a'; ctx.fillRect(cx-5,cy-13,3,3); ctx.fillRect(cx+2,cy-13,3,3); ctx.fillStyle='#ff4d4d'; ctx.beginPath(); ctx.arc(cx,cy-21,2.4,0,7); ctx.fill(); ctx.fillRect(cx-.6,cy-21,1.2,4); ctx.fillStyle='#ffd23f'; ctx.fillRect(cx-6,cy+2,12,4); }
+  else if(k==='cloud'){ const b=Math.sin((t||0)*2+x)*1.5; ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(cx-8,cy+4+b,8,0,7); ctx.arc(cx+8,cy+4+b,8,0,7); ctx.arc(cx,cy-3+b,11,0,7); ctx.fill(); ctx.strokeStyle='#a8c8e8'; ctx.lineWidth=1.4; ctx.stroke(); }
+  else if(k==='cart'){ ctx.fillStyle='#5a5e66'; ctx.beginPath(); ctx.moveTo(cx-15,cy-4); ctx.lineTo(cx+15,cy-4); ctx.lineTo(cx+11,cy+10); ctx.lineTo(cx-11,cy+10); ctx.closePath(); ctx.fill(); ol(); ctx.fillStyle='#2a2030'; ctx.beginPath(); ctx.arc(cx-7,cy+12,3.5,0,7); ctx.arc(cx+7,cy+12,3.5,0,7); ctx.fill();
+    ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(cx-6,cy-6,5,0,7); ctx.arc(cx+3,cy-8,6,0,7); ctx.arc(cx+9,cy-5,4,0,7); ctx.fill(); ctx.strokeStyle='#a87a10'; ctx.lineWidth=1; ctx.stroke(); }
+  else if(k==='parasol'){ ctx.fillStyle='#8a6a3a'; ctx.fillRect(cx-1,cy-10,2,24); const cl=['#ff4d6d','#ffffff']; for(let n=0;n<6;n++){ ctx.fillStyle=cl[n%2]; ctx.beginPath(); ctx.moveTo(cx,cy-12); ctx.arc(cx,cy-6,16,Math.PI+n*Math.PI/6,Math.PI+(n+1)*Math.PI/6); ctx.closePath(); ctx.fill(); }
+    ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(cx,cy-6,16,Math.PI,0); ctx.stroke(); }
+  else if(k==='redlantern'){ ctx.fillStyle='#5a3a22'; ctx.fillRect(cx-1.5,cy-18,3,6); const sw=Math.sin((t||0)*2+x)*.12; ctx.save(); ctx.translate(cx,cy-12); ctx.rotate(sw); ctx.fillStyle='#e8231c'; ctx.beginPath(); ctx.ellipse(0,12,12,14,0,0,7); ctx.fill(); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.stroke();
+    ctx.fillStyle='#ffd23f'; ctx.fillRect(-7,-3,14,4); ctx.fillRect(-7,24,14,4); ctx.font='900 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('福',0,13); ctx.restore(); }
   else { ctx.fillStyle='#8a8f9e'; ctx.beginPath(); ctx.ellipse(cx,cy+2,15,13,0,0,7); ctx.fill(); ol(); }
 }
 function drawTile(ctx,st,v,x,y,gx,gy,t){
@@ -543,7 +582,7 @@ function thumb(ctx,w,h,t){
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={_draw:drawChar,_item:drawItem,
   name:'水球炸翻天',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
-  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。7 個場景、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
+  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。20 個場景（村莊、沙漠、冰原、海盜船、海底、萬聖節、雪人村、天空之城、夜市廟會…）、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
   goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困。沒有針被困住就會出局。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一定一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多）。分隊時隊友被困住，走過去碰一下就能救出來。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
   variants:[{id:'easy',label:'電腦：簡單'},{id:'normal',label:'電腦：中等',def:true},{id:'hard',label:'電腦：困難'}],
