@@ -178,7 +178,7 @@ function create(env,opts){
     const d=distHoop(p),mv=Math.hypot(p.vx,p.vy);
     if(special){ p.act='dunk'; p.actT=0; p.vz=520; p.dunkFrom=[p.x,p.y]; ball.dunk={p:p.i,special:true}; return; }
     if(d<135){ p.act='dunk'; p.actT=0; p.vz=430; p.dunkFrom=[p.x,p.y]; ball.dunk={p:p.i}; return; }
-    p.act='shoot'; p.actT=0; p.vz=380; p.relQ=null; }
+    p.act='shoot'; p.actT=0; p.vz=380; p.relQ=null; p.shotId=(p.shotId||0)+1; }
   function doPass(p,dirX,dirY){ const mates=teammates(p); let best=null,bs=-1e9; const dl=Math.hypot(dirX,dirY);
     for(const q of mates){ const dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||1,al=dl?(dx*dirX+dy*dirY)/(d*dl):0; const sc=al*2-d/400; if(sc>bs){ bs=sc; best=q; } }
     if(!best) return; ball.pass={from:[p.x,p.y,40],to:best.i,t:0,T:Math.hypot(best.x-p.x,best.y-p.y)/700+.12}; ball.h=-1; lastTouch=p.i; sfx('click'); }
@@ -195,7 +195,7 @@ function create(env,opts){
     else if(p.stunT>0){ p.stunT-=dt; p.vx*=.85; p.vy*=.85; }
     else if(!p.act||p.act==='shoot'&&p.z<1){ const sp=(holder()===p?205:230)*(.9+p.skill*.12); const l=Math.hypot(inp.mx,inp.my)||1; p.vx+=((inp.mx/l)*sp*(inp.mx||inp.my?1:0)-p.vx)*Math.min(1,dt*10); p.vy+=((inp.my/l)*sp*(inp.mx||inp.my?1:0)-p.vy)*Math.min(1,dt*10); if(inp.mx) p.face=Math.sign(inp.mx); }
     if(p.act==='dunk'){ p.actT+=dt; const u=clamp(p.actT/.5,0,1); p.x=lerp(p.dunkFrom[0],HX-14,u); p.y=lerp(p.dunkFrom[1],HY,u); p.face=1; if(u>=1&&ball.dunk&&ball.dunk.p===p.i){ // 灌進去
-        let blocked=false; if(!ball.dunk.special) for(const q of foes(p)) if(q.z>30&&Math.hypot(q.x-p.x,q.y-p.y)<40&&Math.random()<.35+q.skill*.3) blocked=true;
+        let blocked=false; if(!ball.dunk.special) for(const q of foes(p)) if(q.z>30&&Math.hypot(q.x-p.x,q.y-p.y)<40&&Math.random()<(ctrl.some(o=>o.pi===q.i)?.55:.2+q.skill*.2)) blocked=true;
         const sp=ball.dunk.special; ball.dunk=null;
         if(blocked){ ball.h=-1; ball.x=p.x; ball.y=p.y; ball.z=RIMZ; ball.vx=-260; ball.vy=(Math.random()-.5)*200; ball.vz=120; p.act=null; sfx('bump'); say('蓋火鍋！',1.3); }
         else { if(!cleared&&p.tm===pos){ say('要先清球'); ball.h=p.i; p.act=null; } else { ball.h=-1; ball.x=HX; ball.y=HY; ball.z=RIMZ-5; ball.vx=ball.vy=0; ball.vz=-60; scored({tm:p.tm,pts:sp?2:1,by:p.i}); p.act='hang'; p.actT=0; sfx('boom'); if(sp) meter[p.tm]=0; } } } }
@@ -211,7 +211,7 @@ function create(env,opts){
     p.aiT=(p.aiT||0)-dt; const sk=p.skill;
     if(ball.h<0&&!ball.shot&&!ball.pass){ // 搶籃板／地板球
       const near=P.filter(q=>q.tm===p.tm).sort((a,b)=>Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y)); if(near[0]===p||near[1]===p){ go(ball.x,ball.y,2); if(ball.z>40&&ball.z<150&&Math.hypot(ball.x-p.x,ball.y-p.y)<40&&p.z<1) inp.jump=true; } else go(560,320); return inp; }
-    if(ball.shot){ if(p.tm!==ball.shot.tm){ const shooter=P[ball.shot.by]; if(ball.shot.t<.15&&Math.hypot(shooter.x-p.x,shooter.y-p.y)<55&&p.z<1&&Math.random()<sk*.5) inp.jump=true; } go(HX-90+(p.k-1)*40,HY+(p.k-1)*90); return inp; }
+    if(ball.shot){ if(p.tm!==ball.shot.tm){ const shooter=P[ball.shot.by]; if(p.seenShot!==ball.shot){ p.seenShot=ball.shot; if(Math.hypot(shooter.x-p.x,shooter.y-p.y)<55&&p.z<1&&Math.random()<sk*.45) inp.jump=true; } } go(HX-90+(p.k-1)*40,HY+(p.k-1)*90); return inp; }
     if(!hd) return inp;
     if(hd.tm===p.tm){ // 進攻
       if(hd===p){ const d=distHoop(p),open=foes(p).every(q=>Math.hypot(q.x-p.x,q.y-p.y)>70);
@@ -225,19 +225,19 @@ function create(env,opts){
     // 防守：每人盯一個，站在對手和籃框之間
     const opp=P.find(q=>q.tm!==p.tm&&q.k===p.k),tx=lerp(opp.x,HX,.18),ty=lerp(opp.y,HY,.18); go(tx,ty,6);
     if(opp===hd&&Math.hypot(opp.x-p.x,opp.y-p.y)<32&&p.aiT<=0&&Math.random()<.02+sk*.05){ inp.shoot=true; p.aiT=1.2; }
-    if(opp===hd&&opp.act==='shoot'&&opp.actT<.2&&Math.hypot(opp.x-p.x,opp.y-p.y)<60&&p.z<1&&Math.random()<sk*.6) inp.jump=true;
+    if(opp===hd&&opp.act==='shoot'&&p.seenAct!==opp.shotId){ p.seenAct=opp.shotId; if(Math.hypot(opp.x-p.x,opp.y-p.y)<60&&p.z<1&&Math.random()<sk*.5) inp.jump=true; }
     return inp; }
   // 人類輸入
-  const KM=[{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['KeyJ','KeyX','Space'],p:['KeyK','KeyC'],j:[],x:[]},
-    {u:'KeyW',d:'KeyS',l:'KeyA',r:'KeyD',s:['KeyF'],p:['KeyG'],j:[],x:[]},{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['Enter'],p:['ShiftRight'],j:[],x:[]}];
+  const KM=[{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['KeyJ','KeyX'],p:['KeyK','KeyC'],j:['KeyL','Space'],x:[]},
+    {u:'KeyW',d:'KeyS',l:'KeyA',r:'KeyD',s:['KeyF'],p:['KeyG'],j:['KeyH'],x:[]},{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['Enter'],p:['ShiftRight'],j:['Slash'],x:[]}];
   function readIn(h){ const m=local2?KM[h+1]:KM[0],K=env.keys,any=a=>a.some(k=>env.hit(k)),held=a=>a.some(k=>K[k]);
     return {mx:(K[m.r]?1:0)-(K[m.l]?1:0),my:(K[m.d]?1:0)-(K[m.u]?1:0),shoot:any(m.s),shootHeld:held(m.s),pass:any(m.p),jump:any(m.j),special:any(m.x)}; }
   const remoteIn={mx:0,my:0,shoot:false,shootHeld:false,pass:false,jump:false,special:false};
   function humanAct(p,inp,cc){ const hd=holder(),canJump=p.z<1&&!p.act&&p.fallT<=0;
-    if(hd===p){ if(inp.shoot) startShot(p,false); else if(inp.pass) doPass(p,inp.mx||p.face,inp.my); return; } // 進攻：投籃（靠近籃框自動上籃／灌籃）、傳球
+    if(hd===p){ if(inp.shoot||inp.jump) startShot(p,false); else if(inp.pass) doPass(p,inp.mx||p.face,inp.my); return; } // 進攻：投籃（靠近籃框自動上籃／灌籃）、傳球
     if(hd&&hd.tm===p.tm){ if(inp.pass){ ball.pass={from:[hd.x,hd.y,40],to:p.i,t:0,T:Math.hypot(hd.x-p.x,hd.y-p.y)/700+.12}; ball.h=-1; sfx('click'); } return; } // 隊友持球：按傳球叫球
-    if(inp.shoot){ const near=hd&&Math.hypot(hd.x-p.x,hd.y-p.y)<45; // 防守：同一顆鍵，對手起跳就蓋火鍋，靠近就抄球，球在空中就跳起來搶
-      if(hd&&near&&hd.act==='shoot'&&canJump){ p.vz=400; p.act='block'; p.actT=0; } else if(near) trySteal(p); else if(!hd&&canJump){ p.vz=400; p.act='block'; p.actT=0; } }
+    if(inp.shoot&&hd&&Math.hypot(hd.x-p.x,hd.y-p.y)<45) trySteal(p); // 防守：抄截
+    if(inp.jump&&canJump){ p.vz=430; p.act='block'; p.actT=0; } // 蓋火鍋、搶籃板
     if(inp.pass){ const mates=P.filter(q=>q.tm===p.tm&&!ctrl.some(o=>o!==cc&&o.pi===q.i)).sort((a,b)=>Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y)); if(mates[0]) cc.pi=mates[0].i; } }
   let showQ=0,showQT=0;
   function aiAct(p,inp){ const hd=holder();
@@ -251,7 +251,7 @@ function create(env,opts){
       for(const f of foes(q)){ if(f.fallT>0) continue; if(Math.hypot(f.x-ball.x,f.y-ball.y)<16&&u>.2&&u<.85&&Math.random()<.04+f.skill*.05){ ball.pass=null; ball.h=f.i; changePossession(f.tm,'傳球被抄走！'); sfx('hurt'); return; } }
       if(u>=1){ ball.pass=null; ball.h=q.i; } return; }
     if(ball.shot){ const s=ball.shot; s.t+=dt; const u=Math.min(1,s.t/s.T); ball.x=lerp(s.from[0],HX,u); ball.y=lerp(s.from[1],HY,u); ball.z=lerp(s.from[2],RIMZ+6,u)+Math.sin(u*Math.PI)*s.peak;
-      if(u<.35&&!s.special) for(const f of P){ if(f.tm===s.tm||f.z<25) continue; if(Math.hypot(f.x-ball.x,f.y-ball.y)<30&&Math.abs(f.z+75-ball.z)<30&&Math.random()<.3+f.skill*.25){ ball.shot=null; ball.vx=-200-Math.random()*150; ball.vy=(Math.random()-.5)*300; ball.vz=150; sfx('bump'); say('蓋火鍋！',1.3); meter[f.tm]=Math.min(1,meter[f.tm]+.25); changePossession(f.tm); return; } }
+      if(u<.35&&!s.special) for(const f of P){ if(f.tm===s.tm||f.z<25) continue; s.tried=s.tried||{}; if(s.tried[f.i]) continue; const hb=ctrl.some(o=>o.pi===f.i)?42:30; if(Math.hypot(f.x-ball.x,f.y-ball.y)<hb&&Math.abs(f.z+75-ball.z)<hb&&(s.tried[f.i]=1)&&Math.random()<(ctrl.some(o=>o.pi===f.i)?.55:.2+f.skill*.2)){ ball.shot=null; ball.vx=-200-Math.random()*150; ball.vy=(Math.random()-.5)*300; ball.vz=150; sfx('bump'); say('蓋火鍋！',1.3); meter[f.tm]=Math.min(1,meter[f.tm]+.25); changePossession(f.tm); return; } }
       if(u>=1){ ball.shot=null;
         if(s.make){ ball.x=HX; ball.y=HY; ball.z=RIMZ-4; ball.vx=0; ball.vy=0; ball.vz=-80; if(!cleared&&s.tm===pos){} scored(s); }
         else { const a=Math.random()*Math.PI*.9+Math.PI*.55; ball.vx=Math.cos(a)*200; ball.vy=Math.sin(a)*240; ball.vz=200+Math.random()*120; sfx('bump'); } }
@@ -261,7 +261,7 @@ function create(env,opts){
     if(ball.z<=0){ ball.z=0; ball.vz=Math.abs(ball.vz)>60?-ball.vz*.6:0; ball.vx*=.85; ball.vy*=.85; }
     if(ball.x<40||ball.x>810){ ball.vx*=-.6; ball.x=clamp(ball.x,40,810); } if(ball.y<10||ball.y>630){ ball.vy*=-.6; ball.y=clamp(ball.y,10,630); }
     if(pause>0) return;
-    for(const p of P){ if(p.fallT>0) continue; const reach=p.z>5?p.z+95:60; if(Math.hypot(p.x-ball.x,p.y-ball.y)<26&&ball.z<reach){ ball.h=p.i; lastTouch=p.i; if(p.tm!==pos){ changePossession(p.tm,p.tm===0||coop?'搶到籃板！':'被搶走了！'); } else { cleared=cleared; clock=Math.max(clock,6); } sfx('click'); break; } } }
+    for(const p of P){ if(p.fallT>0) continue; const reach=p.z>5?p.z+95:60,rad=ctrl.some(o=>o.pi===p.i)&&p.z>5?38:26; if(Math.hypot(p.x-ball.x,p.y-ball.y)<rad&&ball.z<reach){ ball.h=p.i; lastTouch=p.i; if(p.tm!==pos){ changePossession(p.tm,p.tm===0||coop?'搶到籃板！':'被搶走了！'); } else { cleared=cleared; clock=Math.max(clock,6); } sfx('click'); break; } } }
   // 連線
   const pk=()=>({P:P.map(p=>[R1(p.x),R1(p.y),R1(p.z),p.face,p.pose,p.act||'',R1(p.actT)]),b:[ball.h,R1(ball.x),R1(ball.y),R1(ball.z)],s:score,pos,cl:cleared?1:0,ck:R1(clock),tm:R1(time),m:meter.map(R1),ct:ctrl.map(o=>o.pi),msg,mt:R1(msgT),sw:R1(swish),ev:evq,ov:over,sd:sudden?1:0});
   if(net){
@@ -348,9 +348,9 @@ function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); drawCourt(ctx,COU
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   options:[{key:'to',label:'搶幾分',def:'11',opts:[{id:'7',label:'7 分'},{id:'11',label:'11 分'},{id:'21',label:'21 分'}]},{key:'time',label:'時間',def:'4',opts:[{id:'3',label:'3 分鐘'},{id:'4',label:'4 分鐘'},{id:'6',label:'6 分鐘'}]},
     {key:'team',label:'雙人／連線玩法',def:'pvp',opts:[{id:'pvp',label:'玩家對打'},{id:'coop',label:'兩人同隊打電腦'}]}],
-  help:[['↑ ↓ ← →','移動'],['J 或 空白鍵','投籃（靠近籃框會自動上籃或灌籃）；防守時抄球、蓋火鍋'],['K','傳球；防守時換人'],['雙人 1P','W A S D 移動、F 投籃、G 傳球'],['雙人 2P','方向鍵移動、Enter 投籃、右 Shift 傳球']],
-  touchHelp:[['方向盤','移動'],['投籃','靠近籃框會自動上籃或灌籃；防守時抄球、蓋火鍋'],['傳球','傳球；防守時換人']],
-  touch:{left:'dpad',right:[{l:'傳球',c:'KeyK'},{l:'投籃',c:'KeyJ',act:true}]},
+  help:[['↑ ↓ ← →','移動'],['J','投籃（靠近籃框自動上籃、灌籃）；防守時抄截'],['K','傳球；防守時換人'],['L 或 空白鍵','跳：蓋火鍋、搶籃板'],['雙人','1P：WASD、F 投／抄、G 傳、H 跳　2P：方向鍵、Enter 投／抄、右 Shift 傳、/ 跳']],
+  touchHelp:[['方向盤','移動'],['投籃／抄截','進攻投籃（靠近籃框自動上籃），防守抄球'],['傳球','傳球；防守時換人'],['蓋火鍋','跳起來蓋火鍋、搶籃板']],
+  touch:{left:'dpad',right:[{l:'傳球',c:'KeyK'},{l:'蓋火鍋',c:'KeyL'},{l:'投籃',c:'KeyJ',act:true}]},
   looks:[{key:'color',label:'球衣顏色',type:'color',opts:['#3d8bff','#e23b3b','#2e9e4f','#ffd23f','#7a5aff','#ff9d3d','#1e1e24','#f4f4f4']},
     {key:'skin',label:'膚色',opts:SKINS.map((c2,i)=>({id:String(i),label:['白皙','自然','小麥','古銅','深色','淡色'][i]}))},
     {key:'hair',label:'髮型',opts:[{id:'0',label:'短髮'},{id:'1',label:'爆炸頭'},{id:'2',label:'綁辮子'},{id:'3',label:'頭帶'},{id:'4',label:'光頭'}]},
