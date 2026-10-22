@@ -41,6 +41,7 @@ const WATER=['#57a8ff','#ff7eb6','#5fd068','#ff9d3d','#b98cff','#3ddbd9','#ff4d4
 // 人物顏色：auto＝照玩家順序的顏色
 // 人物畫法參考爆爆王的 Q 版可愛感：大頭小身體、大眼睛、腮紅
 const BODY=['auto','#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6','#8a5a3c','#f4f4f8','#2b2f55','#a8e05a'];
+window.ARCADE_CHAR={drawChar:(...a)=>drawChar(...a),BODY}; // 格鬥遊戲（brawl.js）共用這套 Q 版人物
 const rgb=hex=>{ const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
 const mix=(hex,k)=>'rgb('+rgb(hex).map(v=>Math.round(k<1?v*k:v+(255-v)*(k-1))).join(',')+')';
 function drawChar(ctx,cx,cy,color,dir,moving,t,sc,style,deco){
