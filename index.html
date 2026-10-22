@@ -244,20 +244,20 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=154; // 每次改版加一
+window.ARCADE_V=155; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
-  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess','qi','racer','brawl'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess','qi','racer','brawl','bball','golf','pool'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
 <script>
 (function(){
 'use strict';
 // 在 LINE、Facebook、Instagram 等 App 的內建瀏覽器裡直接就能玩，不強制跳到外部瀏覽器
 const G=window.ARCADE_GAMES||{};
-const ORDER=['kart','chess','bomb','deliver','meow','stairs','purple','rummy','poker','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','moto','sled','jet','run','isle','pillow'].filter(k=>G[k]);
+const ORDER=['kart','chess','bomb','deliver','meow','stairs','purple','rummy','poker','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 // 大廳分類（每款遊戲屬於一個類別）
 const CATS=[['act','動作闖關'],['race','競速'],['ball','球類運動'],['fight','格鬥'],['board','益智桌遊']];
-const CAT_OF={stairs:'act',bomb:'act',kart:'race',volley:'ball',dodge:'ball',soccer:'ball',bowl:'ball',baseball:'ball',purple:'fight',rummy:'board',mahjong:'board',meow:'board',poker:'board',dice:'board',deliver:'act',chess:'board',qi:'board',moto:'race',sled:'race',jet:'race',run:'race',isle:'fight',pillow:'fight'};
+const CAT_OF={stairs:'act',bomb:'act',kart:'race',volley:'ball',dodge:'ball',soccer:'ball',bowl:'ball',baseball:'ball',purple:'fight',rummy:'board',mahjong:'board',meow:'board',poker:'board',dice:'board',deliver:'act',chess:'board',qi:'board',moto:'race',sled:'race',jet:'race',run:'race',isle:'fight',pillow:'fight',bball:'ball',golf:'ball',pool:'ball'};
 const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;};
 const isTouch=matchMedia('(pointer:coarse)').matches;
 if(isTouch) document.body.classList.add('touch');
@@ -359,7 +359,13 @@ const SONGS={
   isle:{menu:{bpm:112,root:57,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'square',bass:'pump',pad:'arp',drum:'light'},
         game:{bpm:164,root:57,sc:'minor',prog:'0:m 8:M 10:M 7:M',lead:'sawtooth',bass:'root8',pad:'arp',drum:'rock',dense:1}},
   pillow:{menu:{bpm:88,root:70,sc:'major',prog:'0:M7 9:m7 5:M7 7:7',lead:'box',bass:'sparse',pad:'pad',drum:'none'},
-          game:{bpm:138,root:69,sc:'major',prog:'0:M 5:M 7:M 9:m',lead:'triangle',bass:'pump',pad:'skank',drum:'four',swing:1,dense:1}}
+          game:{bpm:138,root:69,sc:'major',prog:'0:M 5:M 7:M 9:m',lead:'triangle',bass:'pump',pad:'skank',drum:'four',swing:1,dense:1}},
+  bball:{menu:{bpm:94,root:55,sc:'minor',prog:'0:m7 5:m7 10:7 3:M7',lead:'square',bass:'walk',pad:'skank',drum:'light',swing:1},
+         game:{bpm:150,root:55,sc:'minor',prog:'0:m 3:M 10:M 5:m',lead:'sawtooth',bass:'root8',pad:'skank',drum:'rock',dense:1}},
+  golf:{menu:{bpm:80,root:67,sc:'major',prog:'0:M7 4:m7 5:M7 2:m7',lead:'pluck',bass:'sparse',pad:'pad',drum:'none'},
+        game:{bpm:100,root:67,sc:'major',prog:'0:M 2:m 5:M 7:M',lead:'triangle',bass:'walk',pad:'pad',drum:'light',swing:1}},
+  pool:{menu:{bpm:78,root:58,sc:'minor',prog:'0:m7 5:7 10:M7 3:M7',lead:'box',bass:'walk',pad:'pad',drum:'light',swing:1},
+        game:{bpm:96,root:58,sc:'minor',prog:'0:m7 8:M7 5:m7 7:7',lead:'pluck',bass:'walk',pad:'skank',drum:'light',swing:1}}
 };
 const Music=(()=>{
   const SC={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],penta:[0,2,4,7,9]},Q={M:[0,4,7],m:[0,3,7],M7:[0,4,7,11],m7:[0,3,7,10],'7':[0,4,7,10]};
