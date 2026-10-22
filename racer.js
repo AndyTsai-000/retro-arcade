@@ -79,7 +79,8 @@ const OBS={
     c.fillStyle=cl; rr(c,x-w*.5,y-h,w,h-w*.08,w*.08); c.fill(); if(!o.big){ c.fillStyle=th.night?'#1a1e2a':'#8fb4d4'; rr(c,x-w*.36,y-h+w*.05,w*.72,h*.32,w*.05); c.fill(); }
     else { c.fillStyle='rgba(0,0,0,.15)'; c.fillRect(x-w*.5,y-h*.55,w,w*.02); }
     c.fillStyle='#ff2a2a'; c.fillRect(x-w*.46,y-h*.42,w*.16,w*.07); c.fillRect(x+w*.3,y-h*.42,w*.16,w*.07); if(th.night){ glow(c,x-w*.38,y-h*.38,w*.25,'rgba(255,40,40,.45)'); glow(c,x+w*.38,y-h*.38,w*.25,'rgba(255,40,40,.45)'); }
-    c.fillStyle='#f4f4f4'; c.fillRect(x-w*.12,y-h*.3,w*.24,w*.07); }},
+    c.fillStyle='#f4f4f4'; c.fillRect(x-w*.12,y-h*.3,w*.24,w*.07);
+    if(o.blink&&Math.floor(t*4)%2){ const bx=x+o.blink*w*.44; c.fillStyle='#ffb020'; c.fillRect(bx-w*.06,y-h*.46,w*.12,w*.07); glow(c,bx,y-h*.43,w*.3,'rgba(255,180,40,.6)'); } }},
   cone:{d(c,x,y,w){ c.fillStyle='#ff7a1a'; c.beginPath(); c.moveTo(x-w*.4,y); c.lineTo(x,y-w*1.1); c.lineTo(x+w*.4,y); c.fill(); c.fillStyle='#fff'; c.fillRect(x-w*.22,y-w*.6,w*.44,w*.14); }},
   barrier:{d(c,x,y,w){ c.fillStyle='#3a3a48'; c.fillRect(x-w*.42,y-w*.32,w*.05,w*.32); c.fillRect(x+w*.37,y-w*.32,w*.05,w*.32); for(let i=0;i<8;i++){ c.fillStyle=i%2?'#ff7a1a':'#f4f4f4'; c.fillRect(x-w*.5+i*w/8,y-w*.36,w/8+.5,w*.13); } }},
   tree:{d(c,x,y,w,th){ SPR.pine.d(c,x,y,w*1.4,th); }},
@@ -478,6 +479,10 @@ function makeCreate(G){ return function create(env,opts){
   // 機車的車流：位置只看比賽時間（連線大家一樣）
   const traffic=G.traffic?G.traffic(C,rng(G.id+si+'tr')):[];
   const carZ=(car,tt)=>car.z0+car.v*tt;
+  function carUpd(car,tt){ let x=car.x0,blink=0,dest=car.x0; // 換車道前 1 秒先打方向燈，再慢慢切過去
+    for(const ch of car.ch){ if(tt<ch.t-1) break; if(tt<ch.t){ blink=Math.sign(ch.to-ch.from); dest=ch.to; x=ch.from; break; }
+      if(tt<ch.t+ch.d){ const u=(tt-ch.t)/ch.d; x=ch.from+(ch.to-ch.from)*u*u*(3-2*u); blink=Math.sign(ch.to-ch.from); dest=ch.to; break; } x=ch.to; dest=ch.to; }
+    car.x=x; car.blink=blink; car.dest=dest; }
   function drive(k,inp,dt){
     const s=segAt(C,k.z),sp=k.v/P.max,z0=k.z;
     if(k.crashT>0){ k.crashT-=dt; inp={steer:0,gas:false,brake:false}; k.v*=Math.exp(-2*dt); }
@@ -518,7 +523,7 @@ function makeCreate(G){ return function create(env,opts){
     // 找前面的障礙物
     const zi=Math.floor(k.z/SEGL); let threat=null;
     for(let j=1;j<26&&!threat;j++){ const s2=C.segs[Math.min(C.n-1,zi+j)]; for(const ob of s2.obs){ if(ob.good||ob.gone&&ob.gone(k.i)) continue; if(Math.abs((a.lane-ob.x)*ROADW)<(ob.hw!=null?ob.hw:ob.ww*.5)+P.ww*.6){ threat={ob,j}; break; } } }
-    for(const car of traffic){ const dz=carZ(car,t)-k.z; if(dz>0&&dz<4000&&Math.abs((a.lane-car.x)*ROADW)<car.ww*.5+P.ww*.7){ threat={ob:car,j:dz/SEGL}; break; } }
+    for(const car of traffic){ const dz=carZ(car,t)-k.z; if(dz<=0||dz>=4000) continue; for(const cx of car.blink?[car.x,car.dest]:[car.x]) if(Math.abs((a.lane-cx)*ROADW)<car.ww*.5+P.ww*.7){ threat={ob:{x:cx,ww:car.ww,hw:car.ww*.5+(car.blink?ROADW*.35:0)},j:dz/SEGL}; break; } if(threat) break; }
     if(threat){ const ob=threat.ob,canJ=P.jumpV&&ob.h!=null,canS=P.slide&&ob.low;
       if(canJ||canS){ if(!a.dec||a.dec.ob!==ob) a.dec={ob,ok:Math.random()<a.skill+.06}; if(threat.j<(P.jumpLead||13)&&a.dec.ok){ if(canJ) inp.jump=true; else inp.slide=true; } }
       else { const opts2=[-.75,-.4,0,.4,.75].sort((p,q)=>Math.abs(p-k.x)-Math.abs(q-k.x)); for(const L of opts2){ if(Math.abs((L-ob.x)*ROADW)>(ob.hw!=null?ob.hw:ob.ww*.5)+P.ww*.8){ a.lane=L; break; } } } }
@@ -556,7 +561,7 @@ function makeCreate(G){ return function create(env,opts){
     if(cer){ cer.t+=dt; if(cer.t>4.2&&!cer.done){ cer.done=true; finish(); } return; }
     if(intro>0){ intro-=dt; if(!net&&(env.hit('Space')||env.hit('Enter'))) intro=0; return; }
     if(cd>0){ cd-=dt; const n=Math.ceil(cd); if(n<lastBeep&&n>=1&&n<=3){ lastBeep=n; env.sfx('beep'); } if(cd<=0) env.sfx('go'); return; }
-    t+=dt;
+    t+=dt; for(const car of traffic) carUpd(car,t);
     for(const k of ks){ if(k.left) continue;
       if(k.remote){ k.tz+=k.v*dt; const f=Math.min(1,dt*10); k.z+=(k.tz-k.z)*f; k.x+=(k.tx-k.x)*f; continue; }
       if(k.auto&&!k.ai) k.ai={lane:0,skill:.97,nt:0}; let inp=k.ai?aiInput(k):humanInput(k);
@@ -638,7 +643,10 @@ const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',
     (st,i)=>({len:2600+st*450,curve:1.6+st*.9,hill:1200+st*700,ai:.8+st*.035,traffic:5+st*3,works:st>=2})),
   theme:motoTheme,
   traffic(C,r){ const out=[],S=C.S,n=Math.round(S.traffic*C.n/1000),cols=['#e8e8e8','#2f6fd0','#c0392b','#3a3a48','#ffd23f','#2e9e4f'];
-    for(let j=0;j<n;j++){ const big=r()<.18,taxi=r()<.15; out.push({z0:(C.start+40+r()*(C.finish-C.start-40))*SEGL,v:2400+r()*3600,x:[-.66,0,.66][(r()*3)|0],ww:big?950:780,big,col:taxi?'#ffd23f':cols[(r()*cols.length)|0]}); } return out; },
+    const lc=([0,0,.25,.4,.55,.7][S.stars]||0)+(/rain|night/.test(S.mod||'')&&S.stars>1?.15:0),gap=16-S.stars*2; // 換車道：2 星開始有，星數越高越多、越頻繁
+    for(let j=0;j<n;j++){ const big=r()<.18,taxi=!big&&r()<.15,x0=[-.66,0,.66][(r()*3)|0],car={z0:(C.start+40+r()*(C.finish-C.start-40))*SEGL,v:2400+r()*3600,x0,x:x0,ww:big?950:780,big,taxi,col:taxi?'#ffd23f':cols[(r()*cols.length)|0],ch:[]};
+      if(r()<lc){ let tt=2+r()*8,lane=x0; while(tt<240){ const opts=[lane-.66,lane+.66].filter(v=>v>-.7&&v<.7),to=opts[(r()*opts.length)|0]; car.ch.push({t:tt,from:lane,to,d:big?1.6:taxi?.8:1.1}); lane=to; tt+=gap*(.5+r()); } }
+      out.push(car); } return out; },
   place(C,r){ const S=C.S; for(let i=C.start+60;i<C.finish-30;i++){ const s=C.segs[i];
       if(S.works&&r()<.0035){ const lane=[-.66,0,.66][(r()*3)|0]; for(let q=0;q<6;q++){ const s2=C.segs[i+q*2]; if(s2) s2.obs.push({k:'cone',x:lane+(q%2?.12:-.12),dz:80,ww:170}); } s.obs.push({k:'barrier',x:lane,dz:40,ww:560}); i+=16; continue; }
       if(r()<.004){ const id='c'+i; s.obs.push({k:'can',x:(r()*1.4-.7),dz:100,ww:220,good:1,id,taken:new Set(),gone(p){ return this.taken.has(p); }}); } } },
@@ -655,7 +663,7 @@ const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',
     {key:'deco',label:'配件',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'box',label:'後箱',grp:'車上'},{id:'side',label:'側箱',grp:'車上'},{id:'flag',label:'旗子',grp:'車上'},{id:'flame',label:'火焰彩繪',grp:'車身'},{id:'num',label:'賽車號碼',grp:'車身'},{id:'stripe',label:'安全帽條紋',grp:'車身'},{id:'glow',label:'霓虹底燈',grp:'燈光'},{id:'catears',label:'貓耳',grp:'帽飾'},{id:'horns',label:'惡魔角',grp:'帽飾'},{id:'mohawk',label:'莫西幹',grp:'帽飾'},{id:'duck',label:'小鴨',grp:'帽飾'}]},
     {key:'nitro',label:'加速特效',opts:[{id:'blue',label:'藍焰'},{id:'fire',label:'火焰'},{id:'green',label:'綠焰'},{id:'rainbow',label:'彩虹'}]}],
   desc:'騎一般輕型機車、重型機車或越野機車，在市區、海岸、山路、霓虹夜街和雨天高速公路飆車（造型可選車款和後箱、側箱、彩繪、霓虹底燈等配件）。閃過車流、驚險超車集滿氮氣，撿氮氣瓶加速；雨天路滑、霧天看不遠。共 15 關，單人、雙人分割畫面或開房間連線。',
-  goal:'從起點騎到終點，前 3 名過關。路上有一般車輛，撞到會摔車；從車旁邊驚險超車三次可以集到一瓶氮氣，路上也撿得到氮氣瓶（最多存 3 瓶）。',
+  goal:'從起點騎到終點，前 3 名過關。路上有一般車輛，撞到會摔車；2 星以上的關卡有車會換車道（先閃方向燈再切過來，星數越高越多）；從車旁邊驚險超車三次可以集到一瓶氮氣，路上也撿得到氮氣瓶（最多存 3 瓶）。',
   help:[['↑ ↓','油門、煞車'],['← →','轉向'],['X','用氮氣加速'],['W A S D Q','雙人 1P（左半畫面），Q 用氮氣'],['↑ ↓ ← → Enter','雙人 2P（右半畫面），Enter 用氮氣']],
   touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車'],['氮氣','用氮氣加速']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'煞',c:'ArrowDown'},{l:'氮氣',c:'KeyX',act:true}]}};
