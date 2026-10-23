@@ -155,7 +155,7 @@ function create(env,opts){
   const myLook={skin:['#f2c9a0','#e0ac80','#c68a5e','#8d5a3a'][+(L0.skin||1)]||'#e0ac80',hair:L0.hair||'#1a1410',shirt:L0.shirt||'#3d8bff',vest:L0.vest&&L0.vest!=='none'?L0.vest:null,long:L0.style==='long',bald:L0.style==='bald'};
   const lookOf=i=>{ if(vsAI) return i===0?myLook:ST.look; if(net){ const l=(net.looks&&net.looks[i])||{}; return {skin:['#f2c9a0','#e0ac80','#c68a5e','#8d5a3a'][+(l.skin||1)]||'#e0ac80',hair:l.hair||'#1a1410',shirt:l.shirt||(i?'#e23b3b':'#3d8bff'),vest:l.vest&&l.vest!=='none'?l.vest:null,long:l.style==='long',bald:l.style==='bald'}; } return i===0?myLook:{skin:'#c68a5e',hair:'#3a2416',shirt:'#e23b3b'}; };
   const PL=[0,1].map(i=>({name:vsAI?(i?ST.name:(opts.name||'你')):net?((net.names&&net.names[i])||'玩家 '+(i+1)):(i?'2P':'1P'),L:lookOf(i),ai:vsAI&&i===1,wins:0}));
-  let st={rule,B:rack(rule),grp:[null,null],brk:true},turn=opts.first===1?1:0,breaker=turn,phase='intro',phT=2.2,ang=0,pow=0,spin=0,charging=false,mt=0,shotS=null,before=null,banner='',banT=0,t=0,fouls=[0,0],ended=false,waitRes=false,aiT=0,aiPlan=null,pull=0,strikeT=0,potFx=[],inHand=true,kitchen=true,winner=-1,pending=null,arrowT=3;
+  let st={rule,B:rack(rule),grp:[null,null],brk:true},turn=opts.first===1?1:0,breaker=turn,phase='intro',phT=2.2,ang=0,pow=0,spin=0,charging=false,mt=0,shotS=null,before=null,banner='',banT=0,t=0,fouls=[0,0],ended=false,waitRes=false,aiT=0,aiPlan=null,aiGen=null,pull=0,strikeT=0,potFx=[],inHand=true,kitchen=true,winner=-1,pending=null,arrowT=3;
   const local=i=>net?i===me:!PL[i].ai;
   function say(s,d){ banner=s; banT=d||2; }
   function cue(){ return st.B[0]; }
@@ -174,7 +174,7 @@ function create(env,opts){
     else if(r.cont){ fouls[p]=0; if(!r.assign) say(wasBrk?'開球進球，繼續！':'進球！繼續',1.2); sfx('score'); phase='aim'; inHand=false; }
     else { fouls[p]=0; if(r.msg) say(r.msg,1.6); else say('換 '+PL[1-p].name,1.1); turn=1-p; phase='aim'; inHand=false; }
     if(rule==='9'&&r.foul&&fouls[p]>=3){ say(PL[p].name+' 連續三次犯規，輸掉這局',2.2); rackOver(1-p); return; }
-    aiPlan=null; aiT=.8; if(phase==='aim') aimDefault(); }
+    aiPlan=null; aiGen=null; aiT=.8; if(phase==='aim') aimDefault(); }
   function rackOver(w){ PL[w].wins++; sfx(local(w)||local2?'win':'lose'); if(PL[w].wins>=raceTo){ winner=w; phase='over'; phT=2.4; } else { phase='between'; phT=2.6; breaker=1-breaker; } }
   // 電腦：找能打進的球（鬼球瞄準法），用模擬確認，再依實力加誤差
   function clearPath(x0,y0,x1,y1,skip){ const dx=x1-x0,dy=y1-y0,L2=dx*dx+dy*dy||1; for(const b of st.B){ if(b.in||skip.includes(b.n)) continue; const u=clamp(((b.x-x0)*dx+(b.y-y0)*dy)/L2,0,1),qx=x0+dx*u,qy=y0+dy*u; if(Math.hypot(b.x-qx,b.y-qy)<R*2-.5) return false; } return true; }
@@ -191,11 +191,11 @@ function create(env,opts){
     if(!r.cont&&!r.foul){ // 防守：讓母球離目標遠一點
       const ob=B.filter(b=>!b.in&&b.n),c0=B[0]; if(ob.length) v+=Math.min(...ob.map(b=>Math.hypot(b.x-c0.x,b.y-c0.y)))/80; }
     return v; }
-  function aiChoose(){ const c0=cue(),sk=ST.skill; let best=null,bv=-1e9;
+  function* aiChoose(){ const c0=cue(),sk=ST.skill; let best=null,bv=-1e9; // 每試一種打法就讓出一次，分好幾格算完，畫面不會卡
     const cands=shotCands(c0.x,c0.y).slice(0,5);
-    for(const cd of cands) for(const pw of [cd.need,Math.min(1,cd.need*1.25)]) for(const s of [0,-.5,.5]){ const v=evalShot(cd.a,pw,s)+cd.score*10; if(v>bv){ bv=v; best={a:cd.a,p:pw,s}; } }
+    for(const cd of cands) for(const pw of [cd.need,Math.min(1,cd.need*1.25)]) for(const s of [0,-.5,.5]){ const v=evalShot(cd.a,pw,s)+cd.score*10; if(v>bv){ bv=v; best={a:cd.a,p:pw,s}; } yield; }
     if(!best||bv<10){ // 找不到好球：試各種角度，至少不要犯規
-      const legal=legalTargets(st,turn); for(let k=0;k<24;k++){ const n=legal[k%legal.length],b=st.B.find(x=>x.n===n); const a=Math.atan2(b.y-c0.y,b.x-c0.x)+(k<legal.length?0:(Math.random()-.5)*1.2),p=.25+Math.random()*.35,v=evalShot(a,p,0); if(v>bv){ bv=v; best={a,p,s:0}; } } }
+      const legal=legalTargets(st,turn); for(let k=0;k<24;k++){ const n=legal[k%legal.length],b=st.B.find(x=>x.n===n); const a=Math.atan2(b.y-c0.y,b.x-c0.x)+(k<legal.length?0:(Math.random()-.5)*1.2),p=.25+Math.random()*.35,v=evalShot(a,p,0); if(v>bv){ bv=v; best={a,p,s:0}; } yield; } }
     // 實力越低誤差越大
     const err=(1-sk)*.05; best.a+=(Math.random()+Math.random()-1)*err; best.p=clamp(best.p*(1+(Math.random()-.5)*(1-sk)*.3),.08,1); return best; }
   function aiPlace(){ // 自由球：挑一個打得最好的位置
@@ -226,12 +226,12 @@ function create(env,opts){
     if(phase==='over'){ phT-=dt; if(phT<=0) finish(); return; }
     const K=env.keys;
     if(phase==='place'){ const c0=cue(); c0.in=false;
-      if(PL[turn].ai){ aiT-=dt; if(aiT<=0){ aiPlace(); phase='aim'; inHand=false; aiPlan=null; aiT=.6; } return; }
+      if(PL[turn].ai){ aiT-=dt; if(aiT<=0){ aiPlace(); phase='aim'; inHand=false; aiPlan=null; aiGen=null; aiT=.6; } return; }
       if(!local(turn)) return;
       const v=dt*160; let nx=c0.x+((K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0))*v,ny=c0.y+((K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0))*v; if(validCue(nx,ny)){ c0.x=nx; c0.y=ny; }
       if(env.hit('Space')||env.hit('Enter')) confirmPlace(); return; }
     if(phase==='aim'){
-      if(PL[turn].ai){ aiT-=dt; if(!aiPlan&&aiT<=0){ aiPlan=aiChoose(); aiPlan.t=0; } if(aiPlan){ aiPlan.t+=dt; let da=aiPlan.a-ang; da=Math.atan2(Math.sin(da),Math.cos(da)); ang+=da*Math.min(1,dt*5); spin=aiPlan.s; if(aiPlan.t>1.1){ pow=Math.min(aiPlan.p,(aiPlan.t-1.1)*1.6); } if(aiPlan.t>1.1+aiPlan.p/1.6+.25){ ang=aiPlan.a; pow=aiPlan.p; take(ang,pow,spin,cue().x,cue().y); pow=0; aiPlan=null; } } return; }
+      if(PL[turn].ai){ aiT-=dt; if(!aiPlan){ if(!aiGen) aiGen=aiChoose(); const t0=performance.now(),lim=thinkOK?6:0; thinkOK=false; let r={done:false}; while(!r.done&&performance.now()-t0<lim) r=aiGen.next(); if(r.done){ aiGen=null; aiPlan=r.value; aiPlan.t=0; } } if(aiPlan&&aiT>0) return; if(aiPlan){ aiPlan.t+=dt; let da=aiPlan.a-ang; da=Math.atan2(Math.sin(da),Math.cos(da)); ang+=da*Math.min(1,dt*5); spin=aiPlan.s; if(aiPlan.t>1.1){ pow=Math.min(aiPlan.p,(aiPlan.t-1.1)*1.6); } if(aiPlan.t>1.1+aiPlan.p/1.6+.25){ ang=aiPlan.a; pow=aiPlan.p; take(ang,pow,spin,cue().x,cue().y); pow=0; aiPlan=null; } } return; }
       if(!local(turn)) return;
       if(K.ArrowLeft) ang-=dt*.9; if(K.ArrowRight) ang+=dt*.9; if(K.ArrowUp) ang-=dt*.1; if(K.ArrowDown) ang+=dt*.1;
       spin=0;
@@ -245,7 +245,8 @@ function create(env,opts){
     if(vsAI&&meWin){ try{ const k='arcade.pool.best',old=+localStorage.getItem(k)||0; if(si+1>old) localStorage.setItem(k,String(si+1)); localStorage.setItem('arcade.pool.w.'+si,'1'); }catch(e){} }
     env.sfx(meWin?'win':'lose');
     env.end({title:local2?PL[w].name+' 獲勝！':meWin?'你贏了！':PL[w].name+' 獲勝',big:PL[0].wins+' : '+PL[1].wins,html,text:(rule==='9'?'九號球':'八號球')+'，搶 '+raceTo+' 局。',score:vsAI&&meWin?si+1:null,next:vsAI&&meWin&&si<STAGES.length-1}); }
-  function draw(){
+  let thinkOK=true; // 電腦每畫一格只想一小段（落後補跑更新時不重複想）
+  function draw(){ thinkOK=true;
     drawRoom(c,ST,t); drawTable(c,cloth,t);
     // 頭頂燈光
     const lg=c.createRadialGradient(MX,MY-20,20,MX,MY,380); lg.addColorStop(0,'rgba(255,245,210,.12)'); lg.addColorStop(1,'rgba(255,245,210,0)'); c.fillStyle=lg; c.fillRect(0,0,W,H);

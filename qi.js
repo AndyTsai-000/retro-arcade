@@ -196,6 +196,17 @@ function xqSearch(b0,s,ms,maxD,noise){ const b=b0.slice(),t0=performance.now(),M
     if(stop&&d>1) break; if(bm!=null){ bestM=bm; prev=bm; } if(a>MATE-200||performance.now()-t0>ms*.45) break; }
   return bestM; }
 
+// 象棋電腦放到背景執行緒（Web Worker）去想，想的時候畫面不會凍住；瀏覽器不給開就回到原本的算法
+let XW=null,XWbad=false,XWid=0; const XWcb=new Map();
+function xqWorker(){ if(XW||XWbad) return XW;
+  try{ const src='const D4='+JSON.stringify(D4)+',DD='+JSON.stringify(DD)+',NM='+JSON.stringify(NM)+',XV='+JSON.stringify(XV)+';\n'+[xqGen,xqInCheck,xqLegal,xqEval,xqSearch].map(f=>f.toString()).join('\n')+
+      '\nonmessage=e=>{ const [id,b,s,ms,maxD,noise]=e.data; postMessage([id,xqSearch(b,s,ms,maxD,noise)]); };';
+    XW=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));
+    XW.onmessage=e=>{ const f=XWcb.get(e.data[0]); XWcb.delete(e.data[0]); if(f) f(e.data[1]); };
+    XW.onerror=()=>{ XWbad=true; XW=null; for(const f of XWcb.values()) f(null); XWcb.clear(); }; }
+  catch(e){ XWbad=true; XW=null; }
+  return XW; }
+
 /* ---------- 象棋麻將的牌 ---------- */
 const MJN=['帥','仕','相','俥','傌','炮','兵','將','士','象','車','馬','包','卒'],MJT=[1,2,3,5,4,6,7];
 const MJSEQ=[[0,1,2],[3,4,5],[7,8,9],[10,11,12]];
@@ -241,11 +252,27 @@ function create(env,opts){
         if(bl!==wh){ for(const j of reg) terr[j]=bl?1:2; if(bl) sb+=reg.length; else sw+=reg.length; } }
       const swk=sw+KOMI; G.res={terr,dead,sb,sw:swk,until:6,win:sb>swk?G.col.indexOf(1):G.col.indexOf(2)}; G.turn=-1;
       log('數地：黑 '+sb+' 目，白 '+sw+' 目＋貼 '+KOMI+'＝'+swk+' 目'); G.snd='item'; }
-    function mc(b,col,cs2,ms){ const st=cs2.slice(0,LV===2?10:6).map(x=>({i:x.i,w:0,n:0,pr:x.s})),t0=performance.now();
-      let rounds=0; while(performance.now()-t0<ms&&rounds<5000){ rounds++; for(const s of st){ if(s.bad) continue; const bb=Int8Array.from(b); if(E.play(bb,s.i,col,G.ko)<0){ s.bad=1; continue; }
+    // 蒙地卡羅模擬：可以分好幾格跑（每格最多 slice 毫秒），總共用掉 M.left 毫秒才結束，畫面不會卡住
+    function mcInit(b,col,cs2,ms){ return {b,col,cs2,left:ms,rounds:0,st:cs2.slice(0,LV===2?10:6).map(x=>({i:x.i,w:0,n:0,pr:x.s}))}; }
+    function mcRun(M,slice){ const t0=performance.now(),lim=Math.min(slice,M.left),{b,col,st}=M;
+      while(performance.now()-t0<lim&&M.rounds<5000){ M.rounds++; for(const s of st){ if(s.bad) continue; const bb=Int8Array.from(b); if(E.play(bb,s.i,col,G.ko)<0){ s.bad=1; continue; }
         E.playout(bb,3-col,E.ko); const d=E.area(bb)-KOMI; if(col===1?d>0:d<0) s.w++; s.n++; } }
+      M.left-=performance.now()-t0; if(M.left>0&&M.rounds<5000) return null;
       let best=null,bv=-1; for(const s of st){ if(s.bad||!s.n) continue; const v=s.w/s.n+s.pr*.002; if(v>bv){ bv=v; best=s; } }
-      return best?{i:best.i,rate:best.w/best.n}:{i:cs2[0].i,rate:.5}; }
+      return best?{i:best.i,rate:best.w/best.n}:{i:M.cs2[0].i,rate:.5}; }
+    let TH=null; // 電腦正在想的這一手
+    function think(p,slice){
+      const k=G.seq+'|'+G.b.join(); // 悔棋會把序號倒回去，所以連盤面一起比
+      if(!TH||TH.p!==p||TH.k!==k){ TH={p,k,res:null,mc:null}; const col=G.col[p],b=Int8Array.from(G.b),cs2=E.cands(b,col,G.ko,G.mv,[9,2.5,1][LV]);
+        if(!cs2.length||G.mv>NN*1.6){ TH.res={t:'pass'}; return true; }
+        if(G.mv>NN*.35){ const own=E.ownership(b,col,N<=9?60:N<=13?36:24); let open=0; for(let i=0;i<NN;i++) if(!b[i]&&Math.abs(own[i])<.55) open++;
+          if(cs2[0].s<9&&(open===0||(G.pass===1&&open<=(N<=9?1:3)))){ TH.res={t:'pass'}; return true; } }
+        if(LV===2||(LV===1&&N===9)) TH.mc=mcInit(b,col,cs2,LV===2?(N===9?700:N===13?900:1100):300);
+        else { TH.res={t:'play',i:cs2[0].i}; return true; }
+        return false; }
+      if(TH.res) return true;
+      const r=mcRun(TH.mc,slice); if(!r) return false;
+      TH.res=r.rate<.03&&G.mv>NN*.45?{t:'resign'}:{t:'play',i:r.i}; return true; }
     const hit=(x,y)=>{ const q=Math.round((x-X0-o)/cs),r=Math.round((y-Y0-o)/cs); return q<0||r<0||q>=N||r>=N?-1:r*N+q; };
     return {
       setup(){ G.b=new Array(NN).fill(0); G.turn=first; G.col=[0,0]; G.col[first]=1; G.col[1-first]=2; G.cap=[0,0]; G.ko=-1; G.pass=0; G.mv=0; G.lastI=-1; G.res=null; log(names[first]+' 執黑先下'); },
@@ -257,12 +284,8 @@ function create(env,opts){
         G.b=Array.from(b); G.cap[p]+=r; G.ko=E.ko; G.pass=0; G.lastI=i; G.mv++; G.turn=1-p; G.snd=r?'pop':'place';
         log('第 '+G.mv+' 手'+(r?'：'+names[p]+' 提掉 '+r+' 子':'')); return null; },
       tick(dt){ if(G.res&&!G.over){ G.res.until-=dt; if(G.res.until<=0){ G.over={win:G.res.win,why:'黑 '+G.res.sb+' 目，白 '+G.res.sw+' 目（含貼 '+KOMI+' 目）'}; return true; } } return false; },
-      ai(p){ const col=G.col[p],b=Int8Array.from(G.b),cs2=E.cands(b,col,G.ko,G.mv,[9,2.5,1][LV]);
-        if(!cs2.length||G.mv>NN*1.6) return {t:'pass'};
-        if(G.mv>NN*.35){ const own=E.ownership(b,col,N<=9?60:N<=13?36:24); let open=0; for(let i=0;i<NN;i++) if(!b[i]&&Math.abs(own[i])<.55) open++;
-          if(cs2[0].s<9&&(open===0||(G.pass===1&&open<=(N<=9?1:3)))) return {t:'pass'}; }
-        if(LV===2||(LV===1&&N===9)){ const r=mc(b,col,cs2,LV===2?(N===9?700:N===13?900:1100):300); if(r.rate<.03&&G.mv>NN*.45) return {t:'resign'}; return {t:'play',i:r.i}; }
-        return {t:'play',i:cs2[0].i}; },
+      think,
+      ai(p){ while(!think(p,1e9)); const r=TH.res; TH=null; return r; },
       fallback:()=>({t:'pass'}),
       draw(){ gridBoard(c,X0,Y0,B,N,L.board,STARS(N)); const R=G.res;
         for(let i=0;i<NN;i++) if(G.b[i]){ const dead=R&&R.dead.includes(i); stone(c,px(i),py(i),cs*.47,G.b[i],dead?.45:null); }
@@ -370,6 +393,7 @@ function create(env,opts){
 
   /* ===== 象棋 ===== */
   function xqMod(){
+    let TH=null; // 電腦正在想的這一手
     const CS=45,OX=70,OY=47.5,flip=()=>!local2&&G.side[view()]===1;
     const P=i=>{ let r=(i/9)|0,q=i%9; if(flip()){ r=9-r; q=8-q; } return [OX+q*CS,OY+r*CS]; };
     const hit=(x,y)=>{ let q=Math.round((x-OX)/CS),r=Math.round((y-OY)/CS); if(q<0||q>8||r<0||r>9) return -1; if(Math.hypot(x-OX-q*CS,y-OY-r*CS)>CS*.48) return -1; if(flip()){ r=9-r; q=8-q; } return r*9+q; };
@@ -387,7 +411,13 @@ function create(env,opts){
         else if(G.quiet>=120) G.over={win:null,why:'60 回合都沒有吃子，和棋'};
         else { G.turn=op; log(G.chk?names[p]+' 將軍！':cp?names[p]+' 吃掉「'+PN[cp>>3][cp&7]+'」':'第 '+G.mv+' 步'); }
         return null; },
-      ai(p){ const m=xqSearch(G.b,G.side[p],[350,800,1600][LV],[2,3,8][LV],[180,12,0][LV]); return m<0?null:{t:'mv',f:m>>7,to:m&127}; },
+      think(p){ const ms=[350,800,1600][LV];
+        const k=G.seq+'|'+G.b.join(); // 悔棋會把序號倒回去，所以連盤面一起比
+        if(!TH||TH.p!==p||TH.k!==k){ const w=xqWorker(); TH={p,k,res:undefined,t0:performance.now()}; if(!w){ TH.res=null; return true; } // null＝輪到時自己算
+          const my=TH,id=++XWid; XWcb.set(id,m=>{ my.res=m; }); w.postMessage([id,G.b.slice(),G.side[p],ms,[2,3,8][LV],[180,12,0][LV]]); return false; }
+        return TH.res!==undefined||performance.now()-TH.t0>ms+3000; }, // 背景太久沒回就自己算
+      ai(p){ let m=TH&&TH.p===p&&TH.k===G.seq+'|'+G.b.join()&&TH.res!=null?TH.res:undefined; TH=null;
+        if(m===undefined) m=xqSearch(G.b,G.side[p],[350,800,1600][LV],[2,3,8][LV],[180,12,0][LV]); return m<0?null:{t:'mv',f:m>>7,to:m&127}; },
       fallback(p){ const m=xqLegal(G.b,G.side[p])[0]; return m==null?null:{t:'mv',f:m>>7,to:m&127}; },
       draw(){ xqBoard(c,OX,OY,CS,L.board);
         if(G.lastM>=0){ for(const i of [G.lastM>>7,G.lastM&127]){ const [x,y]=P(i); c.strokeStyle='rgba(30,120,255,.85)'; c.lineWidth=2.5; const a=CS*.48,b=CS*.2;
@@ -632,7 +662,7 @@ function create(env,opts){
     if(M.tick&&M.tick(dt)){ G.snd=null; G.seq++; broadcast(); return; }
     const p=M.waiting(); if(p<0||!isAI(p)){ lastP=-2; return; }
     if(p!==lastP||G.seq!==lastSeq){ lastP=p; lastSeq=G.seq; aiT=0; aiWait=AID*(.7+Math.random()*.6)*(M.aiMul?M.aiMul(p):1); }
-    aiT+=dt; if(aiT<aiWait||anim) return;
+    aiT+=dt; const ready=!M.think||M.think(p,thinkOK?6:0); thinkOK=false; /* 有分段思考的棋（圍棋）：等待時先想，想完才下 */ if(aiT<aiWait||anim||!ready) return;
     lastP=-2; let a=null; try{ a=M.ai(p); }catch(e){ console.error(e); }
     let err=a?doAct(p,a):'沒有動作'; if(err&&M.fallback){ const f=M.fallback(p); err=f?doAct(p,f):err; } if(err) console.warn('電腦',err,a);
     broadcast(); }
@@ -677,7 +707,8 @@ function create(env,opts){
     const B=M.btns().slice(); if(!net&&hist.length&&!G.over) B.push({label:'悔棋',fn:undo});
     if(TWO&&!G.over) B.push({label:'認輸',fn:()=>{ if(window.confirm('確定要認輸嗎？')) act({t:'resign'}); }});
     if(B.length){ const bw=(PW-20-(B.length-1)*8)/B.length; B.forEach((b,j)=>btn(b.label,X+10+j*(bw+8),444,bw,b.fn,b.dis,j===0&&b.label==='虛手'&&!b.dis)); } }
-  function draw(){
+  let thinkOK=true; // 電腦思考每畫一格只想一小段：落後補跑好幾次更新時不會每次都想，畫面才不會掉格
+  function draw(){ thinkOK=true;
     btns=[]; drawBg(c,W,H,L.bg,t);
     if(kind==='mj'){ M.draw(); c.textAlign='left'; c.textBaseline='middle';
       if(G.log){ c.font='700 12px '+TC; const tx=fit(G.log,300),w=c.measureText(tx).width+20; c.fillStyle='rgba(11,10,28,.72)'; rr(c,10,10,w,22,11); c.fill(); c.fillStyle='#fff'; c.textAlign='left'; c.fillText(tx,20,21); } }

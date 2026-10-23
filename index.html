@@ -244,7 +244,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=159; // 每次改版加一
+window.ARCADE_V=160; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess','qi','racer','brawl','bball','golf','pool'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -482,7 +482,7 @@ addEventListener('keydown',e=>{
   if(BLOCK[e.code]) e.preventDefault();
   if(e.repeat) return;
   if(e.altKey&&(e.code==='Enter'||e.code==='NumpadEnter')){ e.preventDefault(); if(window.__toggleFull) window.__toggleFull(); return; }
-  if(e.code==='Escape'||e.code==='KeyP'){ if(!modal.hidden&&helpPaused){ closeHelp(); return; } togglePause(); return; }
+  if(e.code==='Escape'||e.code==='KeyP'){ if(!modal.hidden){ const b=$('#hOk')||$('#sndOk')||$('#pCancel'); if(b) b.click(); return; } togglePause(); return; } // 有視窗開著先關視窗，不然遊戲會在視窗底下繼續跑
   if(e.code==='Enter'&&state==='over'&&!Net.peer&&performance.now()>ovAt+500){ start(lastOpts); return; }
   press(e.code);
 });
@@ -494,6 +494,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='
 
 function buildPad(spec){
   const L=$('#padL'),R=$('#padR'); L.innerHTML=''; R.innerHTML='';
+  for(const k in keys) keys[k]=false; // 按著觸控鍵時換局，舊按鈕被拿掉收不到放開，鍵會一直卡住
   $('#pad').hidden=!spec; // 純點擊的遊戲（例如拉密）不用按鈕列
   if(!spec) return;
   const fill=(box,list)=>{
@@ -675,7 +676,8 @@ async function lookCard(){ closeStage();
   bindPhoto(g,look);
   on('lkOk',startCard);
 }
-function killInst(){ closeStage(); if(inst){ try{inst.destroy();}catch(e){} inst=null; } stage.innerHTML=''; }
+let instGen=0; // 每開一局加一：舊局延遲呼叫的「結束」不能把新開的遊戲結束掉
+function killInst(){ instGen++; closeStage(); if(inst){ try{inst.destroy();}catch(e){} inst=null; } stage.innerHTML=''; }
 function open(id){
   if(!myName){ nameModal(); return; }
   audio(); SFX.click();
@@ -794,7 +796,8 @@ async function start(opts){
   if(cur.coin){ const info=cur.coin({mode:opts.mode,variant:opts.variant,stage:opts.stage||0,name:myName,net:opts.net?{names:Net.names,me:Net.me,count:Net.count}:null});
     if(info){ first=opts.net?((Number(Net.seed)>>>5)&1):(Math.random()<.5?0:1); const g0=cur; state='coin'; ov.hidden=true; document.body.classList.add('playing');
       await coinToss(info,first); if(state!=='coin'||cur!==g0) return; } }
-  inst=cur.create(env,{options:Object.assign({},optSel),stage:opts.stage||0,mode:opts.mode,variant:opts.variant,look:lookOf(cur),name:myName,net:opts.net?mkNet():null,first}); state='running'; acc=0; ov.hidden=true; document.body.classList.add('playing'); $('#bPause').textContent='暫停';
+  const gen=++instGen,ienv=Object.create(env); ienv.end=res=>{ if(gen===instGen) finish(res); };
+  inst=cur.create(ienv,{options:Object.assign({},optSel),stage:opts.stage||0,mode:opts.mode,variant:opts.variant,look:lookOf(cur),name:myName,net:opts.net?mkNet():null,first}); state='running'; acc=0; ov.hidden=true; document.body.classList.add('playing'); $('#bPause').textContent='暫停';
 }
 function finish(res){
   if(state!=='running') return; state='over';

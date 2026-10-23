@@ -58,13 +58,14 @@ function b2Plays(hand){ // 手上所有能出的組合
 /* ---------- 十三支：自動排牌（頭墩 3、中墩 5、尾墩 5，要尾≧中≧頭） ---------- */
 const rowScore=cards=>evalHand(cards).s;
 function arrange13(hand){
-  let best=null,bs=-1e18; const idx=[...Array(13).keys()],C13=C5(13),C8=C5(8);
-  for(const b of C13){ const bot=b.map(i=>hand[i]),rest=idx.filter(i=>!b.includes(i)).map(i=>hand[i]),eb=evalHand(bot);
-    for(const m of C8){ const mid=m.map(i=>rest[i]),top=rest.filter((_,i)=>!m.includes(i)),em=evalHand(mid),et=evalHand(top);
-      if(em.s>eb.s||et.s>em.s) continue;
+  let best=null,bs=-1e18; const idx=[...Array(13).keys()],C13=C5(13),C8=C5(8),memo=new Map();
+  const ev=ix=>{ let k=0; for(const i of ix) k|=1<<i; let e=memo.get(k); if(!e){ e=evalHand(ix.map(i=>hand[i])); memo.set(k,e); } return e; }; // 同一組牌只算一次牌型
+  for(const b of C13){ const rest=idx.filter(i=>!b.includes(i)),eb=ev(b);
+    for(const m of C8){ const mi=m.map(i=>rest[i]),em=ev(mi); if(em.s>eb.s) continue;
+      const ti=rest.filter((_,i)=>!m.includes(i)),et=ev(ti); if(et.s>em.s) continue;
       const sc=eb.cat*1+em.cat*1.6+et.cat*2.6+(et.s%759375)/759375*1.2+(em.s%759375)/759375*.6;
-      if(sc>bs){ bs=sc; best=[top,mid,bot]; } } }
-  return best;
+      if(sc>bs){ bs=sc; best=[ti,mi,b]; } } }
+  return best&&best.map(r=>r.map(i=>hand[i]));
 }
 const foul13=rows=>!rows||rowScore(rows[1])>rowScore(rows[2])||rowScore(rows[0])>rowScore(rows[1]);
 
