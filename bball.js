@@ -12,16 +12,16 @@ const shade=(h,f)=>{ const n=parseInt(String(h).slice(1),16); if(isNaN(n)) retur
 const HX=760,HY=320,RIMZ=118,ARC=270,SX=gx=>30+gx*.86,SY=gy=>170+gy*.48,SC=gy=>.8+gy/640*.38;
 const SKINS=['#f2c9a0','#e0ac80','#c68a5e','#8d5a3a','#5e3a26','#f6d6b8'],HAIRC=['#1a1410','#3a2416','#6a4a2a','#c8a060','#d8d0c8','#8a2a1a'];
 const STAGES=[
-  {name:'社區公園隊',stars:1,court:'park',col:'#3d8bff',col2:'#ffffff',ai:.42,names:['阿凱','小胖','阿偉']},
-  {name:'校園熱血隊',stars:1,court:'school',col:'#2e9e4f',col2:'#ffd23f',ai:.48,names:['學長','書呆','阿毛']},
-  {name:'海邊沙灘隊',stars:2,court:'beach',col:'#ff9d3d',col2:'#ffffff',ai:.54,names:['衝浪仔','黑皮','椰子']},
-  {name:'屋頂天台隊',stars:2,court:'roof',col:'#7a5aff',col2:'#ffd23f',ai:.6,names:['鷹眼','飛人','小黑']},
-  {name:'夜市鬥牛隊',stars:3,court:'market',col:'#e23b3b',col2:'#ffd23f',ai:.66,names:['雞排','珍奶','大腸']},
-  {name:'鐵籠街頭隊',stars:3,court:'cage',col:'#1e1e24',col2:'#ff4d4d',ai:.72,names:['鐵拳','刺青','狂牛']},
+  {name:'社區公園隊',stars:1,court:'park',col:'#3d8bff',col2:'#ffffff',ai:.3,names:['阿凱','小胖','阿偉']},
+  {name:'校園熱血隊',stars:1,court:'school',col:'#2e9e4f',col2:'#ffd23f',ai:.38,names:['學長','書呆','阿毛']},
+  {name:'海邊沙灘隊',stars:2,court:'beach',col:'#ff9d3d',col2:'#ffffff',ai:.46,names:['衝浪仔','黑皮','椰子']},
+  {name:'屋頂天台隊',stars:2,court:'roof',col:'#7a5aff',col2:'#ffd23f',ai:.54,names:['鷹眼','飛人','小黑']},
+  {name:'夜市鬥牛隊',stars:3,court:'market',col:'#e23b3b',col2:'#ffd23f',ai:.62,names:['雞排','珍奶','大腸']},
+  {name:'鐵籠街頭隊',stars:3,court:'cage',col:'#1e1e24',col2:'#ff4d4d',ai:.7,names:['鐵拳','刺青','狂牛']},
   {name:'港口貨櫃隊',stars:4,court:'port',col:'#2f6f9a',col2:'#ff7a1a',ai:.78,names:['吊車','水手','鐵錨']},
-  {name:'體育館精英隊',stars:4,court:'gym',col:'#c0392b',col2:'#f4f4f4',ai:.84,names:['隊長','神射','大樹']},
-  {name:'霓虹夜光隊',stars:5,court:'neon',col:'#ff3bd4',col2:'#3ddbd9',ai:.9,names:['閃電','幻影','霓虹']},
-  {name:'職業殿堂隊',stars:5,court:'arena',col:'#ffd23f',col2:'#5a2a8a',ai:.96,names:['帝王','天勾','傳奇']}];
+  {name:'體育館精英隊',stars:4,court:'gym',col:'#c0392b',col2:'#f4f4f4',ai:.85,names:['隊長','神射','大樹']},
+  {name:'霓虹夜光隊',stars:5,court:'neon',col:'#ff3bd4',col2:'#3ddbd9',ai:.92,names:['閃電','幻影','霓虹']},
+  {name:'職業殿堂隊',stars:5,court:'arena',col:'#ffd23f',col2:'#5a2a8a',ai:.97,names:['帝王','天勾','傳奇']}];
 const COURT={park:{floor:'#5a6a7a',line:'#f4f4f4',paint:'#3a6a9a',bg:'park'},school:{floor:'#c8905a',line:'#ffffff',paint:'#2e7a4a',bg:'school',wood:1},beach:{floor:'#d8c08a',line:'#ffffff',paint:'#3a9ad8',bg:'beach'},
   roof:{floor:'#4a4e58',line:'#ffd23f',paint:'#5a3a8a',bg:'roof'},market:{floor:'#5a4a4a',line:'#ffe08a',paint:'#a82a2a',bg:'market',night:1},cage:{floor:'#3a3a40',line:'#ff4d4d',paint:'#2a2a30',bg:'cage',night:1},
   port:{floor:'#5a6068',line:'#ffffff',paint:'#2f6f9a',bg:'port'},gym:{floor:'#d8a060',line:'#ffffff',paint:'#a83a2a',bg:'gym',wood:1},neon:{floor:'#1e1a30',line:'#3ddbd9',paint:'#5a1a5a',bg:'neon',night:1},arena:{floor:'#c89050',line:'#ffffff',paint:'#4a2a7a',bg:'arena',wood:1}};

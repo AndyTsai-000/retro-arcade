@@ -25,7 +25,7 @@ function buildMap(mi){ const M=MAPS[mi],pts=M.path,segs=[]; let total=0;
     if(px<34||px>W-34||py<74||py>H-30) continue; if(segDist(px,py)<40) continue; if(dist(px,py,end[0],end[1])<70) continue; if(pads.some(p=>dist(p.x,p.y,px,py)<86)) continue; pads.push({x:px,y:py,cov:0}); }
   for(const p of pads){ let n=0; for(let d=0;d<total;d+=10){ const [x,y]=posAt(d); if(dist(x,y,p.x,p.y)<115) n++; } p.cov=n; } // 這塊空地能打到多少路（電腦示範和測試用）
   return {M,segs,total,posAt,segDist,pads,end}; }
-const STAGES=Array.from({length:30},(_,i)=>{ const m=Math.floor(i/5),k=i%5; return {i,map:m,name:MAPS[m].name+' '+(k+1),waves:5+Math.floor(i/4),gold:250+i*12,hp:1+i*.075,boss:k===4}; });
+const STAGES=Array.from({length:30},(_,i)=>{ const m=Math.floor(i/5),k=i%5; return {i,map:m,name:MAPS[m].name+' '+(k+1),waves:5+Math.floor(i/4),gold:250+i*12+Math.max(0,6-i)*25,hp:(1+i*.075)*(i<4?.75+i*.06:1),boss:k===4}; });
 const recKey=i=>'arcade.tower.s'+i,getRec=i=>{ try{ const v=localStorage.getItem(recKey(i)); return v==null?null:+v; }catch(e){ return null; } };
 
 /* ---------- 塔與怪物 ---------- */
@@ -114,8 +114,10 @@ function drawTower(c,x,y,k,lv,ang,t,fire){ c.save(); c.translate(x,y);
   c.restore();
   // 等級：小星星
   c.fillStyle='#ffd23f'; c.strokeStyle='#8a5a10'; c.lineWidth=1; for(let i=0;i<lv;i++){ const sx=x-(lv-1)*6+i*12,sy=y+20; c.beginPath(); for(let j=0;j<10;j++){ const rad=j%2?2.2:5,a=j/10*6.28-Math.PI/2; c.lineTo(sx+Math.cos(a)*rad,sy+Math.sin(a)*rad); } c.closePath(); c.fill(); c.stroke(); } }
-function drawFoe(c,e,t){ const F=FOES[e.f],x=e.x,y=e.y,r=F.r,bob=Math.abs(Math.sin(t*10+e.id))*2,face=Math.cos(e.a)<-.2?-1:1; c.save(); c.translate(x,y-bob);
+function drawFoe(c,e,t){ const F=FOES[e.f],x=e.x,y=e.y,r=F.r,bob=Math.abs(Math.sin(t*(e.slowT>0?4:10)+e.id))*2,face=Math.cos(e.a)<-.2?-1:1; c.save(); c.translate(x,y-bob);
   c.fillStyle='rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(0,r*.9+bob,r*.9,r*.3,0,0,7); c.fill();
+  if(e.slowT>0){ const pu=.5+.5*Math.sin(t*6+e.id); c.fillStyle='rgba(150,220,255,'+(.3+pu*.2)+')'; c.beginPath(); c.ellipse(0,r*.9+bob,r*1.45,r*.52,0,0,7); c.fill(); c.strokeStyle='rgba(230,250,255,.9)'; c.lineWidth=1.6; c.stroke();
+    for(let i=0;i<5;i++){ const a=i/5*6.28+t; c.fillStyle='#ffffff'; c.fillRect(Math.cos(a)*r*1.3-1,r*.9+bob+Math.sin(a)*r*.45-1,2,2); } }
   const col=e.slowT>0?'#9ad6ff':F.col,OL='#2a1a26';
   if(e.f==='ant'){ for(const [dx,rad] of [[-r*.9,r*.55],[0,r*.6],[r*.9,r*.75]]){ c.fillStyle=col; c.beginPath(); c.arc(dx*face,0,rad,0,7); c.fill(); c.strokeStyle=OL; c.lineWidth=1.3; c.stroke(); }
     c.strokeStyle=OL; c.lineWidth=1.2; for(let i=-1;i<=1;i++){ const lg=Math.sin(t*20+i)*3; c.beginPath(); c.moveTo(i*r*.4,r*.4); c.lineTo(i*r*.5+lg,r*.95); c.stroke(); } c.translate(r*.9*face,0); }
@@ -130,7 +132,9 @@ function drawFoe(c,e,t){ const F=FOES[e.f],x=e.x,y=e.y,r=F.r,bob=Math.abs(Math.s
     for(const k of [-1,1]){ c.fillStyle='#fff'; c.beginPath(); c.arc(k*ex+face*1.5,ey,er+1,0,7); c.fill(); c.fillStyle='#2a1a2a'; c.beginPath(); c.arc(k*ex+face*2,ey+.5,er,0,7); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(k*ex+face*2+1,ey-.8,er*.35,0,7); c.fill(); }
     if(e.f==='boss'){ c.strokeStyle=OL; c.lineWidth=2; for(const k of [-1,1]){ c.beginPath(); c.moveTo(k*ex-k*5,ey-er-5); c.lineTo(k*ex+k*3,ey-er-2); c.stroke(); } }
     c.fillStyle='rgba(255,120,150,.6)'; for(const k of [-1,1]){ c.beginPath(); c.ellipse(k*ex*1.25,ey+er+2,2.2,1.3,0,0,7); c.fill(); } }
+  if(e.slowT>0){ c.globalAlpha=Math.min(1,e.slowT*1.5)*.8; c.fillStyle='#effcff'; c.strokeStyle='#7ad8ff'; c.lineWidth=1; for(const [dx,dy,k] of [[-.6,-.7,1],[.05,-.95,1.35],[.62,-.65,.9]]){ c.beginPath(); c.moveTo(dx*r-3*k,dy*r+2); c.lineTo(dx*r,dy*r-8*k); c.lineTo(dx*r+3*k,dy*r+2); c.closePath(); c.fill(); c.stroke(); } c.globalAlpha=1; }
   c.restore();
+  if(e.slowT>0){ c.save(); c.translate(x,y-r-22); c.rotate(t*2); c.strokeStyle='#bff0ff'; c.lineWidth=2.2; c.lineCap='round'; for(let i=0;i<3;i++){ c.rotate(Math.PI/3); c.beginPath(); c.moveTo(-6,0); c.lineTo(6,0); c.stroke(); } c.restore(); }
   // 血條
   if(e.hp<e.max){ const w=Math.max(18,r*2); c.fillStyle='rgba(0,0,0,.5)'; rr(c,x-w/2,y-r-12,w,4,2); c.fill(); c.fillStyle=e.hp/e.max>.5?'#5fd068':e.hp/e.max>.25?'#ffd23f':'#ff5d4f'; rr(c,x-w/2,y-r-12,w*e.hp/e.max,4,2); c.fill(); } }
 
@@ -138,7 +142,17 @@ function drawFoe(c,e,t){ const F=FOES[e.f],x=e.x,y=e.y,r=F.r,bob=Math.abs(Math.s
 function create(env,opts){
   const si=clamp(opts.stage|0,0,29),S=STAGES[si],B=buildMap(S.map),{ctx:c,canvas}=env.canvas2d(W,H),bgc=typeof document!=='undefined'?bgCanvas(S.map):null,sfx=n=>env.sfx(n);
   let gold=S.gold,lives=20,wave=-1,phase='prep',betweenT=0,spawnQ=[],spawnT=0,t=0,speed=1,ended=false,endT=0,won=false;
-  const towers=[],foes=[],shots=[],fx=[],pops=[]; let sel=null,menu=null,hover=null,eid=0,msg='',msgT=0;
+  const towers=[],foes=[],shots=[],fx=[],pops=[],parts=[],decals=[]; let sel=null,menu=null,hover=null,eid=0,msg='',msgT=0,shake=0;
+  // 粒子：火花、煙、泡泡、冰晶、雪花、彩色碎紙、星星
+  const burst=(x,y,n,o)=>{ for(let i=0;i<n&&parts.length<520;i++){ const a=(o.a0||0)+Math.random()*(o.spread||6.28),sp=(o.sp||120)*(.4+Math.random()*.8);
+    parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp+(o.vy||0),g:o.g||0,life:(o.life||.6)*(.6+Math.random()*.6),t:0,k:o.k,col:Array.isArray(o.col)?o.col[i%o.col.length]:o.col,r:(o.r||3)*(.6+Math.random()*.8),rot:Math.random()*6.28,vr:(Math.random()-.5)*10,grow:o.grow||0,drag:o.drag||0}); } };
+  function explode(x,y,r,lv){ fx.push({x,y,t:0,kind:'boom',r}); fx.push({x,y,t:0,kind:'ring',r}); shake=Math.min(.35,shake+.16+lv*.04);
+    burst(x,y,10+lv*5,{k:'spark',col:['#fff6a0','#ffd23f','#ff8a3d','#ff5d3d'],sp:230,g:420,life:.7,r:3.2,drag:1.5});
+    burst(x,y,6+lv*2,{k:'smoke',col:'rgba(120,110,130,.55)',sp:45,vy:-30,life:1.2,r:9,grow:22,drag:2});
+    burst(x,y,8+lv*2,{k:'bubble',col:'rgba(255,255,255,.9)',sp:60,vy:-70,life:1.1,r:3.5,drag:1});
+    decals.push({x,y,r:r*.62,t:0}); }
+  function frost(x,y,lv){ fx.push({x,y,t:0,kind:'ice'}); burst(x,y,8+lv*3,{k:'shard',col:['#ffffff','#bff0ff','#7ad8ff'],sp:140,g:220,life:.55,r:4});
+    burst(x,y,4+lv*2,{k:'flake',col:'#ffffff',sp:55,vy:-25,life:1,r:4,drag:1}); }
   const say=(s,sec)=>{ msg=s; msgT=sec||2; };
   const padAt=(x,y)=>B.pads.find(p=>dist(p.x,p.y,x,y)<26),towerOn=p=>towers.find(tw=>tw.pad===p);
   function startWave(){ if(wave>=S.waves-1) return; const early=phase==='between'?Math.ceil(betweenT):0; if(early>0){ gold+=early*3; pops.push({x:W-160,y:60,txt:'提早 +'+early*3,col:'#ffd23f',t:0}); }
@@ -146,7 +160,7 @@ function create(env,opts){
   function build(p,k){ const T=TOWERS[k]; if(gold<T.cost){ say('金幣不夠',1.2); sfx('bump'); return; } gold-=T.cost; towers.push({k,lv:1,pad:p,x:p.x,y:p.y-6,cd:0,ang:-Math.PI/2,spent:T.cost,fire:0}); sfx('place'); menu=null; }
   function upgrade(tw){ if(tw.lv>=3) return; const cst=upCost(tw.k,tw.lv); if(gold<cst){ say('金幣不夠',1.2); sfx('bump'); return; } gold-=cst; tw.spent+=cst; tw.lv++; sfx('item'); fx.push({x:tw.x,y:tw.y-20,t:0,kind:'up'}); }
   function sell(tw){ const back=Math.round(tw.spent*.7); gold+=back; towers.splice(towers.indexOf(tw),1); pops.push({x:tw.x,y:tw.y-20,txt:'+'+back,col:'#ffd23f',t:0}); sfx('pop'); menu=null; }
-  function hurt(e,d,pierce){ const F=FOES[e.f]; const dmg=pierce?d:Math.max(d*.3,d-(F.armor||0)); e.hp-=dmg; e.flash=.08; if(e.hp<=0&&!e.dead){ e.dead=true; const gg=Math.round(F.gold*Math.sqrt(S.hp)); gold+=gg; pops.push({x:e.x,y:e.y-10,txt:'+'+gg,col:'#ffd23f',t:0}); fx.push({x:e.x,y:e.y,t:0,kind:'pop',col:F.col}); sfx('pop'); } }
+  function hurt(e,d,pierce){ const F=FOES[e.f]; const dmg=pierce?d:Math.max(d*.3,d-(F.armor||0)); e.hp-=dmg; e.flash=.08; if(e.hp<=0&&!e.dead){ e.dead=true; const gg=Math.round(F.gold*Math.sqrt(S.hp)); gold+=gg; pops.push({x:e.x,y:e.y-10,txt:'+'+gg,col:'#ffd23f',t:0}); fx.push({x:e.x,y:e.y,t:0,kind:'pop',col:F.col}); burst(e.x,e.y-4,e.f==='boss'?40:12,{k:'confetti',col:[F.col,'#ffffff','#ffd23f','#ff7eb6'],sp:e.f==='boss'?240:150,g:380,life:.9,r:3}); if(e.f==='boss') shake=.4; sfx('pop'); } }
   // 操作：點空地蓋塔、點塔升級／賣掉；右上角的按鈕加速、下一波
   const btn={speed:{x:W-118,y:8,w:50,h:30},next:{x:W-62,y:8,w:54,h:30}};
   const inB=(b,x,y)=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h;
@@ -163,23 +177,26 @@ function create(env,opts){
   if(canvas.addEventListener){ canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); canvas.style.touchAction='none'; }
   function step(dt){
     if(msgT>0) msgT-=dt; for(const p of pops){ p.t+=dt; p.y-=dt*24; } for(const f of fx) f.t+=dt;
+    if(shake>0) shake=Math.max(0,shake-dt); for(const d of decals) d.t+=dt; while(decals.length&&decals[0].t>3) decals.shift();
+    for(const p of parts){ p.t+=dt; if(p.drag){ const k=Math.max(0,1-p.drag*dt); p.vx*=k; p.vy*=k; } p.vy+=p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.rot+=p.vr*dt; } for(let i=parts.length-1;i>=0;i--) if(parts[i].t>parts[i].life) parts.splice(i,1);
     if(phase==='wave'){ if(spawnQ.length){ spawnT-=dt; if(spawnT<=0){ const q=spawnQ.shift(),F=FOES[q.f],hp=Math.round(F.hp*S.hp*(1+wave*.08)); foes.push({id:eid++,f:q.f,hp,max:hp,d:0,x:-99,y:-99,a:0,slowT:0,slowK:0,flash:0}); spawnT=q.gap; } }
       else if(!foes.length){ if(wave>=S.waves-1){ phase='done'; won=true; ended=true; endT=0; sfx('win'); } else { phase='between'; betweenT=9; gold+=20+wave*4; say('守住了！下一波 9 秒後',1.6); } } }
     else if(phase==='between'){ betweenT-=dt; if(betweenT<=0) startWave(); }
-    for(const e of foes){ const F=FOES[e.f]; if(e.slowT>0) e.slowT-=dt; if(e.flash>0) e.flash-=dt; e.d+=F.speed*(e.slowT>0?1-e.slowK:1)*dt; const [x,y,a]=B.posAt(e.d); e.x=x; e.y=y; e.a=a;
+    for(const e of foes){ const F=FOES[e.f]; if(e.slowT>0){ e.slowT-=dt; if(Math.random()<dt*14) burst(e.x+(Math.random()-.5)*F.r*1.6,e.y-F.r*.5,1,{k:'flake',col:'#ffffff',sp:12,vy:-12,life:.8,r:2.6}); } if(e.flash>0) e.flash-=dt; e.d+=F.speed*(e.slowT>0?1-e.slowK:1)*dt; const [x,y,a]=B.posAt(e.d); e.x=x; e.y=y; e.a=a;
       if(e.d>=B.total&&!e.dead){ e.dead=true; e.out=true; lives=Math.max(0,lives-(F.lives||1)); sfx('hurt'); fx.push({x:B.end[0],y:B.end[1]-30,t:0,kind:'heart'}); } }
     for(let i=foes.length-1;i>=0;i--) if(foes[i].dead) foes.splice(i,1);
     if(lives<=0&&!ended){ ended=true; endT=0; won=false; sfx('lose'); }
     // 塔：鎖定走最前面、在射程裡的怪物
     for(const tw of towers){ const s=stat(tw.k,tw.lv); tw.cd-=dt; if(tw.fire>0) tw.fire-=dt; let tg=null; for(const e of foes){ if(e.dead) continue; if(dist(e.x,e.y,tw.x,tw.y)<=s.range&&(!tg||e.d>tg.d)) tg=e; }
       if(!tg) continue; tw.ang=Math.atan2(tg.y-(tw.y-26),tg.x-tw.x); if(tw.cd>0) continue; tw.cd=s.rate; tw.fire=.12;
-      if(tw.k==='rainbow'){ hurt(tg,s.dmg,true); fx.push({x:tw.x,y:tw.y-34,x2:tg.x,y2:tg.y,t:0,kind:'beam'}); sfx('beep'); }
-      else shots.push({k:tw.k,x:tw.x,y:tw.y-30,tg,tx:tg.x,ty:tg.y,dmg:s.dmg,slow:s.slow,splash:s.splash,lv:tw.lv,sp:tw.k==='soda'?240:tw.k==='ice'?300:360,t:0}); }
+      if(tw.k==='rainbow'){ hurt(tg,s.dmg,true); fx.push({x:tw.x,y:tw.y-34,x2:tg.x,y2:tg.y,t:0,kind:'beam'}); fx.push({x:tg.x,y:tg.y,t:0,kind:'ring',r:22}); for(let k=1;k<=6;k++){ const u=k/7; burst(tw.x+(tg.x-tw.x)*u,tw.y-34+(tg.y-tw.y+34)*u,1,{k:'star',col:['#ff5d5d','#ffb000','#ffe14d','#5fd068','#4fb8ff','#b77bff'][k-1],sp:40,life:.5,r:4}); } sfx('beep'); }
+      else { if(tw.k==='soda') burst(tw.x,tw.y-42,3,{k:'smoke',col:'rgba(230,230,240,.7)',sp:30,vy:-25,life:.6,r:4,grow:8}); if(tw.k==='ice') burst(tw.x,tw.y-30,3,{k:'flake',col:'#e8fbff',sp:35,vy:-15,life:.6,r:3}); }
+      if(tw.k!=='rainbow') shots.push({k:tw.k,x:tw.x,y:tw.y-30,tg,tx:tg.x,ty:tg.y,dmg:s.dmg,slow:s.slow,splash:s.splash,lv:tw.lv,sp:tw.k==='soda'?240:tw.k==='ice'?300:360,t:0}); }
     for(let i=shots.length-1;i>=0;i--){ const b=shots[i]; b.t+=dt; if(b.tg&&!b.tg.dead&&b.k!=='soda'){ b.tx=b.tg.x; b.ty=b.tg.y; } const dx=b.tx-b.x,dy=b.ty-b.y,d=Math.hypot(dx,dy),mv=b.sp*dt;
-      if(d<=mv+4){ if(b.k==='soda'){ for(const e of foes) if(!e.dead&&dist(e.x,e.y,b.tx,b.ty)<b.splash) hurt(e,b.dmg); fx.push({x:b.tx,y:b.ty,t:0,kind:'boom',r:b.splash}); sfx('boom'); }
-        else if(b.tg&&!b.tg.dead){ hurt(b.tg,b.dmg); if(b.k==='ice'){ b.tg.slowT=1.6; b.tg.slowK=Math.max(b.tg.slowK||0,b.slow); fx.push({x:b.tx,y:b.ty,t:0,kind:'ice'}); } else fx.push({x:b.tx,y:b.ty,t:0,kind:'hit',col:TOWERS[b.k].col}); }
+      if(d<=mv+4){ if(b.k==='soda'){ for(const e of foes) if(!e.dead&&dist(e.x,e.y,b.tx,b.ty)<b.splash) hurt(e,b.dmg); explode(b.tx,b.ty,b.splash,b.lv); sfx('boom'); }
+        else if(b.tg&&!b.tg.dead){ hurt(b.tg,b.dmg); if(b.k==='ice'){ b.tg.slowT=1.6; b.tg.slowK=Math.max(b.tg.slowK||0,b.slow); frost(b.tx,b.ty,b.lv); } else { fx.push({x:b.tx,y:b.ty,t:0,kind:'hit',col:TOWERS[b.k].col}); burst(b.tx,b.ty,3+b.lv,{k:'star',col:['#ff5d8f','#ffd23f','#ffffff'],sp:90,life:.4,r:3.5}); } }
         shots.splice(i,1); continue; }
-      b.x+=dx/d*mv; b.y+=dy/d*mv; }
+      b.x+=dx/d*mv; b.y+=dy/d*mv; if(b.k==='soda'&&Math.random()<.6) burst(b.x,b.y,1,{k:'smoke',col:'rgba(225,225,238,.6)',sp:10,life:.5,r:3,grow:7}); else if(b.k==='ice'&&Math.random()<.35) burst(b.x,b.y,1,{k:'flake',col:'#e8fbff',sp:15,life:.4,r:2.2}); }
     for(let i=fx.length-1;i>=0;i--) if(fx[i].t>.6) fx.splice(i,1); for(let i=pops.length-1;i>=0;i--) if(pops[i].t>1) pops.splice(i,1); }
   function update(dt){ t+=dt; if(ended){ endT+=dt; if(endT>1.8) finish(); return; }
     if(env.hit('Space')&&phase!=='wave') startWave(); if(env.hit('KeyF')) speed=speed===1?2:1;
@@ -191,7 +208,9 @@ function create(env,opts){
     else env.end({title:'城堡被攻破了…',big:'撐到第 '+(wave+1)+' / '+S.waves+' 波',text:'冰淇淋塔讓怪物變慢、汽水火箭一次打一群，蓋在轉彎的地方最有效。',score:null}); }
 
   /* ---------- 畫面 ---------- */
-  function draw(){ if(bgc) c.drawImage(bgc,0,0,W,H); else paintMap(c,S.map,t);
+  function draw(){ c.save(); if(shake>0) c.translate((Math.random()-.5)*shake*26,(Math.random()-.5)*shake*26);
+    if(bgc) c.drawImage(bgc,0,0,W,H); else paintMap(c,S.map,t);
+    for(const d of decals){ const a=Math.max(0,1-d.t/3); c.fillStyle='rgba(60,30,20,'+(.32*a)+')'; c.beginPath(); c.ellipse(d.x,d.y+4,d.r,d.r*.45,0,0,7); c.fill(); c.fillStyle='rgba(255,150,60,'+(.25*a)+')'; c.beginPath(); c.ellipse(d.x,d.y+4,d.r*.55,d.r*.25,0,0,7); c.fill(); } /* 爆炸焦痕 */
     // 空地：小餅乾
     for(const p of B.pads){ if(towerOn(p)) continue; const hv=hover&&dist(hover[0],hover[1],p.x,p.y)<26,on=menu&&menu.p===p; c.fillStyle='rgba(0,0,0,.15)'; c.beginPath(); c.ellipse(p.x,p.y+4,22,9,0,0,7); c.fill();
       c.fillStyle=on?'#ffe58a':hv?'#f5d9a8':'#e8c690'; c.beginPath(); c.ellipse(p.x,p.y,21,10,0,0,7); c.fill(); c.strokeStyle=on?'#ff9a00':'#b8864a'; c.lineWidth=2; c.stroke();
@@ -207,13 +226,27 @@ function create(env,opts){
       else { const a=Math.atan2(b.ty-b.y,b.tx-b.x); c.save(); c.translate(b.x,b.y); c.rotate(a); c.fillStyle='#fff'; rr(c,-8,-3.5,16,7,3); c.fill(); c.fillStyle='#e23b3b'; c.beginPath(); c.moveTo(8,-3.5); c.lineTo(13,0); c.lineTo(8,3.5); c.fill(); c.fillStyle='rgba(255,160,58,.8)'; c.beginPath(); c.arc(-10,0,3+Math.random()*2,0,7); c.fill(); c.restore(); c.fillStyle='rgba(200,200,220,.4)'; c.beginPath(); c.arc(b.x-Math.cos(a)*16,b.y-Math.sin(a)*16,4,0,7); c.fill(); } }
     for(const f of fx){ const u=f.t/.6;
       if(f.kind==='beam'){ if(f.t<.18){ const cols=['#ff5d5d','#ffb000','#ffe14d','#5fd068','#4fb8ff','#b77bff']; cols.forEach((col,i)=>{ c.strokeStyle=col; c.lineWidth=6-i*.6; c.globalAlpha=1-f.t*4; c.beginPath(); c.moveTo(f.x,f.y-6+i*2); c.lineTo(f.x2,f.y2-6+i*2); c.stroke(); }); c.globalAlpha=1; } }
-      else if(f.kind==='boom'){ c.globalAlpha=1-u; c.fillStyle='#ffd23f'; c.beginPath(); c.arc(f.x,f.y,f.r*(.4+u*.6),0,7); c.fill(); c.fillStyle='#ff8a3d'; c.beginPath(); c.arc(f.x,f.y,f.r*(.25+u*.4),0,7); c.fill(); for(let i=0;i<8;i++){ const a=i/8*6.28; c.fillStyle='#fff'; c.beginPath(); c.arc(f.x+Math.cos(a)*f.r*u,f.y+Math.sin(a)*f.r*u,3*(1-u),0,7); c.fill(); } c.globalAlpha=1; }
+      else if(f.kind==='boom'){ if(f.t<.08){ c.fillStyle='rgba(255,255,255,'+(1-f.t/.08)*.9+')'; c.beginPath(); c.arc(f.x,f.y,f.r*1.2,0,7); c.fill(); }
+        c.globalAlpha=Math.max(0,1-u*1.1); const g=c.createRadialGradient(f.x,f.y,2,f.x,f.y,f.r*(.5+u*.7)); g.addColorStop(0,'#fffbe0'); g.addColorStop(.35,'#ffd23f'); g.addColorStop(.7,'#ff7a2a'); g.addColorStop(1,'rgba(220,60,40,0)'); c.fillStyle=g; c.beginPath(); c.arc(f.x,f.y,f.r*(.5+u*.7),0,7); c.fill();
+        for(let i=0;i<10;i++){ const a=i/10*6.28+f.x; c.fillStyle=i%2?'#fff6a0':'#ff8a3d'; c.beginPath(); c.arc(f.x+Math.cos(a)*f.r*u*1.1,f.y+Math.sin(a)*f.r*u*.8,3.5*(1-u),0,7); c.fill(); } c.globalAlpha=1; }
+      else if(f.kind==='ring'){ c.globalAlpha=Math.max(0,1-u); c.strokeStyle='#fff8d8'; c.lineWidth=6*(1-u)+1; c.beginPath(); c.ellipse(f.x,f.y,f.r*(.3+u*1.5),f.r*(.3+u*1.5)*.6,0,0,7); c.stroke(); c.globalAlpha=1; }
       else if(f.kind==='pop'){ c.globalAlpha=1-u; for(let i=0;i<8;i++){ const a=i/8*6.28; c.fillStyle=i%2?'#fff':f.col; c.beginPath(); c.arc(f.x+Math.cos(a)*24*u,f.y+Math.sin(a)*24*u,3.5*(1-u)+1,0,7); c.fill(); } c.globalAlpha=1; }
-      else if(f.kind==='ice'){ c.globalAlpha=1-u; c.strokeStyle='#bff0ff'; c.lineWidth=2; c.beginPath(); c.arc(f.x,f.y,8+u*14,0,7); c.stroke(); c.globalAlpha=1; }
+      else if(f.kind==='ice'){ c.globalAlpha=1-u; c.fillStyle='rgba(190,240,255,.35)'; c.beginPath(); c.arc(f.x,f.y,10+u*20,0,7); c.fill(); c.strokeStyle='#e8fbff'; c.lineWidth=2.5; c.beginPath(); c.arc(f.x,f.y,10+u*20,0,7); c.stroke();
+        c.save(); c.translate(f.x,f.y); c.rotate(u*2); c.fillStyle='#ffffff'; for(let i=0;i<6;i++){ c.rotate(Math.PI/3); c.beginPath(); c.moveTo(0,-4); c.lineTo(3,-(10+u*14)); c.lineTo(-3,-(10+u*14)); c.closePath(); c.fill(); } c.restore(); c.globalAlpha=1; }
       else if(f.kind==='hit'){ c.globalAlpha=1-u; c.fillStyle=f.col; c.beginPath(); c.arc(f.x,f.y,4+u*10,0,7); c.fill(); c.globalAlpha=1; }
       else if(f.kind==='heart'){ c.globalAlpha=1-u; c.fillStyle='#ff4d6a'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText('♥ -1',f.x,f.y-u*30); c.globalAlpha=1; }
       else if(f.kind==='up'){ c.globalAlpha=1-u; c.strokeStyle='#ffd23f'; c.lineWidth=3; c.beginPath(); c.arc(f.x,f.y,10+u*30,0,7); c.stroke(); c.globalAlpha=1; } }
+    for(const p of parts){ const u=p.t/p.life,a=Math.max(0,1-u); c.globalAlpha=a;
+      if(p.k==='spark'){ c.fillStyle=p.col; c.beginPath(); c.arc(p.x,p.y,p.r*(1-u*.5),0,7); c.fill(); }
+      else if(p.k==='smoke'){ c.globalAlpha=a*.6; c.fillStyle=p.col; c.beginPath(); c.arc(p.x,p.y,p.r+p.grow*u,0,7); c.fill(); }
+      else if(p.k==='bubble'){ c.strokeStyle=p.col; c.lineWidth=1.4; c.beginPath(); c.arc(p.x+Math.sin(p.t*12+p.rot)*2,p.y,p.r,0,7); c.stroke(); c.fillStyle='rgba(255,255,255,.6)'; c.beginPath(); c.arc(p.x-p.r*.3,p.y-p.r*.3,p.r*.3,0,7); c.fill(); }
+      else if(p.k==='shard'){ c.save(); c.translate(p.x,p.y); c.rotate(p.rot); c.fillStyle=p.col; c.beginPath(); c.moveTo(0,-p.r*1.7); c.lineTo(p.r*.7,p.r); c.lineTo(-p.r*.7,p.r); c.closePath(); c.fill(); c.restore(); }
+      else if(p.k==='flake'){ c.save(); c.translate(p.x,p.y); c.rotate(p.rot); c.strokeStyle=p.col; c.lineWidth=1.3; for(let i=0;i<3;i++){ c.rotate(Math.PI/3); c.beginPath(); c.moveTo(-p.r,0); c.lineTo(p.r,0); c.stroke(); } c.restore(); }
+      else if(p.k==='confetti'){ c.save(); c.translate(p.x,p.y); c.rotate(p.rot); c.fillStyle=p.col; c.fillRect(-p.r,-p.r*.5,p.r*2,p.r); c.restore(); }
+      else { c.save(); c.translate(p.x,p.y); c.rotate(p.rot); c.fillStyle=p.col; c.beginPath(); for(let j=0;j<10;j++){ const rad=j%2?p.r*.45:p.r,an=j/10*6.28; c.lineTo(Math.cos(an)*rad,Math.sin(an)*rad); } c.closePath(); c.fill(); c.restore(); } }
+    c.globalAlpha=1;
     for(const p of pops){ c.globalAlpha=1-p.t; c.font='900 14px '+TC; c.textAlign='center'; c.lineWidth=3; c.strokeStyle='#14122b'; c.strokeText(p.txt,p.x,p.y); c.fillStyle=p.col; c.fillText(p.txt,p.x,p.y); c.globalAlpha=1; }
+    c.restore(); // 震動到這裡為止，下面的選單和資訊列不震
     // 蓋塔／升級選單
     for(const it of menuItems()){ const ok=it.cost==null?false:gold>=it.cost||it.k==='sell',hv=hover&&dist(hover[0],hover[1],it.x,it.y)<it.r+4;
       c.fillStyle=it.k==='sell'?'#ff8a8a':ok?(hv?'#fff8d8':'#fff'):'#b8b4c8'; c.beginPath(); c.arc(it.x,it.y,it.r+(hv?2:0),0,7); c.fill(); c.strokeStyle='#2a1a26'; c.lineWidth=2.5; c.stroke();

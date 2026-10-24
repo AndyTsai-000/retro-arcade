@@ -18,7 +18,7 @@ const RHY=(()=>{
     [[[0,1],[1,1],[2,2],[4,2],[6,2],[8,1],[9,1],[10,2],[12,2],[14,2]],[[0,2],[2,1],[3,1],[4,2],[6,2],[8,2],[10,1],[11,1],[12,2],[14,2]],[[0,2],[2,2],[4,1],[5,1],[6,2],[8,2],[10,2],[12,1],[13,1],[14,2]],[[0,2],[2,2],[4,2],[6,2],[8,1],[9,1],[10,1],[11,1],[12,4]]]];
   function makeSong(i,kind){
     const r=rng(9973*(i+1)+(kind==='dance'?77:0)),tier=i<6?0:i<12?1:i<20?2:3,d=i/29;
-    const bpm=Math.round((kind==='dance'?100:88)+d*(kind==='dance'?72:84)+r()*6);
+    const bpm=Math.round((kind==='dance'?90:80)+d*(kind==='dance'?82:92)+r()*6); // 第 1 首慢一點，最後一首差不多
     const scn=kind==='drum'&&r()<.5?'penta':r()<.5?'major':'minor',scale=SC[scn],root=55+Math.floor(r()*9);
     const pick=a=>a[Math.floor(r()*a.length)];
     const pa=pick(PROGS.filter(p=>(p[0].endsWith(':m'))===(scn==='minor'))),pb=pick(PROGS.filter(p=>p!==pa&&(p[0].endsWith(':m'))===(scn==='minor')));
@@ -76,7 +76,8 @@ const RHY=(()=>{
       ka(){ if(!AC||!bus) return; const t=AC.currentTime; osc('square',1250,t,.05,.12,.001); noise(t,.04,.1,3000); },
       clap(){ if(!AC||!bus) return; const t=AC.currentTime; noise(t,.06,.1,2000); } }; }
   const WIN={perfect:.045,great:.09,good:.135};
-  const judgeOf=dt=>{ const a=Math.abs(dt); return a<=WIN.perfect?'perfect':a<=WIN.great?'great':a<=WIN.good?'good':null; };
+  let ease=1; const setEase=i=>{ ease=1+Math.max(0,1-i/12)*.35; WIN.good=.135*ease; }; // 前 12 首判定比較寬
+  const judgeOf=dt=>{ const a=Math.abs(dt); return a<=WIN.perfect*ease?'perfect':a<=WIN.great*ease?'great':a<=WIN.good?'good':null; };
   const JTXT={perfect:'完美！',great:'很好',good:'不錯',miss:'MISS'},JCOL={perfect:'#ffd23f',great:'#7af0ff',good:'#86dc4f',miss:'#ff6b7d'},JPT={perfect:100,great:70,good:40,miss:0};
   const grade=a=>a>=95?'S':a>=85?'A':a>=70?'B':a>=60?'C':'D';
   /* ---------- Q 版人物（兩款共用）：大頭、大眼睛兩個亮點、腮紅、ω 嘴；手腳用角度控制 ---------- */
@@ -131,7 +132,7 @@ const RHY=(()=>{
     st.rate=()=>st.total?st.gain/st.total*100:100;
     st.pause=p=>{ if(p) syn.pause(); else syn.resume(); };
     return st; }
-  return {makeSong,makeChart,Synth,Play,WIN,judgeOf,JTXT,JCOL,JPT,grade,drawChibi,rng,rr,clamp}; })();
+  return {makeSong,makeChart,Synth,Play,WIN,judgeOf,setEase,JTXT,JCOL,JPT,grade,drawChibi,rng,rr,clamp}; })();
 window.__RHY=RHY;
 
 /* ================= 節奏小鼓手 ================= */
@@ -189,7 +190,7 @@ function drawNote(c,x,y,k,big,alpha){ const r=big?30:21,col=k==='d'?'#ff4d4d':'#
   c.fillStyle='#fff'; c.font='900 '+Math.round(r*.95)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(k==='d'?'咚':'咔',x,y+1); c.globalAlpha=1; }
 
 function create(env,opts){
-  const si=clamp(opts.stage|0,0,29),th=Math.floor(si/5),song=RHY.makeSong(si,'drum'),L=opts.look||{};
+  const si=clamp(opts.stage|0,0,29),th=Math.floor(si/5),song=RHY.makeSong(si,'drum'),L=opts.look||{}; RHY.setEase(si);
   const spdMul=({slow:.8,normal:1,fast:1.3})[(opts.options||{}).speed||'normal']||1,SPEED=(300+song.bpm*1.1)*spdMul;
   // 譜面：重拍或往下走的音是「咚」，往上走的是「咔」；後面的關卡在樂句開頭放大音符、在樂句尾巴放連打
   const notes=RHY.makeChart(song,(o,prev,r)=>{ if(o.last){ o.k='d'; o.big=true; return; }

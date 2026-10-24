@@ -167,6 +167,7 @@ function create(env,opts){
   function hurt(tg,by,dmg,kb,launch,lvl){
     if(tg.inv>0||tg.state==='dead'||tg.gone||tg.hp<=0) return false;
     const armor=tg.kind==='big'&&lvl===0&&tg.state!=='hurt'&&tg.hp-dmg>0||tg.kind==='boss'&&tg.state==='spin';
+    if(tg.hero) dmg*=[.55,.7,.85,.95,1][si]||1; /* 前面的關卡被打比較不痛 */
     tg.hp-=dmg; const dir=by?(tg.x>=by.x?1:-1):1;
     if(tg.held){ const g=E.find(e=>e.grab===tg); if(g){ g.grab=null; g.state='idle'; } tg.held=false; }
     if(tg.grab){ tg.grab.held=false; tg.grab.state='hurt'; tg.grab.st=.3; tg.grab=null; }

@@ -11,16 +11,16 @@ const BCOL=['#f6f2e6','#f2c418','#1e4fb8','#d8261c','#5a2a8a','#f07a18','#1e8a3a
 const ballCol=n=>BCOL[n>8?n-8:n];
 // 對手（關卡）：每位有自己的球館、台呢顏色和實力
 const STAGES=[
-  {name:'阿明',place:'社區撞球間',stars:1,skill:.3,cloth:'#1f7a3e',room:'#3a2a22',look:{skin:'#e0ac80',hair:'#1a1410',shirt:'#3d8bff'}},
-  {name:'小芳',place:'大學撞球社',stars:1,skill:.4,cloth:'#1f6aa8',room:'#2a3040',look:{skin:'#f2c9a0',hair:'#3a2416',shirt:'#ff7eb6',long:1}},
-  {name:'阿伯',place:'老街撞球店',stars:2,skill:.5,cloth:'#2a7a3a',room:'#4a3a2a',look:{skin:'#c68a5e',hair:'#d8d0c8',shirt:'#8a6a4a'}},
-  {name:'黑面',place:'夜市撞球攤',stars:2,skill:.58,cloth:'#8a1e2a',room:'#2a1a28',look:{skin:'#8d5a3a',hair:'#1a1410',shirt:'#e23b3b'}},
-  {name:'Lisa',place:'運動酒吧',stars:3,skill:.66,cloth:'#1e5a8a',room:'#20262e',look:{skin:'#f6d6b8',hair:'#c8a060',shirt:'#1e1e24',long:1}},
-  {name:'刀疤',place:'地下球館',stars:3,skill:.72,cloth:'#3a3a40',room:'#141418',look:{skin:'#c68a5e',hair:'#1a1410',shirt:'#5a5a5a',bald:1}},
-  {name:'林教練',place:'撞球學院',stars:4,skill:.8,cloth:'#1f7a3e',room:'#2a3a30',look:{skin:'#e0ac80',hair:'#3a2416',shirt:'#ffffff',vest:'#1e1e24'}},
-  {name:'美琪',place:'飯店俱樂部',stars:4,skill:.86,cloth:'#5a2a6a',room:'#2a1a2a',look:{skin:'#f2c9a0',hair:'#1a1410',shirt:'#c0392b',long:1,vest:'#1e1e24'}},
-  {name:'撞球王子',place:'職業聯賽',stars:5,skill:.92,cloth:'#1a5aa0',room:'#101830',look:{skin:'#e0ac80',hair:'#1a1410',shirt:'#ffffff',vest:'#2a2a6a'}},
-  {name:'無敵大師',place:'世界錦標賽',stars:5,skill:.97,cloth:'#1a6a8a',room:'#0c1018',look:{skin:'#e0ac80',hair:'#d8d0c8',shirt:'#ffffff',vest:'#141414'}}];
+  {name:'阿明',place:'社區撞球間',stars:1,skill:.18,cloth:'#1f7a3e',room:'#3a2a22',look:{skin:'#e0ac80',hair:'#1a1410',shirt:'#3d8bff'}},
+  {name:'小芳',place:'大學撞球社',stars:1,skill:.28,cloth:'#1f6aa8',room:'#2a3040',look:{skin:'#f2c9a0',hair:'#3a2416',shirt:'#ff7eb6',long:1}},
+  {name:'阿伯',place:'老街撞球店',stars:2,skill:.38,cloth:'#2a7a3a',room:'#4a3a2a',look:{skin:'#c68a5e',hair:'#d8d0c8',shirt:'#8a6a4a'}},
+  {name:'黑面',place:'夜市撞球攤',stars:2,skill:.48,cloth:'#8a1e2a',room:'#2a1a28',look:{skin:'#8d5a3a',hair:'#1a1410',shirt:'#e23b3b'}},
+  {name:'Lisa',place:'運動酒吧',stars:3,skill:.58,cloth:'#1e5a8a',room:'#20262e',look:{skin:'#f6d6b8',hair:'#c8a060',shirt:'#1e1e24',long:1}},
+  {name:'刀疤',place:'地下球館',stars:3,skill:.66,cloth:'#3a3a40',room:'#141418',look:{skin:'#c68a5e',hair:'#1a1410',shirt:'#5a5a5a',bald:1}},
+  {name:'林教練',place:'撞球學院',stars:4,skill:.75,cloth:'#1f7a3e',room:'#2a3a30',look:{skin:'#e0ac80',hair:'#3a2416',shirt:'#ffffff',vest:'#1e1e24'}},
+  {name:'美琪',place:'飯店俱樂部',stars:4,skill:.83,cloth:'#5a2a6a',room:'#2a1a2a',look:{skin:'#f2c9a0',hair:'#1a1410',shirt:'#c0392b',long:1,vest:'#1e1e24'}},
+  {name:'撞球王子',place:'職業聯賽',stars:5,skill:.9,cloth:'#1a5aa0',room:'#101830',look:{skin:'#e0ac80',hair:'#1a1410',shirt:'#ffffff',vest:'#2a2a6a'}},
+  {name:'無敵大師',place:'世界錦標賽',stars:5,skill:.96,cloth:'#1a6a8a',room:'#0c1018',look:{skin:'#e0ac80',hair:'#d8d0c8',shirt:'#ffffff',vest:'#141414'}}];
 // 袋口與台邊（含袋口兩側斜邊）
 const PK=[[TX0-5,TY0-5,15],[MX,TY0-13,14],[TX1+5,TY0-5,15],[TX0-5,TY1+5,15],[MX,TY1+13,14],[TX1+5,TY1+5,15]];
 const SEG=(()=>{ const s=[],C=17,S=15; const add=(a,b,cc,d)=>s.push([a,b,cc,d]);

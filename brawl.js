@@ -93,7 +93,7 @@ function createIsle(env,opts){
   let t=0,cd=3,intro=3,fxs=[],items=[],proj=[],ev=[],itemT=6,lava={y:SH+60,t:0},wind=0,conv=0,cer=null,ended=false,cam={x:SW/2,y:340,s:1},sendT=0,lastBeep=4,shake=0,nextId=1;
   const F=[]; for(let i=0;i<R.n;i++){ const sx=ST.main[0]+ST.main[1]*(i+1)/(R.n+1);
     F.push({i,x:sx,y:MAINY-200,vx:0,vy:0,face:i<R.n/2?1:-1,ground:false,jumps:1,upUsed:false,dmg:0,stocks:STOCK,stun:0,atk:null,cd:0,shield:false,shp:1,inv:2,out:false,outT:0,item:null,star:0,drop:0,hs:0,last:-1,lastT:0,ko:0,jabN:0,jabT:0,
-      human:i<R.humans,local:i<R.humans&&(!net||i===me),remote:i<R.humans&&!!net&&i!==me,ai:i>=R.humans?{skill:clamp(.45+ST.stars*.07+LV*.15+(i-R.humans)*.03,.3,1),t:0,mx:0,act:0}:null,qx:null,inBuf:{...NOIN}}); }
+      human:i<R.humans,local:i<R.humans&&(!net||i===me),remote:i<R.humans&&!!net&&i!==me,ai:i>=R.humans?{skill:clamp(.3+ST.stars*.1+LV*.15+(i-R.humans)*.03,.3,1),t:0,mx:0,act:0}:null,qx:null,inBuf:{...NOIN}}); }
   const alive=f=>!f.out&&f.stocks>0,foe=(a,b)=>a!==b&&(a.team==null||R.team[a.i]==null||R.team[a.i]!==R.team[b.i]);
   F.forEach(f=>f.team=R.team[f.i]);
   const fx=(k,x,y,o)=>{ fxs.push(Object.assign({k,x,y,t:0},o||{})); if(host&&net) ev.push([k,R1(x),R1(y),o&&o.col||'']); };
@@ -360,7 +360,7 @@ function createPillow(env,opts){
     ZN=(ST.zones||[]).map(([k,x,y,w,h])=>({k,x,y,w,h}));
   const starts=[[120,AY0+60],[AX1-90,AY1-50],[AX1-90,AY0+60],[120,AY1-50]];
   const F=[]; for(let i=0;i<R.n;i++){ const [x,y]=free(starts[i][0],starts[i][1]); F.push({i,x,y,vx:0,vy:0,fx:i%2?-1:1,fy:0,dir:i%2?2:3,pillow:true,big:0,spd:0,bomb:false,dizzy:0,hits:0,stun:0,score:0,swing:0,cd:0,inv:1.5,fall:0,hs:0,team:R.team[i],
-    human:i<R.humans,local:i<R.humans&&(!net||i===me),remote:i<R.humans&&!!net&&i!==me,ai:i>=R.humans?{skill:clamp(.45+ST.stars*.07+LV*.15+(i-R.humans)*.03,.3,1),t:0,wx:0,wy:0}:null}); }
+    human:i<R.humans,local:i<R.humans&&(!net||i===me),remote:i<R.humans&&!!net&&i!==me,ai:i>=R.humans?{skill:clamp(.3+ST.stars*.1+LV*.15+(i-R.humans)*.03,.3,1),t:0,wx:0,wy:0}:null}); }
   function blocked(x,y,r){ if(x<AX0+r||x>AX1-r||y<AY0+r||y>AY1-r) return true; for(const o of OBS) if(x>o.x-r&&x<o.x+o.w+r&&y>o.y-r*.6&&y<o.y+o.h+r*.4) return true; return false; }
   function free(x,y){ for(let k=0;k<60;k++){ const a=k*2.4,d=k*6,X=x+Math.cos(a)*d,Y=y+Math.sin(a)*d; if(!blocked(X,Y,14)&&!zoneAt(X,Y,'hole')) return [X,Y]; } return [x,y]; }
   function zoneAt(x,y,k){ for(const z of ZN) if(z.k===k&&x>z.x&&x<z.x+z.w&&y>z.y&&y<z.y+z.h) return z; return null; }

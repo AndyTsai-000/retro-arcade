@@ -647,7 +647,7 @@ const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',
   P:{max:12500,acc:5200,brake:12000,decel:2600,offMax:.5,steer:2.4,cent:.3,wall:1.55,boostMul:1.4,ww:320},
   stages:mkStages([['晨光市區','city'],['海岸公路','coast'],['河濱大道','town'],['港口倉庫','port'],['山腳小鎮','town',{mod:'sunset'}],['黃昏海岸','coast',{mod:'sunset'}],
     ['雨夜市區','city',{mod:'night rain'}],['蜿蜒山路','mountain'],['跨海大橋','bridge'],['霓虹夜街','neon'],['高山雲霧','mountain',{mod:'fog'}],['暴雨高速','city',{mod:'rain'}],['不夜城','neon',{mod:'rain'}],['天險峭壁','mountain',{mod:'sunset'}],['颱風夜','coast',{mod:'night rain'}]],
-    (st,i)=>({len:2600+st*450,curve:1.6+st*.9,hill:1200+st*700,ai:.8+st*.035,traffic:5+st*3,works:st>=2})),
+    (st,i)=>({len:2600+st*450,curve:1.6+st*.9,hill:1200+st*700,ai:.66+st*.06,traffic:5+st*3,works:st>=2})),
   theme:motoTheme,
   traffic(C,r){ const out=[],S=C.S,n=Math.round(S.traffic*C.n/1000),cols=['#e8e8e8','#2f6fd0','#c0392b','#3a3a48','#ffd23f','#2e9e4f'];
     const lc=([0,0,.25,.4,.55,.7][S.stars]||0)+(/rain|night/.test(S.mod||'')&&S.stars>1?.15:0),gap=16-S.stars*2; // 換車道：2 星開始有，星數越高越多、越頻繁
@@ -689,7 +689,7 @@ const SLED={id:'sled',name:'雪山大滑降',camH:1150,kmh:110,down:1,tagH:1.35,
     ['森林迴旋','',{tx:{spr:[['pine',9]],dens:.8}}],['冰河峽谷','',{tx:{spr:[['cliff',3],['rock',3],['pine',2]]},ice:1}],['夜燈滑道','',{mod:'night'}],
     ['暴風雪坡','',{mod:'storm'}],['懸崖跳台','',{ramps:2,tx:{spr:[['cliff',4],['pine',3]]}}],['極光雪原','',{mod:'night aurora'}],
     ['冰峰極速','',{ice:1,tx:{spr:[['cliff',3],['rock',3]]}}],['黑鑽險道','',{mod:'night',tx:{spr:[['pine',8],['rock',2]],dens:.8}}],['天梯大滑降','',{mod:'storm',ramps:2}]],
-    (st,i)=>({len:2400+st*400,curve:1.4+st*.8,hill:600+st*300,slope:.05+st*.012,ai:.82+st*.033,trees:.004+st*.003,gates:1,ramps:1})),
+    (st,i)=>({len:2400+st*400,curve:1.4+st*.8,hill:600+st*300,slope:.05+st*.012,ai:.68+st*.055,trees:.004+st*.003,gates:1,ramps:1})),
   theme:sledTheme,
   place(C,r){ const S=C.S; let gc=0;
     for(let i=C.start+40;i<C.finish-20;i++){ const s=C.segs[i];
@@ -726,7 +726,7 @@ const JET={id:'jet',name:'浪尖快艇賽',camH:820,kmh:120,engine:'square',tagH
     ['瀑布峽谷','',{mod:'green',tx:{spr:[['waterfall',2],['cliff',4],['pine',2]],dens:.4}}],['海盜灣','',{tx:{spr:[['boat',4],['island',2],['rock',2]]}}],['燈塔外海','',{tx:{spr:[['lighthouse',1],['rock',4]]}}],
     ['浪濤海峽','',{tx:{spr:[['rock',4],['island',1]]}}],['冰山海域','',{mod:'ice',tx:{spr:[['iceberg',6],['rock',1]]}}],['雨夜港口','',{mod:'night rain',tx:{spr:[['container',3],['crane',2],['lighthouse',.5]],dens:.35}}],
     ['颱風巨浪','',{mod:'rain'}],['漩渦海峽','',{tx:{spr:[['rock',5],['cliff',1]]}}],['海龍迷宮','',{mod:'night',tx:{spr:[['temple',3],['rock',3]],dens:.3}}]],
-    (st,i)=>({len:2500+st*450,curve:1.5+st*.85,hill:300+st*150,wave:40+st*45,ai:.8+st*.035,rocks:.003+st*.002,rings:.006,ramps:.0015+st*.0004})),
+    (st,i)=>({len:2500+st*450,curve:1.5+st*.85,hill:300+st*150,wave:40+st*45,ai:.66+st*.06,rocks:.003+st*.002,rings:.006,ramps:.0015+st*.0004})),
   theme:jetTheme,
   place(C,r){ const S=C.S; for(let i=C.start+50;i<C.finish-20;i++){ const s=C.segs[i];
       if(r()<S.rocks) s.obs.push({k:r()<.5?'rock':'log',x:(r()*1.5-.75),dz:r()*SEGL,ww:r()<.5?560:1000,hw:r()<.5?220:420,water:1});
@@ -764,7 +764,7 @@ const RUN={id:'run',name:'萌寵障礙賽跑',camH:720,kmh:40,run:1,tagH:1.25,us
     ['熔岩小島','',{tx:{spr:[['volcano',1],['rock',4],['palm',1]],ground:['#4a3a32','#42332c'],road:['#6a4a3a','#624434'],sky:['#5a2a2a','#c86a3a'],far:'mountain',farCol:'#3a2a2a',farCol2:'#5a3a32',pitCol:'#ff6a1a'}}],
     ['天空步道','',{tx:{spr:[['cloud',6]],ground:['#ffffff','#eef6ff'],road:['#c8a0f0','#c098e8'],far:'none',pitCol:'#9ad0ff'}}],['彩虹橋','',{mod:'night',tx:{spr:[['cloud',3]],road:['#ff6ac8','#6ac8ff'],far:'none',pitCol:'#3a2a6a'}}],
     ['夢幻迷宮','',{tx:{spr:[['hedge',8],['balloon',1]],ground:['#4f8a3a','#478234'],road:['#c8b890','#c0b088']}}]],
-    (st,i)=>({len:1900+st*350,curve:1+st*.6,hill:500+st*350,ai:.8+st*.035,hurdles:.012+st*.004,low:st>=2,pits:st>=2,mud:st>=1,springs:st>=3})),
+    (st,i)=>({len:1900+st*350,curve:1+st*.6,hill:500+st*350,ai:.66+st*.06,hurdles:.012+st*.004,low:st>=2,pits:st>=2,mud:st>=1,springs:st>=3})),
   theme:runTheme,
   place(C,r){ const S=C.S; let last=0;
     for(let i=C.start+30;i<C.finish-15;i++){ const s=C.segs[i]; if(i-last<6) continue;

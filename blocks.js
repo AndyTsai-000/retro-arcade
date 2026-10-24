@@ -22,7 +22,10 @@ const WORLDS=[
   {name:'雪山小屋',sky:['#9fc8ff','#eef6ff'],frame:'#7aa8e8'},
   {name:'星空太空站',sky:['#0b0a2e','#2b1f5e'],frame:'#9a7aff'}];
 const STAGES=Array.from({length:30},(_,i)=>{ const w=Math.floor(i/5),k=i%5;
-  return {w,name:WORLDS[w].name+' '+(k+1),lines:8+w*2+k*2,fall:.8*Math.pow(.915,i),junk:k>=3?2+w+(k-3)*2:0}; });
+  return {w,name:WORLDS[w].name+' '+(k+1),lines:6+w*2+k*2,fall:1.05*Math.pow(.912,i),junk:w>=1&&k>=3?1+w+(k-3)*2:0, // 前面的關卡慢、行數少、沒有垃圾行
+    iExtra:i<5?2:i<10?1.3:i<15?.8:i<20?.4:i<25?0:-.3}; }); // 每 7 塊多給幾條長條（負數＝有時候少一條）
+// 對戰：一開始長條多、掉得慢，時間越久長條越少、掉得越快
+const vsExtra=T=>T<60?2:T<120?1.2:T<180?.6:T<240?0:-.35,vsFall=T=>Math.max(.1,.9*Math.pow(.88,T/30));
 const recKey=i=>'arcade.blocks.s'+i,getRec=i=>{ try{ const v=localStorage.getItem(recKey(i)); return v==null?null:+v; }catch(e){ return null; } };
 
 /* ---------- 畫方塊（先畫成小圖存起來） ---------- */
@@ -82,7 +85,8 @@ function bg(c,w,h,wi,t){ const Wd=WORLDS[wi],k=w/800,g=c.createLinearGradient(0,
 
 /* ---------- 一塊盤面 ---------- */
 function Board(rnd,o){ const b={grid:new Uint8Array(COLS*ROWS),bag:[],queue:[],cur:null,fallT:0,lockT:0,lockN:0,lines:0,score:0,combo:-1,over:false,pend:0,fx:[],pops:[],das:{d:0,t:0},land:0,shake:0};
-  const refill=()=>{ const k=KINDS.split(''); for(let i=k.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [k[i],k[j]]=[k[j],k[i]]; } b.bag.push(...k); };
+  const refill=()=>{ const k=KINDS.split(''),ex=o.iExtra?o.iExtra():0; if(ex>0){ for(let n=0;n<Math.floor(ex);n++) k.push('I'); if(rnd()<ex%1) k.push('I'); } else if(ex<0&&rnd()<-ex) k.splice(k.indexOf('I'),1);
+    for(let i=k.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [k[i],k[j]]=[k[j],k[i]]; } b.bag.push(...k); };
   b.next=()=>{ while(b.queue.length<4){ if(!b.bag.length) refill(); b.queue.push(b.bag.shift()); } const k=b.queue.shift(); while(b.queue.length<3){ if(!b.bag.length) refill(); b.queue.push(b.bag.shift()); }
     const m=MAT[k]; b.cur={k,ci:KINDS.indexOf(k)+1,m,x:Math.floor((COLS-m.length)/2),y:k==='I'?-1:0}; b.lockT=0; b.lockN=0; b.fallT=0; if(b.hit(b.cur.m,b.cur.x,b.cur.y)) b.over=true; };
   b.hit=(m,x,y)=>{ for(let r=0;r<m.length;r++) for(let q=0;q<m.length;q++){ if(!m[r][q]) continue; const X=x+q,Y=y+r; if(X<0||X>=COLS||Y>=ROWS) return true; if(Y>=0&&b.grid[Y*COLS+X]) return true; } return false; };
@@ -109,7 +113,8 @@ function create(env,opts){
   const net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,29),ST=STAGES[si],L=opts.look||{},skin=L.skin||'candy';
   const vs=two||!!net,me=net?net.me:0,seed=net?Number(net.seed)||1:Math.floor(Math.random()*1e9);
   const {ctx:c}=env.canvas2d(W,H),sfx=n=>env.sfx(n);
-  const boards=[]; const nb=vs?2:1; for(let i=0;i<nb;i++){ const b=Board(rng(seed+(net?0:i*7)),{level:si}); boards.push(b); }
+  const boards=[]; const nb=vs?2:1; let playT=0; for(let i=0;i<nb;i++){ const b=Board(rng(seed+(net?0:i*7)),{level:si,iExtra:()=>vs?vsExtra(playT):ST.iExtra}); boards.push(b); }
+  const fall=()=>vs?vsFall(playT):ST.fall;
   boards.forEach(b=>{ if(!vs&&ST.junk) for(let i=0;i<ST.junk;i++) b.addJunk(1); b.next(); });
   let t=0,intro=2.2,ended=false,endT=0,winner=-1,popups=[],sendT=0,cheer=0,sad=0;
   const remote=net?boards[1-me]:null; // 連線時對手的盤面：照對方送來的資料畫
@@ -124,8 +129,8 @@ function create(env,opts){
     if(dir){ if(b.das.d!==dir){ b.das.d=dir; b.das.t=0; if(b.move(dir,0)) sfx('click'); } else { b.das.t+=dt; while(b.das.t>.17){ b.das.t-=.05; b.move(dir,0); } } } else b.das.d=0;
     if(hitAny(K.u)){ if(b.rotate()) sfx('click'); }
     if(hitAny(K.x)){ const r=b.hardDrop(); after(b,r>=100?r-100:r,true); return; }
-    const soft=held(b,K.d); b.fallT+=dt*(soft?Math.max(1,ST.fall/.03):1);
-    while(b.fallT>=ST.fall&&!b.over){ b.fallT-=ST.fall; if(b.move(0,1)){ if(soft) b.score+=1; b.lockT=0; } else break; }
+    const F=fall(),soft=held(b,K.d); b.fallT+=dt*(soft?Math.max(1,F/.03):1);
+    while(b.fallT>=F&&!b.over){ b.fallT-=F; if(b.move(0,1)){ if(soft) b.score+=1; b.lockT=0; } else break; }
     if(b.cur&&b.hit(b.cur.m,b.cur.x,b.cur.y+1)){ b.lockT+=dt; if(b.lockT>.5) after(b,b.lock(),false); } }
   const sendState=()=>{ const b=boards[me]; net.send({st:[btoa(String.fromCharCode(...b.grid)),b.cur,b.score,b.lines,b.pend,b.queue.slice(0,3)]}); };
   function after(b,n,hard){ const bi=boards.indexOf(b); if(net) sendState(); sfx(n===4?'boom':n>=2?'item':n===1?'pop':'land');
@@ -141,6 +146,7 @@ function create(env,opts){
     t+=dt; for(const p of popups) p.t+=dt; popups=popups.filter(p=>p.t<1.4); if(cheer>0) cheer-=dt; if(sad>0) sad-=dt;
     for(const b of boards){ for(const f of b.fx) f.t+=dt; b.fx=b.fx.filter(f=>f.t<.45); for(const p of b.pops){ p.t+=dt; p.vy+=600*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; } b.pops=b.pops.filter(p=>p.t<1); if(b.land>0) b.land-=dt; if(b.shake>0) b.shake-=dt; }
     if(intro>0){ intro-=dt; if(!net&&(env.hit('Space')||env.hit('Enter'))&&intro<1.6) intro=0; return; }
+    if(!ended) playT+=dt;
     if(ended){ endT+=dt; if(endT>1.8) finish(); return; }
     if(net){ control(boards[me],KS[0],dt); sendT-=dt; if(sendT<=0){ sendT=.1; sendState(); } }
     else boards.forEach((b,i)=>control(b,KS[i],dt)); }

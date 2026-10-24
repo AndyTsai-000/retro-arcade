@@ -249,7 +249,7 @@ function drawTile(ctx,st,v,x,y,gx,gy,t){
 }
 
 function create(env,opts){
-  const st=STAGES[opts.stage||0],D=DIFF[opts.variant]||DIFF.normal,net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p',single=!net&&!local2,me=net?net.me:0,humans=net?net.count:local2?2:1;
+  const st=STAGES[opts.stage||0],D0=DIFF[opts.variant]||DIFF.normal,D=D0===DIFF.normal&&(opts.stage||0)<4?Object.assign({},D0,[{think:[.4,.65],bombP:.42,hunt:0,itemR:4,cap:3,flee:.2},{think:[.3,.5],bombP:.52,hunt:0,itemR:5,cap:4,flee:.15},{think:[.22,.38],bombP:.62,itemR:6,cap:5,flee:.12},{think:[.18,.32],bombP:.7,itemR:7,cap:6,flee:.1}][opts.stage||0]):D0,net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p',single=!net&&!local2,me=net?net.me:0,humans=net?net.count:local2?2:1;
   const {ctx}=env.canvas2d(W,H);
   const grid=new Uint8Array(N),flameT=new Float32Array(N),bombAt=new Uint8Array(N),flameC=new Uint8Array(N);
   let items=new Map(),bombs=[],pending=[],time=180,t=0,overT=0,ended=false,evq=[],sendT=0,lastSent='';

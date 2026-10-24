@@ -682,7 +682,7 @@ function create(env,opts){
   const BOTN=['阿凱','小芳','阿明','阿珠','小胖','阿翔'];
   const names=[]; for(let i=0;i<num;i++) names.push(i>=humans?BOTN[(i-humans+seed%3)%BOTN.length]+'（電腦）':net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你'));
   const ps=[]; for(let n=0;n<num;n++){ const bot=n>=humans,look=Object.assign({},ALT[n%4],(bot?null:net?net.looks&&net.looks[n]:n===0?opts.look:null)||{});
-    const sk=clamp(.5+S.stars*.06+Math.random()*.16,.5,.92);
+    const sk=clamp(.36+S.stars*.09+Math.random()*.16,.4,.92); // 1 星的電腦比較慢，5 星不變
     ps.push({n,x:LANE[4]-14+(n%2)*-30-Math.floor(n/2)*10,d:60-n*46,wasIn:false,v:0,vx:0,fall:0,inv:0,look,bot,team:teamOf[n],remote:!!net&&(bot?!host:n!==me),tx:0,td:0,
       ai:bot&&host?{skill:sk,lane:[252,300,180][n%3],top:.78+sk*.22,obey:Math.random()<sk,blT:3+Math.random()*6,blind:0}:null,
       oi:0,phase:'pick',stopT:0,food:3,fuel:100,deadline:0,money:{fee:0,tip:0,fine:0,gas:0,late:0,comp:0,fix:0},done:false,doneT:0,deliv:0,lost:0,timeout:false,log:[],lean:0,gust:0,lastD:60-n*46,warned:{}}); }

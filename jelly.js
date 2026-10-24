@@ -35,13 +35,13 @@ function makeLevel(i){ const L=LEVELS[i],r=rng(4421*(i+1)),d=i/29,cols=[],ents=[
   if(i>=2) chunks.push('platforms','spikes'); if(i>=6) chunks.push('gap','enemies'); if(i>=9) chunks.push('moving'); if(i>=16) chunks.push('moving','spikes','platforms');
   let starPlan=[0,0,0],cp=0;
   while(X()<target){ const kind=pick(chunks),x0=X();
-    if(kind==='flat'){ flat(4+Math.floor(r()*5)); if(r()<.5) ents.push({t:'slime',x:(x0+2)*TS,y:(gy-1)*TS}); }
-    else if(kind==='gap'){ flat(2); const g=Math.min(4,2+Math.floor(r()*(1+d*2.4))); for(let k=0;k<g;k++) col(); /* 最寬 4 格，跑起來跳得過 */ for(let k=0;k<g+1;k++) coins.push({x:(x0+2+k)*TS+16,y:(gy-3-Math.sin(k/g*Math.PI)*1.5)*TS}); flat(3); }
+    if(kind==='flat'){ flat(4+Math.floor(r()*5)); if(r()<(i<3?.25:.5)) ents.push({t:'slime',x:(x0+2)*TS,y:(gy-1)*TS}); }
+    else if(kind==='gap'){ flat(2); const g=Math.min(i<4?2:i<10?3:4,2+Math.floor(r()*(1+d*2.4))); for(let k=0;k<g;k++) col(); /* 最寬 4 格，跑起來跳得過 */ for(let k=0;k<g+1;k++) coins.push({x:(x0+2+k)*TS+16,y:(gy-3-Math.sin(k/g*Math.PI)*1.5)*TS}); flat(3); }
     else if(kind==='step'){ const ng=clamp(gy+pick([-2,-1,-1,1,1,2]),8,13); flat(2); gy=ng; flat(4+Math.floor(r()*3)); }
     else if(kind==='blocks'){ flat(2); const y=gy-3,n=3+Math.floor(r()*3); for(let k=0;k<n;k++){ const a=ground(gy); a[y]=k===Math.floor(n/2)?3:(r()<.35?3:2); if(a[y]===3) a.item=r()<.3?'fruit':'coin'; }
       if(r()<.6) ents.push({t:'slime',x:(x0+3)*TS,y:(gy-1)*TS}); if(!starPlan[0]&&r()<.6){ starPlan[0]=1; stars.push({x:(x0+2+Math.floor(n/2))*TS+16,y:(y-2.5)*TS,id:0}); } flat(2); }
     else if(kind==='pillar'){ flat(2); const h=2+Math.floor(r()*2),a=ground(gy),b=ground(gy); for(let y=gy-h;y<gy;y++){ a[y]=7; b[y]=7; } a.pillTop=gy-h; flat(2); if(r()<.5) ents.push({t:i>=4&&r()<.5?'spiky':'slime',x:(x0+6)*TS,y:(gy-1)*TS}); flat(2); }
-    else if(kind==='enemies'){ flat(8); const n=1+Math.floor(r()*(1+d*2)); for(let k=0;k<n;k++) ents.push({t:i>=4&&r()<.35?'spiky':'slime',x:(x0+2+k*2)*TS,y:(gy-1)*TS}); if(i>=7&&r()<.5) ents.push({t:'bee',x:(x0+5)*TS,y:(gy-4)*TS}); }
+    else if(kind==='enemies'){ flat(8); const n=1+Math.floor(r()*(1+d*2)); for(let k=0;k<n;k++) ents.push({t:i>=7&&r()<.35?'spiky':'slime',x:(x0+2+k*2)*TS,y:(gy-1)*TS}); if(i>=7&&r()<.5) ents.push({t:'bee',x:(x0+5)*TS,y:(gy-4)*TS}); }
     else if(kind==='coins'){ flat(6); for(let k=0;k<5;k++) coins.push({x:(x0+1+k)*TS+16,y:(gy-2)*TS}); }
     else if(kind==='stairs'){ const n=3+Math.floor(r()*2),gap=r()<.5,st=k=>{ const a=ground(gy); for(let y=gy-k;y<gy;y++) a[y]=2; }; for(let k=1;k<=n;k++) st(k); if(gap){ st(n); col(); col(); st(n); } for(let k=n;k>=1;k--) st(k); flat(2); } /* 中間有洞時，頂端兩邊都做兩格寬，衝上去才停得住 */
     else if(kind==='platforms'){ flat(2); const n=2+Math.floor(r()*2); let py=gy-2; /* 兩格寬的果凍平台，中間空 1～2 格 */

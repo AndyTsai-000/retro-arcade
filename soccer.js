@@ -17,8 +17,8 @@ const KINDS=Object.keys(SHOT);
 const mk=(name,spd,pow,tk,shot)=>({name,spd,pow,tk,shot});
 const HOME=[mk('鐵門',1,1,1,'fire'),mk('大山',.92,1.1,1.2,'sky'),mk('阿強',1,1,1.1,'snake'),mk('小虎',1.15,1,.9,'banana'),mk('阿烈',1.08,1.2,1,'fire')];
 const STAGES=[
-  {name:'海風隊',col:'#3d8bff',lv:.3},{name:'沙漠隊',col:'#e0a030',lv:.45},{name:'冰原隊',col:'#7fd0e8',lv:.6},
-  {name:'叢林隊',col:'#3fae5a',lv:.72},{name:'鋼鐵隊',col:'#8a8fa8',lv:.85},{name:'冠軍隊',col:'#c56bff',lv:1}
+  {name:'海風隊',col:'#3d8bff',lv:.16},{name:'沙漠隊',col:'#e0a030',lv:.32},{name:'冰原隊',col:'#7fd0e8',lv:.5},
+  {name:'叢林隊',col:'#3fae5a',lv:.68},{name:'鋼鐵隊',col:'#8a8fa8',lv:.85},{name:'冠軍隊',col:'#c56bff',lv:1}
 ];
 const FOE=['門神','阿盾','老牆','飛毛','射手'],FSHOT=['fire','sky','snake','banana','ghost'];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;

@@ -20,7 +20,7 @@ const PITCH=[
 const B1=63.64,BASE=[[0,0],[B1,B1],[0,B1*2],[-B1,B1],[0,0]];
 const FPOS=[[0,60.5],[0,-6],[52,78],[30,128],[-52,78],[-30,128],[-140,230],[0,290],[140,230]]; // 投捕一二三游左中右
 const FNAME=['投手','捕手','一壘手','二壘手','三壘手','游擊手','左外野','中外野','右外野'];
-const STAGES=[{name:'海風隊',col:'#3d8bff',lv:.25},{name:'沙漠隊',col:'#e0a030',lv:.4},{name:'冰原隊',col:'#7fd0e8',lv:.55},{name:'叢林隊',col:'#3fae5a',lv:.7},{name:'鋼鐵隊',col:'#8a8fa8',lv:.85},{name:'冠軍隊',col:'#c56bff',lv:1}];
+const STAGES=[{name:'海風隊',col:'#3d8bff',lv:.12},{name:'沙漠隊',col:'#e0a030',lv:.28},{name:'冰原隊',col:'#7fd0e8',lv:.45},{name:'叢林隊',col:'#3fae5a',lv:.65},{name:'鋼鐵隊',col:'#8a8fa8',lv:.85},{name:'冠軍隊',col:'#c56bff',lv:1}];
 const HOMEN=['小虎','阿強','阿烈','大山','鐵門','阿明','小傑','阿凱','阿翔'],AWAYN=['飛毛','阿盾','射手','老牆','門神','阿風','小岩','阿浪','阿雷'];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rnd=()=>Math.random(),gauss=()=>(rnd()+rnd()+rnd()-1.5)/.87;
 const fence=th=>330+70*Math.cos(th*2); // 全壘打牆：邊線 330 呎、中外野 400 呎

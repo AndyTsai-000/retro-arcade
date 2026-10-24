@@ -53,7 +53,7 @@ function dancer(c,x,y,s,o){ const P=o.pose,u=o.pt>0?1:0,b=Math.sin(o.beat*Math.P
   const L=o.L||{}; R().drawChibi(c,x,y,s,Object.assign({t:o.t,body:L.color||'#7a5cff',pants:'#2b2b44',shoe:'#fff',acc:L.acc||'phones',hairStyle:L.hair||'girl',capCol:L.color||'#ff5d8f',hair:L.hairCol},a)); }
 
 function create(env,opts){
-  const RHY=R(),net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,29),th=Math.floor(si/5),song=RHY.makeSong(si,'dance'),L=opts.look||{};
+  const RHY=R(),net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,29),_e=RHY.setEase(si),th=Math.floor(si/5),song=RHY.makeSong(si,'dance'),L=opts.look||{};
   const me=net?net.me:0,np=two||net?2:1,names=net?(net.names||['玩家 1','玩家 2']):two?['1P','2P']:[opts.name||'你'];
   const SPEED=(250+song.bpm*1.3)*(({slow:.8,normal:1,fast:1.3})[(opts.options||{}).speed]||1);
   // 譜面：旋律往上走就按 ↑／→，往下走按 ↓／←，一樣高就左右換；後面的關卡在樂句開頭加「雙踩」

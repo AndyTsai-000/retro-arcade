@@ -802,7 +802,7 @@ function create(env,opts){
     const look=lookFor(i,human);
     const k={i,human,color:look.color,look,bk:0,gripT:0,ss:0,remote:human?(!!net&&i!==me):!host,local:human&&(!net||i===me),x:px[si]+nx[si]*lane,z:pz[si]+nz[si]*lane,h:Math.atan2(tx[si],tz[si]),vx:0,vz:0,idx:si,d:lane,prog:si-N,
       boostT:0,drifting:false,driftT:0,gauge:0,stock:0,items:[],toastT:0,toastText:'',spin:0,tumble:0,slowT:0,cloudT:0,shield:0,fin:null,wall:false,left:false,flags:0,
-      ai:human?null:{lane:lane*.8,skill:st.ai+(i-humans)*.022,nt:6+Math.random()*8},mesh:makeKart(look)};
+      ai:human?null:{lane:lane*.8,skill:st.ai-Math.max(0,1-(opts.stage||0)/20)*.14+(i-humans)*.022,nt:6+Math.random()*8},mesh:makeKart(look)};
     k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1); k.team=teamOf[i];
     { // 車頂名牌
       const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const c=cv.getContext('2d');

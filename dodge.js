@@ -20,10 +20,10 @@ const KINDS=Object.keys(SHOT);
 const mk=(name,hp,pow,spd,cat,dash,jump)=>({name,hp,pow,spd,cat,dash,jump});
 const HOME=[mk('阿烈',56,1.15,1.05,.7,'fast','drop'),mk('小虎',48,1,1.15,.65,'wave','accel'),mk('大山',64,1.25,.9,.6,'pierce','curve')];
 const STAGES=[
-  {name:'海風隊',col:'#3d8bff',lv:.35,team:[mk('浪哥',40,.85,.95,.35,'wave','drop'),mk('阿貝',36,.8,1,.3,'fast','wave'),mk('小蟹',36,.8,.95,.3,'accel','fast')]},
-  {name:'沙漠隊',col:'#e0a030',lv:.5,team:[mk('駱駝王',52,1,.9,.45,'pierce','drop'),mk('阿沙',44,.95,1,.4,'accel','curve'),mk('仙人掌',44,.9,1,.4,'wave','fast')]},
-  {name:'冰原隊',col:'#7fd0e8',lv:.62,team:[mk('雪怪',60,1.1,.9,.5,'drop','pierce'),mk('企鵝',46,1,1.1,.5,'curve','wave'),mk('冰柱',48,1.05,1,.5,'fast','accel')]},
-  {name:'叢林隊',col:'#3fae5a',lv:.74,team:[mk('金剛',66,1.25,.9,.55,'pierce','drop'),mk('豹子',48,1.05,1.25,.6,'fast','curve'),mk('鸚鵡',46,1,1.1,.6,'split','wave')]},
+  {name:'海風隊',col:'#3d8bff',lv:.2,team:[mk('浪哥',40,.85,.95,.35,'wave','drop'),mk('阿貝',36,.8,1,.3,'fast','wave'),mk('小蟹',36,.8,.95,.3,'accel','fast')]},
+  {name:'沙漠隊',col:'#e0a030',lv:.36,team:[mk('駱駝王',52,1,.9,.45,'pierce','drop'),mk('阿沙',44,.95,1,.4,'accel','curve'),mk('仙人掌',44,.9,1,.4,'wave','fast')]},
+  {name:'冰原隊',col:'#7fd0e8',lv:.52,team:[mk('雪怪',60,1.1,.9,.5,'drop','pierce'),mk('企鵝',46,1,1.1,.5,'curve','wave'),mk('冰柱',48,1.05,1,.5,'fast','accel')]},
+  {name:'叢林隊',col:'#3fae5a',lv:.68,team:[mk('金剛',66,1.25,.9,.55,'pierce','drop'),mk('豹子',48,1.05,1.25,.6,'fast','curve'),mk('鸚鵡',46,1,1.1,.6,'split','wave')]},
   {name:'鋼鐵隊',col:'#8a8fa8',lv:.86,team:[mk('鐵壁',74,1.3,.85,.7,'drop','pierce'),mk('齒輪',54,1.15,1.05,.65,'accel','split'),mk('螺絲',52,1.1,1.1,.65,'curve','fast')]},
   {name:'冠軍隊',col:'#c56bff',lv:1,team:[mk('霸王',78,1.4,1,.78,'split','drop'),mk('閃電',56,1.2,1.3,.75,'fast','curve'),mk('鐵拳',64,1.3,1,.72,'pierce','accel')]}
 ];
