@@ -202,16 +202,18 @@ function create(env,opts){
   const P=RHY.Play(env,song,chart,{lead:2.4,fake:!!(opts.options||{}).__fake}); const {ctx:c}=env.canvas2d(W,H);
   const JX=170,LY=150;
   let t=0,ended=false,endT=0,hitFx=[],lastHit={d:0,k:0},judgeTxt=null,armT=0,armSide='d',paused=false,rollCount=0,beatT=0;
-  function press(k){ const T=P.time(); lastHit[k]=.12; armT=.12; armSide=k; if(k==='d') P.syn.don(); else P.syn.ka();
+  function press(k){ const T=P.time();
+    if(k==='r'){ lastHit.d=.12; armT=.12; armSide='d'; P.syn.don(); const roll=chart.find(n=>n.roll&&T>=n.t-.05&&T<=n.te+.05); if(roll){ roll.hits++; rollCount++; P.score+=10; hitFx.push({x:JX,y:LY,t:0,col:'#ffd23f'}); } return; } // 空白鍵：連打
+    lastHit[k]=.12; armT=.12; armSide=k; if(k==='d') P.syn.don(); else P.syn.ka();
     // 連打中：每一下都算
-    const roll=chart.find(n=>n.roll&&T>=n.t-.05&&T<=n.te+.05); if(roll){ roll.hits++; rollCount++; P.score+=10; hitFx.push({x:JX,y:LY,t:0,col:'#ffd23f'}); return; }
     let best=null,bd=1; for(const n of chart){ if(n.roll||n.res) continue; const dt=T-n.t; if(dt<-RHY.WIN.good) break; if(Math.abs(dt)<=RHY.WIN.good&&n.k===k&&Math.abs(dt)<bd){ best=n; bd=Math.abs(dt); } }
     if(!best) return; const j=RHY.judgeOf(T-best.t); best.res=j; P.add(j,best.big); judgeTxt={j,t:0}; hitFx.push({x:JX,y:LY,t:0,col:RHY.JCOL[j],big:best.big}); }
   function update(dt){ t+=dt; for(const f of hitFx) f.t+=dt; hitFx=hitFx.filter(f=>f.t<.5); if(judgeTxt) judgeTxt.t+=dt; for(const k in lastHit) if(lastHit[k]>0) lastHit[k]-=dt; if(armT>0) armT-=dt;
     if(ended){ endT+=dt; if(endT>2.2) finish(); return; }
     P.tick(dt); const T=P.time();
-    if(env.hit('KeyF')||env.hit('KeyJ')||env.hit('Space')) press('d');
-    if(env.hit('KeyD')||env.hit('KeyK')) press('k');
+    if(env.hit('ArrowLeft')) press('d'); // ← 咚、→ 咔、空白鍵連打
+    if(env.hit('ArrowRight')) press('k');
+    if(env.hit('Space')) press('r');
     for(const n of chart){ if(n.roll||n.res) continue; if(T-n.t>RHY.WIN.good){ n.res='miss'; P.add('miss'); judgeTxt={j:'miss',t:0}; } else if(n.t>T) break; }
     if(T>song.dur+.6){ ended=true; endT=0; P.syn.stop(); env.sfx(P.rate()>=60?'win':'lose'); } }
   let done=false;
@@ -245,7 +247,7 @@ function create(env,opts){
     // 連擊
     if(P.combo>=5){ c.textAlign='center'; c.font='900 30px '+PIX; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(P.combo,dx+130,dy-10); c.fillStyle=P.combo>=50?'#ff7eb6':'#ffd23f'; c.fillText(P.combo,dx+130,dy-10); c.font='900 13px '+TC; c.fillStyle='#fff'; c.strokeText('連擊',dx+130,dy+18); c.fillText('連擊',dx+130,dy+18); }
     // 說明
-    if(T<0){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,W/2-210,262,420,96,18); c.fill(); c.textAlign='center'; c.fillStyle='#fff'; c.font='900 18px '+TC; c.fillText('紅色「咚」按 F／J，藍色「咔」按 D／K',W/2,292); c.fillStyle='#ffd23f'; c.font='900 30px '+PIX; c.fillText(T<-1.6?'3':T<-.8?'2':'1',W/2,334); }
+    if(T<0){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,W/2-210,262,420,96,18); c.fill(); c.textAlign='center'; c.fillStyle='#fff'; c.font='900 18px '+TC; c.fillText('紅色「咚」按 ←，藍色「咔」按 →，黃色連打按空白鍵',W/2,292); c.fillStyle='#ffd23f'; c.font='900 30px '+PIX; c.fillText(T<-1.6?'3':T<-.8?'2':'1',W/2,334); }
     // 進度條
     c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(0,H-6,W,6); c.fillStyle='#ffd23f'; c.fillRect(0,H-6,W*clamp(T/song.dur,0,1),6);
     if(ended&&endT>.3){ const ok=P.rate()>=60; c.textAlign='center'; c.font='900 40px '+TC; c.lineWidth=8; c.strokeStyle='#14122b'; c.strokeText(ok?'演奏成功！':'再接再厲',W/2,H/2+20); c.fillStyle=ok?'#ffd23f':'#ff8a8a'; c.fillText(ok?'演奏成功！':'再接再厲',W/2,H/2+20); } }
@@ -268,16 +270,16 @@ function preview(ctx,w,h,L,t){ scene(ctx,w,h,2,t); const hit=Math.sin(t*6)>.5,si
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).drum={
   name:'節奏小鼓手',tag:'DRUM BEAT',color:'#ff5d4f',ownMusic:true,
   desc:'祭典的夜晚來打鼓！跟著原創曲子，紅色「咚」敲鼓面、藍色「咔」敲鼓邊，30 首曲子一首比一首快。',
-  goal:'音符滑到左邊的圓圈時敲下去：紅色「咚」、藍色「咔」，黃色長條就連續狂敲。達成率 60% 以上過關。',
-  stageGoal:si=>{ const s=RHY.makeSong(si,'drum'); return '「'+SONGS[si]+'」'+s.bpm+' BPM。音符滑到左邊圓圈時敲：紅色「咚」、藍色「咔」'+(s.tier>=1?'，大顆的音符分數加倍，黃色長條要連續狂敲':'')+'。達成率 60% 以上就過關，解鎖下一首。'; },
+  goal:'音符滑到左邊的圓圈時敲下去：紅色「咚」按 ←、藍色「咔」按 →，黃色長條用空白鍵連續狂敲。達成率 60% 以上過關。',
+  stageGoal:si=>{ const s=RHY.makeSong(si,'drum'); return '「'+SONGS[si]+'」'+s.bpm+' BPM。音符滑到左邊圓圈時敲：紅色「咚」、藍色「咔」'+(s.tier>=1?'，大顆的音符分數加倍，黃色長條用空白鍵連續狂敲':'')+'。達成率 60% 以上就過關，解鎖下一首。'; },
   stages:SONGS,stars:SONGS.map((s,i)=>1+Math.floor(i/6)),stageLabel:'選擇曲子',
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v+' 分'; },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   modes:[{id:'1p',label:'開始演奏'}],
   options:[{key:'speed',label:'音符速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]}],
-  help:[['F 或 J（空白鍵）','咚：紅色音符'],['D 或 K','咔：藍色音符'],['黃色長條','任何鍵連續狂敲']],
-  touchHelp:[['咚','紅色音符'],['咔','藍色音符'],['黃色長條','兩顆都可以連續狂敲']],
-  touch:{left:[{l:'咔',c:'KeyD',big:true}],right:[{l:'咚',c:'KeyJ',big:true,act:true}]},
+  help:[['←','咚：紅色音符'],['→','咔：藍色音符'],['空白鍵','黃色長條：連續狂敲（連打）']],
+  touchHelp:[['咚','紅色音符'],['咔','藍色音符'],['連打','黃色長條時連續狂敲']],
+  touch:{left:[{l:'咚',c:'ArrowLeft',big:true}],right:[{l:'連打',c:'Space'},{l:'咔',c:'ArrowRight',big:true,act:true}]},
   best:{label:'最高分',fmt:v=>v+' 分',lower:false},
   looks:[{key:'hair',label:'髮型',opts:[{id:'boy',label:'短髮'},{id:'girl',label:'長髮'},{id:'bun',label:'包包頭'}]},
     {key:'acc',label:'頭上',opts:[{id:'band',label:'頭巾'},{id:'cap',label:'帽子'},{id:'bow',label:'蝴蝶結'},{id:'none',label:'不戴'}]},
