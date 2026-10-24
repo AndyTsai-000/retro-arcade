@@ -100,6 +100,12 @@ function backdrop(c,wi,cam,t){ const Wd=WORLDS[wi],g=c.createLinearGradient(0,0,
   if(wi===3){ c.fillStyle='rgba(255,255,255,.85)'; for(let k=0;k<40;k++){ const x=((k*97-cam*.6)%W+W)%W+Math.sin(t+k)*8,y=(t*30+k*53)%H; c.beginPath(); c.arc(x,y,1.5+k%3,0,7); c.fill(); } } }
 
 /* ---------- 人物與怪物 ---------- */
+const HEROES=[{id:'berry',label:'莓莓',hair:'girl',acc:'bow',color:'#ff5d6d'},{id:'apple',label:'阿果',hair:'boy',acc:'cap',color:'#5fd068'},{id:'mikan',label:'小橘',hair:'bun',acc:'band',color:'#ff9a3d'},{id:'sky',label:'藍藍',hair:'girl',acc:'phones',color:'#4f9dff',hc:'#6a3a1a'},
+  {id:'kitty',label:'喵喵',hair:'girl',acc:'cat',color:'#b98cff',hc:'#c8903a'},{id:'bunny',label:'兔兔',hair:'bun',acc:'bunny',color:'#ff9ec8',hc:'#8a5a3a'},{id:'bear',label:'熊熊',hair:'boy',acc:'bear',color:'#c8864a',hc:'#6a4028'},{id:'prince',label:'小王子',hair:'boy',acc:'crown',color:'#3a5ad8',hc:'#d8a840'}];
+const heroOf=L=>HEROES.find(h=>h.id===(L&&L.char))||HEROES[0];
+// 朋友：在終點和地圖上揮手（選主角以外的角色）
+function friend(c,x,y,s,k,t,jump,L){ const RH=window.__RHY; if(!RH) return; const me=heroOf(L),pool=HEROES.filter(h=>h.id!==me.id),H=pool[k%pool.length],j=jump?Math.abs(Math.sin(t*6+k))*10:0,wave=Math.sin(t*6+k);
+  RH.drawChibi(c,x,y-j,s,{t:t+k,face:k%2?-1:1,body:H.color,pants:'#3a3a5a',shoe:'#fff',hairStyle:H.hair,acc:H.acc,capCol:H.color,hair:H.hc,armL:jump?2.6:.3,armR:2.3+wave*.4,legL:-.1,legR:.1,mouth:jump?'open':'w'}); }
 function hero(c,x,y,o){ const RH=window.__RHY; if(!RH){ c.fillStyle='#ff7eb6'; c.beginPath(); c.arc(x,y-14,14,0,7); c.fill(); return; }
   const L=o.L||{},big=o.big,s=big?2.05:1.6,ph=o.run*12,air=o.air;
   let pose={legL:Math.sin(ph)*.75,legR:-Math.sin(ph)*.75,armL:.4-Math.sin(ph)*.7,armR:.4+Math.sin(ph)*.7,bob:Math.abs(Math.sin(ph))*1.5,mouth:'w'};
@@ -107,7 +113,7 @@ function hero(c,x,y,o){ const RH=window.__RHY; if(!RH){ c.fillStyle='#ff7eb6'; c
   if(air) pose={legL:-.7,legR:.45,armL:2.5,armR:1.3,bob:0,mouth:'open'};
   if(o.hurt) pose.mouth='o';
   c.save(); if(o.face<0){ c.translate(x,0); c.scale(-1,1); c.translate(-x,0); }
-  RH.drawChibi(c,x,y,s,Object.assign({t:o.t,face:1,body:L.color||'#ff5d6d',pants:'#3a5ad8',shoe:'#ffd23f',hairStyle:L.hair||'girl',acc:L.acc||'bow',capCol:L.color||'#ff5d6d'},pose));
+  const HR=heroOf(L); RH.drawChibi(c,x,y,s,Object.assign({t:o.t,face:1,body:HR.color,pants:'#3a5ad8',shoe:'#ffd23f',hairStyle:HR.hair,acc:HR.acc,capCol:HR.color,hair:HR.hc},pose));
   if(big){ c.fillStyle='rgba(255,255,255,.7)'; const k=(o.t*4)%1; c.beginPath(); c.arc(x+12,y-60+k*10,1.8,0,7); c.fill(); }
   c.restore(); }
 function foe(c,e,t){ const x=e.x,y=e.y,face=e.vx<0?-1:1; c.save(); c.translate(x,y);
@@ -150,7 +156,7 @@ function worldMap(c,cam,t,cur,avatar,L){ // 六個區域連成一條路
       else if(w===5){ c.fillStyle='#fff'; for(const [dx,r2] of [[-10,10],[0,13],[11,10]]){ c.beginPath(); c.arc(x+dx,y,r2,0,7); c.fill(); } }
       else if(w===2){ c.fillStyle='#fff'; c.fillRect(x-2,y-20,4,20); c.fillStyle=['#ff5d8f','#7a5cff','#3ddbd9'][k%3]; c.beginPath(); c.arc(x,y-26,10,0,7); c.fill(); }
       else { c.fillStyle='#4fae3a'; c.beginPath(); c.arc(x,y-10,12,0,7); c.fill(); c.fillStyle='#ff5d6d'; c.beginPath(); c.arc(x-4,y-12,2.4,0,7); c.fill(); } }
-    c.fillStyle='rgba(11,10,28,.6)'; rr(c,x0+130,24,140,30,15); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(Wd.name,x0+200,40); }
+    c.fillStyle='rgba(11,10,28,.6)'; rr(c,x0+130,50,140,30,15); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(Wd.name,x0+200,66); }
   // 路
   c.strokeStyle='rgba(255,255,255,.9)'; c.lineWidth=8; c.setLineDash([2,12]); c.lineCap='round'; c.beginPath(); NODES.forEach((n,i)=>i?c.lineTo(n.x-cam,n.y):c.moveTo(n.x-cam,n.y)); c.stroke(); c.setLineDash([]);
   NODES.forEach((n,i)=>{ const x=n.x-cam; if(x<-40||x>W+40) return; const rec=getRec(i),open=i===0||getRec(i-1)!=null,cl=rec!=null&&rec>=8,castle=LEVELS[i].castle;
@@ -159,6 +165,7 @@ function worldMap(c,cam,t,cur,avatar,L){ // 六個區域連成一條路
     else { c.fillStyle=!open?'#8a8698':cl?'#ffd23f':'#ff5d8f'; c.beginPath(); c.arc(x,n.y,15,0,7); c.fill(); c.strokeStyle='#fff'; c.lineWidth=3; c.stroke(); c.fillStyle='#fff'; c.font='900 13px '+PIX; c.textAlign='center'; c.textBaseline='middle'; c.fillText(open?String(LEVELS[i].k+1):'',x,n.y+1); }
     if(!open){ c.fillStyle='#4a4660'; rr(c,x-6,n.y-4,12,10,2); c.fill(); c.strokeStyle='#4a4660'; c.lineWidth=2.5; c.beginPath(); c.arc(x,n.y-5,4,Math.PI,0); c.stroke(); }
     if(cl){ const st=starsOf(rec); for(let k=0;k<3;k++){ c.fillStyle=k<st?'#ffd23f':'rgba(255,255,255,.4)'; c.font='900 11px '+TC; c.fillText('★',x-12+k*12,n.y+26); } } });
+  for(let w=0;w<6;w++){ const x=w*400+330-cam; if(x>-40&&x<W+40) friend(c,x,150,1.4,w,t,false,L); } // 每個區域站一個朋友
   // 主角站在節點上
   hero(c,avatar.x-cam,avatar.y-10,{t,L,run:avatar.moving?t:0,moving:avatar.moving,face:avatar.face,air:false,big:false});
   const lv=LEVELS[cur],rec=getRec(cur); c.fillStyle='rgba(11,10,28,.82)'; rr(c,W/2-210,H-74,420,60,18); c.fill(); c.fillStyle='#ffd23f'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText('第 '+(cur+1)+' 關　'+lv.name,W/2,H-52);
@@ -254,7 +261,7 @@ function create(env,opts){
     if(!lv) return; const wi=lv.L.w,castle=lv.L.castle; backdrop(c,castle?4:wi,cam,t); if(castle){ c.fillStyle='rgba(30,10,40,.45)'; c.fillRect(0,0,W,H); }
     const cx0=Math.floor(cam/TS),cx1=Math.min(lv.cols.length-1,cx0+Math.ceil(W/TS)+1),oy=H-ROWS*TS;
     c.save(); c.translate(-Math.round(cam),oy);
-    if(!lv.boss){ flagPole(c,lv.goal+16,lv.gyEnd*TS,t,P.goal?Math.min(220,clearT*200):0); miniCastle(c,lv.goal+160,lv.gyEnd*TS,false); }
+    if(!lv.boss){ flagPole(c,lv.goal+16,lv.gyEnd*TS,t,P.goal?Math.min(220,clearT*200):0); miniCastle(c,lv.goal+160,lv.gyEnd*TS,false); friend(c,lv.goal+110,lv.gyEnd*TS,1.5,lv.L.i,t,P.goal,L); friend(c,lv.goal+300,lv.gyEnd*TS,1.5,lv.L.i+3,t,P.goal,L); } /* 終點的朋友，過關時一起跳 */
     if(lv.cp){ const x=lv.cp+TS; let gy=ROWS; for(let y=0;y<ROWS;y++) if(SOLID(tileAt(Math.floor(x/TS),y))){ gy=y; break; } c.fillStyle='#e8e8f8'; c.fillRect(x-2,gy*TS-70,4,70); c.fillStyle=cpOn?'#5fd068':'#9aa0b8'; c.beginPath(); c.moveTo(x+2,gy*TS-70); c.lineTo(x+30,gy*TS-60); c.lineTo(x+2,gy*TS-50); c.fill(); }
     for(let cx=cx0;cx<=cx1;cx++){ const col=lv.cols[cx]; if(!col) continue; for(let cy=0;cy<ROWS;cy++){ const v=col[cy]; if(!v) continue; const top=v===1&&!SOLID(cy>0?col[cy-1]:0); let dy=0; for(const f of fx) if(f.kind==='bump'&&f.cx===cx&&f.cy===cy&&f.t<.15) dy=-Math.sin(f.t/.15*Math.PI)*8;
       c.drawImage(tileImg(castle&&v===1?4:wi,v,top),cx*TS,cy*TS+dy,TS,TS); } }
@@ -291,7 +298,7 @@ function thumb(ctx,w,h,t){ const k=h/H; ctx.save(); ctx.scale(k,k); backdrop(ctx
   foe(ctx,{t:'slime',x:560+Math.sin(t)*40,y:12*TS,vx:-1},t); ctx.restore();
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.13)+'px '+TC; ctx.lineWidth=8; ctx.strokeStyle='#14122b'; ctx.strokeText('蹦蹦果凍島',w/2,h*.2); ctx.fillStyle='#ffd23f'; ctx.fillText('蹦蹦果凍島',w/2,h*.2); }
 function preview(ctx,w,h,L,t){ const k=h/H; ctx.save(); ctx.scale(k,k); backdrop(ctx,0,t*30,t); ctx.translate(0,H-ROWS*TS); for(let cx=0;cx<26;cx++) for(let cy=12;cy<ROWS;cy++) ctx.drawImage(tileImg(0,1,cy===12),cx*TS,cy*TS,TS,TS);
-  const air=Math.sin(t*2)>.5; hero(ctx,W/2,12*TS-(air?40:0),{t,L,run:t,moving:true,air,face:1,big:true}); ctx.restore(); }
+  const air=Math.sin(t*2)>.5; hero(ctx,w/2/k,12*TS-(air?40:0),{t,L,run:t,moving:true,air,face:1,big:true}); ctx.restore(); }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).jelly={
   name:'蹦蹦果凍島',tag:'JELLY ISLAND',color:'#ff5d8f',
@@ -305,9 +312,7 @@ function preview(ctx,w,h,L,t){ const k=h/H; ctx.save(); ctx.scale(k,k); backdrop
   touchHelp:[['◀ ▶','走路、在地圖上選關卡'],['跳','跳（按越久跳越高）、進入關卡']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'跳',c:'Space',big:true,act:true}]},
   best:{label:'最遠',fmt:v=>'第 '+v+' 關',lower:false},
-  looks:[{key:'hair',label:'髮型',opts:[{id:'girl',label:'長髮'},{id:'boy',label:'短髮'},{id:'bun',label:'包包頭'}]},
-    {key:'acc',label:'頭上',opts:[{id:'bow',label:'蝴蝶結'},{id:'cap',label:'帽子'},{id:'band',label:'頭巾'},{id:'phones',label:'耳機'},{id:'none',label:'不戴'}]},
-    {key:'color',label:'衣服顏色',type:'color',opts:['#ff5d6d','#ff9a4d','#ffd23f','#5fd068','#3ddbd9','#4f9dff','#b98cff']}],
+  looks:[{key:'char',label:'角色',opts:HEROES.map(h=>({id:h.id,label:h.label}))}],
   stageShow,preview,thumb,create
 };
 })();

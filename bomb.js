@@ -50,7 +50,28 @@ const STAGES=[
   {name:'夏日海灘',info:'海邊小屋很少，陽傘一大堆，視野開闊。',solid:(x,y)=>x%3===1&&y%3===1&&(x+y)%2===0,box:.76,drop:.5,
    g:['#f4e0a0','#ecd696'],s:['#3d8bff','#fff4dc'],b:['#ffb86b','#e08a3a'],rocks:16,rk:'parasol'},
   {name:'夜市廟會',info:'三排攤位中間留了缺口，紅燈籠一路掛著，最熱鬧也最擠。',solid:(x,y)=>y%4===2&&x>=1&&x<=13&&x%4!==3,box:.74,drop:.45,
-   g:['#4a3a4a','#423444'],s:['#c8202a','#f4d8a0'],b:['#e8a040','#a86a20'],rocks:14,rk:'redlantern'}
+   g:['#4a3a4a','#423444'],s:['#c8202a','#f4d8a0'],b:['#e8a040','#a86a20'],rocks:14,rk:'redlantern'},
+  // 第 21～30 關
+  {name:'熊貓竹林',info:'一叢叢竹子排成格子，中間每隔幾排留一條直路。',solid:(x,y)=>x%2===1&&y%2===1&&x%6!==3,box:.72,drop:.44,
+   g:['#9ad07a','#90c670'],s:['#2a2a2a','#f4f4f4'],b:['#c8a86a','#9a7a3a'],rocks:14,rk:'bamboo'},
+  {name:'恐龍谷',info:'火山岩圍成一個大橢圓，中間散著恐龍蛋。',solid:(x,y)=>{ const d=((x-7)/6)**2+((y-6)/4.4)**2; return d>=.78&&d<=1.12&&x!==7&&y!==6||x%2===1&&y%2===1&&d<.4; },box:.7,drop:.44,
+   g:['#b8a070','#ae9666'],s:['#6a4a3a','#e8d8b0'],b:['#a8784a','#7a5030'],rocks:12,rk:'egg'},
+  {name:'沙漠金字塔',info:'兩圈菱形的石牆，只有四個方向的缺口進得去。',solid:(x,y)=>{ const d=Math.abs(x-7)+Math.abs(y-6); return (d===2||d===5)&&x!==7&&y!==6; },box:.74,drop:.42,
+   g:['#f0d898','#e8cf8c'],s:['#c89850','#fff0c8'],b:['#d8a860','#a87830'],rocks:14,rk:'obelisk'},
+  {name:'彩虹牧場',info:'兩排長長的圍籬把牧場分成三塊，乾草捆到處堆。',solid:(x,y)=>(y===4||y===8)&&x%3!==1,box:.72,drop:.46,
+   g:['#a8e080','#9ed676'],s:['#c83a2a','#fff8e8'],b:['#e8c860','#b8963a'],rocks:16,rk:'hay'},
+  {name:'熱帶雨林',info:'大樹和藤蔓亂中有序，大紅花擋在路口。',solid:(x,y)=>(x%3===1&&y%3===1)||(x%6===2&&y%3===2),box:.74,drop:.44,
+   g:['#5aa04a','#529646'],s:['#3a6a2a','#c8e098'],b:['#8a6a3a','#5a4428'],rocks:14,rk:'flower'},
+  {name:'外星基地',info:'兩圈方形的金屬牆，中間停著小飛碟。',solid:(x,y)=>{ const m=Math.max(Math.abs(x-7),Math.abs(y-6)); return (m===2||m===5)&&x!==7&&y!==6&&!(m===5&&(x===2||x===12)); },box:.68,drop:.46,
+   g:['#3a3a5a','#343452'],s:['#8a9ab8','#3ddbd9'],b:['#6a7a98','#4a5a78'],rocks:12,rk:'ufo'},
+  {name:'歡樂馬戲團',info:'表演場地圍成一圈，外圍是觀眾席，鼓台到處放。',solid:(x,y)=>{ const d=(x-7)**2+(y-6)**2; return d>=13&&d<=18&&x!==7&&y!==6||x%2===1&&y%2===1&&(x<3||x>11); },box:.72,drop:.46,
+   g:['#e8d0a0','#e0c696'],s:['#e23b3b','#fff8e8'],b:['#ffb000','#c88000'],rocks:14,rk:'drum'},
+  {name:'甜點工廠',info:'一排排烤箱和工作台，蛋糕擺滿走道。',solid:(x,y)=>x%2===1&&y%4===1||x%4===1&&y%4===3,box:.74,drop:.46,
+   g:['#ffe8f0','#ffdeea'],s:['#ff7eb6','#ffffff'],b:['#f4c890','#c8945a'],rocks:14,rk:'cake'},
+  {name:'童話城堡',info:'城堡的塔樓一座一座，兩邊是長長的城牆。',solid:(x,y)=>x%4===2&&y%4===2||(x===1||x===13)&&y%2===1,box:.7,drop:.44,
+   g:['#c8c0e0','#bfb6d8'],s:['#7a5cff','#f4f0ff'],b:['#b8a8d8','#8a78b8'],rocks:12,rk:'tower'},
+  {name:'星空遊樂園',info:'晚上的遊樂園，設施和氣球攤擠在一起，是最後也最難的地圖。',solid:(x,y)=>x%2===1&&y%2===1&&(x+y)%4!==0||x%4===0&&y%4===2&&x>0&&x<14,box:.74,drop:.42,
+   g:['#2a2050','#261c4a'],s:['#ff5d8f','#ffd23f'],b:['#7a5cff','#4a3aaa'],rocks:16,rk:'balloon'}
 ];
 // 電腦強度：想多久出手一次、看到機會放水球的機率、一開始的水球威力與數量
 // hunt：會不會瞄準玩家放水球、去刺破被困的人；itemR：多遠內的道具會去撿；cap：水球數與威力上限；slow：移動速度倍率；flee：看到危險後多久才反應
@@ -234,6 +255,30 @@ function drawRock(ctx,st,x,y,t){
     ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(cx,cy-6,16,Math.PI,0); ctx.stroke(); }
   else if(k==='redlantern'){ ctx.fillStyle='#5a3a22'; ctx.fillRect(cx-1.5,cy-18,3,6); const sw=Math.sin((t||0)*2+x)*.12; ctx.save(); ctx.translate(cx,cy-12); ctx.rotate(sw); ctx.fillStyle='#e8231c'; ctx.beginPath(); ctx.ellipse(0,12,12,14,0,0,7); ctx.fill(); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.stroke();
     ctx.fillStyle='#ffd23f'; ctx.fillRect(-7,-3,14,4); ctx.fillRect(-7,24,14,4); ctx.font='900 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('福',0,13); ctx.restore(); }
+  else if(k==='bamboo'){ for(const [dx,h] of [[-8,30],[0,34],[8,28]]){ ctx.fillStyle='#5fb84a'; ctx.fillRect(cx+dx-2.5,cy+14-h,5,h); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.2; ctx.strokeRect(cx+dx-2.5,cy+14-h,5,h); ctx.fillStyle='#3a8a2a'; for(let j=cy+14-h+8;j<cy+14;j+=8) ctx.fillRect(cx+dx-3,j,6,1.6); }
+    ctx.fillStyle='#7ad05a'; for(const [lx,ly,a] of [[-12,-12,-.6],[10,-16,.6],[4,-4,.5]]){ ctx.save(); ctx.translate(cx+lx,cy+ly); ctx.rotate(a); ctx.beginPath(); ctx.ellipse(0,0,7,2.4,0,0,7); ctx.fill(); ctx.restore(); } }
+  else if(k==='egg'){ ctx.fillStyle='#f4ead0'; ctx.beginPath(); ctx.ellipse(cx,cy+2,11,14,0,0,7); ctx.fill(); ol(); ctx.fillStyle='#7ac85a'; for(const [dx,dy,r] of [[-4,-4,3],[5,2,2.5],[-2,7,2],[4,-9,1.8]]){ ctx.beginPath(); ctx.arc(cx+dx,cy+dy,r,0,7); ctx.fill(); }
+    ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(cx-10,cy-2); ctx.lineTo(cx-5,cy-5); ctx.lineTo(cx-1,cy-1); ctx.lineTo(cx+3,cy-5); ctx.stroke(); ctx.fillStyle='#3a8a2a'; ctx.beginPath(); ctx.ellipse(cx+12,cy+12,7,3,-.4,0,7); ctx.fill(); }
+  else if(k==='obelisk'){ ctx.fillStyle='#d8b070'; ctx.beginPath(); ctx.moveTo(cx-8,cy+14); ctx.lineTo(cx-5,cy-12); ctx.lineTo(cx+5,cy-12); ctx.lineTo(cx+8,cy+14); ctx.closePath(); ctx.fill(); ol(); ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(cx-5,cy-12); ctx.lineTo(cx,cy-20); ctx.lineTo(cx+5,cy-12); ctx.closePath(); ctx.fill(); ol();
+    ctx.fillStyle='#8a5a2a'; for(let j=0;j<3;j++){ ctx.fillRect(cx-2.5,cy-6+j*7,5,2); ctx.beginPath(); ctx.arc(cx,cy-2+j*7,1.3,0,7); ctx.fill(); } }
+  else if(k==='hay'){ ctx.fillStyle='#e8c860'; ctx.beginPath(); ctx.ellipse(cx,cy+2,15,12,0,0,7); ctx.fill(); ol(); ctx.strokeStyle='#b8963a'; ctx.lineWidth=1.4; ctx.beginPath(); for(let a=0;a<14;a+=.35) ctx.lineTo(cx-4+Math.cos(a)*a*.8,cy+2+Math.sin(a)*a*.7); ctx.stroke();
+    ctx.strokeStyle='#c83a2a'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx+6,cy-9); ctx.lineTo(cx+6,cy+13); ctx.stroke(); }
+  else if(k==='flower'){ ctx.fillStyle='#3a8a2a'; ctx.beginPath(); ctx.ellipse(cx-9,cy+10,7,3,-.4,0,7); ctx.ellipse(cx+9,cy+10,7,3,.4,0,7); ctx.fill(); const sw=Math.sin((t||0)*2+x)*.05;
+    for(let n=0;n<5;n++){ const a=n/5*6.28-Math.PI/2+sw; ctx.fillStyle='#e8332a'; ctx.beginPath(); ctx.ellipse(cx+Math.cos(a)*8,cy+Math.sin(a)*7,7,5.5,a,0,7); ctx.fill(); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.2; ctx.stroke(); ctx.fillStyle='#fff3c0'; ctx.beginPath(); ctx.arc(cx+Math.cos(a)*9,cy+Math.sin(a)*8,1.6,0,7); ctx.fill(); }
+    ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(cx,cy,5,0,7); ctx.fill(); ol(); }
+  else if(k==='ufo'){ const b=Math.sin((t||0)*3+x)*2; ctx.fillStyle='rgba(61,219,217,.25)'; ctx.beginPath(); ctx.moveTo(cx-6,cy+2+b); ctx.lineTo(cx+6,cy+2+b); ctx.lineTo(cx+12,cy+14); ctx.lineTo(cx-12,cy+14); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#9ad6ff'; ctx.beginPath(); ctx.ellipse(cx,cy-6+b,7,7,0,Math.PI,0); ctx.fill(); ol(); ctx.fillStyle='#8a9ab8'; ctx.beginPath(); ctx.ellipse(cx,cy-3+b,15,6,0,0,7); ctx.fill(); ol();
+    const on=Math.floor((t||0)*4+x)%3; ['#ff5d8f','#ffd23f','#3ddbd9'].forEach((col,n)=>{ ctx.fillStyle=n===on?col:'#4a5a78'; ctx.beginPath(); ctx.arc(cx-8+n*8,cy-2+b,2,0,7); ctx.fill(); }); }
+  else if(k==='drum'){ ctx.fillStyle='#e23b3b'; ctx.fillRect(cx-13,cy-6,26,18); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.strokeRect(cx-13,cy-6,26,18); ctx.fillStyle='#fff';
+    ctx.beginPath(); for(let n=0;n<=6;n++) ctx.lineTo(cx-13+n*26/6,cy+(n%2?10:-4)); ctx.lineTo(cx+13,cy+12); ctx.lineTo(cx-13,cy+12); ctx.closePath(); ctx.globalAlpha=.85; ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.ellipse(cx,cy-6,13,5,0,0,7); ctx.fill(); ol(); ctx.fillStyle='#fff'; for(let n=0;n<5;n++){ ctx.beginPath(); ctx.arc(cx-10+n*5,cy-6+(n%2?2:-2),1.3,0,7); ctx.fill(); } }
+  else if(k==='cake'){ ctx.fillStyle='#f4c890'; ctx.fillRect(cx-12,cy-2,24,14); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.strokeRect(cx-12,cy-2,24,14); ctx.fillStyle='#ff9ec8'; ctx.beginPath(); ctx.moveTo(cx-12,cy-2); for(let n=0;n<=6;n++) ctx.quadraticCurveTo(cx-12+n*4-2,cy+5,cx-12+n*4,cy-2); ctx.lineTo(cx+12,cy-6); ctx.lineTo(cx-12,cy-6); ctx.closePath(); ctx.fill(); ol();
+    ctx.fillStyle='#fff'; ctx.fillRect(cx-1.5,cy-16,3,10); const fl=.8+.2*Math.sin((t||0)*12+x); ctx.fillStyle='#ffb000'; ctx.beginPath(); ctx.ellipse(cx,cy-19,2.2*fl,3.6*fl,0,0,7); ctx.fill(); ctx.fillStyle='#e23b3b'; ctx.beginPath(); ctx.arc(cx+7,cy-8,2.6,0,7); ctx.fill(); }
+  else if(k==='tower'){ ctx.fillStyle='#e8e2f8'; ctx.fillRect(cx-8,cy-8,16,22); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.6; ctx.strokeRect(cx-8,cy-8,16,22); ctx.fillStyle='#7a5cff'; ctx.beginPath(); ctx.moveTo(cx-11,cy-8); ctx.lineTo(cx,cy-24); ctx.lineTo(cx+11,cy-8); ctx.closePath(); ctx.fill(); ol();
+    ctx.fillStyle='#5a3a8a'; ctx.beginPath(); ctx.ellipse(cx,cy+2,3,4,0,Math.PI,0); ctx.fill(); ctx.fillRect(cx-3,cy+2,6,4); const w=Math.sin((t||0)*4+x)*2; ctx.fillStyle='#ff5d8f'; ctx.beginPath(); ctx.moveTo(cx,cy-24); ctx.lineTo(cx+8,cy-22+w); ctx.lineTo(cx,cy-20); ctx.fill(); ctx.fillStyle='#2a2030'; ctx.fillRect(cx-.6,cy-28,1.2,8); }
+  else if(k==='balloon'){ const cols=['#ff5d8f','#ffd23f','#3ddbd9']; [[-7,-8],[7,-10],[0,-16]].forEach(([dx,dy],n)=>{ const b=Math.sin((t||0)*2+n+x)*1.5; ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(cx,cy+12); ctx.lineTo(cx+dx,cy+dy+8+b); ctx.stroke();
+      ctx.fillStyle=cols[n]; ctx.beginPath(); ctx.ellipse(cx+dx,cy+dy+b,6.5,8,0,0,7); ctx.fill(); ctx.strokeStyle='#2a2030'; ctx.lineWidth=1.3; ctx.stroke(); ctx.fillStyle='rgba(255,255,255,.6)'; ctx.beginPath(); ctx.ellipse(cx+dx-2,cy+dy-3+b,1.6,2.6,-.3,0,7); ctx.fill(); });
+    ctx.fillStyle='#8a5a2a'; ctx.fillRect(cx-4,cy+10,8,5); }
   else { ctx.fillStyle='#8a8f9e'; ctx.beginPath(); ctx.ellipse(cx,cy+2,15,13,0,0,7); ctx.fill(); ol(); }
 }
 function drawTile(ctx,st,v,x,y,gx,gy,t){
@@ -582,7 +627,7 @@ function thumb(ctx,w,h,t){
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={_draw:drawChar,_item:drawItem,
   name:'水球炸翻天',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
-  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。20 個場景（村莊、沙漠、冰原、海盜船、海底、萬聖節、雪人村、天空之城、夜市廟會…）、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
+  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。30 個場景（村莊、沙漠、冰原、海盜船、海底、萬聖節、雪人村、天空之城、夜市廟會、熊貓竹林、恐龍谷、外星基地、童話城堡、星空遊樂園…）、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
   goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困。沒有針被困住就會出局。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一定一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多）。分隊時隊友被困住，走過去碰一下就能救出來。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
   variants:[{id:'easy',label:'電腦：簡單'},{id:'normal',label:'電腦：中等',def:true},{id:'hard',label:'電腦：困難'}],
