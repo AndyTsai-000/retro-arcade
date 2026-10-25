@@ -30,6 +30,7 @@ function makeTiles(mi){ const M=MAPS[mi],T=[]; let pi=0,si=0;
     else T.push({i,type:(p==='x')===(side%2===0)?'chance':'fate',name:(p==='x')===(side%2===0)?'機會':'命運'}); }
   return T; }
 // 格子在棋盤上的位置：0 在右下角，往左、往上、往右、往下繞一圈
+const STEPT=.28; // 棋子走一格的時間
 const BS=488,BX=6,BY=6,CN=62,EG=(BS-CN*2)/7;
 function rect(i){ const side=Math.floor(i/8),k=i%8;
   if(k===0) return [[BS-CN,BS-CN],[0,BS-CN],[0,0],[BS-CN,0]][side].concat([CN,CN,side]);
@@ -37,8 +38,8 @@ function rect(i){ const side=Math.floor(i/8),k=i%8;
 const center=i=>{ const [x,y,w,h]=rect(i); return [BX+x+w/2,BY+y+h/2]; };
 
 /* ---------- 卡片 ---------- */
-const CHANCE=[['中了發票獎！',{gain:2000}],['走到起點，領 $2,000',{goto:0}],['往前走 3 格',{fwd:3}],['免費加蓋：自己的一塊地升一級',{up:1}],['過生日：每個人給你 $500',{each:500}],['股票大漲，賺 $1,500',{gain:1500}],['搭車到最近的車站',{station:1}],['拿到免過路費卡一張',{free:1}]];
-const FATE=[['繳房屋稅：每塊地 $200',{tax:200}],['超速罰款 $1,000（放進公園）',{fine:1000}],['吃壞肚子，送去醫院休息一回合',{hosp:1}],['請大家吃飯，每人 $500',{pay:500}],['往回走 3 格',{fwd:-3}],['颱風來了：一塊地的房子少一層',{down:1}],['路邊撿到 $800',{gain:800}],['修房子：每一層 $300',{repair:300}]];
+const CHANCE=[['拿到購地卡！停到別人的地時，可以付原價強制買下',{card:'buy'}],['拿到換地卡！停在自己的地上時，可以跟別人的地互換',{card:'swap'}],['中了發票獎！',{gain:2000}],['走到起點，領 $2,000',{goto:0}],['往前走 3 格',{fwd:3}],['免費加蓋：自己的一塊地升一級',{up:1}],['過生日：每個人給你 $500',{each:500}],['股票大漲，賺 $1,500',{gain:1500}],['搭車到最近的車站',{station:1}],['拿到免過路費卡一張',{free:1}]];
+const FATE=[['撿到一張購地卡！',{card:'buy'}],['繳房屋稅：每塊地 $200',{tax:200}],['超速罰款 $1,000（放進公園）',{fine:1000}],['吃壞肚子，送去醫院休息一回合',{hosp:1}],['請大家吃飯，每人 $500',{pay:500}],['往回走 3 格',{fwd:-3}],['颱風來了：一塊地的房子少一層',{down:1}],['路邊撿到 $800',{gain:800}],['修房子：每一層 $300',{repair:300}]];
 
 /* ---------- 人物 ---------- */
 const PCOL=['#3d8bff','#ff5d8f','#3fae5a','#ffb000'];
@@ -51,17 +52,17 @@ function chibi(c,x,y,s,p,o){ const RH=window.__RHY; if(!RH){ c.fillStyle=p.col; 
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,OP=opts.options||{},mi=clamp(opts.stage|0,0,2),M=MAPS[mi],TI=makeTiles(mi);
   const hot=!net&&opts.mode==='local',seats=net?clamp(net.count+(net.bots||0),2,4):clamp(+OP.seats||4,2,4);
-  const humans=net?net.count:hot?seats:1,me=net?net.me:0,ROUNDS=+OP.rounds||15,START=+OP.cash||15000;
+  const humans=net?net.count:hot?seats:1,me=net?net.me:0,ROUNDS=+OP.rounds||15,START=+OP.cash||15000,PACE=({slow:2,normal:1.5,fast:1})[OP.pace||'normal']||1.5; // 動作之間停多久
   const isAI=p=>p>=humans||left.has(p),left=new Set(),sfx=n=>env.sfx(n);
   const {ctx:c,canvas}=env.canvas2d(W,H);
   const names=[]; for(let p=0;p<seats;p++) names.push(p<humans?(net?(net.names&&net.names[p])||'玩家 '+(p+1):hot?'玩家 '+(p+1):(opts.name||'你')):'電腦 '+(p-humans+1));
   const looks=[]; for(let p=0;p<seats;p++) looks.push(net?(net.looks&&net.looks[p])||{}:p===0?opts.look||{}:{});
-  let G={tiles:TI.map(()=>({own:-1,lv:0})),pl:[],turn:0,phase:'intro',dice:[3,4],ds:0,mv:null,ms:0,card:null,cs:0,prompt:null,log:'',round:1,pot:0,over:null,fx:[],fs:0,wait:2,after:'start'};
-  for(let p=0;p<seats;p++) G.pl.push({cash:START,pos:0,out:false,hosp:0,free:0});
+  let G={tiles:TI.map(()=>({own:-1,lv:0})),pl:[],turn:0,phase:'intro',dice:[3,4],ds:0,mv:null,ms:0,card:null,cs:0,prompt:null,log:'',hist:[],round:1,pot:0,over:null,fx:[],fs:0,wait:2.6,after:'start'};
+  for(let p=0;p<seats;p++) G.pl.push({cash:START,pos:0,out:false,hosp:0,free:0,cards:{buy:0,swap:0}});
   G.turn=net?((Number(net.seed)>>>3)%seats):Math.floor(Math.random()*seats);
-  let t=0,aiT=0,ended=false,btns=[],hover=null,anim=null,seenMv=0,diceT=9,seenDs=0,flying=[],seenFx=0,banner=null;
+  let t=0,aiT=0,ended=false,btns=[],hover=null,anim=null,seenMv=0,diceT=9,seenDs=0,flying=[],seenFx=0,banner=null,bannerQ=[],pickSel=0;
   const P=p=>Object.assign({seat:p,col:PCOL[p%4],look:looks[p]},G.pl[p]);
-  const log=s=>{ G.log=s; },toast=(txt,col)=>{ G.fs++; G.fx.push({k:'txt',txt,col:col||'#ffd23f',s:G.fs}); if(G.fx.length>12) G.fx.shift(); };
+  const log=s=>{ G.log=s; G.hist.push(s); if(G.hist.length>5) G.hist.shift(); },toast=(txt,col)=>{ G.fs++; G.fx.push({k:'txt',txt,col:col||'#ffd23f',s:G.fs}); if(G.fx.length>12) G.fx.shift(); };
   const flow=(a,b,amt)=>{ G.fs++; G.fx.push({k:'pay',a,b,amt,s:G.fs}); if(G.fx.length>12) G.fx.shift(); };
   const alive=()=>G.pl.map((q,i)=>i).filter(i=>!G.pl[i].out);
   const owned=p=>G.tiles.map((x,i)=>i).filter(i=>G.tiles[i].own===p);
@@ -78,27 +79,33 @@ function create(env,opts){
     if(pl.cash<0){ pl.out=true; pl.cash=0; for(const i of owned(p)){ G.tiles[i].own=-1; G.tiles[i].lv=0; } toast(names[p]+' 破產了！','#ff6b7d'); log(names[p]+' 破產出局'); sfx('lose'); }
     else toast(names[p]+' 賣掉地產還債','#ff9a5d'); }
   function startTurn(){ const pl=G.pl[G.turn]; G.prompt=null; G.card=null;
-    if(pl.hosp>0){ pl.hosp--; log(names[G.turn]+' 在醫院休息，這回合不能走'); toast(names[G.turn]+' 休息一回合','#9ad6ff'); G.phase='wait'; G.wait=1.4; G.after='end'; return; }
+    if(pl.hosp>0){ pl.hosp--; log(names[G.turn]+' 在'+M.corner[1]+'休息，這回合不能走'); toast(names[G.turn]+' 在'+M.corner[1]+'休息，這回合不能走','#9ad6ff');
+      if(isAI(G.turn)){ G.phase='wait'; G.wait=2*PACE; G.after='end'; } else { G.phase='rest'; G.prompt={k:'rest',i:pl.pos}; } return; }
     G.phase='roll'; log('輪到 '+names[G.turn]+'，擲骰子！'); }
   function roll(p){ if(G.phase!=='roll'||G.turn!==p) return '還沒輪到你'; const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6); G.dice=[a,b]; G.ds++; sfx('rattle'); move(p,a+b,.9); log(names[p]+' 擲出 '+(a+b)+' 點'); return null; }
   function move(p,steps,delay){ const pl=G.pl[p],path=[]; let pos=pl.pos,passed=false;
     for(let k=0;k<Math.abs(steps);k++){ pos=(pos+(steps>0?1:31))%32; path.push(pos); if(pos===0&&steps>0) passed=true; }
     G.ms++; G.mv={p,from:pl.pos,path,s:G.ms,delay}; pl.pos=pos; if(passed){ G.pl[p].cash+=2000; G.passBonus=p; }
-    G.phase='wait'; G.wait=delay+path.length*.2+.3; G.after='land'; }
-  function warp(p,to){ G.ms++; G.mv={p,from:G.pl[p].pos,path:[to],s:G.ms,delay:0,warp:1}; G.pl[p].pos=to; G.phase='wait'; G.wait=.7; G.after='land'; }
+    G.phase='wait'; G.wait=delay+path.length*STEPT+.3*PACE; G.after='land'; }
+  function warp(p,to){ G.ms++; G.mv={p,from:G.pl[p].pos,path:[to],s:G.ms,delay:0,warp:1}; G.pl[p].pos=to; G.phase='wait'; G.wait=1.1; G.after='land'; }
   function land(){ const p=G.turn,pl=G.pl[p],T=TI[pl.pos],S=G.tiles[pl.pos];
     if(G.passBonus===p){ G.passBonus=null; flow(-1,p,2000); toast(names[p]+' 經過起點 +$2,000'); sfx('item'); }
     if(T.type==='prop'||T.type==='st'){
       if(S.own<0){ if(pl.cash>=T.price){ G.phase='buy'; G.prompt={k:'buy',i:pl.pos}; log(names[p]+' 要買下「'+T.name+'」嗎？'); } else { log('錢不夠買「'+T.name+'」'); endSoon(1); } return; }
-      if(S.own===p){ if(T.type==='prop'&&S.lv<3&&pl.cash>=T.cost){ G.phase='build'; G.prompt={k:'build',i:pl.pos}; log(names[p]+' 要在「'+T.name+'」加蓋嗎？'); } else endSoon(.8); return; }
-      if(!G.pl[S.own].out&&!(G.pl[S.own].hosp>0&&false)){ const r=rent(pl.pos); if(pl.free>0){ pl.free--; toast('用了免過路費卡！'); log(names[p]+' 用免過路費卡'); } else { pay(p,S.own,r); toast(names[p]+' 付過路費 '+money(r)+' 給 '+names[S.own],'#ff9a5d'); log(names[p]+' 付 '+money(r)+' 給 '+names[S.own]); } }
+      if(S.own===p){ if(pl.cards.swap>0&&swapTargets(p).length){ G.phase='swap'; G.prompt={k:'swap',i:pl.pos}; log(names[p]+' 要用換地卡嗎？'); return; } return ownLand(p); }
+      if(!G.pl[S.own].out){ if(pl.cards.buy>0&&pl.cash>=T.price){ G.phase='force'; G.prompt={k:'force',i:pl.pos}; log(names[p]+' 要用購地卡買下「'+T.name+'」嗎？'); return; } payRent(p,pl.pos); }
       endSoon(1.3); return; }
-    if(T.type==='chance'||T.type==='fate'){ const deck=T.type==='chance'?CHANCE:FATE,cd=deck[Math.floor(Math.random()*deck.length)]; G.cs++; G.card={k:T.type,txt:cd[0],s:G.cs}; sfx('item'); G.phase='wait'; G.wait=2.2; G.after='card'; G.cardFx=cd[1]; log(T.name+'：'+cd[0]); return; }
+    if(T.type==='chance'||T.type==='fate'){ const deck=T.type==='chance'?CHANCE:FATE,cd=deck[Math.floor(Math.random()*deck.length)]; G.cs++; G.card={k:T.type,txt:cd[0],s:G.cs}; sfx('item'); G.phase='wait'; G.wait=2.2*PACE; G.after='card'; G.cardFx=cd[1]; log(T.name+'：'+cd[0]); return; }
     if(T.type==='park'){ if(G.pot>0){ const v=G.pot; G.pot=0; gain(p,v); toast(names[p]+' 撿到公園裡的 '+money(v)+'！'); log(names[p]+' 拿走公園的錢 '+money(v)); } else log('在'+T.name+'散步'); endSoon(1.2); return; }
-    if(T.type==='amb'){ toast(names[p]+' 被救護車載去'+M.corner[1]+'！','#ff6b7d'); pl.hosp=1; sfx('hurt'); warp(p,8); G.after='endAfterWarp'; return; }
+    if(T.type==='amb'){ toast(names[p]+' 被救護車載去'+M.corner[1]+'，下一回合要休息','#ff6b7d'); log(names[p]+' 被送去'+M.corner[1]+'，下一回合休息'); pl.hosp=1; sfx('hurt'); warp(p,8); G.after='endAfterWarp'; return; }
     endSoon(.8); }
-  function endSoon(d){ G.phase='wait'; G.wait=d; G.after='end'; }
+  function endSoon(d){ G.phase='wait'; G.wait=d*PACE; G.after='end'; }
+  function payRent(p,i){ const pl=G.pl[p],S=G.tiles[i],r=rent(i); if(pl.free>0){ pl.free--; toast('用了免過路費卡！'); log(names[p]+' 用免過路費卡'); } else { pay(p,S.own,r); toast(names[p]+' 付過路費 '+money(r)+' 給 '+names[S.own],'#ff9a5d'); log(names[p]+' 付過路費 '+money(r)+' 給 '+names[S.own]); } }
+  function ownLand(p){ const pl=G.pl[p],T=TI[pl.pos],S=G.tiles[pl.pos]; if(T.type==='prop'&&S.lv<3&&pl.cash>=T.cost){ G.phase='build'; G.prompt={k:'build',i:pl.pos}; log(names[p]+' 要在「'+T.name+'」加蓋嗎？'); } else endSoon(.8); }
+  const swapTargets=p=>G.tiles.map((x,i)=>i).filter(i=>{ const o=G.tiles[i].own; return o>=0&&o!==p&&!G.pl[o].out; });
+  const worth=i=>TI[i].price+(TI[i].cost||0)*G.tiles[i].lv;
   function applyCard(){ const p=G.turn,pl=G.pl[p],e=G.cardFx||{}; G.card=null;
+    if(e.card){ pl.cards[e.card]++; toast(names[p]+' 拿到'+(e.card==='buy'?'購地卡':'換地卡')+'！','#ffd23f'); sfx('item'); return endSoon(1); }
     if(e.gain){ gain(p,e.gain); return endSoon(1); }
     if(e.goto!=null){ return move(p,(32-pl.pos)%32||32,0); }
     if(e.fwd){ return move(p,e.fwd,0); }
@@ -108,7 +115,7 @@ function create(env,opts){
     if(e.free){ pl.free++; return endSoon(1); }
     if(e.tax){ pay(p,-2,e.tax*owned(p).length); return endSoon(1); }
     if(e.fine){ pay(p,-2,e.fine); return endSoon(1); }
-    if(e.hosp){ pl.hosp=1; warp(p,8); G.after='endAfterWarp'; return; }
+    if(e.hosp){ pl.hosp=1; toast(names[p]+' 下一回合要在'+M.corner[1]+'休息','#ff6b7d'); warp(p,8); G.after='endAfterWarp'; return; }
     if(e.pay){ for(const q of alive()) if(q!==p) pay(p,q,e.pay); return endSoon(1.2); }
     if(e.down){ const mine=owned(p).filter(i=>G.tiles[i].lv>0); if(mine.length){ const i=mine[Math.floor(Math.random()*mine.length)]; G.tiles[i].lv--; toast('「'+TI[i].name+'」的房子被吹掉一層','#9ad6ff'); } else toast('還好沒有房子'); return endSoon(1); }
     if(e.repair){ pay(p,-2,e.repair*owned(p).reduce((a,i)=>a+G.tiles[i].lv,0)); return endSoon(1); }
@@ -116,11 +123,18 @@ function create(env,opts){
   function nextTurn(){ const al=alive(); if(al.length<=1){ G.over={why:'只剩一個人沒破產'}; return; }
     let n=G.turn; do{ n=(n+1)%seats; }while(G.pl[n].out); if(n<=G.turn){ G.round++; if(ROUNDS&&G.round>ROUNDS){ G.over={why:'打完 '+ROUNDS+' 回合，比總資產'}; return; } }
     G.turn=n; startTurn(); }
-  function decide(p,yes){ if(G.turn!==p||!G.prompt) return '還沒輪到你'; const i=G.prompt.i,T=TI[i],S=G.tiles[i],pl=G.pl[p];
+  function decide(p,yes){ if(G.turn!==p||!G.prompt) return '還沒輪到你'; const i=G.prompt.i,T=TI[i],S=G.tiles[i],pl=G.pl[p],k=G.prompt.k;
+    if(k==='rest'){ G.prompt=null; endSoon(.4); return null; }
+    if(k==='force'){ G.prompt=null; const ow=S.own; if(yes){ if(pl.cash<T.price) return '錢不夠'; pl.cards.buy--; pay(p,ow,T.price); S.own=p; toast(names[p]+' 用購地卡買下 '+names[ow]+' 的「'+T.name+'」！','#ff7eb6'); log(names[p]+' 用購地卡付原價 '+money(T.price)+' 買下「'+T.name+'」'); sfx('win'); } else payRent(p,i); endSoon(1.4); return null; }
+    if(k==='swap'){ if(yes){ G.phase='pick'; G.prompt={k:'pick',i,targets:swapTargets(p)}; log('選一塊別人的地來交換'); return null; } G.prompt=null; ownLand(p); return null; }
+    if(k==='pick'){ G.prompt=null; ownLand(p); return null; }
     if(G.prompt.k==='buy'&&yes){ if(pl.cash<T.price) return '錢不夠'; pl.cash-=T.price; S.own=p; flow(p,-1,T.price); toast(names[p]+' 買下「'+T.name+'」','#86dc4f'); sfx('place'); log(names[p]+' 買下「'+T.name+'」'); }
     else if(G.prompt.k==='build'&&yes){ if(pl.cash<T.cost) return '錢不夠'; pl.cash-=T.cost; S.lv++; flow(p,-1,T.cost); toast('「'+T.name+'」蓋到 '+['','一','兩','三'][S.lv]+' 層'+(S.lv===3?'大樓！':'！'),'#86dc4f'); sfx('win'); }
-    G.prompt=null; endSoon(.9); return null; }
-  function doAct(p,a){ if(G.over) return '遊戲結束了'; if(a.t==='roll') return roll(p); if(a.t==='yes') return decide(p,true); if(a.t==='no') return decide(p,false); return null; }
+    G.prompt=null; endSoon(1.1); return null; }
+  function pick(p,j){ if(G.turn!==p||!G.prompt||G.prompt.k!=='pick') return '還沒輪到你'; if(!G.prompt.targets.includes(j)) return '要選別人的地';
+    const i=G.prompt.i,ow=G.tiles[j].own; G.tiles[j].own=p; G.tiles[i].own=ow; G.pl[p].cards.swap--; G.prompt=null;
+    toast(names[p]+' 用「'+TI[i].name+'」換走 '+names[ow]+' 的「'+TI[j].name+'」！','#ff7eb6'); log(names[p]+' 用換地卡把「'+TI[i].name+'」換成「'+TI[j].name+'」'); sfx('win'); endSoon(1.6); return null; }
+  function doAct(p,a){ if(G.over) return '遊戲結束了'; if(a.t==='roll') return roll(p); if(a.t==='pick') return pick(p,a.j|0); if(a.t==='yes') return decide(p,true); if(a.t==='no') return decide(p,false); return null; }
   function act(a){ if(client){ net.send({act:a}); return; } const p=hot?G.turn:me; const err=doAct(p,a); if(err) showMsg(err); broadcast(); }
   function broadcast(){ if(net&&net.host) net.send({st:G}); }
   if(net){ if(client) net.onmsg=m=>{ if(m.st) G=m.st; if(m.bad&&m.bad[0]===me) showMsg(m.bad[1]); };
@@ -129,6 +143,10 @@ function create(env,opts){
   // 電腦：錢夠就買（留一點預備金），能湊成同色就一定買；錢多才蓋房子
   function ai(p){ const pl=G.pl[p];
     if(G.phase==='roll') return roll(p);
+    if(G.prompt&&G.prompt.k==='rest') return decide(p,true);
+    if(G.prompt&&G.prompt.k==='force'){ const i=G.prompt.i,T=TI[i],S=G.tiles[i]; return decide(p,pl.cash-T.price>=1500&&(S.lv>=1||T.price>=1400||T.g!=null&&TI.some(x=>x.g===T.g&&x.i!==i&&G.tiles[x.i].own===p))); }
+    if(G.prompt&&(G.prompt.k==='swap'||G.prompt.k==='pick')){ const i=G.prompt.i,best=swapTargets(p).sort((a,b)=>worth(b)-worth(a))[0],good=best!=null&&worth(best)-worth(i)>=800;
+      if(G.prompt.k==='swap') return decide(p,good); return good?pick(p,best):decide(p,false); }
     if(G.prompt){ const T=TI[G.prompt.i],reserve=1500+G.round*150; let yes;
       if(G.prompt.k==='buy') yes=pl.cash-T.price>=reserve||(T.g!=null&&TI.some(x=>x.g===T.g&&x.i!==T.i&&G.tiles[x.i].own===p)&&pl.cash-T.price>=500);
       else yes=pl.cash-T.cost>=reserve+1000; return decide(p,yes); } }
@@ -137,18 +155,19 @@ function create(env,opts){
   /* ----- 更新 ----- */
   function update(dt){ t+=dt; if(msgT>0) msgT-=dt; diceT+=dt;
     if(G.mv&&G.mv.s!==seenMv){ seenMv=G.mv.s; anim={mv:G.mv,t:-(G.mv.delay||0)}; }
-    if(anim){ anim.t+=dt; if(anim.t>anim.mv.path.length*.2+.15) anim=null; else if(anim.t>0&&Math.floor(anim.t/.2)!==Math.floor((anim.t-dt)/.2)) sfx('land'); }
+    if(anim){ anim.t+=dt; if(anim.t>anim.mv.path.length*STEPT+.15) anim=null; else if(anim.t>0&&Math.floor(anim.t/STEPT)!==Math.floor((anim.t-dt)/STEPT)) sfx('land'); }
     if(G.ds!==seenDs){ seenDs=G.ds; diceT=0; }
-    for(const f of G.fx) if(f.s>seenFx){ seenFx=f.s; if(f.k==='pay') for(let k=0;k<Math.min(8,2+Math.floor(f.amt/400));k++) flying.push({a:f.a,b:f.b,t:-k*.06}); else banner={txt:f.txt,col:f.col,t:0}; }
-    for(const f of flying) f.t+=dt; flying=flying.filter(f=>f.t<.9); if(banner){ banner.t+=dt; if(banner.t>2) banner=null; }
+    for(const f of G.fx) if(f.s>seenFx){ seenFx=f.s; if(f.k==='pay') for(let k=0;k<Math.min(8,2+Math.floor(f.amt/400));k++) flying.push({a:f.a,b:f.b,t:-k*.06}); else bannerQ.push({txt:f.txt,col:f.col,t:0}); }
+    for(const f of flying) f.t+=dt; flying=flying.filter(f=>f.t<.9); if(banner){ banner.t+=dt; if(banner.t>(bannerQ.length?1.8:2.8)) banner=null; } if(!banner&&bannerQ.length) banner=bannerQ.shift(); // 大字提示一個一個出來，不會一閃就換掉
     // 鍵盤
     const mine=hot?!isAI(G.turn):G.turn===me&&!isAI(me);
-    if(mine&&!G.over){ if(env.hit('Space')||env.hit('Enter')){ if(G.phase==='roll') act({t:'roll'}); else if(G.prompt) act({t:'yes'}); } if(env.hit('KeyN')&&G.prompt) act({t:'no'}); }
+    if(mine&&!G.over){ const pk=G.prompt&&G.prompt.k==='pick'?G.prompt.targets:null; if(pk){ if(env.hit('ArrowRight')||env.hit('ArrowDown')) pickSel=(pickSel+1)%pk.length; if(env.hit('ArrowLeft')||env.hit('ArrowUp')) pickSel=(pickSel+pk.length-1)%pk.length; pickSel=Math.min(pickSel,pk.length-1); }
+      if(env.hit('Space')||env.hit('Enter')){ if(G.phase==='roll') act({t:'roll'}); else if(pk) act({t:'pick',j:pk[pickSel]}); else if(G.prompt) act({t:'yes'}); } if(env.hit('KeyN')&&G.prompt) act({t:'no'}); }
     if(client){ if(G.over&&!ended){ ended=true; setTimeout(finish,2200); } return; }
     if(ended) return; if(G.over){ ended=true; setTimeout(finish,2200); broadcast(); return; }
     if(G.phase==='intro'||G.phase==='wait'){ G.wait-=dt; if(G.wait<=0){ const a=G.after; G.after=null;
         if(a==='start') startTurn(); else if(a==='land') land(); else if(a==='card') applyCard(); else if(a==='end') nextTurn(); else if(a==='endAfterWarp') endSoon(.6); broadcast(); } return; }
-    if(isAI(G.turn)){ aiT+=dt; if(aiT>(G.prompt?.9:.7)){ aiT=0; ai(G.turn); broadcast(); } } else aiT=0; }
+    if(isAI(G.turn)){ aiT+=dt; if(aiT>(G.prompt?.9:.7)*PACE){ aiT=0; ai(G.turn); broadcast(); } } else aiT=0; }
   let done=false;
   function finish(){ if(done) return; done=true; const order=G.pl.map((q,i)=>i).sort((a,b)=>(G.pl[a].out-G.pl[b].out)||assets(b)-assets(a)),w=order[0];
     const html='<table class="ls"><tr><th>名次</th><th>玩家</th><th>總資產</th><th>現金</th><th>地產</th></tr>'+order.map((p,k)=>'<tr><td>'+(k+1)+'</td><td>'+names[p]+'</td><td>'+(G.pl[p].out?'破產':money(assets(p)))+'</td><td>'+money(G.pl[p].cash)+'</td><td>'+owned(p).length+' 塊</td></tr>').join('')+'</table>';
@@ -158,14 +177,15 @@ function create(env,opts){
 
   /* ----- 操作 ----- */
   const toLogical=e=>{ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=(r.width-W*s)/2,oy=(r.height-H*s)/2; return [(e.clientX-r.left-ox)/s,(e.clientY-r.top-oy)/s]; };
-  const onDown=e=>{ e.preventDefault&&e.preventDefault(); const [x,y]=toLogical(e); for(const b of btns) if(!b.dis&&x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h){ sfx('click'); b.fn(); return; } };
+  const onDown=e=>{ e.preventDefault&&e.preventDefault(); const [x,y]=toLogical(e); for(const b of btns) if(!b.dis&&x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h){ sfx('click'); b.fn(); return; }
+    if(G.prompt&&G.prompt.k==='pick') for(const j of G.prompt.targets){ const [rx,ry,rw,rh]=rect(j); if(x>=BX+rx&&x<BX+rx+rw&&y>=BY+ry&&y<BY+ry+rh){ sfx('click'); act({t:'pick',j}); return; } } };
   const onMove=e=>{ hover=toLogical(e); };
   if(canvas.addEventListener){ canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); canvas.style.touchAction='none'; }
 
   /* ----- 畫面 ----- */
   const boardImg=typeof document!=='undefined'?paintBoard(mi):null;
   function tokenPos(p){ const pl=G.pl[p]; let x,y,hop=0;
-    if(anim&&anim.mv.p===p&&anim.t>0&&!anim.mv.warp){ const path=[anim.mv.from].concat(anim.mv.path),k=Math.min(path.length-2,Math.floor(anim.t/.2)),u=clamp(anim.t/.2-k,0,1),[x0,y0]=center(path[k]),[x1,y1]=center(path[k+1]);
+    if(anim&&anim.mv.p===p&&anim.t>0&&!anim.mv.warp){ const path=[anim.mv.from].concat(anim.mv.path),k=Math.min(path.length-2,Math.floor(anim.t/STEPT)),u=clamp(anim.t/STEPT-k,0,1),[x0,y0]=center(path[k]),[x1,y1]=center(path[k+1]);
       x=x0+(x1-x0)*u; y=y0+(y1-y0)*u; hop=Math.sin(u*Math.PI)*16; }
     else { const pos=anim&&anim.mv.p===p&&anim.t<=0?anim.mv.from:pl.pos; [x,y]=center(pos); }
     const here=G.pl.map((q,i)=>i).filter(i=>!G.pl[i].out&&G.pl[i].pos===pl.pos&&!(anim&&anim.mv.p===i)),k=here.indexOf(p),n=here.length;
@@ -190,6 +210,8 @@ function create(env,opts){
       c.strokeStyle=col; c.lineWidth=3; rr(c,X+2,Y+2,w-4,h-4,6); c.stroke();
       const fx=X+(side===3?w-10:side===1?10:w-9),fy=Y+(side===0?h-12:side===2?12:h-12); c.fillStyle=col; c.beginPath(); c.moveTo(fx,fy); c.lineTo(fx,fy-12); c.lineTo(fx-9,fy-8); c.lineTo(fx,fy-5); c.fill(); c.fillStyle='#2a1a26'; c.fillRect(fx,fy-12,1.4,13);
       if(S.lv>0){ const bx=X+w/2,by=side===0?Y+h*.62:side===2?Y+h*.62:Y+h*.72; drawBuilding(bx,by,S.lv,col,side===1||side===3?.9:.85); } });
+    if(G.prompt&&G.prompt.k==='pick'){ const pk=G.prompt.targets,mineP=hot?!isAI(G.turn):G.turn===me; pk.forEach((j,n)=>{ const [x,y,w,h]=rect(j),hv=hover&&hover[0]>=BX+x&&hover[0]<BX+x+w&&hover[1]>=BY+y&&hover[1]<BY+y+h,on=mineP&&(hv||n===pickSel);
+      c.strokeStyle=on?'#ff2d7a':'rgba(255,210,63,'+(.6+.4*Math.sin(t*8))+')'; c.lineWidth=on?5:3; rr(c,BX+x+1,BY+y+1,w-2,h-2,7); c.stroke(); if(on){ c.fillStyle='#ff2d7a'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText('換這塊',BX+x+w/2,BY+y-6); } }); }
     // 目前輪到的格子發亮
     { const [x,y,w,h]=rect(G.pl[G.turn].pos); c.strokeStyle='rgba(255,255,255,'+(.5+.4*Math.sin(t*6))+')'; c.lineWidth=3; rr(c,BX+x+1,BY+y+1,w-2,h-2,7); c.stroke(); }
     // 棋子（後面的先畫）
@@ -220,19 +242,28 @@ function create(env,opts){
       c.strokeStyle=PCOL[p%4]; c.lineWidth=3; rr(c,RX+6,y+6,54,54,12); c.stroke();
       c.textAlign='left'; c.fillStyle=cur?'#14122b':'#fff'; c.font='900 15px '+TC; c.fillText(names[p]+(pl.out?'（破產）':''),RX+68,y+18,RW-74);
       c.font='900 17px '+TC; c.fillStyle=cur?'#6a3a00':'#ffd23f'; c.fillText(money(pl.cash),RX+68,y+40);
-      c.font='700 11px '+TC; c.fillStyle=cur?'#3a2a10':'#cfd0ff'; c.fillText('地產 '+owned(p).length+' 塊　總資產 '+money(assets(p))+(pl.free?'　免費卡×'+pl.free:'')+(pl.hosp?'　休息中':''),RX+68,y+58,RW-74); }
+      c.font='700 11px '+TC; c.fillStyle=cur?'#3a2a10':'#cfd0ff'; c.fillText('地產 '+owned(p).length+' 塊　總資產 '+money(assets(p))+(pl.free?'　免費×'+pl.free:'')+(pl.cards.buy?'　購地×'+pl.cards.buy:'')+(pl.cards.swap?'　換地×'+pl.cards.swap:'')+(pl.hosp?'　下回合休息':''),RX+68,y+58,RW-74); }
     // 回合與按鈕
     const by=8+seats*74+4; c.textAlign='center'; c.fillStyle='rgba(20,18,43,.82)'; rr(c,RX,by,RW,26,13); c.fill(); c.fillStyle='#fff'; c.font='700 12px '+TC; c.fillText('第 '+Math.min(G.round,ROUNDS||G.round)+(ROUNDS?' / '+ROUNDS:'')+' 回合　'+M.name,RX+RW/2,by+13);
     const mine=!G.over&&(hot?!isAI(G.turn):G.turn===me&&!isAI(me)),ay=by+36;
     if(mine&&G.phase==='roll') btn('🎲 擲骰子',RX,ay,RW,52,()=>act({t:'roll'}),true);
+    else if(mine&&G.prompt&&G.prompt.k!=='buy'&&G.prompt.k!=='build'){ const k=G.prompt.k,T=TI[G.prompt.i],S=G.tiles[G.prompt.i];
+      c.fillStyle='rgba(255,255,255,.95)'; rr(c,RX,ay,RW,70,14); c.fill(); c.strokeStyle=k==='rest'?'#3fae5a':'#ff7eb6'; c.lineWidth=4; c.stroke(); c.fillStyle='#14122b'; c.font='900 15px '+TC;
+      const L1=k==='rest'?'在'+M.corner[1]+'休息，這回合不能走':k==='force'?'用購地卡買下「'+T.name+'」？':k==='swap'?'用換地卡拿「'+T.name+'」換別人的地？':'點一塊閃黃框的地來交換',
+        L2=k==='rest'?'下一回合就可以繼續走':k==='force'?'付原價 '+money(T.price)+' 給 '+names[S.own]+'（房子一起過來）':k==='swap'?'房子跟著地一起換':'也可以用 ← → 選，空白鍵確定';
+      c.fillText(L1,RX+RW/2,ay+22,RW-12); c.font='700 11px '+TC; c.fillStyle='#5a5470'; c.fillText(L2,RX+RW/2,ay+46,RW-12);
+      if(k==='rest') btn('知道了',RX,ay+78,RW,44,()=>act({t:'yes'}),true);
+      else if(k==='pick') btn('不換了',RX,ay+78,RW,44,()=>act({t:'no'}),false);
+      else { btn(k==='force'?'使用購地卡':'使用換地卡',RX,ay+78,RW/2-4,44,()=>act({t:'yes'}),true); btn(k==='force'?'付過路費':'不用',RX+RW/2+4,ay+78,RW/2-4,44,()=>act({t:'no'}),false); } }
     else if(mine&&G.prompt){ const T=TI[G.prompt.i],buy=G.prompt.k==='buy',cost=buy?T.price:T.cost;
       c.fillStyle='rgba(255,255,255,.95)'; rr(c,RX,ay,RW,70,14); c.fill(); c.strokeStyle=T.g!=null?GCOL[T.g]:'#5a5a7a'; c.lineWidth=4; c.stroke();
       c.fillStyle='#14122b'; c.font='900 15px '+TC; c.fillText((buy?'買下「':'加蓋「')+T.name+'」　'+money(cost),RX+RW/2,ay+20,RW-10);
       c.font='700 11px '+TC; c.fillStyle='#5a5470'; const S=G.tiles[G.prompt.i]; c.fillText(T.type==='st'?'過路費：每有一個車站 $300':'過路費 '+[0,1,2,3].map(l=>money(T.base*[1,3,6,10][l])).join('→')+(buy?'':'（現在 '+S.lv+' 層）'),RX+RW/2,ay+44,RW-10);
       btn(buy?'買下':'加蓋',RX,ay+78,RW/2-4,44,()=>act({t:'yes'}),true); btn('不要',RX+RW/2+4,ay+78,RW/2-4,44,()=>act({t:'no'}),false); }
     else if(!G.over){ c.fillStyle='rgba(20,18,43,.6)'; rr(c,RX,ay,RW,40,12); c.fill(); c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText(isAI(G.turn)?names[G.turn]+' 想一想…':(G.phase==='roll'?'等 '+names[G.turn]+' 擲骰子':'等 '+names[G.turn]+' 決定'),RX+RW/2,ay+20); }
+    { const hy=ay+(mine&&G.prompt?132:mine&&G.phase==='roll'?62:50),hs=G.hist.slice(-Math.max(0,Math.floor((H-hy-6)/18))); c.textAlign='left'; c.font='700 11px '+TC; hs.forEach((h,n)=>{ c.fillStyle='rgba(20,18,43,'+(.35+.45*(n+1)/hs.length)+')'; rr(c,RX,hy+n*18,RW,16,8); c.fill(); c.fillStyle='rgba(255,255,255,'+(.55+.45*(n+1)/hs.length)+')'; c.fillText('・'+h,RX+8,hy+n*18+8.5,RW-14); }); }
     // 大字提示
-    if(banner){ const a=Math.min(1,(2-banner.t)*2),s=banner.t<.15?.7+banner.t*2:1; c.save(); c.globalAlpha=a; c.translate(cx,cy-64); c.scale(s,s); c.font='900 17px '+TC; const tw=c.measureText(banner.txt).width+30; c.fillStyle='rgba(20,18,43,.9)'; rr(c,-tw/2,-18,tw,36,18); c.fill(); c.fillStyle=banner.col; c.fillText(banner.txt,0,1); c.restore(); }
+    if(banner){ const a=Math.min(1,(2.8-banner.t)*2,banner.t*6),s=banner.t<.15?.7+banner.t*2:1; c.save(); c.globalAlpha=a; c.translate(cx,cy-64); c.scale(s,s); c.font='900 17px '+TC; const tw=c.measureText(banner.txt).width+30; c.fillStyle='rgba(20,18,43,.9)'; rr(c,-tw/2,-18,tw,36,18); c.fill(); c.fillStyle=banner.col; c.fillText(banner.txt,0,1); c.restore(); }
     if(msgT>0){ c.font='900 15px '+TC; const tw=c.measureText(msg).width+30; c.fillStyle='rgba(200,30,60,.92)'; rr(c,cx-tw/2,cy+120,tw,32,14); c.fill(); c.fillStyle='#fff'; c.fillText(msg,cx,cy+136); }
     if(G.phase==='intro'){ c.fillStyle='rgba(11,10,28,.6)'; c.fillRect(0,0,W,H); c.fillStyle='#ffd23f'; c.font='900 30px '+TC; c.fillText('環島地產王・'+M.name,W/2,H/2-24); c.fillStyle='#fff'; c.font='700 16px '+TC; c.fillText(names[G.turn]+' 先開始！'+(ROUNDS?'打 '+ROUNDS+' 回合':'打到只剩一個人'),W/2,H/2+14); } }
   return {update,draw,destroy(){ if(canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointermove',onMove); } },
@@ -293,13 +324,14 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   name:'環島地產王',tag:'PROPERTY KING',color:'#e23b3b',online:true,maxPlayers:4,bots:true,minPlayers:2,
   desc:'擲骰子繞著寶島、世界或甜點樂園跑，買地蓋房子收過路費！和電腦玩、同一台輪流玩，或開房間 2～4 人連線。',
   goal:'擲骰子前進，買地、蓋房子，別人停到你的地要付過路費。打完回合數時總資產最多的人贏（或其他人都破產）。',
-  stageGoal:si=>'地圖「'+MAPS[si].name+'」：停到空地可以買，再停到自己的地可以加蓋（最多三層大樓），同色兩塊都買下過路費加倍。經過起點拿 $2,000；機會、命運卡有好有壞；停到救護車會被送去'+MAPS[si].corner[1]+'休息一回合；罰款會放進'+MAPS[si].corner[2]+'，誰停到就全部拿走。錢不夠會自動賣房賣地，還是不夠就破產。',
+  stageGoal:si=>'地圖「'+MAPS[si].name+'」：停到空地可以買，機會、命運可能抽到購地卡（停到別人的地時付原價強制買下）和換地卡（停在自己的地上時跟別人的地互換），再停到自己的地可以加蓋（最多三層大樓），同色兩塊都買下過路費加倍。經過起點拿 $2,000；機會、命運卡有好有壞；停到救護車會被送去'+MAPS[si].corner[1]+'休息一回合；罰款會放進'+MAPS[si].corner[2]+'，誰停到就全部拿走。錢不夠會自動賣房賣地，還是不夠就破產。',
   stages:MAPS.map(m=>m.name),stageLabel:'選擇地圖',
   modes:[{id:'1p',label:'和電腦玩'},{id:'local',label:'同一台輪流玩'}],
   options:[{key:'seats',label:'人數',def:'4',opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}]},
     {key:'rounds',label:'回合數',def:'15',opts:[{id:'10',label:'10 回合'},{id:'15',label:'15 回合'},{id:'20',label:'20 回合'},{id:'30',label:'30 回合'}]},
+    {key:'pace',label:'動作速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]},
     {key:'cash',label:'起始現金',def:'15000',opts:[{id:'10000',label:'$10,000'},{id:'15000',label:'$15,000'},{id:'20000',label:'$20,000'}]}],
-  help:[['空白鍵','擲骰子；要不要買地、加蓋時按「買下／加蓋」'],['N','不要買、不要蓋'],['滑鼠','直接點右邊的按鈕']],
+  help:[['空白鍵','擲骰子；買下、加蓋、使用卡片'],['N','不要'],['← →','換地卡選要換的地（也可以直接點）'],['滑鼠','點右邊的按鈕']],
   touchHelp:[['擲骰子','輪到你時按'],['買下／加蓋／不要','停到地上時選']],
   touch:null,
   best:{label:'最多資產',fmt:v=>money(v),lower:false},
