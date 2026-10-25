@@ -416,21 +416,56 @@ function dogSide(c,X,Y,s,t,dirX){ c.save(); c.translate(X,Y); c.scale(s*dirX,s);
   c.strokeStyle='#8a5a2a'; c.lineWidth=1; c.lineCap='round'; c.beginPath(); c.moveTo(-5,-7.4); c.quadraticCurveTo(-7,-8.6+Math.sin(t*14)*.8,-7.6,-10.4+Math.sin(t*14)*1.2); c.stroke();
   c.restore(); }
 // 機車把手、雙手、液晶儀表、手機導航、照後鏡（照後鏡顯示後面的車）：照實際騎車的視角，畫面下方只看到車頭和握把手的手
-function phoneNav(c,nav,t,night){ c.save(); c.translate(118,-128); c.rotate(-.12);
-  c.fillStyle='#26262c'; rr(c,-7,34,14,26,3); c.fill(); c.fillStyle='#1a1a1e'; rr(c,-30,-4,6,22,2); c.fill(); rr(c,24,-4,6,22,2); c.fill();
-  c.fillStyle='#0b0b0d'; rr(c,-27,-46,54,94,9); c.fill(); c.strokeStyle='#3c3c44'; c.lineWidth=1.5; c.stroke();
-  c.save(); rr(c,-24,-42,48,86,6); c.clip();
-  c.fillStyle=night?'#1c2130':'#eceae4'; c.fillRect(-24,-42,48,86);
-  const off=(t*16)%40;
-  c.fillStyle=night?'#223a2c':'#cfe5c2'; for(let i=-1;i<3;i++){ c.fillRect(-22,-34+i*40+off,12,16); c.fillRect(8,-22+i*40+off,14,12); }
-  c.strokeStyle=night?'#3a4258':'#ffffff'; c.lineWidth=5; c.beginPath(); for(let i=-1;i<4;i++){ const y=-42+i*40+off; c.moveTo(-24,y); c.lineTo(24,y); } c.moveTo(0,-42); c.lineTo(0,44); c.stroke();
-  const dist=nav&&nav.dist!=null?nav.dist:180,py=clamp(32-Math.max(0,dist)*.22,-26,30);
-  c.strokeStyle='#2f7cf6'; c.lineWidth=4.5; c.lineCap='round'; c.beginPath(); c.moveTo(0,36); c.lineTo(0,py); c.stroke();
-  c.fillStyle=nav&&nav.pick?'#f08a24':'#e8402e'; c.beginPath(); c.arc(0,py-7,5,Math.PI*.85,Math.PI*2.15); c.lineTo(0,py); c.closePath(); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(0,py-7,2,0,7); c.fill();
-  c.fillStyle='#fff'; c.beginPath(); c.arc(0,34,5.5,0,7); c.fill(); c.fillStyle='#2f7cf6'; c.beginPath(); c.moveTo(0,29.5); c.lineTo(3.6,37); c.lineTo(0,35); c.lineTo(-3.6,37); c.closePath(); c.fill();
-  c.fillStyle='rgba(18,22,30,.88)'; c.fillRect(-24,-42,48,15); c.fillStyle='#fff'; c.font='700 9px '+TC; c.textAlign='center'; c.textBaseline='middle';
-  c.fillText(nav&&nav.dist!=null?(dist>=0?Math.round(dist)+' m':'迴轉'):'導航',0,-34.5);
-  c.restore(); c.fillStyle='rgba(255,255,255,.07)'; c.beginPath(); c.moveTo(-24,-42); c.lineTo(10,-42); c.lineTo(-24,10); c.closePath(); c.fill();
+// 手機外送 App：上面是 App 標題和倒數，中間是會跟著車子捲動的路線圖（取餐點、送餐點、加油站、路口），下面是訂單卡
+function phoneNav(c,nav,t,night){ c.save(); c.translate(-122,-176); c.rotate(.07); c.scale(1.12,1.12);
+  const PW=104,PH=186,SW=96,SH=176; nav=nav||{};
+  // 手機架：夾子、支架
+  c.fillStyle='#26262c'; rr(c,-8,PH/2-4,16,52,4); c.fill(); c.fillStyle='#1a1a1e'; rr(c,-PW/2-6,-20,8,40,3); c.fill(); rr(c,PW/2-2,-20,8,40,3); c.fill(); rr(c,-18,-PH/2-6,36,9,3); c.fill();
+  c.fillStyle='#0b0b0d'; rr(c,-PW/2,-PH/2,PW,PH,14); c.fill(); c.strokeStyle='#4a4a54'; c.lineWidth=1.6; c.stroke();
+  c.save(); rr(c,-SW/2,-SH/2,SW,SH,9); c.clip();
+  const day=!night,bg=day?'#eef0ea':'#18202e',pick=!!nav.pick,col=pick?'#ff7a2a':'#2f7cf6',X0=-SW/2,Y0=-SH/2;
+  c.fillStyle=bg; c.fillRect(X0,Y0,SW,SH);
+  // 狀態列
+  c.fillStyle=day?'#ffffff':'#0e1420'; c.fillRect(X0,Y0,SW,10); c.fillStyle=day?'#222':'#ddd'; c.font='700 6.5px sans-serif'; c.textAlign='left'; c.textBaseline='middle';
+  const hh=String(17+Math.floor(t/60)%7).padStart(2,'0'),mm=String(Math.floor(t)%60).padStart(2,'0'); c.fillText(hh+':'+mm,X0+5,Y0+5.5);
+  for(let i=0;i<4;i++) c.fillRect(X0+SW-26+i*3,Y0+7-i*1.3,2,1.3+i*1.3); c.strokeStyle=day?'#222':'#ddd'; c.lineWidth=.8; c.strokeRect(X0+SW-12,Y0+3,8,4.5); c.fillRect(X0+SW-11.5,Y0+3.5,5,3.5);
+  // App 標題列
+  const hy=Y0+10; c.fillStyle=col; c.fillRect(X0,hy,SW,20); c.fillStyle='#fff'; c.font='900 9px '+TC; c.textAlign='left'; c.fillText(nav.done?'外送王・收工':pick?'外送王・前往取餐':'外送王・送餐中',X0+5,hy+10);
+  if(nav.left!=null&&!nav.done){ const L=Math.ceil(nav.left),warn=L<10; c.fillStyle=warn&&Math.sin(t*10)>0?'#ffd23f':'#fff'; c.textAlign='right'; c.font='900 9px monospace'; c.fillText(L>=0?L+'s':'-'+(-L)+'s',X0+SW-5,hy+10); }
+  // 路線圖
+  const my=hy+20,mh=104,posY=my+mh-18,sc=.24; // 每公尺 0.24 像素，前方大約 360 公尺
+  c.save(); c.beginPath(); c.rect(X0,my,SW,mh); c.clip();
+  c.fillStyle=day?'#e8ebe2':'#1c2433'; c.fillRect(X0,my,SW,mh);
+  const pd=nav.pd||t*900,off=((pd/10)*sc)%40; // 路邊的街廓跟著捲動
+  for(let i=-1;i<4;i++){ const y=my+i*40+off-20; c.fillStyle=day?'#d6dccb':'#253046'; rr(c,X0+3,y,30,30,4); c.fill(); rr(c,X0+SW-33,y+8,30,26,4); c.fill(); c.fillStyle=day?'#bfe0b0':'#22402e'; if(i%2) { rr(c,X0+6,y+4,12,10,3); c.fill(); } }
+  const yOf=d=>posY-((d-pd)/10)*sc;
+  if(nav.lv){ for(const I of nav.lv.inter){ const y=yOf(I.d); if(y<my-6||y>my+mh+6) continue; c.fillStyle=day?'#ffffff':'#3a4258'; c.fillRect(X0,y-3,SW,6); } }
+  c.fillStyle=day?'#ffffff':'#3a4258'; c.fillRect(-7,my,14,mh); c.strokeStyle=day?'#c8ccd4':'#56607a'; c.setLineDash([4,4]); c.lineWidth=1; c.beginPath(); c.moveTo(0,my); c.lineTo(0,my+mh); c.stroke(); c.setLineDash([]);
+  const pin=(x,y,cl,txt,big)=>{ const r=big?6.5:4.5; c.fillStyle=cl; c.beginPath(); c.arc(x,y-r-2,r,Math.PI*.82,Math.PI*2.18); c.lineTo(x,y); c.closePath(); c.fill(); c.strokeStyle='#fff'; c.lineWidth=1.2; c.stroke(); c.fillStyle='#fff'; c.font='900 '+(big?7:5.5)+'px '+TC; c.textAlign='center'; c.fillText(txt,x,y-r-2); };
+  if(nav.lv){ for(const g of nav.lv.gas){ const y=yOf(g.d); if(y>my-8&&y<my+mh+14) pin(12,y,'#2f9e6a','油'); }
+    nav.lv.orders.forEach((o,k)=>{ if(k===nav.oi) return; for(const st of [o.shop,o.cus]){ const y=yOf(st.d); if(y>my-8&&y<my+mh+14){ c.globalAlpha=.35; pin(-12,y,'#8a8698',st.kind==='shop'?'取':'送'); c.globalAlpha=1; } } }); }
+  const o=nav.o,tg=o?(pick?o.shop:o.cus):null;
+  if(tg){ const ty=yOf(tg.d),cy=clamp(ty,my+12,my+mh-4);
+    c.strokeStyle=nav.dist<0?'#e8402e':col; c.lineWidth=5; c.lineCap='round'; c.beginPath(); c.moveTo(0,posY); c.lineTo(0,cy); c.stroke();
+    if(pick){ const cyy=yOf(o.cus.d); if(cyy>my-6) { c.strokeStyle='rgba(47,124,246,.35)'; c.lineWidth=3; c.beginPath(); c.moveTo(0,cy); c.lineTo(0,clamp(cyy,my,my+mh)); c.stroke(); } if(cyy>my-8&&cyy<my+mh+14) pin(0,cyy,'#2f7cf6','送'); }
+    pin(0,cy,col,pick?'取':'送',true);
+    if(ty<my+12){ c.fillStyle=col; c.beginPath(); c.moveTo(-5,my+5); c.lineTo(5,my+5); c.lineTo(0,my); c.fill(); }
+    // 地點名稱的小標籤
+    c.font='900 7px '+TC; const nm=tg.name,tw=c.measureText(nm).width+8,lx=clamp(10,X0+2,X0+SW-tw-2); c.fillStyle=day?'rgba(255,255,255,.95)':'rgba(10,14,24,.9)'; rr(c,lx,cy-17,tw,11,4); c.fill(); c.strokeStyle=col; c.lineWidth=1; c.stroke(); c.fillStyle=day?'#222':'#fff'; c.textAlign='left'; c.fillText(nm,lx+4,cy-11.5); }
+  // 自己的位置：藍色箭頭
+  c.fillStyle='rgba(47,124,246,.25)'; c.beginPath(); c.arc(0,posY,10,0,7); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(0,posY,6,0,7); c.fill(); c.fillStyle='#2f7cf6'; c.beginPath(); c.moveTo(0,posY-5); c.lineTo(4,posY+4); c.lineTo(0,posY+2); c.lineTo(-4,posY+4); c.closePath(); c.fill();
+  if(tg&&nav.dist<0&&Math.sin(t*6)>-.3){ c.fillStyle='rgba(232,64,46,.92)'; rr(c,-26,my+mh/2-9,52,18,6); c.fill(); c.fillStyle='#fff'; c.font='900 9px '+TC; c.textAlign='center'; c.fillText('迴轉',0,my+mh/2); }
+  c.restore();
+  // 訂單卡
+  const cy0=my+mh; c.fillStyle=day?'#ffffff':'#0e1420'; c.fillRect(X0,cy0,SW,SH/2-(cy0)); c.fillStyle=col; c.fillRect(X0,cy0,3,SH/2-cy0);
+  c.textAlign='left'; c.textBaseline='middle';
+  if(nav.done){ c.fillStyle=day?'#222':'#fff'; c.font='900 9px '+TC; c.fillText('今天的單都送完了！',X0+7,cy0+16); }
+  else if(o){ c.fillStyle='#ff7a2a'; c.font='900 7.5px '+TC; c.fillText('取 '+o.shop.name,X0+7,cy0+9,SW-14); c.fillStyle='#2f7cf6'; c.fillText('送 '+o.cus.name,X0+7,cy0+20,SW-14);
+    c.fillStyle=day?'#222':'#fff'; c.font='900 9px '+TC; const ds=Math.round(nav.dist); c.fillText(ds>=0?ds+' m':'回頭 '+(-ds)+' m',X0+7,cy0+33);
+    c.textAlign='right'; c.fillStyle='#2f9e6a'; c.fillText('$'+(o.fee||0),X0+SW-6,cy0+33);
+    if(!pick&&nav.food!=null){ for(let i=0;i<3;i++){ c.fillStyle=i<nav.food?'#ffb000':'#c8c8d0'; c.beginPath(); c.arc(X0+SW-28+i*9,cy0+20,3,0,7); c.fill(); } } }
+  else { c.fillStyle=day?'#555':'#aaa'; c.font='700 8px '+TC; c.fillText('等待新訂單…',X0+7,cy0+18); }
+  c.restore(); c.fillStyle='rgba(255,255,255,.06)'; c.beginPath(); c.moveTo(-SW/2,-SH/2); c.lineTo(10,-SH/2); c.lineTo(-SW/2,20); c.closePath(); c.fill();
   c.restore(); }
 function drawCockpit(c,vx,vw,L,speed,lean,t,mirrorL,mirrorR,fuel,night,nav){ const cx=vx+vw/2,k=vw/800,dk=night?.5:1,bike=L.bike;
   c.save(); c.translate(cx,H+Math.sin(t*38)*Math.min(1,Math.abs(speed)/200)*.8); c.rotate(lean*.05); c.scale(k,k); c.lineCap='round';
@@ -457,14 +492,13 @@ function drawCockpit(c,vx,vw,L,speed,lean,t,mirrorL,mirrorR,fuel,night,nav){ con
   c.fillStyle='rgba(189,234,255,.7)'; c.font='700 7px sans-serif'; c.fillText('F',57,-107); c.fillText('E',57,-80);
   c.fillStyle='rgba(189,234,255,.45)'; c.font='700 7px "Courier New",monospace'; c.textAlign='left'; c.fillText('ODO '+String(10234+Math.floor(t*speed/9000)).padStart(6,'0'),-56,-80);
   c.fillStyle='rgba(255,255,255,.06)'; c.beginPath(); c.moveTo(-62,-116); c.lineTo(-10,-116); c.lineTo(-40,-74); c.lineTo(-62,-74); c.closePath(); c.fill();
-  phoneNav(c,nav,t,night);
   // 照後鏡（鍍鉻鏡框）
-  for(const [sx,list] of [[-1,mirrorL],[1,mirrorR]]){ c.strokeStyle='#7c8088'; c.lineWidth=4.5; c.beginPath(); c.moveTo(sx*150,-80); c.lineTo(sx*196,-150); c.stroke();
-    c.save(); c.translate(sx*206,-170); c.beginPath(); c.ellipse(0,0,39,31,0,0,7); c.fillStyle='#141418'; c.fill(); c.beginPath(); c.ellipse(0,0,34,26,0,0,7); c.clip();
+  for(const [sx,list] of [[-1,mirrorL],[1,mirrorR]]){ const MX=sx<0?250:206,MY=sx<0?-188:-170; /* 左邊鏡子往外移，讓出手機的位置 */ c.strokeStyle='#7c8088'; c.lineWidth=4.5; c.beginPath(); c.moveTo(sx*150,-80); c.lineTo(sx*(MX-12),MY+22); c.stroke();
+    c.save(); c.translate(sx*MX,MY); c.beginPath(); c.ellipse(0,0,39,31,0,0,7); c.fillStyle='#141418'; c.fill(); c.beginPath(); c.ellipse(0,0,34,26,0,0,7); c.clip();
     const mg=c.createLinearGradient(0,-26,0,26); mg.addColorStop(0,night?'#0b1030':'#9ab8d4'); mg.addColorStop(.45,night?'#2a2050':'#cfd8de'); mg.addColorStop(.46,night?'#2a2a34':'#5c5c62'); mg.addColorStop(1,night?'#22222a':'#48484e'); c.fillStyle=mg; c.fillRect(-40,-30,80,60);
     for(const m of list){ const ss=clamp(40/Math.max(12,m.dz),.12,1.2),mx=clamp(m.dx*ss*.6,-34,34); c.fillStyle=m.col; rr(c,mx-12*ss,4-14*ss,24*ss,14*ss,3*ss); c.fill(); c.fillStyle='rgba(30,40,55,.7)'; c.fillRect(mx-9*ss,4-12*ss,18*ss,5*ss); }
     c.fillStyle='rgba(255,255,255,.12)'; c.beginPath(); c.ellipse(-12,-10,16,6,-.4,0,7); c.fill();
-    c.restore(); c.strokeStyle='#c4c8d0'; c.lineWidth=2.5; c.beginPath(); c.ellipse(sx*206,-170,38,30,0,0,7); c.stroke(); }
+    c.restore(); c.strokeStyle='#c4c8d0'; c.lineWidth=2.5; c.beginPath(); c.ellipse(sx*MX,MY,38,30,0,0,7); c.stroke(); }
   // 手臂（外套袖子有皺褶）＋手套握住握把
   for(const sx of [-1,1]){ const ag=c.createLinearGradient(sx*440,30,sx*240,-60); ag.addColorStop(0,shade(L.shirt,.45*dk)); ag.addColorStop(.7,shade(L.shirt,.95*dk)); ag.addColorStop(1,shade(L.shirt,.75*dk)); c.fillStyle=ag;
     c.beginPath(); c.moveTo(sx*470,40); c.quadraticCurveTo(sx*380,-30,sx*270,-80); c.lineTo(sx*222,-46); c.quadraticCurveTo(sx*290,10,sx*320,40); c.closePath(); c.fill();
@@ -475,6 +509,7 @@ function drawCockpit(c,vx,vw,L,speed,lean,t,mirrorL,mirrorR,fuel,night,nav){ con
     c.beginPath(); c.ellipse(sx*238,-66,31,21,sx*.35,0,7); c.fill();
     c.strokeStyle='rgba(0,0,0,.45)'; c.lineWidth=1.6; c.beginPath(); for(let i=0;i<3;i++){ c.moveTo(sx*(224+i*10),-85); c.quadraticCurveTo(sx*(218+i*10),-70,sx*(222+i*10),-50); } c.stroke();
     c.strokeStyle='rgba(255,255,255,.1)'; c.lineWidth=2; c.beginPath(); c.moveTo(sx*218,-80); c.quadraticCurveTo(sx*240,-88,sx*258,-78); c.stroke(); }
+  phoneNav(c,nav,t,night); // 手機畫在最上面
   c.restore(); }
 // 整個第一人稱世界
 function drawFP(c,vx,vw,st){
@@ -855,7 +890,7 @@ function create(env,opts){
     if(S.night){ const g=c.createRadialGradient(vx+vw/2,H*.62,40,vx+vw/2,H*.62,vw*.7); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(5,5,25,.45)'); c.fillStyle=g; c.fillRect(vx,0,vw,H); }
     else if(S.evening){ c.fillStyle='rgba(255,120,60,.07)'; c.fillRect(vx,0,vw,H); }
     // 自己的機車
-    drawCockpit(c,vx,vw,p.look,p.v,p.lean,t,mL,mR,p.fuel,S.night,tgt?{dist:(tgt.d-p.d)/10,pick:p.phase==='pick'}:null);
+    drawCockpit(c,vx,vw,p.look,p.v,p.lean,t,mL,mR,p.fuel,S.night,{dist:tgt?(tgt.d-p.d)/10:0,pick:p.phase==='pick',pd:p.d,lv,o:p.done?null:o,oi:p.oi,left:o&&!p.done?p.deadline-t:null,food:p.food,done:p.done});
     if(p.fall>0){ c.fillStyle='rgba(255,60,60,'+Math.min(.35,p.fall*.3)+')'; c.fillRect(vx,0,vw,H); for(let i=0;i<5;i++){ const a=t*5+i*1.26; c.fillStyle='#ffd23f'; c.font='22px sans-serif'; c.textAlign='center'; c.fillText('★',vx+vw/2+Math.cos(a)*90,H*.42+Math.sin(a)*30); } }
     // 取餐／送餐進度
     if(p.stopT>0){ const w2=160; c.fillStyle='rgba(11,10,28,.8)'; rr(c,vx+vw/2-w2/2-6,H*.6-6,w2+12,30,10); c.fill(); c.fillStyle='#3a3670'; rr(c,vx+vw/2-w2/2,H*.6+8,w2,10,5); c.fill(); c.fillStyle='#86dc4f'; rr(c,vx+vw/2-w2/2,H*.6+8,w2*p.stopT/.8,10,5); c.fill();
