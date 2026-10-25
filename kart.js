@@ -458,12 +458,18 @@ function viewer(host,look){
   const T=window.THREE,r=new T.WebGLRenderer({antialias:true}),dpr=Math.min(window.devicePixelRatio||1,2);
   const w=host.clientWidth||360,h=host.clientHeight||200; let cw=w,ch=h; r.setPixelRatio(dpr); r.setSize(w,h,false);
   const cv=r.domElement; cv.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab'; host.appendChild(cv);
-  const scene=new T.Scene(); scene.background=new T.Color(0x2b2759);
-  scene.add(new T.HemisphereLight(0xffffff,0x554a88,.9)); const d1=new T.DirectionalLight(0xffffff,.75); d1.position.set(5,9,6); scene.add(d1); const d2=new T.DirectionalLight(0x9fd8ff,.35); d2.position.set(-6,4,-5); scene.add(d2);
-  const floor=new T.Mesh(new T.CircleGeometry(4.4,40),new T.MeshLambertMaterial({color:0x403b7c})); floor.rotation.x=-Math.PI/2; scene.add(floor);
-  const ring=new T.Mesh(new T.RingGeometry(4.4,4.6,40),new T.MeshBasicMaterial({color:0xffd23f})); ring.rotation.x=-Math.PI/2; ring.position.y=.01; scene.add(ring);
-  const cam=new T.PerspectiveCamera(36,w/h,.5,80);
-  let model=buildKart(T,look),yaw=.75,pitch=.3,dist=8,auto=true,drag=null; scene.add(model);
+  // 和封面一樣的戶外賽道：藍天、草地、柏油路、紅白路緣、松樹和遠山，光線也和比賽相同
+  const scene=new T.Scene(); scene.background=new T.Color(0x8fd0ff); scene.fog=new T.Fog(0x8fd0ff,30,80);
+  scene.add(new T.HemisphereLight(0xffffff,0x667755,.85)); const d1=new T.DirectionalLight(0xffffff,.6); d1.position.set(6,12,-4); scene.add(d1); const d2=new T.DirectionalLight(0xfff0d8,.3); d2.position.set(-6,5,8); scene.add(d2);
+  const PI=Math.PI,lm=c=>new T.MeshLambertMaterial({color:c}),put=(geo,m,x,y,z,rx)=>{ const o=new T.Mesh(geo,m); o.position.set(x,y,z); o.rotation.x=rx||0; scene.add(o); return o; };
+  put(new T.CircleGeometry(90,40),lm(0x4a8f34),0,0,0,-PI/2); put(new T.PlaneGeometry(6.4,140),lm(0x4c4c56),0,.01,0,-PI/2);
+  for(let z=-70;z<70;z+=4) put(new T.PlaneGeometry(.18,2),lm(0xf4f4f4),0,.02,z+1,-PI/2);
+  for(const sx of [-1,1]){ put(new T.PlaneGeometry(.12,140),lm(0xf4f4f4),sx*2.95,.02,0,-PI/2); for(let z=-70,i=0;z<70;z+=1.6,i++) put(new T.BoxGeometry(.7,.16,1.6),lm(i%2?0xe23b3b:0xf4f4f4),sx*3.55,.08,z+.8); }
+  const tree=(x,z,s)=>{ put(new T.CylinderGeometry(.18*s,.24*s,1.1*s,8),lm(0x6b4a2a),x,.55*s,z); for(let i=0;i<3;i++) put(new T.ConeGeometry((1.3-i*.32)*s,1.5*s,10),lm(0x2f7d32),x,(1.4+i*.75)*s,z); };
+  for(let i=0;i<26;i++){ const sx=i%2?1:-1,z=-60+i*4.8+(i*7%5),x=sx*(7+(i*13%9)); tree(x,z,.9+(i*5%4)*.2); }
+  for(let i=0;i<7;i++){ const a=i/7*PI*2,hl=put(new T.SphereGeometry(18,16,10),lm(0x7fb48a),Math.sin(a)*70,-6,Math.cos(a)*70); hl.scale.set(1.6,.7,1); }
+  const cam=new T.PerspectiveCamera(36,w/h,.5,200);
+  let model=buildKart(T,look),yaw=PI+.55,pitch=.24,dist=9,auto=true,drag=null; scene.add(model); // 一打開先從車後方斜看，跟封面一樣
   const kill=o=>o.traverse(m=>{ if(m.geometry) m.geometry.dispose(); if(m.material) m.material.dispose(); });
   cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; auto=false; cv.style.cursor='grabbing'; try{cv.setPointerCapture(e.pointerId);}catch(_){ } });
   cv.addEventListener('pointermove',e=>{ if(!drag) return; yaw-=(e.clientX-drag.x)*.012; pitch=Math.max(.03,Math.min(1.25,pitch+(e.clientY-drag.y)*.008)); drag={x:e.clientX,y:e.clientY}; });
@@ -472,7 +478,7 @@ function viewer(host,look){
   return {
     set(L){ look=L; scene.remove(model); kill(model); model=buildKart(T,L); scene.add(model); },
     draw(){ const W=host.clientWidth,H=host.clientHeight; if(W&&H&&(W!==cw||H!==ch)){ cw=W; ch=H; r.setSize(W,H,false); cam.aspect=W/H; cam.updateProjectionMatrix(); } // 版面改變時跟著調整大小
-      if(auto) yaw+=.007; for(const wl of model.userData.wheels) wl.rotation.x+=auto?.05:0; for(const f of model.userData.anim) f(performance.now()/1000,0);
+      if(auto) yaw+=.004; for(const wl of model.userData.wheels) wl.rotation.x+=auto?.05:0; for(const f of model.userData.anim) f(performance.now()/1000,0);
       { const st=NITRO[look.nitro]||NITRO.fire; setFlame(model.userData.flame,st.cols[Math.floor(performance.now()/90)%st.cols.length],1.3,1.15); } // 預覽氮氣特效
       cam.position.set(Math.sin(yaw)*Math.cos(pitch)*dist,Math.sin(pitch)*dist+1,Math.cos(yaw)*Math.cos(pitch)*dist); cam.lookAt(0,1,0); r.render(scene,cam); },
     destroy(){ kill(scene); r.dispose(); try{ r.forceContextLoss(); }catch(e){} cv.remove(); }
