@@ -596,7 +596,8 @@ function drawFP(c,vx,vw,st){
     const nw=Math.max(1,Math.min(5,Math.round((d2-d1)/32))),dirty=S.pal==='tw'||S.pal==='th'||S.pal==='kr';
     for(let f=0;f<nf;f++){ const v0=G+f*FH; c.fillStyle='rgba(0,0,0,.13)'; fq(A,Bq,v0,v0+2.5); c.fill(); if(!near&&len<12) continue;
       for(let i=0;i<nw;i++){ const da=lerp(d1,d2,(i+.18)/nw),db=lerp(d1,d2,(i+.82)/nw); if(da<cd+3) continue; const P=E(xs,da),Q=E(xs,db),hs=hash(id*7+f,i+30);
-        c.fillStyle=night?(hs<.45?'#ffd98a':'#1c1e2a'):shade(hs<.3?'#7f93a8':'#4e5d6e',dim); fq(P,Q,v0+9,v0+27); c.fill();
+        if(night) c.fillStyle=hs<.45?'#ffd98a':'#1c1e2a'; else { const gy1=Yv(P,v0+27),gg=c.createLinearGradient(0,gy1,0,Yv(P,v0+9)); gg.addColorStop(0,shade(hs<.3?'#b4c8da':'#8aa0b4',dim)); gg.addColorStop(.55,shade(hs<.3?'#7f93a8':'#4e5d6e',dim)); gg.addColorStop(1,shade(hs<.3?'#5a6c80':'#343e4a',dim)); c.fillStyle=gg; } fq(P,Q,v0+9,v0+27); c.fill();
+        if(!night&&near&&Math.abs(Q[0]-P[0])>10){ const Pm=E(xs,lerp(da,db,.55)),Qm=E(xs,lerp(da,db,.75)); if(Pm&&Qm){ c.fillStyle='rgba(255,255,255,.18)'; c.beginPath(); c.moveTo(Pm[0],Yv(Pm,v0+27)); c.lineTo(Qm[0],Yv(Qm,v0+27)); c.lineTo(Pm[0],Yv(Pm,v0+9)); c.lineTo(P[0]+(Pm[0]-P[0])*.4,Yv(P,v0+9)); c.closePath(); c.fill(); } } /* 玻璃反射天空：上亮下暗，再加一道斜斜的反光 */
         if(!near||Math.abs(Q[0]-P[0])<6) continue;
         if(!night){ c.fillStyle='rgba(200,220,235,.22)'; fq(P,E(xs,lerp(da,db,.45)),v0+19,v0+27); c.fill(); } else if(hs<.45&&hs>.2){ c.fillStyle='rgba(200,120,90,.35)'; fq(P,E(xs,lerp(da,db,.35)),v0+9,v0+27); c.fill(); }
         c.strokeStyle=night?'rgba(90,90,100,.6)':'rgba(205,208,212,.75)'; c.lineWidth=Math.max(.5,P[1]*.12); fq(P,Q,v0+9,v0+27); c.stroke();
@@ -953,6 +954,7 @@ function thumb(ctx,w,h,t){
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.14)+'px '+TC; ctx.lineWidth=7; ctx.strokeStyle='#1a1530'; ctx.strokeText('街頭外送王',w/2,h*.16); ctx.fillStyle='#ffd23f'; ctx.fillText('街頭外送王',w/2,h*.16);
 }
 function preview(ctx,w,h,L,t){ // 我的造型：正面＋側面（寫實）
+  L=Object.assign({char:'boy',helmet:'#ffd23f',shirt:'#2f8a5a',bike:'#e23b3b',box:'#ff7a3d'},L||{}); /* 還沒選過造型時用預設值 */
   const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#cfc8bc'); g.addColorStop(.6,'#b8ae9e'); g.addColorStop(.61,'#8e8a84'); g.addColorStop(1,'#56565a'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
   ctx.fillStyle='#a3a7ab'; ctx.fillRect(w*.03,h*.06,w*.94,h*.5); ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=1; for(let y=h*.08;y<h*.56;y+=h*.024){ ctx.beginPath(); ctx.moveTo(w*.03,y); ctx.lineTo(w*.97,y); ctx.stroke(); }
   ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(0,h*.6,w,h*.02);
