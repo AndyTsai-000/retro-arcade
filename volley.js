@@ -67,10 +67,18 @@ function drawCourt(ctx,t){
   ctx.fillStyle='#f4f0ff'; ctx.fillRect(NETX-NETW/2-6,NETTOP-4,NETW+12,7); ctx.fillStyle='#ff5d4f'; ctx.fillRect(NETX-1,NETTOP-22,2,18); ctx.fillStyle='#fff'; ctx.fillRect(NETX-1,NETTOP-22,2,4);
 }
 
+function courtTint(ctx,tod,t){
+  if(tod==='sunset'){ const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(255,90,60,.38)'); g.addColorStop(.6,'rgba(255,150,60,.25)'); g.addColorStop(1,'rgba(120,40,60,.15)'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    const sg=ctx.createRadialGradient(240,190,4,240,190,90); sg.addColorStop(0,'rgba(255,220,140,.9)'); sg.addColorStop(1,'rgba(255,160,80,0)'); ctx.fillStyle=sg; ctx.fillRect(140,100,200,96); }
+  else if(tod==='night'){ ctx.fillStyle='rgba(10,14,48,.58)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; for(let i=0;i<40;i++){ ctx.globalAlpha=.4+.5*Math.abs(Math.sin(t+i)); ctx.fillRect((i*97)%W,(i*41)%170,1.5,1.5); } ctx.globalAlpha=1;
+    ctx.fillStyle='#f6f2d8'; ctx.beginPath(); ctx.arc(80,40,14,0,7); ctx.fill();
+    for(const x of [30,450]){ ctx.fillStyle='#3a3a48'; ctx.fillRect(x-2,120,4,150); const lg=ctx.createRadialGradient(x,118,2,x,200,150); lg.addColorStop(0,'rgba(255,240,190,.55)'); lg.addColorStop(1,'rgba(255,240,190,0)'); ctx.fillStyle=lg; ctx.fillRect(x-150,110,300,170); ctx.fillStyle='#fff6c8'; ctx.beginPath(); ctx.arc(x,118,5,0,7); ctx.fill(); } } }
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',me=net?Math.min(1,net.me):0,vsHuman=!!net&&net.count>1;
   const {ctx}=env.canvas2d(W,H);
   const GOAL=[5,11,15].includes(+((opts.options||{}).win))?+opts.options.win:11; // 開始前選的勝利分數
+  const OPT=opts.options||{},AI={easy:{err:80,spd:.72,jump:.55},normal:{err:44,spd:.9,jump:1},hard:{err:18,spd:1,jump:1}}[OPT.ai]||{err:44,spd:.9,jump:1},TOD=OPT.tod||'day';
+  let rally=0,bestRally=0,lastTouch=-1;
   const mk=n=>({n,x:n?360:120,y:GROUND,tx:n?360:120,ty:GROUND,vx:0,vy:0,face:n?-1:1,power:0,moving:false,score:0});
   const ps=[mk(0),mk(1)],ball={x:120,y:70,tx:120,ty:70,vx:0,vy:0,rot:0,cool:0,hot:0};
   let srvN=0,srvSeen=-1,t=0,wait=1,lastW=-1,over=0,ended=false,aiErr=0,aiSide=false,aiTick=0,aiX=372,ev=[],sendT=0,lastIn='';
@@ -96,22 +104,22 @@ function create(env,opts){
   // 電腦：預測落點，站到球的右後方把球往左打
   function aiInput(){
     const p=ps[1],side=ball.x>NETX;
-    if(side&&!aiSide) aiErr=(Math.random()-.5)*44; aiSide=side;
+    if(side&&!aiSide) aiErr=(Math.random()-.5)*AI.err; aiSide=side;
     if(--aiTick<=0){ aiTick=6; let x=ball.x,y=ball.y,vx=ball.vx,vy=ball.vy;
       for(let i=0;i<240&&!(y>GROUND-70&&vy>0);i++){ vy+=520/60; x+=vx/60; y+=vy/60; if(x<BR){x=BR;vx=-vx;} if(x>W-BR){x=W-BR;vx=-vx;} if(y<BR){y=BR;vy=-vy;} }
       aiX=x>NETX?Math.min(W-PR,Math.max(NETX+NETW/2+PR,x+(x-130)/13.6+aiErr)):372; }
     const d=aiX-p.x,near=Math.abs(ball.x-p.x)<56;
-    const jump=side&&near&&ball.vy>0&&ball.y<p.y-95&&ball.y>p.y-200&&p.y>=GROUND&&Math.abs(aiErr)<20;
+    const jump=side&&near&&ball.vy>0&&ball.y<p.y-95&&ball.y>p.y-200&&p.y>=GROUND&&Math.abs(aiErr)<20&&(AI.jump>=1||Math.random()<AI.jump*.2);
     // 挑一個過得了網的扣球角度：往下、平打、往上
     const tn=Math.max(0,ball.x-NETX)/580,clear=vy=>ball.y+vy*tn+260*tn*tn<NETTOP-BR-8;
-    return {dx:Math.abs(d)<6?0:Math.sign(d)*.9,jump,down:clear(430),up:!clear(130),hit:p.y<GROUND&&near};
+    return {dx:Math.abs(d)<6?0:Math.sign(d)*AI.spd,jump,down:clear(430),up:!clear(130),hit:p.y<GROUND&&near};
   }
 
   function conclude(a,b,note){
     if(ended) return; ended=true; ps[0].score=a; ps[1].score=b;
     const w=a>b?0:1,mine=two||w===me;
     env.sfx(mine?'win':'lose');
-    env.end({title:two?(w?'右邊':'左邊')+'玩家獲勝':mine?'你贏了！':'你輸了',big:a+' : '+b,text:note||'',score:!two&&!net&&w===0?a-b:null});
+    env.end({title:two?(w?'右邊':'左邊')+'玩家獲勝':mine?'你贏了！':'你輸了',big:a+' : '+b,text:(note?note+' ':'')+(bestRally>1?'最長連續來回 '+bestRally+' 次。':''),score:!two&&!net&&w===0?a-b:null});
   }
   function snapshot(){
     const m={s:[r1(ps[0].x),r1(ps[0].y),ps[0].score,r1(ps[1].x),r1(ps[1].y),ps[1].score,r1(ball.x),r1(ball.y),r1(ball.rot),ball.hot>0?1:0,wait>0?1:0,lastW,srvN,r1(ball.vx),r1(ball.vy)],e:ev};
@@ -177,18 +185,19 @@ function create(env,opts){
         if(p.power>0&&p.y<GROUND){ const want=p.dirY>0?430:p.dirY<0?-330:130,toNet=(NETX-b.x)*s,tn=Math.max(.02,(toNet-NETW/2)/580),lim=toNet>0?(NETTOP-BR-12-b.y-260*tn*tn)/tn:want;
           b.vx=s*580; b.vy=Math.max(-620,Math.min(want,lim)); b.hot=.6; sfx('boom'); }
         else { b.vx=Math.max(-420,Math.min(420,dx*7+s*110)); b.vy=-Math.max(370,Math.min(520,Math.abs(b.vy)*.9))+p.vy*.25; sfx('place'); }
-        const k=(PR+BR)/(d||1); b.x=p.x+dx*k; b.y=p.y-28+dy*k; b.cool=.16;
+        const k=(PR+BR)/(d||1); b.x=p.x+dx*k; b.y=p.y-28+dy*k; b.cool=.16; if(lastTouch!==p.n){ if(lastTouch>=0) rally++; lastTouch=p.n; bestRally=Math.max(bestRally,rally); }
       }
     }
     if(b.y+BR>=GROUND){
-      b.y=GROUND-BR; const w=b.x<NETX?1:0; ps[w].score++; lastW=w;
+      b.y=GROUND-BR; const w=b.x<NETX?1:0; ps[w].score++; lastW=w; rally=0; lastTouch=-1;
       env.sfx(two||w===me?'item':'hurt'); if(net) ev.push('p'+w);
       if(ps[w].score>=GOAL) over=.001; else serve(w);
     }
   }
 
   function draw(){
-    drawCourt(ctx,t);
+    drawCourt(ctx,t); courtTint(ctx,TOD,t);
+    if(rally>=3&&!client){ ctx.font='900 14px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText('連續來回 '+rally+' 次',W/2,44); ctx.fillStyle=rally>=10?'#ff9d3d':'#ffd23f'; ctx.fillText('連續來回 '+rally+' 次',W/2,44); }
     ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='22px '+PIX; ctx.lineWidth=4; ctx.strokeStyle='#14122b';
     ps.forEach(p=>{ const x=p.n?W-70:70; ctx.strokeText(p.score,x,34); ctx.fillStyle=p.col[0]; ctx.fillText(p.score,x,34); });
     ctx.font='900 12px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.lineWidth=4; ctx.strokeText('先拿 '+GOAL+' 分',W/2,22); ctx.fillStyle='#fff'; ctx.fillText('先拿 '+GOAL+' 分',W/2,22); ctx.font='22px '+PIX;
@@ -202,7 +211,7 @@ function create(env,opts){
   return {update,draw,destroy(){},_dbg:{ps,ball}};
 }
 
-function preview(ctx,w,h,L,t){
+function preview(ctx,w,h,L,t){ L=Object.assign({animal:'cat',color:'#ff9d3d'},L||{}); /* 還沒選過造型時用預設值 */
   const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#5ec8ff'); g.addColorStop(.7,'#c9f0ff'); g.addColorStop(.7,'#f3d892'); g.addColorStop(1,'#f3d892'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
   const up=Math.max(0,Math.sin(t*2.4))*26;
   ctx.save(); ctx.translate(w/2,h-30-GROUND*1.9); ctx.scale(1.9,1.9); drawCat(ctx,0,GROUND-up/1.9,1,[L.color,shade(L.color,.68)],up>4,t,false,L.animal); ctx.restore();
@@ -231,7 +240,9 @@ function thumb(ctx,w,h,t){
   coin:o=>({verb:'先發球',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}),
   name:'椰林沙灘排球',tag:'BEACH VOLLEY',color:'#3ddbd9',online:true,maxPlayers:2,
   desc:'一對一打排球，跳起來殺球讓對手接不到。可單人對電腦、兩人同一台對打，或開房間連線。',
-  options:[{key:'win',label:'打幾分',def:'11',opts:[{id:'5',label:'5 分'},{id:'11',label:'11 分'},{id:'15',label:'15 分'}]}],
+  options:[{key:'win',label:'打幾分',def:'11',opts:[{id:'5',label:'5 分'},{id:'11',label:'11 分'},{id:'15',label:'15 分'}]},
+    {key:'ai',label:'電腦強度',def:'normal',opts:[{id:'easy',label:'簡單'},{id:'normal',label:'普通'},{id:'hard',label:'困難'}]},
+    {key:'tod',label:'場地時段',def:'day',opts:[{id:'day',label:'白天'},{id:'sunset',label:'夕陽'},{id:'night',label:'夜晚燈光'}]}],
   goal:'球落在對方場地就得 1 分，先拿到開始前選的分數（5、11 或 15 分）就獲勝。跳到空中按殺球會用力扣殺，同時按住 ↓ 會往下扣。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['← → ↑ Space','單人與連線：移動、跳、殺球'],['A D W Space','雙人左邊'],['← → ↑ Enter','雙人右邊']],

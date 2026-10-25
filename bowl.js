@@ -95,7 +95,7 @@ function marks(fr,last){
 
 function create(env,opts){
   const net=opts.net,N=+(opts.variant||5)||5,L=opts.look||{ball:BALLS[0],lane:'#d9a45c',bg:'alley'},me=net?net.me:0;
-  const np=net?net.count:Math.max(1,Math.min(4,+(opts.mode||1)||1));
+  let np=net?net.count:Math.max(1,Math.min(4,+(opts.mode||1)||1));
   const {ctx,canvas}=env.canvas2d(W,H);
   // 滑鼠或手指按在畫面上，等同按住投球鍵
   let md=false,mdHit=false; const onDown=e=>{ md=true; mdHit=true; e.preventDefault(); },onUp=()=>{ md=false; };
@@ -103,13 +103,17 @@ function create(env,opts){
   const PL=[]; for(let i=0;i<np;i++) PL.push({name:net?(net.names&&net.names[i])||'玩家'+(i+1):np===1?(opts.name||'你'):'玩家 '+(i+1),frames:[],f:0,gone:false,
     col:net?((net.looks&&net.looks[i]&&net.looks[i].ball)||BALLS[i]):i===0?L.ball:BALLS[i]});
   if(!net) for(let i=1;i<np;i++) if(PL[i].col===PL[0].col) PL[i].col=BALLS.find(c=>!PL.some(p=>p.col===c))||BALLS[i];
+  /* 電腦對手：開始前選幾位，排在玩家後面 */
+  const nc=net?0:Math.max(0,Math.min(4-np,+((opts.options||{}).cpu)||0)),CPUN=['小保','阿龍','球球'];
+  for(let k=0;k<nc;k++) PL.push({name:'電腦'+CPUN[k],frames:[],f:0,gone:false,ai:true,col:BALLS.find(c=>!PL.some(p=>p.col===c))||BALLS[k]});
+  np+=nc; let aiT=0,aiPlan=null;
   let cur=opts.first===1&&np===2?1:0,phase='aim',step=0,pos=0,ang=0,pow=0,spin=0,ptype=0,charging=false,prevHeld=false,t=0,mt=0,stand=1023,pins=[],ball=null,camY=0,rollT=0,doneT=0,banner='',banT=0,pending=null,waitRes=false,ended=false,fx=[];
   const local=i=>!net||i===me;
   const sfx=n=>env.sfx(n);
   function setPins(mask){ pins=SPOTS.map((s,i)=>({i,x:s[0],y:s[1],vx:0,vy:0,up:!!(mask>>i&1),down:false,rot:0,out:!(mask>>i&1)})); }
   setPins(1023);
 
-  function newTurn(){ stand=1023; setPins(1023); phase='aim'; step=0; mt=0; ball=null; camY=0; pos=0; pow=0; charging=false; }
+  function newTurn(){ stand=1023; setPins(1023); phase='aim'; step=0; mt=0; ball=null; camY=0; pos=0; pow=0; charging=false; aiT=0; aiPlan=null; }
   function nextPlayer(){
     for(let k=0;k<np;k++){ cur=(cur+1)%np; if(!PL[cur].gone&&PL[cur].f<N){ newTurn(); return; } }
     finish();
@@ -133,7 +137,7 @@ function create(env,opts){
   function afterSettle(){
     const pl=PL[cur],p=pending; pending=null;
     if(p.over){ pl.f++; nextPlayer(); }
-    else { if(p.reset){ stand=1023; } setPins(stand); phase='aim'; step=0; mt=0; ball=null; camY=0; pow=0; charging=false; }
+    else { if(p.reset){ stand=1023; } setPins(stand); phase='aim'; step=0; mt=0; ball=null; camY=0; pow=0; charging=false; aiT=0; aiPlan=null; }
   }
   function finish(){
     if(ended) return; ended=true; phase='done';
@@ -142,7 +146,7 @@ function create(env,opts){
     sfx(np===1||win||!net?'win':'lose');
     env.end({title:np===1?'比賽結束':net?(win?'你贏了！':top.name+' 獲勝'):top.name+' 獲勝',big:np===1?mine+' 分':'',
       html:np>1?'<ul class="rest">'+rank.map((r,n)=>'<li>第 '+(n+1)+' 名　'+r.name+'　'+r.s+' 分'+(r.gone?'（離開）':'')+'</li>').join('')+'</ul>':'',
-      text:N+' 局賽'+(np===1?'，滿分 '+N*30+' 分。':''),score:np===1||net?mine:rank[0].s});
+      text:N+' 局賽'+(np===1?'，滿分 '+N*30+' 分。':''),score:np===1||net||nc?mine:rank[0].s});
   }
 
   /* ---- 滾球 ---- */
@@ -197,7 +201,17 @@ function create(env,opts){
     if(phase==='done') return;
     if(phase==='aim'){
       camY+=(0-camY)*Math.min(1,dt*6); mt+=dt;
-      if(local(cur)){
+      if(PL[cur].ai){ aiT+=dt;
+        if(!aiPlan){ /* 試每種球種和站位，找能打進球瓶最多的那條路線（全倒瞄口袋，補中瞄剩下的瓶子） */
+          const up=pins.filter(q=>q.up&&!q.out),tx=stand===1023?2.6:up.reduce((a,q)=>a+q.x,0)/Math.max(1,up.length); let best=null;
+          for(let ty=0;ty<TYPES.length;ty++){ if(TYPES[ty].ufo) continue; for(let x=-15;x<=15;x+=1.5){ const pa=pathOf(x,.72,TYPES[ty].spin,false),e=pa[pa.length-1],sc=Math.abs(e[0]-tx)+(Math.abs(e[0])>LW-1?99:0); if(!best||sc<best.sc) best={sc,ty,x}; } }
+          aiPlan={ty:best.ty,x:Math.max(-16,Math.min(16,best.x+(Math.random()-.5)*3.2)),p:.62+Math.random()*.2}; }
+        ptype=aiPlan.ty; spin=TYPES[ptype].spin; step=aiT>.7?1:0;
+        if(step) pos+=(aiPlan.x-pos)*Math.min(1,dt*4);
+        if(aiT>1.6){ charging=true; pow=Math.min(aiPlan.p,(aiT-1.6)*1.4); }
+        if(aiT>1.6+aiPlan.p/1.4+.15){ charging=false; launch(aiPlan.x,0,aiPlan.p,TYPES[ptype].spin,false); }
+      }
+      else if(local(cur)){
         const K=env.keys,mx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0),held=!!(K.Space||K.KeyJ||K.Enter||md),tapK=env.hit('Space')||env.hit('KeyJ')||env.hit('Enter')||mdHit;
         if(step===0){ // 先選球種
           if(env.hit('ArrowRight')||env.hit('ArrowDown')||env.hit('KeyD')){ ptype=(ptype+1)%TYPES.length; sfx('click'); }
@@ -302,15 +316,16 @@ function scene(ctx,w,h,L,t){
     for(let i=0;i<18;i++){ const ang=i*.349+1,r=(u-hitU)*w*.5*(.6+(i%3)*.2); ctx.globalAlpha=a*Math.max(0,1-(u-hitU)*1.6); ctx.fillStyle=['#ffd23f','#ff5d8f','#3ddbd9','#fff'][i%4]; ctx.fillRect(w/2+Math.cos(ang)*r,h*.42+Math.sin(ang)*r*.6,4*k,4*k); }
     ctx.globalAlpha=a; ctx.save(); ctx.translate(w/2,h*.2); ctx.scale(sc,sc); ctx.font='900 '+30*k+'px '+PIX; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=7*k; ctx.strokeStyle='#14122b'; ctx.strokeText('STRIKE!',0,0); ctx.fillStyle='#ffd23f'; ctx.shadowColor='#ff5d8f'; ctx.shadowBlur=12*k; ctx.fillText('STRIKE!',0,0); ctx.restore(); ctx.globalAlpha=1; }
 }
-const preview=(ctx,w,h,L,t)=>scene(ctx,w,h,L,t);
+const preview=(ctx,w,h,L,t)=>scene(ctx,w,h,Object.assign({ball:BALLS[0],lane:'#d9a45c',bg:'alley'},L||{}),t); /* 還沒選過造型時用預設值 */
 const thumb=(ctx,w,h,t)=>scene(ctx,w,h,{ball:'#ff5d4f',lane:'#d9a45c',bg:'alley'},t);
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bowl={
   coin:o=>{ const n=o.net?o.net.count:Math.max(1,Math.min(4,+(o.mode||1)||1)); return n===2?{verb:'先打',names:o.net?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:['玩家 1','玩家 2']}:null; }, // 兩個人時擲硬幣決定誰先打
   name:'保齡球大賽',tag:'BOWLING',color:'#b98cff',online:true,maxPlayers:4,
-  desc:'先選球種（含飛碟球），再選站位，看著路徑圖長按蓄力把球丟出去。可選 3、5、7、9 局，照正式規則計分。同一台可 1～4 人輪流，也可開房間連線，最多 4 人。',
+  desc:'先選球種（含飛碟球），再選站位，看著路徑圖長按蓄力把球丟出去。可選 3、5、7、9 局，照正式規則計分；也可以加 1～3 位電腦對手。同一台可 1～4 人輪流，也可開房間連線，最多 4 人。',
   goal:'每局有兩球把 10 支球瓶打倒。全倒（X）加後面兩球的分數，補中（/）加後面一球；最後一局全倒或補中可以加投。',
   variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'}],
+  options:[{key:'cpu',label:'電腦對手',def:'0',opts:[{id:'0',label:'不要'},{id:'1',label:'1 位'},{id:'2',label:'2 位'},{id:'3',label:'3 位'}]}],
   modes:[{id:'1',label:'1 人'},{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}],
   help:[['← →','選球種（直球、曲球、飛碟球），確認後改成選站位'],['Space','確認球種；選站位時按住蓄力、放開丟球（按住滑鼠左鍵也可以）'],['↑','回去重選球種']],
   touchHelp:[['◀ ▶','選球種，確認後改成選站位'],['投球','確認球種；選站位時按住蓄力、放開丟球（按住畫面也可以）']],

@@ -180,13 +180,14 @@ function create(env,opts){
   function enter(i){ lv=makeLevel(i); ents=lv.ents.map(e=>Object.assign({vx:-40,vy:0,dead:0,y0:e.y,home:e.x},e)); coins=lv.coins.map(o=>Object.assign({},o)); stars=lv.stars.map(o=>Object.assign({},o)); movers=lv.movers.map(o=>Object.assign({},o));
     items=[]; fx=[]; gotStars=0; cpOn=false; coinsLv=0; clearT=0; deathT=0; bossObj=lv.boss?{x:lv.boss.x,y:lv.boss.y,vx:-90,vy:0,hp:3,hurt:0,ax:lv.boss.ax,bx:lv.boss.bx,jumpT:1.5,dead:0}:null; spawn(); mode='play'; introT=1.6; sfx('go'); }
   function spawn(){ const sx=cpOn?lv.cp+TS:6*TS; /* 手機左下角有按鈕，起點往右一點 */ let gy=ROWS; const ci=Math.floor(sx/TS); for(let y=0;y<ROWS;y++) if(lv.cols[ci]&&SOLID(lv.cols[ci][y])){ gy=y; break; }
-    P={x:sx,y:gy*TS,vx:0,vy:0,on:true,face:1,big:false,inv:0,run:0,coyote:0,buf:0,jumping:false,dead:false,goal:false}; cam=clamp(P.x-W*.35,0,lv.width-W); }
+    P={x:sx,y:gy*TS,vx:0,vy:0,on:true,face:1,big:false,inv:0,star:0,run:0,coyote:0,buf:0,jumping:false,dead:false,goal:false}; cam=clamp(P.x-W*.35,0,lv.width-W); }
   const tileAt=(cx,cy)=>{ if(cx<0) return 1; if(cy<0) return 0; if(cy>=ROWS) return 0; const col=lv.cols[cx]; return col?col[cy]:0; };
   const hb=()=>{ const h=P.big?40:28; return {x:P.x-9,y:P.y-h,w:18,h}; };
-  function hurt(){ if(P.inv>0||P.dead||P.goal) return; if(P.big){ P.big=false; P.inv=1.6; sfx('hurt'); return; } die(); }
+  function hurt(){ if(P.inv>0||P.star>0||P.dead||P.goal) return; if(P.big){ P.big=false; P.inv=1.6; sfx('hurt'); return; } die(); }
   function die(){ if(P.dead) return; P.dead=true; P.vy=-480; P.vx=0; deathT=0; sfx('die'); }
   function bump(cx,cy){ const v=tileAt(cx,cy); if(v===3){ lv.cols[cx][cy]=4; const it=lv.cols[cx].item||'coin'; fx.push({t:0,kind:'bump',cx,cy});
-      if(it==='fruit'&&!P.big) items.push({x:cx*TS+16,y:cy*TS,vx:70,vy:-120,t:0}); else { coinsLv++; totalCoins++; fx.push({t:0,kind:'coin',x:cx*TS+16,y:cy*TS-10}); sfx('item'); } }
+      const rr2=Math.random(),sp=it==='fruit'?null:rr2<.07?'star':rr2<.11?'heart':null;
+      if(it==='fruit'&&!P.big) items.push({k:'fruit',x:cx*TS+16,y:cy*TS,vx:70,vy:-120,t:0}); else if(sp){ items.push({k:sp,x:cx*TS+16,y:cy*TS,vx:sp==='star'?110:60,vy:sp==='star'?-380:-120,t:0}); sfx('item'); } else { coinsLv++; totalCoins++; fx.push({t:0,kind:'coin',x:cx*TS+16,y:cy*TS-10}); sfx('item'); } }
     else if(v===2){ fx.push({t:0,kind:'bump',cx,cy}); sfx('bump'); }
     for(const e of ents) if(!e.dead&&Math.abs(e.x-(cx*TS+16))<20&&Math.abs(e.y-cy*TS)<6){ e.dead=.01; sfx('pop'); } }
   function move(dt){ const K=env.keys,left=K.ArrowLeft||K.KeyA,right=K.ArrowRight||K.KeyD,jumpHeld=K.Space||K.ArrowUp||K.KeyW||K.KeyZ||K.KeyJ;
@@ -198,7 +199,7 @@ function create(env,opts){
       if(P.buf>0&&P.coyote>0){ P.vy=-560; P.on=false; P.coyote=0; P.buf=0; P.jumping=true; sfx('spring'); }
       if(P.jumping&&!jumpHeld&&P.vy<-340) P.vy=-340; } // 早放開跳比較低
     P.vy=Math.min(760,P.vy+(P.vy<0&&jumpHeld?1250:1700)*dt); if(P.vy>=0) P.jumping=false;
-    if(Math.abs(P.vx)>10&&P.on) P.run+=dt; if(P.inv>0) P.inv-=dt;
+    if(Math.abs(P.vx)>10&&P.on) P.run+=dt; if(P.inv>0) P.inv-=dt; if(P.star>0) P.star-=dt;
     // 橫向
     let b=hb(); P.x+=P.vx*dt; b=hb(); const c0=Math.floor(b.y/TS),c1=Math.floor((b.y+b.h-1)/TS);
     for(let cy=c0;cy<=c1;cy++){ if(P.vx>0){ const cx=Math.floor((b.x+b.w)/TS); if(SOLID(tileAt(cx,cy))){ P.x=cx*TS-b.w-.01+9; P.vx=0; } } else if(P.vx<0){ const cx=Math.floor(b.x/TS); if(SOLID(tileAt(cx,cy))){ P.x=(cx+1)*TS+9.01; P.vx=0; } } }
@@ -234,14 +235,15 @@ function create(env,opts){
           if(SOLID(tileAt(cx,cy))||tileAt(cx,cy)===5||!SOLID(tileAt(cx,fy))&&tileAt(cx,fy)!==6&&e.vy===0) e.vx=-e.vx; else e.x=nx;
           e.y+=e.vy*dt; const gy=Math.floor(e.y/TS); if(SOLID(tileAt(Math.floor(e.x/TS),gy))||tileAt(Math.floor(e.x/TS),gy)===6){ e.y=gy*TS; e.vy=0; } if(e.y>ROWS*TS+40) e.dead=1; }
         if(P.dead||P.goal) continue; const b=hb(),ex=e.x-13,ey=e.y-(e.t==='bee'?26:24),ew=26,eh=e.t==='bee'?22:24;
-        if(b.x<ex+ew&&b.x+b.w>ex&&b.y<ey+eh&&b.y+b.h>ey){ if(e.t!=='spiky'&&P.vy>60&&P.y-ey<16){ e.dead=.01; P.vy=(env.keys.Space||env.keys.ArrowUp||env.keys.KeyW)?-520:-360; sfx('pop'); fx.push({t:0,kind:'stomp',x:e.x,y:e.y-10}); } else hurt(); } }
+        if(b.x<ex+ew&&b.x+b.w>ex&&b.y<ey+eh&&b.y+b.h>ey){ if(P.star>0){ e.dead=.01; e.vy=-300; sfx('pop'); fx.push({t:0,kind:'stomp',x:e.x,y:e.y-10}); } else if(e.t!=='spiky'&&P.vy>60&&P.y-ey<16){ e.dead=.01; P.vy=(env.keys.Space||env.keys.ArrowUp||env.keys.KeyW)?-520:-360; sfx('pop'); fx.push({t:0,kind:'stomp',x:e.x,y:e.y-10}); } else hurt(); } }
       // 大王：跳來跳去，踩頭三次
       if(bossObj&&!bossObj.dead){ const B=bossObj; if(B.hurt>0) B.hurt-=dt; B.jumpT-=dt; B.vy+=1300*dt; B.x+=B.vx*dt*(B.hp===1?1.5:1); if(B.x<B.ax+40){ B.x=B.ax+40; B.vx=Math.abs(B.vx); } if(B.x>B.bx-40){ B.x=B.bx-40; B.vx=-Math.abs(B.vx); }
         B.y+=B.vy*dt; if(B.y>=lv.boss.y){ B.y=lv.boss.y; B.vy=0; if(B.jumpT<=0){ B.vy=-560-(3-B.hp)*60; B.jumpT=1.2+Math.random(); B.vx=(P.x<B.x?-1:1)*(90+(3-B.hp)*30); } }
         if(!P.dead&&Math.abs(P.x-B.x)<46&&P.y>B.y-80&&P.y-34<B.y){ if(P.vy>60&&P.y<B.y-48&&B.hurt<=0){ B.hp--; B.hurt=1.2; P.vy=-560; sfx('boom'); fx.push({t:0,kind:'stomp',x:B.x,y:B.y-70}); if(B.hp<=0){ B.dead=1; sfx('win'); msg='打倒果凍大王了！'; msgT=2; } } else if(B.hurt<=0) hurt(); } }
       // 道具、金幣、星星、中途旗、終點
-      for(const it of items){ it.t+=dt; it.vy=Math.min(600,it.vy+1200*dt); it.x+=it.vx*dt; const cx=Math.floor((it.x+(it.vx>0?10:-10))/TS); if(SOLID(tileAt(cx,Math.floor((it.y-8)/TS)))) it.vx=-it.vx; it.y+=it.vy*dt; const gy=Math.floor(it.y/TS); if(SOLID(tileAt(Math.floor(it.x/TS),gy))){ it.y=gy*TS; it.vy=0; }
-        if(Math.abs(it.x-P.x)<20&&Math.abs(it.y-P.y)<34){ it.got=1; P.big=true; sfx('heal'); msg='變大了！被撞一下只會變小'; msgT=1.6; } }
+      for(const it of items){ it.t+=dt; it.vy=Math.min(600,it.vy+1200*dt); it.x+=it.vx*dt; const cx=Math.floor((it.x+(it.vx>0?10:-10))/TS); if(SOLID(tileAt(cx,Math.floor((it.y-8)/TS)))) it.vx=-it.vx; it.y+=it.vy*dt; const gy=Math.floor(it.y/TS); if(SOLID(tileAt(Math.floor(it.x/TS),gy))){ it.y=gy*TS; it.vy=it.k==='star'?-420:0; }
+        if(Math.abs(it.x-P.x)<20&&Math.abs(it.y-P.y)<34){ it.got=1; sfx('heal');
+          if(it.k==='star'){ P.star=8; msg='無敵星星糖！8 秒內撞到怪物就打倒'; } else if(it.k==='heart'){ lives++; msg='愛心！命 +1'; } else { P.big=true; msg='變大了！被撞一下只會變小'; } msgT=1.6; } }
       items=items.filter(it=>!it.got&&it.y<ROWS*TS+40);
       const b=hb(); for(const o of coins) if(!o.got&&Math.abs(o.x-P.x)<18&&o.y>b.y-8&&o.y<b.y+b.h+8){ o.got=1; coinsLv++; totalCoins++; sfx('item'); if(totalCoins%100===0){ lives++; msg='金幣 100 枚！命 +1'; msgT=1.6; } }
       for(const s of stars) if(!s.got&&Math.abs(s.x-P.x)<24&&s.y>b.y-14&&s.y<b.y+b.h+14){ s.got=1; gotStars|=1<<s.id; sfx('win'); msg='星星金幣！'; msgT=1.2; }
@@ -268,10 +270,14 @@ function create(env,opts){
     for(const m of movers){ c.fillStyle='#ffd23f'; rr(c,m.x,m.y,m.w,14,7); c.fill(); c.strokeStyle='#b8800a'; c.lineWidth=2; c.stroke(); c.fillStyle='rgba(255,255,255,.5)'; rr(c,m.x+4,m.y+2,m.w-8,4,2); c.fill(); }
     for(const o of coins) if(!o.got&&o.x>cam-20&&o.x<cam+W+20) coin(c,o.x,o.y,t);
     for(const s of stars) if(!s.got) coin(c,s.x,s.y,t,true);
-    for(const it of items){ c.fillStyle='#ff5d8f'; c.beginPath(); c.arc(it.x,it.y-12,12,0,7); c.fill(); c.strokeStyle='#a83a6a'; c.lineWidth=2; c.stroke(); c.fillStyle='#5fd068'; c.beginPath(); c.ellipse(it.x+4,it.y-25,6,3,-.5,0,7); c.fill(); c.fillStyle='rgba(255,255,255,.6)'; c.beginPath(); c.arc(it.x-4,it.y-16,3,0,7); c.fill(); }
+    for(const it of items){ if(it.k==='star'){ c.save(); c.translate(it.x,it.y-14); c.rotate(t*3); c.fillStyle='hsl('+(t*360%360)+',100%,62%)'; c.beginPath(); for(let k=0;k<10;k++){ const a=-Math.PI/2+k*Math.PI/5,r=k%2?6:14; c.lineTo(Math.cos(a)*r,Math.sin(a)*r); } c.closePath(); c.fill(); c.strokeStyle='#fff'; c.lineWidth=2; c.stroke(); c.restore(); continue; }
+      if(it.k==='heart'){ c.fillStyle='#ff3b6b'; c.beginPath(); c.moveTo(it.x,it.y-2); c.bezierCurveTo(it.x-16,it.y-14,it.x-10,it.y-28,it.x,it.y-20); c.bezierCurveTo(it.x+10,it.y-28,it.x+16,it.y-14,it.x,it.y-2); c.fill(); c.strokeStyle='#fff'; c.lineWidth=2; c.stroke(); continue; }
+      c.fillStyle='#ff5d8f'; c.beginPath(); c.arc(it.x,it.y-12,12,0,7); c.fill(); c.strokeStyle='#a83a6a'; c.lineWidth=2; c.stroke(); c.fillStyle='#5fd068'; c.beginPath(); c.ellipse(it.x+4,it.y-25,6,3,-.5,0,7); c.fill(); c.fillStyle='rgba(255,255,255,.6)'; c.beginPath(); c.arc(it.x-4,it.y-16,3,0,7); c.fill(); }
     for(const e of ents){ if(e.dead>.5||e.x<cam-40||e.x>cam+W+40) continue; foe(c,e,t); }
     if(bossObj&&!bossObj.dead) boss(c,bossObj,t);
     for(const f of fx){ const u=f.t/.8; if(f.kind==='coin'){ coin(c,f.x,f.y-u*50,t*3); } else if(f.kind==='stomp'){ c.globalAlpha=1-u; c.fillStyle='#fff'; for(let k=0;k<6;k++){ const a=k/6*6.28; c.beginPath(); c.arc(f.x+Math.cos(a)*u*30,f.y+Math.sin(a)*u*20,4*(1-u),0,7); c.fill(); } c.globalAlpha=1; } }
+    if(P.star>0&&!P.dead){ const gl=c.createRadialGradient(P.x,P.y-24,4,P.x,P.y-24,46); gl.addColorStop(0,'hsla('+(t*500%360)+',100%,70%,.6)'); gl.addColorStop(1,'hsla('+(t*500%360)+',100%,70%,0)'); c.fillStyle=gl; c.fillRect(P.x-46,P.y-70,92,92);
+      for(let k=0;k<5;k++){ const a=t*6+k*1.26; c.fillStyle='hsl('+((t*300+k*70)%360)+',100%,70%)'; c.fillRect(P.x+Math.cos(a)*24-2,P.y-24+Math.sin(a)*28-2,4,4); } }
     if(!(P.inv>0&&Math.floor(t*16)%2)) hero(c,P.x,P.y,{t,L,run:P.run,moving:Math.abs(P.vx)>10,air:!P.on,face:P.face,big:P.big,hurt:P.dead});
     c.restore();
     hudTop(); if(introT>0){ c.fillStyle='rgba(11,10,28,'+Math.min(.8,introT)+')'; c.fillRect(0,0,W,H); c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 30px '+TC; c.fillText('第 '+(lv.L.i+1)+' 關　'+lv.L.name,W/2,H/2-14); c.fillStyle='#fff'; c.font='700 16px '+TC; c.fillText(lv.boss?'最後有果凍大王！踩牠的頭三次':'找找看 3 枚星星金幣',W/2,H/2+22); }
@@ -302,7 +308,7 @@ function preview(ctx,w,h,L,t){ const k=h/H; ctx.save(); ctx.scale(k,k); backdrop
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).jelly={
   name:'蹦蹦果凍島',tag:'JELLY ISLAND',color:'#ff5d8f',
-  desc:'在世界地圖上一關一關往前走！跳過斷崖、踩扁果凍史萊姆、頂問號糖果盒，每個世界最後到城堡打果凍大王。六個世界共 30 關。',
+  desc:'在世界地圖上一關一關往前走！跳過斷崖、踩扁果凍史萊姆、頂問號糖果盒（偶爾會出無敵星星糖和愛心），每個世界最後到城堡打果凍大王。六個世界共 30 關。',
   goal:'往右走到終點旗子就過關；掉下去或被怪物撞到會少一條命。每關藏著 3 枚星星金幣。',
   stageGoal:si=>{ const l=LEVELS[si]; return l.name+'：'+(l.castle?'城堡關，走到最後的大王房間，踩果凍大王的頭三次。':'走到最右邊的終點旗。')+'踩怪物的頭可以打倒牠（刺刺栗不能踩），頂問號糖果盒有金幣或果凍果（吃了變大，被撞只會變小）。進遊戲後在世界地圖上選關。'; },
   stages:LEVELS.map(l=>l.name),stars:LEVELS.map((l,i)=>1+Math.floor(i/6)),stageLabel:'選擇關卡',

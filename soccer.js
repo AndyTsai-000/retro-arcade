@@ -77,7 +77,8 @@ function create(env,opts){
   }
   const ball={x:MIDX,y:MIDY,z:40,vx:0,vy:0,vz:0,owner:-1,last:-1,type:null,t:0,base:MIDY,noPick:-1,npT:0,ghost:0,shotN:0};
   const ctrl=[4,9],human=[true,vs],inp=[blank(),blank()],tap=[{d:0,t:-9,run:0},{d:0,t:-9,run:0}],prev=[{},{}],gauge=[0,0],score=[0,0],fx=[],rings=[];
-  let t=0,time=120,extra=false,cam=MIDX-W/2,freeze=0,shake=0,flash=0,cut=null,goalT=0,goalBy=-1,ended=false,msg='',msgT=0,ev=[],sendT=0,lastIn='',start=1.3,kick=0;
+  const T0=[90,120,180,300].includes(+((opts.options||{}).time))?+opts.options.time:120; /* 開始前選的比賽時間 */
+  let t=0,time=T0,extra=false,cam=MIDX-W/2,freeze=0,shake=0,flash=0,cut=null,goalT=0,goalBy=-1,ended=false,msg='',msgT=0,ev=[],sendT=0,lastIn='',start=1.3,kick=0;
   function blank(){ return {mx:0,my:0,run:false,a:false,b:false,j:false,x:false}; }
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
   const say=(s,sec)=>{ msg=s; msgT=sec||1.2; if(net&&net.host) ev.push('!'+s); };
@@ -390,6 +391,7 @@ function thumb(ctx,w,h,t){
     FOE.forEach((nm,i)=>{ const x=w*(.12+i*.19),y=h*(i%2?.86:.74),run=Math.floor(t*.8+i)%3===0;
       ctx.save(); ctx.translate(x,y); ctx.scale(1.9,1.9); guy(ctx,0,0,run?0:Math.abs(Math.sin(t*3+i))*2,-1,col,i%4,run?1:0,t+i); ctx.restore();
       ctx.font='700 '+Math.round(h*.055)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(nm,x,y+h*.07); }); },
+  options:[{key:'time',label:'比賽時間',def:'120',opts:[{id:'90',label:'1 分半'},{id:'120',label:'2 分鐘'},{id:'180',label:'3 分鐘'},{id:'300',label:'5 分鐘'}]}],
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動，連按兩下 ← → 助跑'],['J','射門；沒球時是鏟球'],['K','傳球；沒球時換人'],['L','跳'],['I','超必殺（氣力條滿、帶著球時）'],['W A S D F G H R','雙人左隊：移動、射、傳、跳、超必殺'],['↑ ↓ ← → , . / M','雙人右隊：移動、射、傳、跳、超必殺']],

@@ -87,8 +87,12 @@ function bg(c,w,h,wi,t){ const Wd=WORLDS[wi],k=w/800,g=c.createLinearGradient(0,
 function Board(rnd,o){ const b={grid:new Uint8Array(COLS*ROWS),bag:[],queue:[],cur:null,fallT:0,lockT:0,lockN:0,lines:0,score:0,combo:-1,over:false,pend:0,fx:[],pops:[],das:{d:0,t:0},land:0,shake:0};
   const refill=()=>{ const k=KINDS.split(''),ex=o.iExtra?o.iExtra():0; if(ex>0){ for(let n=0;n<Math.floor(ex);n++) k.push('I'); if(rnd()<ex%1) k.push('I'); } else if(ex<0&&rnd()<-ex) k.splice(k.indexOf('I'),1);
     for(let i=k.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [k[i],k[j]]=[k[j],k[i]]; } b.bag.push(...k); };
+  b.spawn=k=>{ const m=MAT[k]; b.cur={k,ci:KINDS.indexOf(k)+1,m,x:Math.floor((COLS-m.length)/2),y:k==='I'?-1:0}; b.lockT=0; b.lockN=0; b.fallT=0; if(b.hit(b.cur.m,b.cur.x,b.cur.y)) b.over=true; };
   b.next=()=>{ while(b.queue.length<4){ if(!b.bag.length) refill(); b.queue.push(b.bag.shift()); } const k=b.queue.shift(); while(b.queue.length<3){ if(!b.bag.length) refill(); b.queue.push(b.bag.shift()); }
-    const m=MAT[k]; b.cur={k,ci:KINDS.indexOf(k)+1,m,x:Math.floor((COLS-m.length)/2),y:k==='I'?-1:0}; b.lockT=0; b.lockN=0; b.fallT=0; if(b.hit(b.cur.m,b.cur.x,b.cur.y)) b.over=true; };
+    b.canHold=true; b.spawn(k); };
+  /* 暫存：把現在的方塊收起來，換出之前收的那個（每落下一塊只能換一次） */
+  b.hold=null; b.canHold=true;
+  b.doHold=()=>{ const c=b.cur; if(!c||b.over||!b.canHold) return false; const k=c.k; if(b.hold){ const h=b.hold; b.hold=k; b.spawn(h); } else { b.hold=k; b.next(); } b.canHold=false; return true; };
   b.hit=(m,x,y)=>{ for(let r=0;r<m.length;r++) for(let q=0;q<m.length;q++){ if(!m[r][q]) continue; const X=x+q,Y=y+r; if(X<0||X>=COLS||Y>=ROWS) return true; if(Y>=0&&b.grid[Y*COLS+X]) return true; } return false; };
   b.move=(dx,dy)=>{ const c=b.cur; if(!c||b.over) return false; if(b.hit(c.m,c.x+dx,c.y+dy)) return false; c.x+=dx; c.y+=dy; if(dx&&b.lockN<15&&b.hit(c.m,c.x,c.y+1)){ b.lockT=0; b.lockN++; } return true; };
   b.rotate=()=>{ const c=b.cur; if(!c||b.over||c.k==='O') return false; const m=rot(c.m); for(const [dx,dy] of KICKS) if(!b.hit(m,c.x+dx,c.y+dy)){ c.m=m; c.x+=dx; c.y+=dy; if(b.lockN<15){ b.lockT=0; b.lockN++; } return true; } return false; };
@@ -121,13 +125,15 @@ function create(env,opts){
   const names=net?(net.names||['玩家 1','玩家 2']):two?['1P','2P']:[opts.name||'你'];
   // 按鍵：單人方向鍵或 WASD；雙人 1P＝WASD＋空白鍵、2P＝方向鍵＋Enter
   const KS=two?[{l:['KeyA'],r:['KeyD'],d:['KeyS'],u:['KeyW'],x:['Space']},{l:['ArrowLeft'],r:['ArrowRight'],d:['ArrowDown'],u:['ArrowUp'],x:['Enter','NumpadEnter']}]
-    :[{l:['ArrowLeft','KeyA'],r:['ArrowRight','KeyD'],d:['ArrowDown','KeyS'],u:['ArrowUp','KeyW','KeyX'],x:['Space']}];
+    :[{l:['ArrowLeft','KeyA'],r:['ArrowRight','KeyD'],d:['ArrowDown','KeyS'],u:['ArrowUp','KeyW','KeyX'],x:['Space'],h:['KeyC','ShiftLeft','ShiftRight']}];
+  if(two){ KS[0].h=['KeyQ']; KS[1].h=['ShiftRight','KeyL']; }
   const held=(k,list)=>list.some(c=>env.keys[c]),hitAny=list=>list.some(c=>env.hit(c));
   const say=(bi,txt,col)=>popups.push({bi,txt,col:col||'#ffd23f',t:0});
   function control(b,K,dt){
     const dir=(held(b,K.r)?1:0)-(held(b,K.l)?1:0);
     if(dir){ if(b.das.d!==dir){ b.das.d=dir; b.das.t=0; if(b.move(dir,0)) sfx('click'); } else { b.das.t+=dt; while(b.das.t>.17){ b.das.t-=.05; b.move(dir,0); } } } else b.das.d=0;
     if(hitAny(K.u)){ if(b.rotate()) sfx('click'); }
+    if(K.h&&hitAny(K.h)){ if(b.doHold()) sfx('item'); }
     if(hitAny(K.x)){ const r=b.hardDrop(); after(b,r>=100?r-100:r,true); return; }
     const F=fall(),soft=held(b,K.d); b.fallT+=dt*(soft?Math.max(1,F/.03):1);
     while(b.fallT>=F&&!b.over){ b.fallT-=F; if(b.move(0,1)){ if(soft) b.score+=1; b.lockT=0; } else break; }
@@ -175,18 +181,21 @@ function create(env,opts){
   function nextBox(b,x,y,n){ c.fillStyle='rgba(11,10,28,.72)'; rr(c,x,y,92,30+n*56,12); c.fill(); c.fillStyle='#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('下一個',x+46,y+15);
     (b.queue||[]).slice(0,n).forEach((k,i)=>{ const m=MAT[k],s=i?14:18,ci=KINDS.indexOf(k)+1; let mnx=9,mxx=-1,mny=9,mxy=-1; m.forEach((r,ry)=>r.forEach((v,rx)=>{ if(v){ mnx=Math.min(mnx,rx); mxx=Math.max(mxx,rx); mny=Math.min(mny,ry); mxy=Math.max(mxy,ry); } }));
       const ox=x+46-(mxx-mnx+1)*s/2,oy=y+34+i*56+24-(mxy-mny+1)*s/2; m.forEach((r,ry)=>r.forEach((v,rx)=>{ if(v) drawCell(c,ox+(rx-mnx)*s,oy+(ry-mny)*s,ci,s,skin); })); }); }
+  function holdBox(b,x,y){ c.fillStyle='rgba(11,10,28,.72)'; rr(c,x,y,92,86,12); c.fill(); c.fillStyle=b.canHold===false?'#8a86b0':'#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('暫存',x+46,y+15);
+    const k=b.hold; if(!k) { c.fillStyle='rgba(255,255,255,.35)'; c.font='700 10px '+TC; c.fillText(two?'':'按 C 收起來',x+46,y+52); return; } const m=MAT[k],s2=18,ci=KINDS.indexOf(k)+1; let mnx=9,mxx=-1,mny=9,mxy=-1; m.forEach((r,ry)=>r.forEach((v,rx)=>{ if(v){ mnx=Math.min(mnx,rx); mxx=Math.max(mxx,rx); mny=Math.min(mny,ry); mxy=Math.max(mxy,ry); } }));
+    const ox=x+46-(mxx-mnx+1)*s2/2,oy=y+52-(mxy-mny+1)*s2/2; m.forEach((r,ry)=>r.forEach((v,rx)=>{ if(v) drawCell(c,ox+(rx-mnx)*s2,oy+(ry-mny)*s2,ci,s2,skin,b.canHold===false?.45:null); })); }
   function stat(x,y,w,lbl,val,col){ c.fillStyle='rgba(11,10,28,.72)'; rr(c,x,y,w,46,12); c.fill(); c.textAlign='left'; c.fillStyle='#cfd0ff'; c.font='700 11px '+TC; c.fillText(lbl,x+12,y+14); c.fillStyle=col||'#fff'; c.font='900 18px '+TC; c.fillText(val,x+12,y+33); }
   function mascot(x,y){ const kid=window.ARCADE_GAMES.stairs&&window.ARCADE_GAMES.stairs._kid; if(!kid) return; const jump=cheer>0?Math.abs(Math.sin(t*10))*14:0;
     c.save(); c.translate(x,y-jump); c.scale(2.6,2.6); kid(c,0,0,1,cheer>0?t:0,cheer>0||sad>0,0,L.color||'#ff7eb6',L.char||'girl'); c.restore();
     const txt=sad>0?'沒關係，再來！':cheer>0?'好厲害！':intro>0?'加油！':''; if(txt){ c.font='900 13px '+TC; const w=c.measureText(txt).width+20; c.fillStyle='#fff'; rr(c,x-w/2,y-112,w,26,12); c.fill(); c.fillStyle='#14122b'; c.textAlign='center'; c.fillText(txt,x,y-99); } }
   function draw(){
     bg(c,W,H,ST.w,t);
-    if(!vs){ const b=boards[0],bx=290,by=40; drawBoard(b,bx,by,'',false); nextBox(b,bx+COLS*CS+22,by,3);
+    if(!vs){ const b=boards[0],bx=290,by=40; drawBoard(b,bx,by,'',false); nextBox(b,bx+COLS*CS+22,by,3); holdBox(b,bx+COLS*CS+22,by+212);
       stat(60,40,180,'第 '+(si+1)+' 關',ST.name,'#ffd23f'); stat(60,94,180,'分數',String(b.score)); stat(60,148,180,'消行',b.lines+' / '+ST.lines);
       const u=Math.min(1,b.lines/ST.lines); c.fillStyle='rgba(11,10,28,.72)'; rr(c,60,198,180,14,7); c.fill(); c.fillStyle='#86dc4f'; rr(c,63,201,Math.max(8,174*u),8,4); c.fill();
       mascot(150,430); }
     else { const pos=[[60,52],[450,52]]; boards.forEach((b,i)=>{ const [bx,by]=pos[i],mine=net?i===me:true; drawBoard(b,bx,by,(names[i]||'')+'　'+b.score+' 分',net&&i===me); nextBox(b,bx+COLS*CS+18,by,2);
-        c.fillStyle='rgba(11,10,28,.72)'; rr(c,bx+COLS*CS+18,by+150,92,40,12); c.fill(); c.fillStyle='#fff'; c.font='700 11px '+TC; c.textAlign='center'; c.fillText('消 '+b.lines+' 行',bx+COLS*CS+64,by+170); }); }
+        c.fillStyle='rgba(11,10,28,.72)'; rr(c,bx+COLS*CS+18,by+150,92,40,12); c.fill(); c.fillStyle='#fff'; c.font='700 11px '+TC; c.textAlign='center'; c.fillText('消 '+b.lines+' 行',bx+COLS*CS+64,by+170); if(!net||i===me) holdBox(b,bx+COLS*CS+18,by+200); }); }
     // 浮出的文字
     for(const p of popups){ const bx=vs?[60,450][p.bi]:290,a=Math.min(1,(1.4-p.t)*2); c.globalAlpha=a; c.font='900 22px '+TC; c.textAlign='center'; c.lineWidth=5; c.strokeStyle='#14122b'; const y=230-p.t*40; c.strokeText(p.txt,bx+COLS*CS/2,y); c.fillStyle=p.col; c.fillText(p.txt,bx+COLS*CS/2,y); c.globalAlpha=1; }
     if(intro>0){ c.fillStyle='rgba(11,10,28,.55)'; c.fillRect(0,0,W,H); c.textAlign='center'; c.fillStyle='#fff'; c.font='900 30px '+TC;
@@ -218,9 +227,9 @@ function preview(ctx,w,h,L,t){ bg(ctx,w,h,0,t); const s=22; ['I','T','O','S'].fo
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v+' 分'; },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   modes:[{id:'1p',label:'單人闖關'},{id:'2p',label:'雙人對戰',kb:true}],
-  help:[['← →','左右移動'],['↑','旋轉'],['↓ ／ 空白鍵','慢慢放下／一口氣落下'],['雙人','1P：W A S D＋空白鍵；2P：方向鍵＋Enter']],
+  help:[['← →','左右移動'],['↑','旋轉'],['↓ ／ 空白鍵','慢慢放下／一口氣落下'],['C 或 Shift','暫存方塊（把現在的收起來，之後再換出來用）'],['雙人','1P：W A S D＋空白鍵、Q 暫存；2P：方向鍵＋Enter、右 Shift 暫存']],
   touchHelp:[['◀ ▶','左右移動'],['旋轉','轉方向'],['▼ ／ 落下','慢慢放下／一口氣落下']],
-  touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'旋轉',c:'ArrowUp'},{l:'▼',c:'ArrowDown'},{l:'落下',c:'Space',act:true}]},
+  touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'暫存',c:'KeyC'},{l:'旋轉',c:'ArrowUp'},{l:'▼',c:'ArrowDown'},{l:'落下',c:'Space',act:true}]},
   best:{label:'最高分',fmt:v=>v+' 分',lower:false},
   looks:[{key:'skin',label:'方塊樣式',opts:[{id:'candy',label:'糖果'},{id:'gem',label:'寶石'},{id:'pixel',label:'像素'}]},
     {key:'char',label:'加油夥伴',opts:[{id:'girl',label:'女孩'},{id:'boy',label:'男孩'},{id:'robot',label:'機器人'},{id:'ninja',label:'忍者'}]},

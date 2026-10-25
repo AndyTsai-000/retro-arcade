@@ -576,7 +576,7 @@ function scene(ctx,w,h,L,t){
     ctx.globalAlpha=a; ctx.save(); ctx.translate(W/2,90); ctx.scale(sc,sc); ctx.font='900 28px '+PIX; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; ctx.strokeText('HOME RUN!',0,0); ctx.fillStyle='#ffd23f'; ctx.shadowColor='#ff5d4f'; ctx.shadowBlur=10; ctx.fillText('HOME RUN!',0,0); ctx.restore(); ctx.globalAlpha=1; }
   ctx.restore();
 }
-const preview=(ctx,w,h,L,t)=>scene(ctx,w,h,L,t);
+const preview=(ctx,w,h,L,t)=>scene(ctx,w,h,Object.assign({color:'#ff5d4f',hair:'1',grass:'#4c9a3c',bg:'stadium'},L||{}),t); /* 還沒選過造型時用預設值 */
 const thumb=(ctx,w,h,t)=>{ ctx.save(); ctx.translate(0,-16); scene(ctx,w,h,{color:'#ff5d4f',hair:'1',grass:'#4c9a3c',bg:'stadium'},t); ctx.restore(); };
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).baseball={

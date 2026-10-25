@@ -116,7 +116,7 @@ function drawCourt(ctx,c0,c1,court,bg){
   ctx.strokeStyle='#fff'; ctx.lineWidth=2.5; ctx.strokeRect(X0,YB,X1-X0,YF-YB); ctx.beginPath(); ctx.moveTo(MID,YB); ctx.lineTo(MID,YF); ctx.stroke();
 }
 
-function create(env,opts){
+function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options||{}).hp]||1; /* 開始前選的體力：決定一場打多久 */
   const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',vs=two||(!!net&&net.count>1),me=net?Math.min(1,net.me):0;
   const si=opts.stage||0,foe=STAGES[si],L=opts.look||{color:'#ff5d4f',hair:'0',ball:'#ffffff',court:'#e0a868',bg:'beach'};
   const {ctx}=env.canvas2d(W,H);
@@ -128,7 +128,7 @@ function create(env,opts){
   const P=[];
   for(let t=0;t<2;t++){
     const src=t===0||vs?HOME:foe.team,dir=t?-1:1;
-    for(let i=0;i<3;i++){ const s=src[i]; P.push({id:P.length,team:t,role:'in',x:MID-dir*(60+i*45),y:YB+24+i*38,z:0,vz:0,face:dir,hp:s.hp,max:s.hp,s,
+    for(let i=0;i<3;i++){ const s=src[i]; P.push({id:P.length,team:t,role:'in',x:MID-dir*(60+i*45),y:YB+24+i*38,z:0,vz:0,face:dir,hp:Math.round(s.hp*HPK),max:Math.round(s.hp*HPK),s,
       state:0,st:0,catchT:0,duck:false,run:false,runT:0,throwT:0,inv:0,kx:0,ky:0,ai:{t:Math.random(),plan:null,roll:-1,hold:0},hair:hairs[t]<0?(i+si)%4:i===0?hairs[t]:(hairs[t]+i)%4,moving:false}); }
     const ox=t?X0-20:X1+20,cx=t?(X0+MID)/2:(MID+X1)/2;
     [['back',ox,(YB+YF)/2],['top',cx,YB-13],['bot',cx,YF+13]].forEach(([lane,x,y],i)=>P.push({id:P.length,team:t,role:'out',lane,x,y,z:0,vz:0,face:-dir,hp:1,max:1,s:{name:'',pow:.9,spd:1,cat:1,dash:'fast',jump:'fast'},
@@ -487,6 +487,7 @@ window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
     st.team.forEach((m,i)=>{ const x=w*(.25+i*.25),y=h*.8,pose=[0,2,1][(Math.floor(t*.7)+i)%3];
       ctx.save(); ctx.translate(x,y); ctx.scale(2.4,2.4); drawGuy(ctx,0,0,Math.abs(Math.sin(t*3+i))*3,-1,col,i%4,pose,t+i); ctx.restore();
       ctx.font='700 '+Math.round(h*.065)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(m.name,x,y+h*.08); }); },
+  options:[{key:'hp',label:'體力',def:'normal',opts:[{id:'short',label:'少（快速一場）'},{id:'normal',label:'一般'},{id:'long',label:'多（打久一點）'}]}],
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動，連按兩下 ← → 助跑'],['J','丟球；沒球時是接球'],['K','傳球；沒球時按住是蹲下'],['L','跳'],['I','超必殺（氣力條滿、拿著球時）'],['W A S D F G H R','雙人左隊：移動、丟、傳、跳、超必殺'],['↑ ↓ ← → , . / M','雙人右隊：移動、丟、傳、跳、超必殺']],
