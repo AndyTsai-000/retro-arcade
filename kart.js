@@ -640,7 +640,8 @@ function hzMesh(T,k,th,tex){
 function buildWorld(T,st,o){
   o=o||{}; const HW=st.hw||HALF;
   const scene=new T.Scene(); scene.background=new T.Color(st.sky); scene.fog=new T.Fog(st.sky,...(FOG[st.theme]||[160,620]));
-  scene.add(new T.HemisphereLight({deep:0x6fb4ff,haunted:0xb8a8ff,rainbow:0xd8d0ff}[st.theme]||0xffffff,0x667755,.95)); // 深海偏藍、幽靈偏紫 const sun=new T.DirectionalLight(0xffffff,.55); sun.position.set(60,120,40); scene.add(sun);
+  scene.add(new T.HemisphereLight({deep:0x6fb4ff,haunted:0xb8a8ff,rainbow:0xd8d0ff}[st.theme]||0xffffff,0x667755,.85)); // 深海偏藍、幽靈偏紫
+  const sun=new T.DirectionalLight(0xffffff,.55); sun.position.set(60,120,40); scene.add(sun);
   function tex(w,h,draw,rx,ry){ const c=document.createElement('canvas'); c.width=w;c.height=h; draw(c.getContext('2d'),w,h);
     const t=new T.CanvasTexture(c); t.wrapS=t.wrapT=T.RepeatWrapping; t.anisotropy=8; if(rx) t.repeat.set(rx,ry); return t; }
 
