@@ -244,7 +244,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=173; // 每次改版加一
+window.ARCADE_V=174; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl','baseball','purple','rummy','mahjong','meow','poker','dice','deliver','chess','qi','racer','brawl','bball','golf','pool','blocks','drum','dance','tower','jelly','rich'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -482,7 +482,15 @@ function buildHub(){
   });
 }
 const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
-function drawThumbs(t){ for(const th of thumbs){ try{th.g.thumb(th.ctx,480,270,still?1.3:t);}catch(e){} } }
+// 大廳封面：3D 遊戲用真實遊戲截圖（慢慢縮放平移、兩張交叉淡入），其他遊戲用自己畫的動態縮圖
+const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={};
+function cover(id){ const list=COVERS[id]; if(!list) return null; return list.map(src=>{ if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } return coverImg[src]; }).filter(im=>im.complete&&im.naturalWidth); }
+function drawCover(ctx,g,ims,t){ const n=ims.length,per=6,k=Math.floor(t/per)%n,u=(t%per)/per,fade=Math.max(0,(u-.85)/.15);
+  const kb=(im,j,uu,a)=>{ const z=1.04+.08*uu,dx=(j%2?-1:1)*20*(uu-.5),dy=-8*(uu-.5); ctx.globalAlpha=a; ctx.drawImage(im,240-240*z+dx,135-135*z+dy,480*z,270*z); ctx.globalAlpha=1; };
+  kb(ims[k],k,u,1); if(n>1&&fade>0) kb(ims[(k+1)%n],k+1,0,fade);
+  const gr=ctx.createLinearGradient(0,170,0,270); gr.addColorStop(0,'rgba(11,10,28,0)'); gr.addColorStop(1,'rgba(11,10,28,.75)'); ctx.fillStyle=gr; ctx.fillRect(0,170,480,100);
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 34px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; ctx.lineJoin='round'; ctx.strokeText(g.name,240,238); ctx.fillStyle='#ffd23f'; ctx.fillText(g.name,240,238); }
+function drawThumbs(t){ for(const th of thumbs){ try{ const ims=cover(th.g.id); if(ims&&ims.length) drawCover(th.ctx,th.g,ims,still?1.3:t); else th.g.thumb(th.ctx,480,270,still?1.3:t);}catch(e){} } }
 
 /* ---------- 輸入 ---------- */
 const keys={},hits={};
