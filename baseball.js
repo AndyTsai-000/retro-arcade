@@ -37,7 +37,7 @@ function fig(ctx,x,y,sc,face,J,col,o){
   o=o||{}; ctx.save(); ctx.translate(x,y);
   ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0,0,15*sc,4.5*sc,0,0,7); ctx.fill();
   ctx.scale(sc*face,sc); ctx.lineCap='round'; ctx.lineJoin='round';
-  const ow=Math.max(.9,.75/sc),fr=!!o.front,hw=fr?6:2.5,sw=fr?11:3,dark=mix(col,'#000000',.28);
+  const ow=Math.max(.9,.75/sc),fr=!!o.front,tw=J.tw||0,hw=fr?6:2.5+Math.max(0,tw)*3,sw=fr?11:3+tw*5,dark=mix(col,'#000000',.28);
   const hipB=add(J.hip,[-hw,0]),hipF=add(J.hip,[hw,0]),shB=add(J.sh,[-sw,1]),shF=add(J.sh,[sw,0]);
   const kB=ik(hipB,J.fB,25,25,fr?1:-1),kF=ik(hipF,J.fF,25,25,-1),eB=ik(shB,J.hB,16,15,fr?-1:1),eF=ik(shF,J.hF,16,15,1);
   const leg=(hp,k,f,b)=>{ seg(ctx,[hp,k,lp(k,f,.45)],10,b?'#c9ccd8':PANTS,ow); seg(ctx,[lp(k,f,.42),f],7,b?dark:col,ow);
@@ -76,12 +76,13 @@ function kf(frames,p){
 }
 // 打者（右打，從捕手後面看）：p<0 準備（-1 站好、0 跨步完成），0~1 揮棒（.32 擊球點）
 const BK=[
-  [-1,{hip:[0,-47],sh:[3,-75],head:[7,-87],fB:[-17,0],fF:[16,0],h:[-7,-82],a:-1.35,e:1.2}],
-  [0,{hip:[-3,-46],sh:[0,-75],head:[5,-87],fB:[-17,0],fF:[9,-9],h:[-12,-85],a:-1.5,e:1.32}],
-  [.16,{hip:[2,-45],sh:[4,-73],head:[7,-86],fB:[-16,0],fF:[22,0],h:[-1,-70],a:-1.25,e:.4}],
-  [.32,{hip:[5,-45],sh:[7,-72],head:[8,-85],fB:[-15,-1],fF:[22,0],h:[17,-57],a:.05,e:-.12}],
-  [.5,{hip:[6,-46],sh:[7,-73],head:[8,-86],fB:[-13,-3],fF:[22,0],h:[21,-63],a:1.25,e:.12}],
-  [1,{hip:[5,-47],sh:[6,-76],head:[8,-88],fB:[-10,-6],fF:[22,0],h:[3,-84],a:2.55,e:.88}]];
+  [-1,{hip:[-1,-45],sh:[2,-73],head:[7,-86],fB:[-17,0],fF:[14,0],h:[-9,-75],a:-2.25,e:.95,tw:0}],
+  [0,{hip:[-4,-46],sh:[-1,-74],head:[5,-86],fB:[-17,0],fF:[9,-8],h:[-14,-77],a:-2.4,e:1.0,tw:-.2}],
+  [.16,{hip:[1,-44],sh:[3,-72],head:[6,-85],fB:[-17,0],fF:[21,0],h:[-6,-68],a:-2.85,e:.3,tw:.2}],
+  [.32,{hip:[5,-44],sh:[7,-71],head:[8,-84],fB:[-15,-3],fF:[22,0],h:[13,-61],a:.05,e:-.1,tw:.6}],
+  [.5,{hip:[6,-45],sh:[8,-72],head:[8,-85],fB:[-12,-6],fF:[22,0],h:[19,-66],a:1.3,e:.15,tw:.9}],
+  [.75,{hip:[6,-46],sh:[7,-74],head:[8,-86],fB:[-9,-8],fF:[22,0],h:[12,-80],a:2.35,e:.55,tw:1}],
+  [1,{hip:[5,-47],sh:[5,-75],head:[7,-87],fB:[-8,-8],fF:[22,0],h:[0,-82],a:2.95,e:.2,tw:1}]];
 function batDir(a,e){ return [Math.cos(e)*Math.cos(a),-Math.sin(e)-Math.cos(e)*Math.sin(a)*.35]; }
 function drawBat(ctx,knob,d,len,ow,alpha){
   const m=Math.hypot(d[0],d[1])||1,u=[d[0]/m,d[1]/m],n=[-u[1],u[0]],P=k=>add(knob,[d[0]*len*k,d[1]*len*k]),W=(p,w,sg)=>add(p,[n[0]*w*sg,n[1]*w*sg]);
@@ -98,7 +99,7 @@ function drawBat(ctx,knob,d,len,ow,alpha){
 }
 function drawBatter(ctx,x,y,sc,col,hair,p,aim){
   const J0=kf(BK,p),w=p>0&&p<.6?Math.sin(p/.6*Math.PI):0,h=add(J0.h,[0,(aim||0)*w]),d=batDir(J0.a,J0.e),ow=Math.max(.9,.75/sc);
-  const J={hip:J0.hip,sh:J0.sh,head:J0.head,fB:J0.fB,fF:J0.fF,hF:h,hB:add(h,[d[0]*6,d[1]*6])};
+  const J={hip:J0.hip,sh:J0.sh,head:J0.head,fB:J0.fB,fF:J0.fF,hF:h,hB:add(h,[d[0]*5,d[1]*5]),tw:J0.tw};
   fig(ctx,x,y,sc,1,J,col,{helmet:1,hair});
   ctx.save(); ctx.translate(x,y); ctx.scale(sc,sc); ctx.lineCap='round';
   if(p>.05&&p<.62) for(let i=3;i>=1;i--){ const Q=kf(BK,p-i*.045),hq=add(Q.h,[0,(aim||0)*w]),dq=batDir(Q.a,Q.e); drawBat(ctx,add(hq,[-dq[0]*4,-dq[1]*4]),dq,46,ow,.12*(4-i)); }
@@ -178,8 +179,8 @@ function stadium(ctx,L,t){
 
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',vs=two||(!!net&&net.count>1),F=opts.first===1; let me=net?(vs?Math.min(1,net.me):1):1; if(F) me=1-me; // F：擲硬幣後換成第 1 方先攻
-  const DERBY=opts.variant==='derby'&&!net&&opts.mode!=='2p'; /* 全壘打大賽：只有自己打擊，10 個出局前打越多全壘打越好 */
-  let dHR=0,dOut=0,dBest=0,dLast=0; const DOUTS=10;
+  const DERBY=opts.mode==='derby'&&!net; /* 全壘打大賽：只有自己打擊，在選好的球數裡打越多支全壘打越好（沒揮棒不算） */
+  let dHR=0,dOut=0,dBest=0,dLast=0; const DOUTS=[10,20,30].includes(+((opts.options||{}).balls))?+opts.options.balls:10;
   const N=+(opts.variant||3)||3,si=opts.stage||0,foe=STAGES[si],lv=vs?.6:foe.lv,L=opts.look||{color:'#ff5d4f',hair:'1',grass:'#4c9a3c',bg:'stadium'};
   const {ctx}=env.canvas2d(W,H);
   // 單人：你是主隊（後攻），電腦是客隊。雙人：左邊 WASD 是客隊、右邊方向鍵是主隊。連線：房主客隊、加入者主隊。
@@ -193,7 +194,7 @@ function create(env,opts){
   if(F){ cols.reverse(); tname.reverse(); teams.reverse(); } // 先攻的一方當客隊
   // 共用的顯示狀態：房主算出來，連線時整包傳給另一邊
   const S={inn:1,half:0,outs:0,b:0,s:0,sc:[0,0],bases:[0,0,0],phase:'sel',bat:0,ord:[0,0],line:[[],[]],pit:null,last:'',ban:'',banT:0,fld:null,swing:0,hits:[0,0]};
-  let swDone=false,prevF=[],prevR=[],pRep=0,pDir='',trail=[],trailMax=0,catchT=0,t=0,ended=false,selT=0,tx=0,ty=0,ptype=0,cx=0,cy=0,swung=null,pitT=0,resT=0,pend=null,fl=null,runners=[],ev=[],sendT=0,remoteSw=undefined,remotePc=null,sentSw=false,fx=[];
+  const CON=.9; let conT=0,pendHit=null,swDone=false,prevF=[],prevR=[],pRep=0,pDir='',trail=[],trailMax=0,catchT=0,t=0,ended=false,selT=0,tx=0,ty=0,ptype=0,cx=0,cy=0,swung=null,pitT=0,resT=0,pend=null,fl=null,runners=[],ev=[],sendT=0,remoteSw=undefined,remotePc=null,sentSw=false,fx=[];
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
   const banner=(s,sec)=>{ S.ban=s; S.banT=sec||1.3; };
   const batTeam=()=>S.half,fldTeam=()=>1-S.half,batter=()=>teams[S.half][S.ord[S.half]%9];
@@ -218,7 +219,7 @@ function create(env,opts){
       const go=inZ?rnd()<.72+lv*.1:rnd()<clamp(.5-lv*.28-out*.5,.03,.6);
       swung=go?{dt:gauss()*(.075-.035*lv)/b.con,up:rnd()<.3+lv*.25?1:0,at:p.T}:null; }
   }
-  function dOutBy(txt){ dOut++; sfx('bump'); banner(txt+'　出局 '+dOut+' / '+DOUTS,1.3); endBat(); }
+  function dOutBy(txt){ dOut++; sfx('bump'); banner(txt+'　剩 '+(DOUTS-dOut)+' 球',1.3); endBat(); }
   function resolve(sw){ // 這一球的結果：時機準不準＋對方投的位置和球種，決定擊球品質
     const p=S.pit,b=batter(),inZ=Math.abs(p.ax)<=1&&Math.abs(p.ay)<=1;
     if(DERBY&&!sw){ banner('沒揮棒（不算出局）',.8); nextPitch(.8); return; }
@@ -234,8 +235,10 @@ function create(env,opts){
     else { la=-6+q*22+gauss()*3; evo=60+50*q*b.pow; } // ↓：平飛球或滾地球
     evo=clamp(evo+gauss()*2.5,45,118);
     if(q<.18||Math.abs(sa)>45){ if(DERBY){ dOutBy('界外'); return; } sfx('land'); if(S.s<2) S.s++; banner('界外',.9); nextPitch(1); return; }
-    sfx('boom'); startField(evo,la,sa);
-    if(DERBY){ const d=carry(evo,la); dLast=d; if(fl&&fl.hr){ dHR++; dBest=Math.max(dBest,d); banner('全壘打！！ '+d+' 呎',2); } else { fl=null; runners=[]; S.fld=null; S.phase='result'; dOutBy(la<6?'滾地球':la<20?'平飛球 '+d+' 呎':'高飛球 '+d+' 呎'); } }
+    sfx('boom'); S.hit=[Math.round(evo),Math.round(la),Math.round(sa),+p.ax.toFixed(2),+p.ay.toFixed(2),q>.75?1:0]; S.phase='contact'; conT=0; pendHit=[evo,la,sa];
+  }
+  function launchHit(){ const [evo,la,sa]=pendHit; pendHit=null; startField(evo,la,sa);
+    if(DERBY){ const d=carry(evo,la); dLast=d; if(fl&&fl.hr){ dHR++; dOut++; dBest=Math.max(dBest,d); banner('全壘打！！ '+d+' 呎　剩 '+(DOUTS-dOut)+' 球',2); } else { fl=null; runners=[]; S.fld=null; S.phase='result'; dOutBy(la<6?'滾地球':la<20?'平飛球 '+d+' 呎':'高飛球 '+d+' 呎'); } }
   }
   function strike(txt,sw){ S.s++; sfx(sw?'bump':'click'); if(S.s>=3){ banner('三振出局！',1.3); out(1); endBat(); } else { banner(txt,.9); nextPitch(1); } }
   function ball(){ S.b++; if(S.b>=4){ banner('四壞球保送',1.3); walk(); endBat(); } else { banner('壞球',.8); nextPitch(.9); } }
@@ -260,8 +263,8 @@ function create(env,opts){
   }
   function finish(){
     if(ended) return; ended=true; S.phase='over';
-    if(DERBY){ let old=null; try{ old=JSON.parse(localStorage.getItem('arcade.baseball.derby')||'null'); }catch(e){} const rec=dHR>0&&(!old||dHR>old.hr||dHR===old.hr&&dBest>old.d); if(rec) try{ localStorage.setItem('arcade.baseball.derby',JSON.stringify({hr:dHR,d:dBest})); }catch(e){}
-      env.sfx(dHR?'win':'lose'); env.end({title:'全壘打大賽結束',big:dHR+' 支全壘打',text:(dBest?'最遠一支 '+dBest+' 呎。':'')+(rec?'新紀錄！':old?'最佳紀錄 '+old.hr+' 支（最遠 '+old.d+' 呎）。':'')+'按 ↑ 打高飛球，時機抓準就容易飛出牆外。',score:null}); return; }
+    if(DERBY){ let old=null; try{ old=JSON.parse(localStorage.getItem('arcade.baseball.derby.'+DOUTS)||'null'); }catch(e){} const rec=dHR>0&&(!old||dHR>old.hr||dHR===old.hr&&dBest>old.d); if(rec) try{ localStorage.setItem('arcade.baseball.derby.'+DOUTS,JSON.stringify({hr:dHR,d:dBest})); }catch(e){}
+      env.sfx(dHR?'win':'lose'); env.end({title:'全壘打大賽結束',big:dHR+' 支全壘打',text:DOUTS+' 球打了 '+dHR+' 支全壘打。'+(dBest?'最遠一支 '+dBest+' 呎。':'')+(rec?'新紀錄！':old?'最佳紀錄 '+old.hr+' 支（最遠 '+old.d+' 呎）。':'')+'按 ↑ 打高飛球，時機抓準就容易飛出牆外。',score:null}); return; }
     const w=S.sc[0]===S.sc[1]?-1:S.sc[0]>S.sc[1]?0:1,win=two||w===me;
     if(net&&net.host){ net.send(snap()); net.send({end:1}); }
     conclude(w,win);
@@ -385,12 +388,14 @@ function create(env,opts){
   /* ---- 連線 ---- */
   function snap(){
     const m={s:[S.inn,S.half,S.outs,S.b,S.s,S.sc[0],S.sc[1],S.bases[0]?1:0,S.bases[1]?1:0,S.bases[2]?1:0,S.phase,S.ord[0],S.ord[1],S.ban,Math.round(S.banT*10)/10,S.last,S.swing,S.hits[0],S.hits[1]],l:S.line,e:ev};
+    if(S.phase==='contact') m.h=S.hit;
     if(fl) m.f=[fl.F.map(q=>[Math.round(q.x),Math.round(q.y)]),runners.filter(r=>r.state==='run'||r.state==='on').map(r=>{ const p=rpos(r); return [Math.round(p[0]),Math.round(p[1])]; }),[Math.round(fl.bx),Math.round(fl.by),Math.round(fl.bz)]];
     ev=[]; return m;
   }
   if(net){
     if(client) net.onmsg=m=>{
       if(m.s){ const a=m.s,ph=S.phase; S.inn=a[0]; S.half=a[1]; S.outs=a[2]; S.b=a[3]; S.s=a[4]; S.sc=[a[5],a[6]]; S.bases=[a[7],a[8],a[9]]; S.phase=a[10]; S.ord=[a[11],a[12]]; S.ban=a[13]; S.banT=a[14]; S.last=a[15]; S.swing=a[16]; S.hits=[a[17],a[18]]; S.line=m.l;
+        if(m.h) S.hit=m.h; if(S.phase==='contact'&&ph!=='contact') conT=0;
         S.fld=m.f||null; if(S.phase==='sel'&&ph!=='sel'){ selT=0; tx=ty=0; cx=cy=0; sentSw=false; S.pit=null; }
         for(const n of m.e) env.sfx(n); }
       if(m.pit){ S.pit={type:m.pit[0],ax:m.pit[1],ay:m.pit[2],T:PITCH[m.pit[0]].T,kmh:m.pit[3]}; pitT=0; swung=null; sentSw=false; }
@@ -424,7 +429,7 @@ function create(env,opts){
     t+=dt; if(S.banT>0) S.banT-=dt; if(S.swing>0) S.swing-=dt;
     for(let i=fx.length-1;i>=0;i--){ const f=fx[i]; f.life-=dt; f.x+=f.vx*dt; f.y+=f.vy*dt; f.vy+=240*dt; if(f.life<=0) fx.splice(i,1); }
     if(client){ // 另一邊：只處理自己的投球選擇和揮棒
-      selT+=dt; if(S.pit) pitT+=dt;
+      selT+=dt; if(S.pit) pitT+=dt; if(S.phase==='contact') conT+=dt;
       if(S.phase==='sel'&&fldTeam()===me){ if(pitcherUI('k0',dt)){ net.send({pc:[ptype,tx,ty]}); selT=-9; } }
       if(S.phase==='pitch'&&batTeam()===me&&S.pit){ if(batterUI('k0',dt)){ net.send({sw:[swung.dt,swung.up]}); sentSw=true; } else if(!sentSw&&pitT>S.pit.T+.22){ net.send({sw:0}); sentSw=true; } }
       else aimBat(dt);
@@ -445,6 +450,7 @@ function create(env,opts){
       if(bc==='ai'&&swung&&pitT>=T+swung.dt-.06&&S.swing<=0&&!swung.shown){ swung.shown=true; S.swing=SW; }
       if(bc==='net'){ if(remoteSw!==undefined&&pitT>=T){ const sw=remoteSw?{dt:clamp(+remoteSw[0]||0,-1,1),up:remoteSw[1]?1:0}:null; if(sw) S.swing=SW; resolve(sw); } else if(pitT>T+1.2) resolve(null); }
       else if(pitT>=T+.19) resolve(swung);
+    } else if(S.phase==='contact'){ conT+=dt; if(conT>=CON&&pendHit) launchHit();
     } else if(S.phase==='field'){ stepField(dt); if(fl) S.fld=[fl.F.map(q=>[q.x,q.y]),runners.filter(r=>r.state==='run'||r.state==='on').map(rpos),[fl.bx,fl.by,fl.bz]]; }
     else if(S.phase==='result'){ resT-=dt; if(resT<=0){ const p=pend; pend=null; if(p==='pitch') beginSel(); else if(p==='bat') afterBat(); else beginSel(); } }
     if(net&&!ended){ sendT-=dt; if(sendT<=0){ sendT=1/20; net.send(snap()); } }
@@ -459,6 +465,8 @@ function create(env,opts){
     ctx.fillStyle='#2f6f3a'; ctx.fillRect(0,106,W,8);
   }
   function drawPitchView(){
+    const hitU=S.phase==='contact'&&S.hit?Math.min(1,conT/CON):-1,shk=hitU>=0&&hitU<.3?(1-hitU/.3)*(S.hit[5]?7:4):0,sx0=(Math.random()-.5)*shk,sy0=(Math.random()-.5)*shk;
+    ctx.save(); ctx.translate(sx0,sy0);
     stadium(ctx,L,t);
     const p=S.pit,u=p?pitT/p.T:0,fc=cols[fldTeam()],bc=cols[batTeam()];
     const pp=p?clamp(u/.24,0,1):0; fig(ctx,W/2,153,.42,1,kf(PK,pp),fc,{front:1,glove:'F',ball:pp<.78?'B':null});
@@ -468,6 +476,7 @@ function create(env,opts){
     // 打者與球棒
     if(S.phase==='sel') swDone=false;
     let bp=-1; if(S.swing>0){ const e=SW-S.swing; bp=e<.06?e/.06*.32:.32+(e-.06)/(SW-.06)*.68; swDone=true; } else if(swDone) bp=1; else if(p&&S.phase==='pitch') bp=-1+clamp(u/.6,0,1);
+    if(hitU>=0&&S.swing<=0) bp=1; /* 擊中後：收棒姿勢 */
     drawBatter(ctx,BX,BY,BS,bc,0,bp,((ZY-cy*ZH)-(BY-57*BS))/BS);
     const showBat=mine(batTeam())||client&&batTeam()===me,showPit=(mine(fldTeam())||client&&fldTeam()===me)&&S.phase==='sel';
     if(showPit){ ctx.fillStyle='rgba(61,219,217,.12)'; for(let i=-2;i<=2;i++) for(let j=-2;j<=2;j++){ ctx.beginPath(); ctx.arc(ZX+i*.7*ZW,ZY-j*.7*ZH,2.5,0,7); ctx.fill(); }
@@ -484,7 +493,20 @@ function create(env,opts){
       if(showBat&&!swung&&u<1.1){ const ok=Math.abs(pitT+.04-p.T)<.09; ctx.strokeStyle=ok?'#5fff7a':'rgba(255,210,63,.85)'; ctx.lineWidth=ok?3:2; ctx.beginPath(); ctx.arc(x,y,r+3+Math.max(0,1-uu)*46,0,7); ctx.stroke();
         if(ok){ ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText('打！',x,y-r-14); ctx.fillStyle='#5fff7a'; ctx.fillText('打！',x,y-r-14); } } }
     else if(p&&S.phase==='result'){ const x=ZX+p.ax*ZW,y=ZY-p.ay*ZH; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(x,y,8,0,7); ctx.fill(); }
+    if(hitU>=0) drawContact(hitU);
+    ctx.restore();
   }
+  /* 擊中的那一刻：閃光、放射線、「鏗！」，球依擊球角度飛出去（高飛往上、平飛往外野、滾地在地上彈） */
+  function drawContact(u){ const [evo,la,sa,ax,ay,good]=S.hit,cx0=ZX+ax*ZW,cy0=ZY-ay*ZH,th=sa*Math.PI/180,ground=la<6,pw=clamp((evo-45)/70,.2,1);
+    const pos=v=>{ const e=1-Math.pow(1-v,1.7),dx=Math.sin(th)*W*.62*e*(.6+pw*.6);
+      if(ground){ const y=cy0+(150-cy0)*e-Math.abs(Math.sin(e*9))*16*(1-e); return [cx0+dx*.8,y,9*(1-e*.55)]; }
+      const up=Math.sin(Math.min(70,la)*Math.PI/180),y=cy0-e*H*(.35+up*.9)*(.6+pw*.5)+e*e*H*.12*(1-up); return [cx0+dx,y,9*(1-e*.78)]; };
+    if(u<.45){ const k=u/.45; ctx.globalAlpha=1-k; const g=ctx.createRadialGradient(cx0,cy0,0,cx0,cy0,20+k*(good?150:90)); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.4,'rgba(255,240,170,.8)'); g.addColorStop(1,'rgba(255,220,120,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx0,cy0,20+k*(good?150:90),0,7); ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.beginPath(); for(let i=0;i<12;i++){ const a=i/12*Math.PI*2+.2,r1=14+k*30,r2=r1+18+k*(good?70:40); ctx.moveTo(cx0+Math.cos(a)*r1,cy0+Math.sin(a)*r1); ctx.lineTo(cx0+Math.cos(a)*r2,cy0+Math.sin(a)*r2); } ctx.stroke(); ctx.globalAlpha=1; }
+    if(good&&u<.6){ ctx.strokeStyle='rgba(255,255,255,'+(.5*(1-u/.6))+')'; ctx.lineWidth=2; ctx.beginPath(); for(let i=0;i<16;i++){ const a=i/16*Math.PI*2,r1=Math.max(W,H)*.45,r2=r1+40; ctx.moveTo(W/2+Math.cos(a)*r1,H/2+Math.sin(a)*r1); ctx.lineTo(W/2+Math.cos(a)*r2,H/2+Math.sin(a)*r2); } ctx.stroke(); }
+    for(let k=6;k>=1;k--){ const v=Math.max(0,u-k*.035),q=pos(v); ctx.fillStyle='rgba(255,255,255,'+(.35*(1-k/7))+')'; ctx.beginPath(); ctx.arc(q[0],q[1],q[2]*(1-k*.06),0,7); ctx.fill(); }
+    const b=pos(u); if(b[1]>-20){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(b[0],b[1],b[2],0,7); ctx.fill(); ctx.strokeStyle='#e23b3b'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(b[0],b[1],b[2]*.7,t*30,t*30+2); ctx.stroke(); }
+    if(u<.55){ const k=u/.55,sz=(good?40:30)*(1+Math.sin(Math.min(1,k*3)*Math.PI)*.25); ctx.globalAlpha=k>.7?(1-k)/.3:1; ctx.font='900 '+Math.round(sz)+'px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; const tx2=good?'鏗！！':'鏗！'; ctx.strokeText(tx2,cx0+(cx0<W/2?70:-70),cy0-40-k*14); ctx.fillStyle=good?'#ffd23f':'#fff'; ctx.fillText(tx2,cx0+(cx0<W/2?70:-70),cy0-40-k*14); ctx.globalAlpha=1; } }
   const FS=.6,fpx=(x,y,z)=>[W/2+x*FS,274-y*FS-(z||0)*FS*.55];
   function drawFieldView(){
     ctx.fillStyle=L.bg==='night'?'#1a1c38':'#4a5068'; ctx.fillRect(0,0,W,H);
@@ -563,11 +585,11 @@ function create(env,opts){
     if(who){ ctx.textAlign='center'; ctx.font='700 12px '+TC; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText(who,W/2,48); ctx.fillStyle='#fff'; ctx.fillText(who,W/2,48); }
     for(const f of fx){ ctx.globalAlpha=Math.max(0,f.life); ctx.fillStyle=f.col; ctx.fillRect(f.x-2,f.y-2,4,4); } ctx.globalAlpha=1;
     if(DERBY){ ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,W,34); ctx.textBaseline='middle'; ctx.textAlign='left'; ctx.font='900 13px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText('全壘打大賽',8,17);
-      ctx.fillStyle='#fff'; ctx.fillText('全壘打 '+dHR+' 支',110,17); ctx.fillStyle='#ff8a9a'; ctx.fillText('出局 '+dOut+' / '+DOUTS,200,17); ctx.fillStyle='#86dc4f'; ctx.fillText('最遠 '+(dBest||'-')+(dBest?' 呎':''),285,17);
-      for(let i=0;i<DOUTS;i++){ ctx.fillStyle=i<dOut?'#ff5d8f':'#2b2759'; ctx.beginPath(); ctx.arc(W-6-(DOUTS-1-i)*8,17,3,0,7); ctx.fill(); } }
+      ctx.fillStyle='#fff'; ctx.fillText('全壘打 '+dHR+' 支',110,17); ctx.fillStyle='#ff8a9a'; ctx.fillText('剩 '+(DOUTS-dOut)+' / '+DOUTS+' 球',200,17); ctx.fillStyle='#86dc4f'; ctx.fillText('最遠 '+(dBest||'-')+(dBest?' 呎':''),285,17);
+    }
     if(S.banT>0&&S.ban){ ctx.textAlign='center'; ctx.font='900 26px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#14122b'; ctx.strokeText(S.ban,W/2,84); ctx.fillStyle='#ffd23f'; ctx.fillText(S.ban,W/2,84); }
   }
-  if(DERBY){ S.half=me; banner('全壘打大賽：10 個出局前打越多支越好',2.2); } else banner('1 局上　'+tname[0]+' 進攻',1.6);
+  if(DERBY){ S.half=me; banner('全壘打大賽：'+DOUTS+' 球裡打越多支越好',2.2); } else banner('1 局上　'+tname[0]+' 進攻',1.6);
   return {update,draw,destroy(){},_dbg:{S,teams,get fl(){return fl;},get runners(){return runners;},hit:(e,l,s)=>startField(e,l,s),resolve,throwPitch,art:{drawBatter,fig,pose,kf,PK,stadium}}};
 }
 
@@ -607,9 +629,10 @@ const thumb=(ctx,w,h,t)=>{ ctx.save(); ctx.translate(0,-16); scene(ctx,w,h,{colo
       fig(ctx,x,y,.85,i<2?1:-1,pose(pn,t*1.2+i),col,pn==='run'?{helmet:1}:{glove:'F',ball:pn==='throw'?'B':null,up:pn==='catch'});
       ctx.font='700 '+Math.round(h*.055)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.fillText(nm,x,y+h*.07); }); },
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
-  coin:o=>o.variant==='derby'&&!o.net&&o.mode!=='2p'?null:({verb:'先攻',names:o.net?(o.net.count>1?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:[STAGES[o.stage||0].name,o.net.names[0]||'你']):o.mode==='2p'?['1P 隊','2P 隊']:[STAGES[o.stage||0].name,'你的隊伍']}),
-  variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'},{id:'derby',label:'全壘打大賽（單人）'}],
-  modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
+  coin:o=>o.mode==='derby'&&!o.net?null:({verb:'先攻',names:o.net?(o.net.count>1?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:[STAGES[o.stage||0].name,o.net.names[0]||'你']):o.mode==='2p'?['1P 隊','2P 隊']:[STAGES[o.stage||0].name,'你的隊伍']}),
+  variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'}],
+  modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true},{id:'derby',label:'全壘打大賽'}],
+  options:[{key:'balls',label:'全壘打大賽球數',def:'10',opts:[{id:'10',label:'10 球'},{id:'20',label:'20 球'},{id:'30',label:'30 球'}]}],
   help:[['↑ ↓ ← →','投球：一按移一格選位置'],['J／空白鍵／Enter','投球時丟球'],['K','換球種（投球時）'],['↑','打擊：揮棒打高飛球，時機越準越遠，有機會全壘打'],['↓','打擊：揮棒打平飛球或滾地球'],['W A S D F G','雙人客隊：移動（W／S 揮棒）、丟球、換球種'],['↑ ↓ ← → , .','雙人主隊：移動（↑／↓ 揮棒）、丟球、換球種']],
   touchHelp:[['方向盤','投球：一按移一格；打擊：按上打高飛、按下打平飛或滾地'],['投球','丟球'],['球種','投球時換球種']],
   touch:{left:'dpad',right:[{l:'球種',c:'KeyK'},{l:'投球',c:'KeyJ',act:true}]},
