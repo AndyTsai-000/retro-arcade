@@ -20,7 +20,13 @@ const PITCH=[
 const B1=63.64,BASE=[[0,0],[B1,B1],[0,B1*2],[-B1,B1],[0,0]];
 const FPOS=[[0,60.5],[0,-6],[52,78],[30,128],[-52,78],[-30,128],[-140,230],[0,290],[140,230]]; // 投捕一二三游左中右
 const FNAME=['投手','捕手','一壘手','二壘手','三壘手','游擊手','左外野','中外野','右外野'];
-const STAGES=[{name:'海風隊',col:'#3d8bff',lv:.12},{name:'沙漠隊',col:'#e0a030',lv:.28},{name:'冰原隊',col:'#7fd0e8',lv:.45},{name:'叢林隊',col:'#3fae5a',lv:.65},{name:'鋼鐵隊',col:'#8a8fa8',lv:.85},{name:'冠軍隊',col:'#c56bff',lv:1}];
+/* 每一隊有自己的 9 位球員（照棒次） */
+const STAGES=[{name:'海風隊',col:'#3d8bff',lv:.12,names:['浪花','阿鯨','小帆','海鷗','珊瑚','阿潮','大浪','貝殼','燈塔']},
+  {name:'沙漠隊',col:'#e0a030',lv:.28,names:['駱駝','阿沙','仙人掌','綠洲','烈日','蠍子','風沙','金字','阿漠']},
+  {name:'冰原隊',col:'#7fd0e8',lv:.45,names:['雪球','冰柱','北極熊','企鵝','阿冰','極光','雪狐','冰山','白熊']},
+  {name:'叢林隊',col:'#3fae5a',lv:.65,names:['猴王','巨猿','藤蔓','花豹','鸚鵡','大象','犀牛','阿虎','蟒蛇']},
+  {name:'鋼鐵隊',col:'#8a8fa8',lv:.85,names:['鐵拳','鋼牙','螺絲','火車','鐵壁','齒輪','重錘','阿鋼','砲台']},
+  {name:'冠軍隊',col:'#c56bff',lv:1,names:['王牌','金手','神射','皇冠','巨砲','閃電','鐵人','奇蹟','傳說']}];
 const HOMEN=['小虎','阿強','阿烈','大山','鐵門','阿明','小傑','阿凱','阿翔'],AWAYN=['飛毛','阿盾','射手','老牆','門神','阿風','小岩','阿浪','阿雷'];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rnd=()=>Math.random(),gauss=()=>(rnd()+rnd()+rnd()-1.5)/.87;
 const fence=th=>330+70*Math.cos(th*2); // 全壘打牆：邊線 330 呎、中外野 400 呎
@@ -193,7 +199,7 @@ function create(env,opts){
   if(net&&!vs){ tname[0]=foe.name; tname[1]=net.names&&net.names[0]||'你'; }
   const ctl0=tm=>net?(client?(tm===1?'k0':'net'):(vs?(tm===0?'k0':'net'):(tm===1?'k0':'ai'))):two?(tm===0?'k1':'k2'):(tm===1?'k0':'ai'),ctl=tm=>ctl0(F?1-tm:tm);
   const mkTeam=(names,k)=>names.map((n,i)=>({name:n,con:k*(.9+((i*7)%5)*.05),pow:k*(.85+((i*3)%5)*.08),spd:25+((i*5)%4)*1.3}));
-  const cpuK=.75+lv*.4,teams=vs?[mkTeam(AWAYN,1),mkTeam(HOMEN,1)]:[mkTeam(AWAYN,cpuK),mkTeam(HOMEN,1)];
+  const cpuK=.75+lv*.4,teams=vs?[mkTeam(foe.names||AWAYN,1),mkTeam(HOMEN,1)]:[mkTeam(foe.names||AWAYN,cpuK),mkTeam(HOMEN,1)];
   if(F){ cols.reverse(); tname.reverse(); teams.reverse(); } // 先攻的一方當客隊
   // 共用的顯示狀態：房主算出來，連線時整包傳給另一邊
   const S={inn:1,half:0,outs:0,b:0,s:0,sc:[0,0],bases:[0,0,0],phase:'sel',bat:0,ord:[0,0],line:[[],[]],pit:null,last:'',ban:'',banT:0,fld:null,swing:0,hits:[0,0]};
@@ -227,18 +233,18 @@ function create(env,opts){
     const p=S.pit,b=batter(),inZ=Math.abs(p.ax)<=1&&Math.abs(p.ay)<=1;
     if(DERBY&&!sw){ banner('沒揮棒（不算出局）',.8); nextPitch(.8); return; }
     if(!sw){ if(inZ) strike('好球！'); else ball(); return; }
-    const WIN=.16,q0=PITCH[p.type],edge=Math.max(Math.abs(p.ax),Math.abs(p.ay));
+    const WIN=DERBY?.2:.16,q0=PITCH[p.type],edge=Math.max(Math.abs(p.ax),Math.abs(p.ay));
     const locP=Math.max(0,Math.min(edge,1)-.45)*.3+Math.max(0,edge-1)*.85,brk=Math.hypot(q0.bx,q0.by)*.07;
-    const q=1-Math.abs(sw.dt)/WIN*.75-locP-brk+(b.con-1)*.25+gauss()*.04;
+    const q=1-Math.abs(sw.dt)/WIN*.75-locP-brk+(b.con-1)*.25+gauss()*.04+(DERBY?.05:0);
     if(Math.abs(sw.dt)>WIN||q<=.05){ if(DERBY){ dOutBy('揮棒落空'); return; } strike('揮棒落空！',true); return; }
     let sa=sw.dt/WIN*36+gauss()*8;
     if(q>.7){ const gaps=[-40,-16,16,40],g=gaps.reduce((a,c)=>Math.abs(c-sa)<Math.abs(a-sa)?c:a); sa+=(g-sa)*Math.min(1,(q-.7)/.3)*.6; } // 打得好，比較容易打到空檔
     let la,evo;
     if(sw.up){ if(q>=.5){ la=24+(.8-Math.min(q,.8))*60+gauss()*3; evo=60+56*q*b.pow; } else { la=46+rnd()*20; evo=55+40*q; } } // ↑：高飛球，打越準飛越遠
     else { la=-6+q*22+gauss()*3; evo=60+50*q*b.pow; } // ↓：平飛球或滾地球
-    evo=clamp(evo+gauss()*2.5,45,118);
+    evo=clamp(evo+gauss()*2.5+(DERBY?5:0),45,DERBY?122:118);
     if(q<.18||Math.abs(sa)>45){ if(DERBY){ dOutBy('界外'); return; } sfx('land'); if(S.s<2) S.s++; banner('界外',.9); nextPitch(1); return; }
-    sfx('boom'); S.hit=[Math.round(evo),Math.round(la),Math.round(sa),+p.ax.toFixed(2),+p.ay.toFixed(2),q>.75?1:0]; S.phase='contact'; conT=0; pendHit=[evo,la,sa];
+    sfx('boom'); const hr=willHR(evo,la,sa); S.hit=[Math.round(evo),Math.round(la),Math.round(sa),+p.ax.toFixed(2),+p.ay.toFixed(2),q>.75||hr?1:0,hr?1:0]; if(hr) sfx('win'); S.phase='contact'; conT=0; pendHit=[evo,la,sa];
   }
   function launchHit(){ const [evo,la,sa]=pendHit; pendHit=null; startField(evo,la,sa);
     if(DERBY){ const d=carry(evo,la); dLast=d; if(fl&&fl.hr){ dHR++; dOut++; dBest=Math.max(dBest,d); banner('全壘打！！ '+d+' 呎　剩 '+(DOUTS-dOut)+' 球',2); } else { fl=null; runners=[]; S.fld=null; S.phase='result'; dOutBy(la<6?'滾地球':la<20?'平飛球 '+d+' 呎':'高飛球 '+d+' 呎'); } }
@@ -317,6 +323,8 @@ function create(env,opts){
     fl={path,bi,bt,F,best,fly,hr,t:0,mode:'path',holder:null,hold:0,thr:null,cover,runs:0,lastForce:false,dead:0,bx:0,by:0,bz:3,catchD:best?Math.hypot(path[bi][1],path[bi][2]):0,br,msg:false};
     S.phase='field'; banner(hr?'全壘打！！':la<6?'滾地球':la<20?'平飛球':la<48?(landT!=null&&Math.hypot(path[path.length-1][1],path[path.length-1][2])>200?'外野高飛球':'高飛球'):'內野高飛球',hr?2:1.1); if(hr){ sfx('win'); }
   }
+  function willHR(evo,la,sa){ const v0=evo*1.467,a=la*Math.PI/180,th=sa*Math.PI/180; let vh=v0*Math.cos(a),vz=v0*Math.sin(a),r=1,z=3;
+    for(let k=0;k<450;k++){ vh*=Math.exp(-.2*.02); vz-=32*.02; z+=vz*.02; r+=vh*.02; if(z<=0) return false; if(r>=fence(th)) return z>10; } return false; }
   function carry(evo,la){ const v0=evo*1.467,a=la*Math.PI/180; let vh=v0*Math.cos(a),vz=v0*Math.sin(a),r=1,z=3; for(let k=0;k<600;k++){ vh*=Math.exp(-.2*.02); vz-=32*.02; z+=vz*.02; r+=vh*.02; if(z<=0) break; } return Math.round(r); }
   const THR=118; // 傳球速度（呎／秒）
   function decideThrow(){ // 拿到球的人看場上狀況決定傳哪個壘
@@ -442,7 +450,7 @@ function create(env,opts){
     if(S.phase==='sel'){
       selT+=dt; const c=ctl(fldTeam()),bc=ctl(batTeam());
       if(mine(batTeam())) aimBat(dt);
-      if(c==='ai'&&DERBY){ if(selT>1.1){ throwPitch(0,(rnd()-.5)*.9,(rnd()-.5)*.9); S.pit.ax=clamp(S.pit.ax,-.7,.7); S.pit.ay=clamp(S.pit.ay,-.7,.7); S.pit.T=1.06; S.pit.kmh=118+Math.round(rnd()*10); S.last='餵球 '+S.pit.kmh+' km/h'; } }
+      if(c==='ai'&&DERBY){ if(selT>1.1){ throwPitch(0,(rnd()-.5)*.9,(rnd()-.5)*.9); S.pit.ax=clamp(S.pit.ax,-.7,.7); S.pit.ay=clamp(S.pit.ay,-.7,.7); S.pit.T=1.4; S.pit.kmh=96+Math.round(rnd()*10); S.last='餵球 '+S.pit.kmh+' km/h'; } }
       else if(c==='ai'){ if(selT>.9){ const zone=rnd()<.62+lv*.08,e=zone?.55+rnd()*.4:1.1+rnd()*.35; throwPitch(Math.floor(rnd()*PITCH.length),(rnd()<.5?-1:1)*e*(rnd()<.7?1:.3),(rnd()<.5?-1:1)*e*(rnd()<.7?1:.3)); } }
       else if(c==='net'){ if(remotePc){ throwPitch(clamp(remotePc[0]|0,0,5),clamp(+remotePc[1]||0,-1.7,1.7),clamp(+remotePc[2]||0,-1.7,1.7)); remotePc=null; } }
       else if(pitcherUI(c,dt)) throwPitch(ptype,tx,ty);
@@ -452,7 +460,7 @@ function create(env,opts){
       if(ctl(fldTeam())!=='ai'&&mine(fldTeam())){ /* 投手這時不用操作 */ }
       if(bc==='ai'&&swung&&pitT>=T+swung.dt-.06&&S.swing<=0&&!swung.shown){ swung.shown=true; S.swing=SW; }
       if(bc==='net'){ if(remoteSw!==undefined&&pitT>=T){ const sw=remoteSw?{dt:clamp(+remoteSw[0]||0,-1,1),up:remoteSw[1]?1:0}:null; if(sw) S.swing=SW; resolve(sw); } else if(pitT>T+1.2) resolve(null); }
-      else if(swung&&Math.abs(swung.dt)<=.16&&pitT>=T+swung.dt||pitT>=T+.19) resolve(swung); /* 有打到：球棒碰到球的那一刻就判定，不用等球過本壘 */
+      else if(swung&&Math.abs(swung.dt)<=(DERBY?.2:.16)&&pitT>=T+swung.dt||pitT>=T+.19) resolve(swung); /* 有打到：球棒碰到球的那一刻就判定，不用等球過本壘 */
     } else if(S.phase==='contact'){ conT+=dt; if(conT>=CON&&pendHit) launchHit();
     } else if(S.phase==='field'){ stepField(dt); if(fl) S.fld=[fl.F.map(q=>[q.x,q.y]),runners.filter(r=>r.state==='run'||r.state==='on').map(rpos),[fl.bx,fl.by,fl.bz]]; }
     else if(S.phase==='result'){ resT-=dt; if(resT<=0){ const p=pend; pend=null; if(p==='pitch') beginSel(); else if(p==='bat') afterBat(); else beginSel(); } }
@@ -493,23 +501,30 @@ function create(env,opts){
       const x=W/2+(fxp-bxp-W/2)*k+bxp*k*k,y=128+(fyp-byp-128)*k+byp*k*k,r=2+7*Math.pow(k,1.6);
       ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x,160+110*k,r,r*.35,0,0,7); ctx.fill();
       ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); ctx.strokeStyle='#e23b3b'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,r*.7,t*20,t*20+2); ctx.stroke();
-      if(showBat&&!swung&&u<1.1){ const ok=Math.abs(pitT+.04-p.T)<.09; ctx.strokeStyle=ok?'#5fff7a':'rgba(255,210,63,.85)'; ctx.lineWidth=ok?3:2; ctx.beginPath(); ctx.arc(x,y,r+3+Math.max(0,1-uu)*46,0,7); ctx.stroke();
+      if(showBat&&!swung&&u<1.1){ const ok=Math.abs(pitT+.04-p.T)<(DERBY?.13:.09); ctx.strokeStyle=ok?'#5fff7a':'rgba(255,210,63,.85)'; ctx.lineWidth=ok?3:2; ctx.beginPath(); ctx.arc(x,y,r+3+Math.max(0,1-uu)*46,0,7); ctx.stroke();
         if(ok){ ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText('打！',x,y-r-14); ctx.fillStyle='#5fff7a'; ctx.fillText('打！',x,y-r-14); } } }
     else if(p&&S.phase==='result'){ const x=ZX+p.ax*ZW,y=ZY-p.ay*ZH; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(x,y,8,0,7); ctx.fill(); }
     if(hitU>=0) drawContact(hitU);
     ctx.restore();
   }
   /* 擊中的那一刻：閃光、放射線、「鏗！」，球依擊球角度飛出去（高飛往上、平飛往外野、滾地在地上彈） */
-  function drawContact(u){ const [evo,la,sa,ax,ay,good]=S.hit,cx0=ZX+ax*ZW,cy0=ZY-ay*ZH,th=sa*Math.PI/180,ground=la<6,pw=clamp((evo-45)/70,.2,1);
+  function drawContact(u){ const [evo,la,sa,ax,ay,good,hr]=S.hit,cx0=ZX+ax*ZW,cy0=ZY-ay*ZH,th=sa*Math.PI/180,ground=la<6,pw=clamp((evo-45)/70,.2,1);
     const pos=v=>{ const e=1-Math.pow(1-v,1.7),dx=Math.sin(th)*W*.62*e*(.6+pw*.6);
       if(ground){ const y=cy0+(150-cy0)*e-Math.abs(Math.sin(e*9))*16*(1-e); return [cx0+dx*.8,y,9*(1-e*.55)]; }
       const up=Math.sin(Math.min(70,la)*Math.PI/180),y=cy0-e*H*(.35+up*.9)*(.6+pw*.5)+e*e*H*.12*(1-up); return [cx0+dx,y,9*(1-e*.78)]; };
     if(u<.45){ const k=u/.45; ctx.globalAlpha=1-k; const g=ctx.createRadialGradient(cx0,cy0,0,cx0,cy0,20+k*(good?150:90)); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.4,'rgba(255,240,170,.8)'); g.addColorStop(1,'rgba(255,220,120,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx0,cy0,20+k*(good?150:90),0,7); ctx.fill();
       ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.beginPath(); for(let i=0;i<12;i++){ const a=i/12*Math.PI*2+.2,r1=14+k*30,r2=r1+18+k*(good?70:40); ctx.moveTo(cx0+Math.cos(a)*r1,cy0+Math.sin(a)*r1); ctx.lineTo(cx0+Math.cos(a)*r2,cy0+Math.sin(a)*r2); } ctx.stroke(); ctx.globalAlpha=1; }
     if(good&&u<.6){ ctx.strokeStyle='rgba(255,255,255,'+(.5*(1-u/.6))+')'; ctx.lineWidth=2; ctx.beginPath(); for(let i=0;i<16;i++){ const a=i/16*Math.PI*2,r1=Math.max(W,H)*.45,r2=r1+40; ctx.moveTo(W/2+Math.cos(a)*r1,H/2+Math.sin(a)*r1); ctx.lineTo(W/2+Math.cos(a)*r2,H/2+Math.sin(a)*r2); } ctx.stroke(); }
+    if(hr){ /* 全壘打：整個畫面金光一閃、四周放煙火、球拖著火焰 */
+      if(u<.3){ ctx.fillStyle='rgba(255,220,90,'+(.55*(1-u/.3))+')'; ctx.fillRect(-20,-20,W+40,H+40); }
+      for(let n=0;n<4;n++){ const fx0=[W*.18,W*.82,W*.3,W*.7][n],fy0=[70,80,40,46][n],st=n*.12,k=clamp((u-st)/.5,0,1); if(k<=0||k>=1) continue;
+        for(let i=0;i<14;i++){ const a=i/14*Math.PI*2,r=k*46,cl=['#ffd23f','#ff5d8f','#3ddbd9','#fff','#86dc4f'][(i+n)%5]; ctx.globalAlpha=1-k; ctx.fillStyle=cl; ctx.beginPath(); ctx.arc(fx0+Math.cos(a)*r,fy0+Math.sin(a)*r+k*k*14,2.6,0,7); ctx.fill(); } ctx.globalAlpha=1; }
+      for(let k=10;k>=1;k--){ const v=Math.max(0,u-k*.03),q=pos(v); ctx.fillStyle='rgba(255,'+(120+k*12)+',40,'+(.55*(1-k/11))+')'; ctx.beginPath(); ctx.arc(q[0],q[1],q[2]*(1.5-k*.08),0,7); ctx.fill(); } }
     for(let k=6;k>=1;k--){ const v=Math.max(0,u-k*.035),q=pos(v); ctx.fillStyle='rgba(255,255,255,'+(.35*(1-k/7))+')'; ctx.beginPath(); ctx.arc(q[0],q[1],q[2]*(1-k*.06),0,7); ctx.fill(); }
     const b=pos(u); if(b[1]>-20){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(b[0],b[1],b[2],0,7); ctx.fill(); ctx.strokeStyle='#e23b3b'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(b[0],b[1],b[2]*.7,t*30,t*30+2); ctx.stroke(); }
-    if(u<.55){ const k=u/.55,sz=(good?40:30)*(1+Math.sin(Math.min(1,k*3)*Math.PI)*.25); ctx.globalAlpha=k>.7?(1-k)/.3:1; ctx.font='900 '+Math.round(sz)+'px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; const tx2=good?'鏗！！':'鏗！'; ctx.strokeText(tx2,cx0+(cx0<W/2?70:-70),cy0-40-k*14); ctx.fillStyle=good?'#ffd23f':'#fff'; ctx.fillText(tx2,cx0+(cx0<W/2?70:-70),cy0-40-k*14); ctx.globalAlpha=1; } }
+    if(hr&&u>.12){ const k=clamp((u-.12)/.25,0,1),sz=34+k*16+Math.sin(u*30)*2; ctx.save(); ctx.translate(W/2,H*.38); ctx.scale(.6+k*.4,.6+k*.4); ctx.font='900 '+Math.round(sz)+'px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=9; ctx.strokeStyle='#14122b'; ctx.strokeText('全壘打！！',0,0);
+      const gr=ctx.createLinearGradient(-130,0,130,0); ['#ff5d5d','#ffd23f','#5fd068','#3ddbd9','#b98cff'].forEach((c2,i)=>gr.addColorStop(((i/4)+u*1.5)%1,c2)); ctx.fillStyle=gr; ctx.fillText('全壘打！！',0,0); ctx.restore(); }
+    if(u<.55&&!(hr&&u>.12)){ const k=u/.55,sz=(good?40:30)*(1+Math.sin(Math.min(1,k*3)*Math.PI)*.25); ctx.globalAlpha=k>.7?(1-k)/.3:1; ctx.font='900 '+Math.round(sz)+'px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; const tx2=good?'鏗！！':'鏗！'; ctx.strokeText(tx2,cx0+(cx0<W/2?70:-70),cy0-40-k*14); ctx.fillStyle=good?'#ffd23f':'#fff'; ctx.fillText(tx2,cx0+(cx0<W/2?70:-70),cy0-40-k*14); ctx.globalAlpha=1; } }
   const FS=.6,fpx=(x,y,z)=>[W/2+x*FS,274-y*FS-(z||0)*FS*.55];
   function drawFieldView(){
     ctx.fillStyle=L.bg==='night'?'#1a1c38':'#4a5068'; ctx.fillRect(0,0,W,H);
@@ -628,7 +643,7 @@ const thumb=(ctx,w,h,t)=>{ ctx.save(); ctx.translate(0,-16); scene(ctx,w,h,{colo
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.1)+'px "Noto Sans TC",sans-serif'; ctx.lineWidth=5; ctx.strokeStyle='#0b0a1c';
   ctx.strokeText('對手：'+st.name,w/2,h*.12); ctx.fillStyle=col; ctx.fillText('對手：'+st.name,w/2,h*.12);
     const ps=['throw','ready','catch','run','stand'];
-    AWAYN.slice(0,5).forEach((nm,i)=>{ const x=w*(.12+i*.19),y=h*(i%2?.88:.78),pn=ps[(i+Math.floor(t*.6))%ps.length];
+    (st.names||AWAYN).slice(0,5).forEach((nm,i)=>{ const x=w*(.12+i*.19),y=h*(i%2?.88:.78),pn=ps[(i+Math.floor(t*.6))%ps.length];
       fig(ctx,x,y,.85,i<2?1:-1,pose(pn,t*1.2+i),col,pn==='run'?{helmet:1}:{glove:'F',ball:pn==='throw'?'B':null,up:pn==='catch'});
       ctx.font='700 '+Math.round(h*.055)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.fillText(nm,x,y+h*.07); }); },
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
