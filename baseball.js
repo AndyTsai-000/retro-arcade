@@ -525,7 +525,8 @@ function create(env,opts){
       const x=ZX+tx*ZW,y=ZY-ty*ZH; ctx.strokeStyle='#3ddbd9'; ctx.lineWidth=2; ctx.strokeRect(x-7,y-7,14,14); ctx.beginPath(); ctx.moveTo(x-11,y); ctx.lineTo(x+11,y); ctx.moveTo(x,y-11); ctx.lineTo(x,y+11); ctx.stroke();
       ctx.fillStyle='rgba(11,10,28,.8)'; ctx.fillRect(W-118,118,112,PITCH.length*15+22); ctx.textAlign='left'; ctx.textBaseline='middle';
       PITCH.forEach((q,i)=>{ ctx.font=(i===ptype?'900 ':'700 ')+'11px '+TC; ctx.fillStyle=i===ptype?'#ffd23f':'#aaa4d8'; ctx.fillText((i===ptype?'▶ ':'　')+q.name,W-112,128+i*15); });
-      ctx.font='700 9px '+TC; ctx.fillStyle='#6fd3ff'; ctx.fillText('換球種　丟球',W-112,128+PITCH.length*15+2); }
+      { const c0=client?'k0':ctl(fldTeam()),ky=env.touch?['','']:c0==='k1'?['(G)','(F)']:c0==='k2'?['(.)','(,)']:['(K)','(J)']; /* 按鍵提示：換球種、丟球 */
+        ctx.font='700 9px '+TC; ctx.fillStyle='#6fd3ff'; ctx.fillText('換球種'+ky[0]+'　丟球'+ky[1],W-112,128+PITCH.length*15+2); } }
     // 球：一開始偏離位移量，越接近本壘越彎進去
     if(p&&S.phase==='pitch'){ const q=PITCH[p.type],uu=Math.min(1.15,u),fxp=ZX+p.ax*ZW,fyp=ZY-p.ay*ZH,bxp=q.bx*ZW,byp=-q.by*ZH,k=Math.min(1,uu);
       const x=W/2+(fxp-bxp-W/2)*k+bxp*k*k,y=128+(fyp-byp-128)*k+byp*k*k,r=2+7*Math.pow(k,1.6);
