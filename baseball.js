@@ -39,7 +39,10 @@ function fig(ctx,x,y,sc,face,J,col,o){
   ctx.scale(sc*face,sc); ctx.lineCap='round'; ctx.lineJoin='round';
   const ow=Math.max(.9,.75/sc),fr=!!o.front,tw=J.tw||0,hw=fr?6:2.5+Math.max(0,tw)*3,sw=fr?11:3+tw*5,dark=mix(col,'#000000',.28);
   const hipB=add(J.hip,[-hw,0]),hipF=add(J.hip,[hw,0]),shB=add(J.sh,[-sw,1]),shF=add(J.sh,[sw,0]);
-  const kB=ik(hipB,J.fB,25,25,fr?1:-1),kF=ik(hipF,J.fF,25,25,-1),eB=ik(shB,J.hB,16,15,fr?-1:1),eF=ik(shF,J.hF,16,15,1);
+  const kB=ik(hipB,J.fB,25,25,fr?1:-1),kF=ik(hipF,J.fF,25,25,-1);
+  /* 打者的手臂：手往投手方向（畫面深處）伸時，在畫面上看起來變短，所以手臂跟著縮短、只微彎，不把手肘往外折；手肘一律朝下 */
+  const armIk=(s,h,sg)=>{ if(!o.fore) return ik(s,h,16,15,sg); const r=Math.hypot(h[0]-s[0],h[1]-s[1]),k=clamp(r*1.13/31,.42,1),A=ik(s,h,16*k,15*k,1),B=ik(s,h,16*k,15*k,-1); return A[1]>=B[1]?A:B; };
+  const eB=armIk(shB,J.hB,fr?-1:1),eF=armIk(shF,J.hF,1);
   const leg=(hp,k,f,b)=>{ seg(ctx,[hp,k,lp(k,f,.45)],10,b?'#c9ccd8':PANTS,ow); seg(ctx,[lp(k,f,.42),f],7,b?dark:col,ow);
     ctx.fillStyle=INK; ctx.beginPath(); ctx.ellipse(f[0]+(fr?0:3),f[1]-1.5,(fr?4.5:6.8)+ow*.6,3.2+ow*.6,0,0,7); ctx.fill(); ctx.fillStyle=SHOE; ctx.beginPath(); ctx.ellipse(f[0]+(fr?0:3),f[1]-1.5,fr?4.5:6.8,3.2,0,0,7); ctx.fill(); };
   const arm=(s,e,h,b)=>{ seg(ctx,[s,lp(s,e,.7)],8.5,b?dark:col,ow); seg(ctx,[lp(s,e,.62),e,h],5.6,b?SKD:SKIN,ow); };
@@ -100,7 +103,7 @@ function drawBat(ctx,knob,d,len,ow,alpha){
 function drawBatter(ctx,x,y,sc,col,hair,p,aim){
   const J0=kf(BK,p),w=p>0&&p<.6?Math.sin(p/.6*Math.PI):0,h=add(J0.h,[0,(aim||0)*w]),d=batDir(J0.a,J0.e),ow=Math.max(.9,.75/sc);
   const J={hip:J0.hip,sh:J0.sh,head:J0.head,fB:J0.fB,fF:J0.fF,hF:h,hB:add(h,[d[0]*5,d[1]*5]),tw:J0.tw};
-  fig(ctx,x,y,sc,1,J,col,{helmet:1,hair});
+  fig(ctx,x,y,sc,1,J,col,{helmet:1,hair,fore:1});
   ctx.save(); ctx.translate(x,y); ctx.scale(sc,sc); ctx.lineCap='round';
   if(p>.05&&p<.62) for(let i=3;i>=1;i--){ const Q=kf(BK,p-i*.045),hq=add(Q.h,[0,(aim||0)*w]),dq=batDir(Q.a,Q.e); drawBat(ctx,add(hq,[-dq[0]*4,-dq[1]*4]),dq,46,ow,.12*(4-i)); }
   drawBat(ctx,add(h,[-d[0]*4,-d[1]*4]),d,46,ow);
@@ -449,7 +452,7 @@ function create(env,opts){
       if(ctl(fldTeam())!=='ai'&&mine(fldTeam())){ /* 投手這時不用操作 */ }
       if(bc==='ai'&&swung&&pitT>=T+swung.dt-.06&&S.swing<=0&&!swung.shown){ swung.shown=true; S.swing=SW; }
       if(bc==='net'){ if(remoteSw!==undefined&&pitT>=T){ const sw=remoteSw?{dt:clamp(+remoteSw[0]||0,-1,1),up:remoteSw[1]?1:0}:null; if(sw) S.swing=SW; resolve(sw); } else if(pitT>T+1.2) resolve(null); }
-      else if(pitT>=T+.19) resolve(swung);
+      else if(swung&&Math.abs(swung.dt)<=.16&&pitT>=T+swung.dt||pitT>=T+.19) resolve(swung); /* 有打到：球棒碰到球的那一刻就判定，不用等球過本壘 */
     } else if(S.phase==='contact'){ conT+=dt; if(conT>=CON&&pendHit) launchHit();
     } else if(S.phase==='field'){ stepField(dt); if(fl) S.fld=[fl.F.map(q=>[q.x,q.y]),runners.filter(r=>r.state==='run'||r.state==='on').map(rpos),[fl.bx,fl.by,fl.bz]]; }
     else if(S.phase==='result'){ resT-=dt; if(resT<=0){ const p=pend; pend=null; if(p==='pitch') beginSel(); else if(p==='bat') afterBat(); else beginSel(); } }
