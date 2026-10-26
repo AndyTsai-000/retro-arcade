@@ -78,6 +78,33 @@ function fig(ctx,x,y,sc,face,J,col,o){
   ctx.restore();
 }
 // 關鍵影格內插：frames=[[p,{hip,sh,head,fB,fF,hB,hF,…數字}],…]
+/* 啦啦隊員（正面）：x,y 腳底，s 大小，col 隊服顏色，ph 舞步，big 大動作（踢腿、雙手高舉） */
+function cheerGirl(ctx,x,y,s,col,ph,big,k){ const hair=['#3a2418','#7a4a22','#1e1e2a','#c8903a'][k%4],skin='#ffd9b8',INK2='#2a1a26';
+  const b=Math.sin(ph),c2=Math.cos(ph),hop=big?Math.max(0,b)*7:Math.max(0,b)*2.5;
+  ctx.save(); ctx.translate(x,y-hop*s); ctx.scale(s,s); ctx.lineCap='round'; ctx.lineJoin='round';
+  const ln=(pts,w,cl)=>{ ctx.strokeStyle=INK2; ctx.lineWidth=w+2; ctx.beginPath(); pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.stroke(); ctx.strokeStyle=cl; ctx.lineWidth=w; ctx.stroke(); };
+  const pom=(px,py)=>{ for(let i=0;i<9;i++){ const a=i/9*Math.PI*2+ph*2; ctx.fillStyle=i%2?'#fff':col; ctx.beginPath(); ctx.arc(px+Math.cos(a)*4.2,py+Math.sin(a)*4.2,3.2,0,7); ctx.fill(); } ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(px,py,2.6,0,7); ctx.fill(); };
+  // 腳：大動作時輪流高踢
+  const kick=big?Math.max(0,c2):Math.max(0,c2)*.25,kick2=big?Math.max(0,-c2):Math.max(0,-c2)*.25;
+  ln([[-3,-16],[-4-kick2*6,-8+kick2*-6],[-4-kick2*14,0-kick2*12]],3.4,skin); ln([[3,-16],[4+kick*6,-8-kick*6],[4+kick*14,0-kick*12]],3.4,skin);
+  for(const [fx,fy] of [[-4-kick2*14,0-kick2*12],[4+kick*14,0-kick*12]]){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.ellipse(fx,fy,3,2,0,0,7); ctx.fill(); ctx.strokeStyle=INK2; ctx.lineWidth=1; ctx.stroke(); }
+  // 裙子、上衣
+  ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(-6,-22); ctx.lineTo(6,-22); ctx.lineTo(9+b*1.5,-14); ctx.lineTo(-9+b*1.5,-14); ctx.closePath(); ctx.fill(); ctx.strokeStyle=INK2; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.fillStyle='#fff'; for(let i=-2;i<=2;i++) ctx.fillRect(i*3.4-.6+b*.8,-17,1.2,3);
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(-5.5,-34); ctx.lineTo(5.5,-34); ctx.lineTo(6,-22); ctx.lineTo(-6,-22); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(-5.5,-34); ctx.lineTo(0,-28); ctx.lineTo(5.5,-34); ctx.closePath(); ctx.fill();
+  // 手：小動作左右搖，大動作高舉成 V 字
+  const ra=big?-2.4+Math.sin(ph*2)*.25:-1.2+b*.9,la=big?-0.75-Math.sin(ph*2)*.25:-1.9-b*.9;
+  const arm=(sx,a)=>{ const ex=sx*5+Math.cos(a)*7*sx,ey=-32+Math.sin(a)*7,hx=ex+Math.cos(a)*6*sx,hy=ey+Math.sin(a)*6; ln([[sx*5,-32],[ex,ey],[hx,hy]],2.8,skin); pom(hx,hy); };
+  arm(-1,Math.PI+la-Math.PI); arm(1,ra);
+  // 頭、馬尾、蝴蝶結
+  const sw=Math.sin(ph*2)*3; ln([[0,-46],[6+sw,-42],[8+sw,-34]],4,hair);
+  ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(0,-41,6.5,0,7); ctx.fill(); ctx.strokeStyle=INK2; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.fillStyle=hair; ctx.beginPath(); ctx.arc(0,-43,6.7,Math.PI*1.05,Math.PI*1.95); ctx.fill();
+  ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(4,-47); ctx.lineTo(8,-50); ctx.lineTo(8,-45); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=INK2; ctx.fillRect(-3,-41,1.4,1.8); ctx.fillRect(1.6,-41,1.4,1.8); ctx.strokeStyle=INK2; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(0,-38.5,1.8,.2,Math.PI-.2); ctx.stroke();
+  ctx.fillStyle='rgba(255,120,150,.5)'; ctx.beginPath(); ctx.arc(-4,-38.5,1.4,0,7); ctx.arc(4,-38.5,1.4,0,7); ctx.fill();
+  ctx.restore(); }
 function kf(frames,p){
   let i=0; while(i<frames.length-2&&p>frames[i+1][0]) i++;
   const A=frames[i],B=frames[i+1],k=clamp((p-A[0])/(B[0]-A[0]||1),0,1),s=k*k*(3-2*k),J={};
@@ -203,7 +230,7 @@ function create(env,opts){
   if(F){ cols.reverse(); tname.reverse(); teams.reverse(); } // 先攻的一方當客隊
   // 共用的顯示狀態：房主算出來，連線時整包傳給另一邊
   const S={inn:1,half:0,outs:0,b:0,s:0,sc:[0,0],bases:[0,0,0],phase:'sel',bat:0,ord:[0,0],line:[[],[]],pit:null,last:'',ban:'',banT:0,fld:null,swing:0,hits:[0,0]};
-  const CON=.9; let conT=0,pendHit=null,swDone=false,prevF=[],prevR=[],pRep=0,pDir='',trail=[],trailMax=0,catchT=0,t=0,ended=false,selT=0,tx=0,ty=0,ptype=0,cx=0,cy=0,swung=null,pitT=0,resT=0,pend=null,fl=null,runners=[],ev=[],sendT=0,remoteSw=undefined,remotePc=null,sentSw=false,fx=[];
+  const CON=.9; let cheerT=0,conT=0,pendHit=null,swDone=false,prevF=[],prevR=[],pRep=0,pDir='',trail=[],trailMax=0,catchT=0,t=0,ended=false,selT=0,tx=0,ty=0,ptype=0,cx=0,cy=0,swung=null,pitT=0,resT=0,pend=null,fl=null,runners=[],ev=[],sendT=0,remoteSw=undefined,remotePc=null,sentSw=false,fx=[];
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
   const banner=(s,sec)=>{ S.ban=s; S.banT=sec||1.3; };
   const batTeam=()=>S.half,fldTeam=()=>1-S.half,batter=()=>teams[S.half][S.ord[S.half]%9];
@@ -244,17 +271,20 @@ function create(env,opts){
     else { la=-6+q*22+gauss()*3; evo=60+50*q*b.pow; } // ↓：平飛球或滾地球
     evo=clamp(evo+gauss()*2.5+(DERBY?5:0),45,DERBY?122:118);
     if(q<.18||Math.abs(sa)>45){ if(DERBY){ dOutBy('界外'); return; } sfx('land'); if(S.s<2) S.s++; banner('界外',.9); nextPitch(1); return; }
-    sfx('boom'); const hr=willHR(evo,la,sa); S.hit=[Math.round(evo),Math.round(la),Math.round(sa),+p.ax.toFixed(2),+p.ay.toFixed(2),q>.75||hr?1:0,hr?1:0]; if(hr) sfx('win'); S.phase='contact'; conT=0; pendHit=[evo,la,sa];
+    sfx('boom'); const hr=willHR(evo,la,sa); S.hit=[Math.round(evo),Math.round(la),Math.round(sa),+p.ax.toFixed(2),+p.ay.toFixed(2),q>.75||hr?1:0,hr?1:0]; if(hr){ sfx('win'); cheerT=2.6+CON; } S.phase='contact'; conT=0; pendHit=[evo,la,sa];
   }
-  function launchHit(){ const [evo,la,sa]=pendHit; pendHit=null; startField(evo,la,sa);
-    if(DERBY){ const d=carry(evo,la); dLast=d; if(fl&&fl.hr){ dHR++; dOut++; dBest=Math.max(dBest,d); banner('全壘打！！ '+d+' 呎　剩 '+(DOUTS-dOut)+' 球',2); } else { fl=null; runners=[]; S.fld=null; S.phase='result'; dOutBy(la<6?'滾地球':la<20?'平飛球 '+d+' 呎':'高飛球 '+d+' 呎'); } }
+  function launchHit(){ const [evo,la,sa]=pendHit; pendHit=null;
+    if(DERBY){ /* 全壘打大賽：不切守備和跑壘畫面，打完直接下一球 */ const d=carry(evo,la); dLast=d;
+      if(willHR(evo,la,sa)){ dHR++; dOut++; dBest=Math.max(dBest,d); banner('全壘打！！ '+d+' 呎　剩 '+(DOUTS-dOut)+' 球',1.6); S.phase='result'; endBat(); }
+      else dOutBy(la<6?'滾地球':la<20?'平飛球 '+d+' 呎':'高飛球 '+d+' 呎'); return; }
+    startField(evo,la,sa);
   }
   function strike(txt,sw){ S.s++; sfx(sw?'bump':'click'); if(S.s>=3){ banner('三振出局！',1.3); out(1); endBat(); } else { banner(txt,.9); nextPitch(1); } }
   function ball(){ S.b++; if(S.b>=4){ banner('四壞球保送',1.3); walk(); endBat(); } else { banner('壞球',.8); nextPitch(.9); } }
   function nextPitch(d){ S.phase='result'; resT=d; pend='pitch'; }
   function endBat(){ S.phase='result'; resT=1.4; pend='bat'; }
   function out(n){ S.outs+=n; }
-  function addRun(n){ if(n<=0) return; S.sc[S.half]+=n; S.line[S.half][S.inn-1]=(S.line[S.half][S.inn-1]||0)+n; sfx('win'); for(let i=0;i<30;i++){ const a=rnd()*6.283,v=80+rnd()*160; fx.push({x:W/2,y:120,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:1,col:['#ffd23f','#ff5d8f','#3ddbd9','#fff'][i%4]}); } }
+  function addRun(n){ if(n<=0) return; cheerT=Math.max(cheerT,2.4); S.sc[S.half]+=n; S.line[S.half][S.inn-1]=(S.line[S.half][S.inn-1]||0)+n; sfx('win'); for(let i=0;i<30;i++){ const a=rnd()*6.283,v=80+rnd()*160; fx.push({x:W/2,y:120,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:1,col:['#ffd23f','#ff5d8f','#3ddbd9','#fff'][i%4]}); } }
   function walk(){ const bs=S.bases; if(bs[0]){ if(bs[1]){ if(bs[2]) addRun(1); bs[2]=bs[1]; } bs[1]=bs[0]; } bs[0]=S.ord[S.half]%9+1; }
   function afterBat(){
     S.ord[S.half]++; S.b=0; S.s=0;
@@ -406,7 +436,7 @@ function create(env,opts){
   if(net){
     if(client) net.onmsg=m=>{
       if(m.s){ const a=m.s,ph=S.phase; S.inn=a[0]; S.half=a[1]; S.outs=a[2]; S.b=a[3]; S.s=a[4]; S.sc=[a[5],a[6]]; S.bases=[a[7],a[8],a[9]]; S.phase=a[10]; S.ord=[a[11],a[12]]; S.ban=a[13]; S.banT=a[14]; S.last=a[15]; S.swing=a[16]; S.hits=[a[17],a[18]]; S.line=m.l;
-        if(m.h) S.hit=m.h; if(S.phase==='contact'&&ph!=='contact') conT=0;
+        if(m.h) S.hit=m.h; if(S.phase==='contact'&&ph!=='contact'){ conT=0; if(S.hit&&S.hit[6]) cheerT=2.6+CON; }
         S.fld=m.f||null; if(S.phase==='sel'&&ph!=='sel'){ selT=0; tx=ty=0; cx=cy=0; sentSw=false; S.pit=null; }
         for(const n of m.e) env.sfx(n); }
       if(m.pit){ S.pit={type:m.pit[0],ax:m.pit[1],ay:m.pit[2],T:PITCH[m.pit[0]].T,kmh:m.pit[3]}; pitT=0; swung=null; sentSw=false; }
@@ -437,7 +467,7 @@ function create(env,opts){
     return false;
   }
   function update(dt){
-    t+=dt; if(S.banT>0) S.banT-=dt; if(S.swing>0) S.swing-=dt;
+    t+=dt; if(S.banT>0) S.banT-=dt; if(S.swing>0) S.swing-=dt; if(cheerT>0) cheerT-=dt;
     for(let i=fx.length-1;i>=0;i--){ const f=fx[i]; f.life-=dt; f.x+=f.vx*dt; f.y+=f.vy*dt; f.vy+=240*dt; if(f.life<=0) fx.splice(i,1); }
     if(client){ // 另一邊：只處理自己的投球選擇和揮棒
       selT+=dt; if(S.pit) pitT+=dt; if(S.phase==='contact') conT+=dt;
@@ -504,6 +534,7 @@ function create(env,opts){
       if(showBat&&!swung&&u<1.1){ const ok=Math.abs(pitT+.04-p.T)<(DERBY?.13:.09); ctx.strokeStyle=ok?'#5fff7a':'rgba(255,210,63,.85)'; ctx.lineWidth=ok?3:2; ctx.beginPath(); ctx.arc(x,y,r+3+Math.max(0,1-uu)*46,0,7); ctx.stroke();
         if(ok){ ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText('打！',x,y-r-14); ctx.fillStyle='#5fff7a'; ctx.fillText('打！',x,y-r-14); } } }
     else if(p&&S.phase==='result'){ const x=ZX+p.ax*ZW,y=ZY-p.ay*ZH; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(x,y,8,0,7); ctx.fill(); }
+    { const col=cols[batTeam()],big=cheerT>0; [[22,0],[46,1],[W-46,2],[W-22,3]].forEach(([x,k])=>(!showPit||x<W/2)&&cheerGirl(ctx,x,214,.9,col,t*(big?9:4)+k*.6,big,k)); }
     if(hitU>=0) drawContact(hitU);
     ctx.restore();
   }
@@ -585,11 +616,16 @@ function create(env,opts){
     ctx.font='700 10px '+TC; ctx.textAlign='left'; ctx.fillStyle='#14122b'; ctx.fillText('接球特寫',X+6,Y+11);
   }
   let lastDraw=0;
+  function cheerLine(){ if(cheerT<=0) return; const u=cheerT,inA=Math.min(1,(3.4-Math.min(u,3.4))*4,u*3),col=cols[batTeam()],hY=H-58*inA;
+    ctx.fillStyle='rgba(11,10,28,.55)'; ctx.fillRect(0,hY,W,H-hY); ctx.fillStyle=col; ctx.fillRect(0,hY,W,3);
+    for(let i=0;i<7;i++) cheerGirl(ctx,40+i*67,hY+56,1.05,col,t*9+(i%2?Math.PI:0),true,i);
+    ctx.font='900 13px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.globalAlpha=inA; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText('GO！GO！'+tname[batTeam()]+'！',W/2,hY-10); ctx.fillStyle='#fff'; ctx.fillText('GO！GO！'+tname[batTeam()]+'！',W/2,hY-10); ctx.globalAlpha=1; }
   function draw(){
     const now=performance.now()/1000,ddt=Math.min(.1,now-(lastDraw||now)); lastDraw=now;
     if(S.phase==='field'&&S.fld){ const b=S.fld[2],r=Math.hypot(b[0],b[1]),l=trail[trail.length-1]; if(!l||Math.abs(l[0]-r)>1.5||Math.abs(l[1]-b[2])>1.5){ trail.push([r,b[2]]); if(trail.length>400) trail.shift(); } trailMax=Math.max(trailMax,b[2]); catchT-=ddt; }
     else { trail=[]; trailMax=0; catchT=0; }
     if(S.phase==='field'&&S.fld) drawFieldView(); else drawPitchView();
+    cheerLine();
     // 計分列
     ctx.fillStyle='rgba(11,10,28,.88)'; ctx.fillRect(0,0,W,34); ctx.textBaseline='middle';
     ctx.textAlign='left'; ctx.font='700 11px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText((S.inn>N?'延長 ':'')+S.inn+' 局'+(S.half?'下':'上'),8,10);
