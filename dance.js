@@ -53,7 +53,7 @@ function dancer(c,x,y,s,o){ const P=o.pose,u=o.pt>0?1:0,b=Math.sin(o.beat*Math.P
   const L=o.L||{}; R().drawChibi(c,x,y,s,Object.assign({t:o.t,body:L.color||'#7a5cff',pants:'#2b2b44',shoe:'#fff',acc:L.acc||'phones',hairStyle:L.hair||'girl',capCol:L.color||'#ff5d8f',hair:L.hairCol},a)); }
 
 function create(env,opts){
-  const RHY=R(),net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,29),_e=RHY.setEase(si),th=Math.floor(si/5),song=RHY.makeSong(si,'dance'),L=opts.look||{};
+  const RHY=R(),net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,29),_e=RHY.setEase(si),th=Math.floor(si/5),PR=RHY.pracOf(opts),song0=RHY.makeSong(si,'dance'),song=PR?RHY.practice(song0,PR.part,PR.rate):song0,L=opts.look||{};
   const me=net?net.me:0,np=two||net?2:1,names=net?(net.names||['玩家 1','玩家 2']):two?['1P','2P']:[opts.name||'你'];
   const SPEED=(250+song.bpm*1.3)*(({slow:.8,normal:1,fast:1.3})[(opts.options||{}).speed]||1);
   // 譜面：旋律往上走就按 ↑／→，往下走按 ↓／←，一樣高就左右換；後面的關卡在樂句開頭加「雙踩」
@@ -84,6 +84,8 @@ function create(env,opts){
     if(T>song.dur+.6){ ended=true; endT=0; P.syn.stop(); const pl=players[me]; if(net){ if(outbox.length) net.send({jd:outbox}); outbox=[]; net.send({fin:{score:pl.score}}); } env.sfx(rate(pl)>=60?'win':'lose'); } }
   let done=false;
   function finish(){ if(done) return; done=true;
+    if(PR){ const pl=players[0],rs=RHY.loopRates(song,chart.map(n=>({t:n.t,res:pl.res[n.i]||'miss'}))),best=Math.max(...rs);
+      env.end({title:'練習結束',big:'最好一次 '+best.toFixed(0)+'%',html:RHY.pracHtml(rs),text:'「'+SONGS[si]+'」第 '+(PR.part+1)+' 段，速度 '+Math.round(PR.rate*100)+'%，重複 4 次。'+(rs[3]>rs[0]?'越練越好了！':'')+'練習不會存紀錄；練熟了把「練習模式」改回「不練習」正式挑戰。',score:null}); return; }
     const row=pl=>{ const C=pl.cnt; return '<tr><td>'+names[pl.p]+'</td><td>'+pl.score+'</td><td>'+RHY.grade(rate(pl))+'</td><td>'+rate(pl).toFixed(1)+'%</td><td>'+C.perfect+' / '+C.great+' / '+C.good+' / '+C.miss+'</td><td>'+pl.maxCombo+'</td></tr>'; };
     const html='<table class="ls"><tr><th>玩家</th><th>分數</th><th>評價</th><th>達成率</th><th>完美／很好／不錯／MISS</th><th>最高連擊</th></tr>'+players.map(row).join('')+'</table>';
     if(np===1){ const pl=players[0],r2=rate(pl),clear=r2>=60,old=getRec(si),rec=clear&&(old==null||pl.score>old); if(rec) try{ localStorage.setItem(recKey(si),String(pl.score)); }catch(e){}
@@ -102,7 +104,7 @@ function create(env,opts){
     const u=clamp(pl.gain/Math.max(1,chart.length),0,1); c.fillStyle='rgba(0,0,0,.4)'; rr(c,x0+8,H-13,LW*4-16,6,3); c.fill(); c.fillStyle=rate(pl)>=60?'#ffd23f':'#ff8a5d'; rr(c,x0+8,H-13,Math.max(6,(LW*4-16)*u),6,3); c.fill(); c.fillStyle='#fff'; c.fillRect(x0+8+(LW*4-16)*.6,H-15,2,10); }
   function draw(){ const T=P.time(),beat=T/(60/song.bpm); stage(c,W,H,th,t,beat);
     if(np===1){ lanes(players[0],40,'第 '+(si+1)+' 關',false); const pl=players[0]; dancer(c,560,420,3.4,{t,beat,pose:pl.pose,pt:pl.pt,miss:pl.miss,L});
-      c.fillStyle='rgba(11,10,28,.72)'; rr(c,350,12,438,52,14); c.fill(); c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 18px '+TC; c.fillText('♪ '+SONGS[si],366,32); c.fillStyle='#cfd0ff'; c.font='700 11px '+TC; c.fillText(THEMES[th].name+'・'+song.bpm+' BPM',366,52); }
+      c.fillStyle='rgba(11,10,28,.72)'; rr(c,350,12,438,52,14); c.fill(); c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 18px '+TC; c.fillText('♪ '+SONGS[si],366,32); c.fillStyle='#cfd0ff'; c.font='700 11px '+TC; c.fillText(PR?'練習第 '+(PR.part+1)+' 段・速度 '+Math.round(PR.rate*100)+'%・第 '+(RHY.loopNow(song,Math.max(0,P.time()))+1)+' / 4 次':THEMES[th].name+'・'+song.bpm+' BPM',366,52); }
     else { lanes(players[0],24,names[0],net&&me===0); lanes(players[1],W-24-240,names[1],net&&me===1);
       const L2=Object.assign({},L,{color:'#ff7a3a',hair:'boy',acc:'cap'}); dancer(c,345,430,2.3,{t,beat,pose:players[0].pose,pt:players[0].pt,miss:players[0].miss,L:me===0?L:L2,face:1}); dancer(c,455,430,2.3,{t,beat,pose:players[1].pose,pt:players[1].pt,miss:players[1].miss,L:me===1&&net?L:L2,face:-1});
       c.textAlign='center'; c.fillStyle='rgba(11,10,28,.72)'; rr(c,284,12,232,44,12); c.fill(); c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textBaseline='middle'; c.fillText('♪ '+SONGS[si],400,34); }
@@ -133,7 +135,7 @@ function preview(ctx,w,h,L,t){ if(!R()) return; const beat=t*2; stage(ctx,w,h,3,
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v+' 分'; },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人比賽',kb:true}],
-  options:[{key:'speed',label:'箭頭速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]}],
+  options:[{key:'speed',label:'箭頭速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]}].concat(window.__RHY?window.__RHY.PRAC_OPTS:[]),
   help:[['← ↓ ↑ →','箭頭碰到框時按（也可以用 W A S D）'],['兩個箭頭','一起按'],['雙人','1P：W A S D；2P：方向鍵']],
   touchHelp:[['◀ ▼ ▲ ▶','箭頭碰到上面的框時按'],['兩個箭頭','兩個按鈕一起按']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▼',c:'ArrowDown',big:true}],right:[{l:'▲',c:'ArrowUp',big:true},{l:'▶',c:'ArrowRight',big:true,act:true}]},

@@ -136,7 +136,23 @@ const RHY=(()=>{
     st.rate=()=>st.total?st.gain/st.total*100:100;
     st.pause=p=>{ if(p) syn.pause(); else syn.resume(); };
     return st; }
-  return {makeSong,makeChart,Synth,Play,WIN,judgeOf,setEase,JTXT,JCOL,JPT,grade,drawChibi,rng,rr,clamp}; })();
+  /* ---------- 練習模式：挑歌曲的一段，可以放慢，連續重複練好幾次 ---------- */
+  const PARTS=4,LOOPS=4;
+  const pracOf=o=>{ const op=o.options||{},p=+op.prac; if(!(p>=1&&p<=PARTS)||o.net||o.mode==='2p') return null; return {part:p-1,rate:({'100':1,'75':.75,'50':.5})[op.prate]||.75}; };
+  function practice(song,part,rate){ const intro=song.bars.filter(b=>b.intro),main=song.bars.filter(b=>!b.intro&&!b.outro),outro=song.bars.filter(b=>b.outro),n=main.length;
+    const a=Math.floor(n*part/PARTS),z=Math.max(a+1,Math.floor(n*(part+1)/PARTS)),sec=main.slice(a,z),bars=intro.slice();
+    for(let k=0;k<LOOPS;k++) bars.push(...sec); bars.push(...outro);
+    const sd=song.sd/rate,total=bars.length*16;
+    return Object.assign({},song,{bars,total,sd,bpm:Math.round(song.bpm*rate),dur:total*sd,prac:{part,rate,len:sec.length,loops:LOOPS}}); }
+  /* 每一次重複的達成率：items 是 {t,res}，照時間算在第幾次 */
+  function loopRates(song,items){ const P=song.prac,g=new Array(P.loops).fill(0),c=new Array(P.loops).fill(0);
+    for(const it of items){ const bar=Math.floor(it.t/(song.sd*16)+1e-6),k=Math.floor((bar-song.INTRO)/P.len); if(k<0||k>=P.loops||!it.res) continue; c[k]++; g[k]+=it.res==='perfect'?1:it.res==='great'?.8:it.res==='good'?.5:0; }
+    return g.map((v,k)=>c[k]?v/c[k]*100:0); }
+  const loopNow=(song,T)=>{ const P=song.prac; return clamp(Math.floor((T/(song.sd*16)-song.INTRO)/P.len),0,P.loops-1); };
+  const pracHtml=rs=>'<table class="ls"><tr>'+rs.map((v,k)=>'<th>第 '+(k+1)+' 次</th>').join('')+'</tr><tr>'+rs.map(v=>'<td>'+v.toFixed(0)+'%</td>').join('')+'</tr></table>';
+  const PRAC_OPTS=[{key:'prac',label:'練習模式',def:'off',opts:[{id:'off',label:'不練習'},{id:'1',label:'練第 1 段'},{id:'2',label:'練第 2 段'},{id:'3',label:'練第 3 段'},{id:'4',label:'練第 4 段'}]},
+    {key:'prate',label:'練習速度',def:'75',opts:[{id:'100',label:'原速'},{id:'75',label:'75%'},{id:'50',label:'50%'}]}];
+  return {makeSong,makeChart,Synth,Play,WIN,judgeOf,setEase,JTXT,JCOL,JPT,grade,drawChibi,rng,rr,clamp,pracOf,practice,loopRates,loopNow,pracHtml,PRAC_OPTS}; })();
 window.__RHY=RHY;
 
 /* ================= 節奏小鼓手 ================= */
@@ -194,7 +210,7 @@ function drawNote(c,x,y,k,big,alpha){ const r=big?30:21,col=k==='d'?'#ff4d4d':'#
   c.fillStyle='#fff'; c.font='900 '+Math.round(r*.95)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(k==='d'?'咚':'咔',x,y+1); c.globalAlpha=1; }
 
 function create(env,opts){
-  const si=clamp(opts.stage|0,0,29),th=Math.floor(si/5),song=RHY.makeSong(si,'drum'),L=opts.look||{}; RHY.setEase(si);
+  const si=clamp(opts.stage|0,0,29),th=Math.floor(si/5),PR=RHY.pracOf(opts),song0=RHY.makeSong(si,'drum'),song=PR?RHY.practice(song0,PR.part,PR.rate):song0,L=opts.look||{}; RHY.setEase(si);
   const spdMul=({slow:.8,normal:1,fast:1.3})[(opts.options||{}).speed||'normal']||1,SPEED=(300+song.bpm*1.1)*spdMul;
   // 譜面：重拍或往下走的音是「咚」，往上走的是「咔」；後面的關卡在樂句開頭放大音符、在樂句尾巴放連打
   const notes=RHY.makeChart(song,(o,prev,r)=>{ if(o.last){ o.k='d'; o.big=true; return; }
@@ -221,13 +237,16 @@ function create(env,opts){
     for(const n of chart){ if(n.roll||n.res) continue; if(T-n.t>RHY.WIN.good){ n.res='miss'; P.add('miss'); judgeTxt={j:'miss',t:0}; } else if(n.t>T) break; }
     if(T>song.dur+.6){ ended=true; endT=0; P.syn.stop(); env.sfx(P.rate()>=60?'win':'lose'); } }
   let done=false;
-  function finish(){ if(done) return; done=true; const rate=P.rate(),clear=rate>=60,g=RHY.grade(rate),old=getRec(si),rec=clear&&(old==null||P.score>old);
+  function finish(){ if(done) return; done=true;
+    if(PR){ const rs=RHY.loopRates(song,chart.filter(n=>!n.roll).map(n=>({t:n.t,res:n.res||'miss'}))),best=Math.max(...rs);
+      env.end({title:'練習結束',big:'最好一次 '+best.toFixed(0)+'%',html:RHY.pracHtml(rs),text:'「'+SONGS[si]+'」第 '+(PR.part+1)+' 段，速度 '+Math.round(PR.rate*100)+'%，重複 4 次。'+(rs[3]>rs[0]?'越練越好了！':'')+'練習不會存紀錄；練熟了把「練習模式」改回「不練習」正式挑戰。',score:null}); return; }
+    const rate=P.rate(),clear=rate>=60,g=RHY.grade(rate),old=getRec(si),rec=clear&&(old==null||P.score>old);
     if(rec) try{ localStorage.setItem(recKey(si),String(P.score)); }catch(e){}
     const C=P.cnt,html='<table class="ls"><tr><th>完美</th><th>很好</th><th>不錯</th><th>MISS</th><th>最高連擊</th><th>連打</th></tr><tr><td>'+C.perfect+'</td><td>'+C.great+'</td><td>'+C.good+'</td><td>'+C.miss+'</td><td>'+P.maxCombo+'</td><td>'+rollCount+'</td></tr></table>';
     env.end({title:clear?'演奏成功！評價 '+g:'差一點點…',big:P.score+' 分',html,text:'「'+SONGS[si]+'」達成率 '+rate.toFixed(1)+'%（60% 以上過關）。'+(rec?'這關的新紀錄！':old!=null?'這關最高 '+old+' 分':''),score:clear?P.score:null,next:clear&&si<29}); }
   function draw(){ const T=P.time(); scene(c,W,H,th,t);
     // 上方：曲名、分數
-    c.fillStyle='rgba(11,10,28,.72)'; rr(c,12,10,320,52,14); c.fill(); c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 18px '+TC; c.fillText('♪ '+SONGS[si],26,30); c.fillStyle='#cfd0ff'; c.font='700 11px '+TC; c.fillText('第 '+(si+1)+' 關・'+THEMES[th].name+'・'+song.bpm+' BPM',26,50);
+    c.fillStyle='rgba(11,10,28,.72)'; rr(c,12,10,320,52,14); c.fill(); c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 18px '+TC; c.fillText('♪ '+SONGS[si],26,30); c.fillStyle='#cfd0ff'; c.font='700 11px '+TC; c.fillText(PR?'練習第 '+(PR.part+1)+' 段・速度 '+Math.round(PR.rate*100)+'%・第 '+(RHY.loopNow(song,Math.max(0,T))+1)+' / 4 次':'第 '+(si+1)+' 關・'+THEMES[th].name+'・'+song.bpm+' BPM',26,50);
     c.fillStyle='rgba(11,10,28,.72)'; rr(c,W-232,10,220,52,14); c.fill(); c.textAlign='right'; c.fillStyle='#fff'; c.font='900 24px '+PIX; c.fillText(String(P.score).padStart(7,'0'),W-24,32);
     // 達成率條（60% 那裡畫一條線）
     const rate=P.rate(),u=clamp(P.gain/Math.max(1,P.total),0,1); c.fillStyle='rgba(0,0,0,.4)'; rr(c,W-220,48,196,9,4); c.fill(); c.fillStyle=rate>=60?'#ffd23f':'#ff8a5d'; rr(c,W-220,48,Math.max(6,196*u),9,4); c.fill(); c.fillStyle='#fff'; c.fillRect(W-220+196*.6,45,2,15);
@@ -280,7 +299,7 @@ function preview(ctx,w,h,L,t){ scene(ctx,w,h,2,t); const hit=Math.sin(t*6)>.5,si
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v+' 分'; },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   modes:[{id:'1p',label:'開始演奏'}],
-  options:[{key:'speed',label:'音符速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]}],
+  options:[{key:'speed',label:'音符速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]}].concat(RHY.PRAC_OPTS),
   help:[['←','咚：紅色音符'],['→','咔：藍色音符'],['空白鍵','黃色長條：連續狂敲（連打）']],
   touchHelp:[['咚','紅色音符'],['咔','藍色音符'],['連打','黃色長條時連續狂敲']],
   touch:{left:[{l:'咚',c:'ArrowLeft',big:true}],right:[{l:'連打',c:'Space'},{l:'咔',c:'ArrowRight',big:true,act:true}]},

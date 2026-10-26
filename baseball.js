@@ -178,6 +178,8 @@ function stadium(ctx,L,t){
 
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',vs=two||(!!net&&net.count>1),F=opts.first===1; let me=net?(vs?Math.min(1,net.me):1):1; if(F) me=1-me; // F：擲硬幣後換成第 1 方先攻
+  const DERBY=opts.variant==='derby'&&!net&&opts.mode!=='2p'; /* 全壘打大賽：只有自己打擊，10 個出局前打越多全壘打越好 */
+  let dHR=0,dOut=0,dBest=0,dLast=0; const DOUTS=10;
   const N=+(opts.variant||3)||3,si=opts.stage||0,foe=STAGES[si],lv=vs?.6:foe.lv,L=opts.look||{color:'#ff5d4f',hair:'1',grass:'#4c9a3c',bg:'stadium'};
   const {ctx}=env.canvas2d(W,H);
   // 單人：你是主隊（後攻），電腦是客隊。雙人：左邊 WASD 是客隊、右邊方向鍵是主隊。連線：房主客隊、加入者主隊。
@@ -216,21 +218,24 @@ function create(env,opts){
       const go=inZ?rnd()<.72+lv*.1:rnd()<clamp(.5-lv*.28-out*.5,.03,.6);
       swung=go?{dt:gauss()*(.075-.035*lv)/b.con,up:rnd()<.3+lv*.25?1:0,at:p.T}:null; }
   }
+  function dOutBy(txt){ dOut++; sfx('bump'); banner(txt+'　出局 '+dOut+' / '+DOUTS,1.3); endBat(); }
   function resolve(sw){ // 這一球的結果：時機準不準＋對方投的位置和球種，決定擊球品質
     const p=S.pit,b=batter(),inZ=Math.abs(p.ax)<=1&&Math.abs(p.ay)<=1;
+    if(DERBY&&!sw){ banner('沒揮棒（不算出局）',.8); nextPitch(.8); return; }
     if(!sw){ if(inZ) strike('好球！'); else ball(); return; }
     const WIN=.16,q0=PITCH[p.type],edge=Math.max(Math.abs(p.ax),Math.abs(p.ay));
     const locP=Math.max(0,Math.min(edge,1)-.45)*.3+Math.max(0,edge-1)*.85,brk=Math.hypot(q0.bx,q0.by)*.07;
     const q=1-Math.abs(sw.dt)/WIN*.75-locP-brk+(b.con-1)*.25+gauss()*.04;
-    if(Math.abs(sw.dt)>WIN||q<=.05){ strike('揮棒落空！',true); return; }
+    if(Math.abs(sw.dt)>WIN||q<=.05){ if(DERBY){ dOutBy('揮棒落空'); return; } strike('揮棒落空！',true); return; }
     let sa=sw.dt/WIN*36+gauss()*8;
     if(q>.7){ const gaps=[-40,-16,16,40],g=gaps.reduce((a,c)=>Math.abs(c-sa)<Math.abs(a-sa)?c:a); sa+=(g-sa)*Math.min(1,(q-.7)/.3)*.6; } // 打得好，比較容易打到空檔
     let la,evo;
     if(sw.up){ if(q>=.5){ la=24+(.8-Math.min(q,.8))*60+gauss()*3; evo=60+56*q*b.pow; } else { la=46+rnd()*20; evo=55+40*q; } } // ↑：高飛球，打越準飛越遠
     else { la=-6+q*22+gauss()*3; evo=60+50*q*b.pow; } // ↓：平飛球或滾地球
     evo=clamp(evo+gauss()*2.5,45,118);
-    if(q<.18||Math.abs(sa)>45){ sfx('land'); if(S.s<2) S.s++; banner('界外',.9); nextPitch(1); return; }
+    if(q<.18||Math.abs(sa)>45){ if(DERBY){ dOutBy('界外'); return; } sfx('land'); if(S.s<2) S.s++; banner('界外',.9); nextPitch(1); return; }
     sfx('boom'); startField(evo,la,sa);
+    if(DERBY){ const d=carry(evo,la); dLast=d; if(fl&&fl.hr){ dHR++; dBest=Math.max(dBest,d); banner('全壘打！！ '+d+' 呎',2); } else { fl=null; runners=[]; S.fld=null; S.phase='result'; dOutBy(la<6?'滾地球':la<20?'平飛球 '+d+' 呎':'高飛球 '+d+' 呎'); } }
   }
   function strike(txt,sw){ S.s++; sfx(sw?'bump':'click'); if(S.s>=3){ banner('三振出局！',1.3); out(1); endBat(); } else { banner(txt,.9); nextPitch(1); } }
   function ball(){ S.b++; if(S.b>=4){ banner('四壞球保送',1.3); walk(); endBat(); } else { banner('壞球',.8); nextPitch(.9); } }
@@ -241,6 +246,7 @@ function create(env,opts){
   function walk(){ const bs=S.bases; if(bs[0]){ if(bs[1]){ if(bs[2]) addRun(1); bs[2]=bs[1]; } bs[1]=bs[0]; } bs[0]=S.ord[S.half]%9+1; }
   function afterBat(){
     S.ord[S.half]++; S.b=0; S.s=0;
+    if(DERBY){ S.bases=[0,0,0]; S.outs=0; if(dOut>=DOUTS){ finish(); return; } beginSel(); return; }
     const walkOff=S.half===1&&S.inn>=N&&S.sc[1]>S.sc[0];
     if(walkOff){ finish(); return; }
     if(S.outs>=3){ // 攻守交換
@@ -254,6 +260,8 @@ function create(env,opts){
   }
   function finish(){
     if(ended) return; ended=true; S.phase='over';
+    if(DERBY){ let old=null; try{ old=JSON.parse(localStorage.getItem('arcade.baseball.derby')||'null'); }catch(e){} const rec=dHR>0&&(!old||dHR>old.hr||dHR===old.hr&&dBest>old.d); if(rec) try{ localStorage.setItem('arcade.baseball.derby',JSON.stringify({hr:dHR,d:dBest})); }catch(e){}
+      env.sfx(dHR?'win':'lose'); env.end({title:'全壘打大賽結束',big:dHR+' 支全壘打',text:(dBest?'最遠一支 '+dBest+' 呎。':'')+(rec?'新紀錄！':old?'最佳紀錄 '+old.hr+' 支（最遠 '+old.d+' 呎）。':'')+'按 ↑ 打高飛球，時機抓準就容易飛出牆外。',score:null}); return; }
     const w=S.sc[0]===S.sc[1]?-1:S.sc[0]>S.sc[1]?0:1,win=two||w===me;
     if(net&&net.host){ net.send(snap()); net.send({end:1}); }
     conclude(w,win);
@@ -303,6 +311,7 @@ function create(env,opts){
     fl={path,bi,bt,F,best,fly,hr,t:0,mode:'path',holder:null,hold:0,thr:null,cover,runs:0,lastForce:false,dead:0,bx:0,by:0,bz:3,catchD:best?Math.hypot(path[bi][1],path[bi][2]):0,br,msg:false};
     S.phase='field'; banner(hr?'全壘打！！':la<6?'滾地球':la<20?'平飛球':la<48?(landT!=null&&Math.hypot(path[path.length-1][1],path[path.length-1][2])>200?'外野高飛球':'高飛球'):'內野高飛球',hr?2:1.1); if(hr){ sfx('win'); }
   }
+  function carry(evo,la){ const v0=evo*1.467,a=la*Math.PI/180; let vh=v0*Math.cos(a),vz=v0*Math.sin(a),r=1,z=3; for(let k=0;k<600;k++){ vh*=Math.exp(-.2*.02); vz-=32*.02; z+=vz*.02; r+=vh*.02; if(z<=0) break; } return Math.round(r); }
   const THR=118; // 傳球速度（呎／秒）
   function decideThrow(){ // 拿到球的人看場上狀況決定傳哪個壘
     const h=fl.holder,run=runners.filter(r=>r.state==='run');
@@ -425,7 +434,8 @@ function create(env,opts){
     if(S.phase==='sel'){
       selT+=dt; const c=ctl(fldTeam()),bc=ctl(batTeam());
       if(mine(batTeam())) aimBat(dt);
-      if(c==='ai'){ if(selT>.9){ const zone=rnd()<.62+lv*.08,e=zone?.55+rnd()*.4:1.1+rnd()*.35; throwPitch(Math.floor(rnd()*PITCH.length),(rnd()<.5?-1:1)*e*(rnd()<.7?1:.3),(rnd()<.5?-1:1)*e*(rnd()<.7?1:.3)); } }
+      if(c==='ai'&&DERBY){ if(selT>1.1){ throwPitch(0,(rnd()-.5)*.9,(rnd()-.5)*.9); S.pit.ax=clamp(S.pit.ax,-.7,.7); S.pit.ay=clamp(S.pit.ay,-.7,.7); S.pit.T=1.06; S.pit.kmh=118+Math.round(rnd()*10); S.last='餵球 '+S.pit.kmh+' km/h'; } }
+      else if(c==='ai'){ if(selT>.9){ const zone=rnd()<.62+lv*.08,e=zone?.55+rnd()*.4:1.1+rnd()*.35; throwPitch(Math.floor(rnd()*PITCH.length),(rnd()<.5?-1:1)*e*(rnd()<.7?1:.3),(rnd()<.5?-1:1)*e*(rnd()<.7?1:.3)); } }
       else if(c==='net'){ if(remotePc){ throwPitch(clamp(remotePc[0]|0,0,5),clamp(+remotePc[1]||0,-1.7,1.7),clamp(+remotePc[2]||0,-1.7,1.7)); remotePc=null; } }
       else if(pitcherUI(c,dt)) throwPitch(ptype,tx,ty);
     } else if(S.phase==='pitch'){
@@ -552,9 +562,12 @@ function create(env,opts){
     const who=S.phase==='sel'?(mine(fldTeam())||client&&fldTeam()===me?'方向鍵一按移一格選位置，按「投球」丟球':mine(batTeam())||client&&batTeam()===me?'圈圈變綠時按 ↑ 打高飛、按 ↓ 打平飛／滾地':''):'';
     if(who){ ctx.textAlign='center'; ctx.font='700 12px '+TC; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText(who,W/2,48); ctx.fillStyle='#fff'; ctx.fillText(who,W/2,48); }
     for(const f of fx){ ctx.globalAlpha=Math.max(0,f.life); ctx.fillStyle=f.col; ctx.fillRect(f.x-2,f.y-2,4,4); } ctx.globalAlpha=1;
+    if(DERBY){ ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,W,34); ctx.textBaseline='middle'; ctx.textAlign='left'; ctx.font='900 13px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText('全壘打大賽',8,17);
+      ctx.fillStyle='#fff'; ctx.fillText('全壘打 '+dHR+' 支',110,17); ctx.fillStyle='#ff8a9a'; ctx.fillText('出局 '+dOut+' / '+DOUTS,200,17); ctx.fillStyle='#86dc4f'; ctx.fillText('最遠 '+(dBest||'-')+(dBest?' 呎':''),285,17);
+      for(let i=0;i<DOUTS;i++){ ctx.fillStyle=i<dOut?'#ff5d8f':'#2b2759'; ctx.beginPath(); ctx.arc(W-6-(DOUTS-1-i)*8,17,3,0,7); ctx.fill(); } }
     if(S.banT>0&&S.ban){ ctx.textAlign='center'; ctx.font='900 26px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#14122b'; ctx.strokeText(S.ban,W/2,84); ctx.fillStyle='#ffd23f'; ctx.fillText(S.ban,W/2,84); }
   }
-  banner('1 局上　'+tname[0]+' 進攻',1.6);
+  if(DERBY){ S.half=me; banner('全壘打大賽：10 個出局前打越多支越好',2.2); } else banner('1 局上　'+tname[0]+' 進攻',1.6);
   return {update,draw,destroy(){},_dbg:{S,teams,get fl(){return fl;},get runners(){return runners;},hit:(e,l,s)=>startField(e,l,s),resolve,throwPitch,art:{drawBatter,fig,pose,kf,PK,stadium}}};
 }
 
@@ -594,8 +607,8 @@ const thumb=(ctx,w,h,t)=>{ ctx.save(); ctx.translate(0,-16); scene(ctx,w,h,{colo
       fig(ctx,x,y,.85,i<2?1:-1,pose(pn,t*1.2+i),col,pn==='run'?{helmet:1}:{glove:'F',ball:pn==='throw'?'B':null,up:pn==='catch'});
       ctx.font='700 '+Math.round(h*.055)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.fillText(nm,x,y+h*.07); }); },
   stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
-  coin:o=>({verb:'先攻',names:o.net?(o.net.count>1?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:[STAGES[o.stage||0].name,o.net.names[0]||'你']):o.mode==='2p'?['1P 隊','2P 隊']:[STAGES[o.stage||0].name,'你的隊伍']}),
-  variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'}],
+  coin:o=>o.variant==='derby'&&!o.net&&o.mode!=='2p'?null:({verb:'先攻',names:o.net?(o.net.count>1?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:[STAGES[o.stage||0].name,o.net.names[0]||'你']):o.mode==='2p'?['1P 隊','2P 隊']:[STAGES[o.stage||0].name,'你的隊伍']}),
+  variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'},{id:'derby',label:'全壘打大賽（單人）'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','投球：一按移一格選位置'],['J／空白鍵／Enter','投球時丟球'],['K','換球種（投球時）'],['↑','打擊：揮棒打高飛球，時機越準越遠，有機會全壘打'],['↓','打擊：揮棒打平飛球或滾地球'],['W A S D F G','雙人客隊：移動（W／S 揮棒）、丟球、換球種'],['↑ ↓ ← → , .','雙人主隊：移動（↑／↓ 揮棒）、丟球、換球種']],
   touchHelp:[['方向盤','投球：一按移一格；打擊：按上打高飛、按下打平飛或滾地'],['投球','丟球'],['球種','投球時換球種']],
