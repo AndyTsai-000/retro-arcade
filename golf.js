@@ -141,7 +141,7 @@ function simShot(o,x,y,ang,pow,t0){ const b={x,y,vx:Math.cos(ang)*pow*MAXV,vy:Ma
 const MAXV=980;
 
 /* ---------- 繪圖 ---------- */
-function drawStatic(c,o,TT,ci){
+function drawStatic(c,o,TT,ci,flat3d){
   // 圍欄外：依主題的地景
   c.fillStyle=TT.out; c.fillRect(0,0,W,H);
   for(let i=0;i<900;i++){ c.fillStyle=i%2?TT.out2:shade(TT.out,1.06); c.globalAlpha=.5; c.fillRect(hash(i+ci*7)*W,hash(i*3+1)*H,3+hash(i*5)*6,2); } c.globalAlpha=1;
@@ -167,8 +167,8 @@ function drawStatic(c,o,TT,ci){
   // 水池岸邊陰影
   for(let y=0;y<GH;y++) for(let x=0;x<GW;x++) if(o.g[y][x]==='W'){ const X=OX+x*CS,Y=OY+y*CS; c.fillStyle='rgba(0,0,0,.25)'; if(y>0&&o.g[y-1][x]!=='W') c.fillRect(X,Y,CS,5); if(x>0&&o.g[y][x-1]!=='W') c.fillRect(X,Y,5,CS); }
   // 圍欄外的裝飾（不靠著草皮的格子）
-  for(let y=0;y<GH;y++) for(let x=0;x<GW;x++){ if(o.g[y][x]!=='#') continue; let near=false; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) if(!solid(o,x+dx,y+dy)) near=true; if(near) continue; const r=hash(x*13+y*29+ci*5); if(r>.42) continue; decoAt(c,TT.deco,OX+x*CS+CS/2+(hash(x+y*3)-.5)*14,OY+y*CS+CS/2+(hash(x*5+y)-.5)*14,r); }
-  for(const d of [[20,20],[780,20],[24,480],[776,480]]) decoAt(c,TT.deco,d[0],d[1],.2);
+  if(!flat3d) for(let y=0;y<GH;y++) for(let x=0;x<GW;x++){ if(o.g[y][x]!=='#') continue; let near=false; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) if(!solid(o,x+dx,y+dy)) near=true; if(near) continue; const r=hash(x*13+y*29+ci*5); if(r>.42) continue; decoAt(c,TT.deco,OX+x*CS+CS/2+(hash(x+y*3)-.5)*14,OY+y*CS+CS/2+(hash(x*5+y)-.5)*14,r); }
+  if(!flat3d) for(const d of [[20,20],[780,20],[24,480],[776,480]]) decoAt(c,TT.deco,d[0],d[1],.2);
   // 發球台、球洞
   if(o.tee){ c.fillStyle='rgba(0,0,0,.25)'; rr(c,o.tee[0]-15,o.tee[1]-11,32,24,4); c.fill(); c.fillStyle='#2f6a2c'; rr(c,o.tee[0]-16,o.tee[1]-12,32,24,4); c.fill(); c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=1; c.stroke(); c.fillStyle='rgba(255,255,255,.12)'; for(let i=0;i<8;i++) c.fillRect(o.tee[0]-14+i*4,o.tee[1]-10,1,20); }
   const [hx,hy]=o.hole; c.fillStyle='rgba(255,255,255,.12)'; c.beginPath(); c.arc(hx,hy,HR+5,0,7); c.fill();
@@ -177,7 +177,7 @@ function drawStatic(c,o,TT,ci){
   for(const k of 'ABCD'){ const p=o.tun[k]; if(!p) continue; const ent=k==='A'||k==='C'; c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.arc(p[0]+2,p[1]+3,15,0,7); c.fill(); c.fillStyle=TT.rail==='metal'?'#9aa4b0':'#7a7468'; c.beginPath(); c.arc(p[0],p[1],15,0,7); c.fill(); const g=c.createRadialGradient(p[0],p[1],2,p[0],p[1],12); g.addColorStop(0,'#000'); g.addColorStop(1,ent?'#1a1a2a':'#2a2a1a'); c.fillStyle=g; c.beginPath(); c.arc(p[0],p[1],11,0,7); c.fill();
     c.fillStyle='#fff'; c.font='900 9px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(ent?'入':'出',p[0],p[1]-20+40*(p[1]<OY+30?1:0)); }
   // 圍欄：草皮和外面交界畫成有厚度的欄杆
-  drawRails(c,o,TT); }
+  if(!flat3d) drawRails(c,o,TT); }
 function decoAt(c,k,x,y,r){ c.save(); c.translate(x,y);
   if(k==='tree'||k==='pine'||k==='fern'||k==='rose'){ c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(5,6,16,9,0,0,7); c.fill();
     if(k==='pine'){ for(let i=0;i<3;i++){ c.fillStyle=i%2?'#2f5a3a':'#3a6a44'; c.beginPath(); c.moveTo(0,-18+i*8); c.lineTo(13-i*2,4+i*3); c.lineTo(-13+i*2,4+i*3); c.fill(); } c.fillStyle='rgba(255,255,255,.85)'; c.beginPath(); c.moveTo(0,-18); c.lineTo(5,-10); c.lineTo(-5,-10); c.fill(); }
@@ -203,13 +203,14 @@ function drawRails(c,o,TT){ const T=8;
     if(solid(o,x,y-1)) railStyle(c,TT,X-T/2,Y-T/2,CS+T,T); if(solid(o,x,y+1)) railStyle(c,TT,X-T/2,Y+CS-T/2,CS+T,T); if(solid(o,x-1,y)) railStyle(c,TT,X-T/2,Y-T/2,T,CS+T); if(solid(o,x+1,y)) railStyle(c,TT,X+CS-T/2,Y-T/2,T,CS+T); }
   // 內部的障礙方塊畫成石塊／磚塊
   for(let y=1;y<GH-1;y++) for(let x=1;x<GW-1;x++){ if(o.g[y][x]!=='#') continue; let n=0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) if(!solid(o,x+dx,y+dy)) n++; if(n>=2){ const X=OX+x*CS,Y=OY+y*CS; c.fillStyle='rgba(0,0,0,.2)'; c.fillRect(X+3,Y+5,CS,CS); railStyle(c,TT,X+1,Y+1,CS-2,CS-2); c.fillStyle='rgba(255,255,255,.12)'; c.fillRect(X+1,Y+1,CS-2,4); } } }
-function drawDynamic(c,o,TT,t){
+function drawDynamic(c,o,TT,t,waterOnly){
   // 水波／熔岩流動
   for(let y=0;y<GH;y++) for(let x=0;x<GW;x++) if(o.g[y][x]==='W'){ const X=OX+x*CS,Y=OY+y*CS;
     if(TT.haz==='lava'){ c.fillStyle='rgba(255,200,60,'+(.25+.2*Math.sin(t*2+x+y))+')'; c.beginPath(); c.arc(X+22+Math.sin(t+x)*8,Y+22+Math.cos(t*.8+y)*8,8,0,7); c.fill(); c.fillStyle='rgba(60,20,10,.35)'; c.fillRect(X+((t*10+x*13)%CS),Y+10,10,3); }
     else if(TT.haz==='void'){ c.fillStyle='rgba(255,255,255,.6)'; c.fillRect(X+((x*17+t*6)%CS),Y+((y*23)%CS),1.5,1.5); }
     else if(TT.haz!=='drop'){ c.strokeStyle='rgba(255,255,255,.22)'; c.lineWidth=1.2; for(let k=0;k<2;k++){ const yy=Y+12+k*18+Math.sin(t*1.5+x*1.3+k)*3; c.beginPath(); c.moveTo(X+4,yy); c.quadraticCurveTo(X+22,yy-4,X+40,yy); c.stroke(); }
       if(TT.haz==='koi'&&(x+y)%3===0){ const a=t*.6+x,kx=X+22+Math.cos(a)*12,ky=Y+22+Math.sin(a)*10; c.fillStyle=(x%2?'#ff7a2a':'#f4f4f4'); c.save(); c.translate(kx,ky); c.rotate(a+Math.PI/2); c.beginPath(); c.ellipse(0,0,7,3,0,0,7); c.fill(); c.beginPath(); c.moveTo(-6,0); c.lineTo(-11,-3); c.lineTo(-11,3); c.fill(); c.restore(); } } }
+  if(waterOnly) return;
   // 彈柱
   for(const [px,py] of o.bump){ c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(px+4,py+5,13,11,0,0,7); c.fill(); const g=c.createRadialGradient(px-4,py-4,1,px,py,12); g.addColorStop(0,'#ffffff'); g.addColorStop(.35,'#d8dce4'); g.addColorStop(1,'#6a7080'); c.fillStyle=g; c.beginPath(); c.arc(px,py,12,0,7); c.fill(); c.fillStyle='#e8402a'; c.beginPath(); c.arc(px,py,5,0,7); c.fill(); }
   // 移動閘門
@@ -266,6 +267,7 @@ function create(env,opts){
   const ci=clamp(opts.stage|0,0,COURSES.length-1),CO=COURSES[ci],TT=TH[CO.th],net=opts.net,me=net?net.me:0,L0=opts.look||{};
   const np=net?net.count:Math.max(1,Math.min(4,+(opts.mode||1)||1));
   const {ctx:c,canvas}=env.canvas2d(W,H);
+  let G3=null; if(window.THREE&&window.__GOLF3D&&window.__H3D){ try{ G3=window.__GOLF3D(window.THREE,{W,H,CS,GW,GH,OX,OY,BR,HR,TT:TH[COURSES[clamp(opts.stage|0,0,COURSES.length-1)].th],hash,drawStatic,drawDynamic,millAng,gateY,ci:clamp(opts.stage|0,0,COURSES.length-1)}); }catch(e){ G3=null; } } /* 3D 畫面（載不到 three.js 就用原本的 2D） */
   const PL=[]; for(let i=0;i<np;i++){ const lk=net?((net.looks&&net.looks[i])||{}):i===0?L0:{}; PL.push({name:net?(net.names&&net.names[i])||'玩家'+(i+1):np===1?(opts.name||'你'):'玩家 '+(i+1),
     col:lk.ball||BALLC[i],L:{shirt:lk.shirt||['#ffffff','#e23b3b','#3d8bff','#2e9e4f'][i],pants:lk.pants||['#2f3a5a','#e8e0cc','#1e1e24','#5a4a3a'][i],cap:lk.cap||['#1e1e24','#ffffff','#e23b3b','#ffd23f'][i],skin:SKINS[+(lk.skin||[1,0,2,3][i])]||SKINS[1],hair:['#2a1a10','#6a4a2a','#1a1410','#c8a060'][i]},
     sc:[],x:0,y:0,last:null,done:false,strokes:0,gone:false}); }
@@ -303,12 +305,12 @@ function create(env,opts){
   }
   function leave(i){ const P=PL[i]; if(!P||P.gone) return; P.gone=true; P.done=true; banner=P.name+' 離開了'; banT=2; if(cur===i&&phase!=='card'){ ball=null; waitRes=false; nextTurn(); } }
   // 滑鼠／手指拖曳：往後拉、放開擊球
-  let drag=null; const toC=e=>{ const r=canvas.getBoundingClientRect?canvas.getBoundingClientRect():{left:0,top:0,width:W,height:H}; return [(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]; };
+  let drag=null; const toC=e=>{ const r=canvas.getBoundingClientRect?canvas.getBoundingClientRect():{left:0,top:0,width:W,height:H}; const sx=(e.clientX-r.left)*W/r.width,sy=(e.clientY-r.top)*H/r.height; return G3?G3.toTable(sx,sy):[sx,sy]; };
   const onDown=e=>{ if(phase!=='aim'||!local(cur)) return; drag=toC(e); e.preventDefault&&e.preventDefault(); },onMove=e=>{ if(!drag) return; const [x,y]=toC(e),P=PL[cur],dx=P.x-x,dy=P.y-y,d=Math.hypot(dx,dy); if(d>8) ang=Math.atan2(dy,dx); pow=clamp((Math.hypot(x-drag[0],y-drag[1]))/170,0,1); },onUp=()=>{ if(!drag) return; drag=null; if(phase==='aim'&&local(cur)&&pow>.04) fire(pow); else pow=0; };
   if(canvas.addEventListener){ canvas.addEventListener('pointerdown',onDown); addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); addEventListener('pointercancel',onUp); }
   function fire(p){ const a=ang; if(net) net.send({sh:[cur,a,p,simT=t]}); shoot(a,p,t); }
   function update(dt){
-    t+=dt; if(banT>0) banT-=dt; if(arrowT>0) arrowT-=dt;
+    t+=dt; if(banT>0) banT-=dt; if(arrowT>0) arrowT-=dt; if(G3&&env.hit('KeyV')) G3.toggle();
     for(const f of fx){ f.x+=f.vx*dt; f.y+=f.vy*dt; f.vy+=400*dt; f.l-=dt; } fx=fx.filter(f=>f.l>0);
     if(ended) return;
     if(phase==='intro'){ phT-=dt; if(phT<=0||env.hit('Space')&&!net){ startHole(0); } return; }
@@ -340,6 +342,14 @@ function create(env,opts){
     if(!o){ // 開場：球場名稱
       const oo=parseHole(CO.holes[0]); drawStatic(c,oo,TT,ci*6); drawDynamic(c,oo,TT,t); c.fillStyle='rgba(11,10,28,.6)'; c.fillRect(0,0,W,H); c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 40px '+TC; c.fillText(CO.name,W/2,H/2-30); c.fillStyle='#fff'; c.font='700 16px '+TC; c.fillText('6 洞　標準桿 '+CO.holes.reduce((a,h)=>a+h.par,0)+'　'+'★'.repeat(CO.stars),W/2,H/2+14);
       if(np>1) c.fillText('第一洞由 '+PL[firstOrder].name+' 先打',W/2,H/2+44); return; }
+    if(G3){ const P0=PL[cur],near0=Math.min(...PL.filter(p=>!p.done).map(p=>Math.hypot(p.x-o.hole[0],p.y-o.hole[1])),999),bl=[];
+      PL.forEach((p,i)=>{ if(p.done||p.gone) return; bl.push({i,x:p.x,y:p.y,col:p.col,alpha:i===cur?1:.55}); });
+      const g=P0&&!P0.done&&phase!=='card'?(phase==='aim'?{i:cur,L:P0.L,x:P0.x,y:P0.y,ang,back:pow,follow:false}:shotFrom&&phase==='roll'?{i:cur,L:P0.L,x:shotFrom[0],y:shotFrom[1],ang:shotFrom[2],back:0,follow:true}:null):null;
+      G3.render({o,t,tt:phase==='roll'?simT:t,lift:near0<90?(90-near0)*.5:0,balls:bl,g,aim:phase==='aim'&&P0&&!P0.done?{x:P0.x,y:P0.y,ang,len:40+pow*150}:null,focus:P0&&!P0.done?{x:P0.x,y:P0.y,ang:phase==='roll'&&shotFrom?shotFrom[2]:ang}:null});
+      c.drawImage(G3.canvas,0,0,W,H);
+      for(const f of fx){ const q=G3.toScreen(f.x,f.y,(1-f.l)*.6); c.globalAlpha=Math.max(0,f.l); c.fillStyle=f.c; c.fillRect(q[0],q[1],4,4); } c.globalAlpha=1;
+      c.fillStyle='rgba(11,10,28,.6)'; rr(c,10,H-30,env.touch?96:118,22,10); c.fill(); c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillText((env.touch?'視角鍵':'V')+'：'+(G3.view==='top'?'切到球後視角':'切到俯瞰'),18,H-19);
+    } else {
     if(stat) c.drawImage(stat,0,0); else drawStatic(c,o,TT,ci*6+hi);
     drawDynamic(c,o,TT,phase==='roll'?simT:t);
     // 其他人的球（半透明），目前的球
@@ -352,6 +362,8 @@ function create(env,opts){
     if(P&&!P.done&&phase!=='card'){ if(phase!=='roll'||!shotFrom) drawGolfBall(c,P.x,P.y,P.col,0); else drawGolfBall(c,P.x,P.y,P.col,0);
       if(phase==='aim') drawGolfer(c,P.x,P.y,ang,pow,P.L,t,false); else if(shotFrom&&phase==='roll') drawGolfer(c,shotFrom[0],shotFrom[1],shotFrom[2],-.25,P.L,t,true); }
     for(const f of fx){ c.globalAlpha=Math.max(0,f.l); c.fillStyle=f.c; c.fillRect(f.x,f.y,4,4); } c.globalAlpha=1;
+    }
+    const P=PL[cur];
     // 上方資訊列
     c.fillStyle='rgba(11,10,28,.85)'; c.fillRect(0,0,W,48); c.textBaseline='middle';
     c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textAlign='left'; c.fillText(CO.name+'　第 '+(hi+1)+' / 6 洞',12,16); c.fillStyle='#cfe8d8'; c.font='700 12px '+TC; c.fillText('標準桿 '+o.par+'　最多 '+(o.par+3)+' 桿',12,35);
@@ -361,14 +373,14 @@ function create(env,opts){
     if(phase==='aim'&&local(cur)){ const x=W-28,y=H-150; c.fillStyle='rgba(11,10,28,.7)'; rr(c,x-6,y-6,24,132,8); c.fill(); const g=c.createLinearGradient(0,y+120,0,y); g.addColorStop(0,'#5fd068'); g.addColorStop(.6,'#ffd23f'); g.addColorStop(1,'#ff4d4d'); c.fillStyle=g; c.fillRect(x,y+120-pow*120,12,pow*120); c.strokeStyle='#fff'; c.lineWidth=1; c.strokeRect(x,y,12,120); c.fillStyle='#fff'; c.font='700 10px '+TC; c.textAlign='center'; c.fillText('力道',x+6,y-14); }
     if(phase==='aim'&&!local(cur)){ c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-120,H-36,240,26,12); c.fill(); c.fillStyle='#fff'; c.font='700 12px '+TC; c.textAlign='center'; c.fillText('等 '+PL[cur].name+' 擊球⋯',W/2,H-23); }
     // 開場大箭頭標出自己
-    if(phase==='aim'&&P&&(arrowT>0||np>1&&banT>1.6)){ const yy=P.y-96+Math.sin(t*8)*5,lab=np===1?'你':net?(local(cur)?'你':P.name):P.name; c.fillStyle='#ffd23f'; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.beginPath(); c.moveTo(P.x-14,yy-18); c.lineTo(P.x+14,yy-18); c.lineTo(P.x,yy); c.closePath(); c.stroke(); c.fill(); c.font='900 14px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeText(lab,P.x,yy-28); c.fillText(lab,P.x,yy-28); }
+    if(phase==='aim'&&P&&(arrowT>0||np>1&&banT>1.6)){ const sp=G3?G3.toScreen(P.x,P.y,1.9):[P.x,P.y+20],Px=sp[0],yy=sp[1]-20+Math.sin(t*8)*5,lab=np===1?'你':net?(local(cur)?'你':P.name):P.name; c.fillStyle='#ffd23f'; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.beginPath(); c.moveTo(Px-14,yy-18); c.lineTo(Px+14,yy-18); c.lineTo(Px,yy); c.closePath(); c.stroke(); c.fill(); c.font='900 14px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeText(lab,Px,yy-28); c.fillText(lab,Px,yy-28); }
     if(banT>0&&banner){ c.globalAlpha=Math.min(1,banT*2); c.fillStyle='rgba(11,10,28,.75)'; rr(c,W/2-170,H/2-26,340,52,14); c.fill(); c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText(banner,W/2,H/2); c.globalAlpha=1; }
     // 每洞結束的計分卡
     if(phase==='card'||ended){ c.fillStyle='rgba(11,10,28,.85)'; rr(c,W/2-260,110,520,60+np*30,14); c.fill(); c.fillStyle='#ffd23f'; c.font='900 16px '+TC; c.textAlign='center'; c.fillText('計分卡',W/2,130);
       c.font='700 12px '+TC; c.fillStyle='#cfe8d8'; c.textAlign='left'; c.fillText('洞',W/2-240,152); CO.holes.forEach((h,k)=>{ c.textAlign='center'; c.fillText(String(k+1)+(k<=hi?'':''),W/2-90+k*42,152); }); c.fillText('總',W/2+190,152);
       PL.forEach((p,i)=>{ const y=180+i*30; c.fillStyle=p.col; c.textAlign='left'; c.fillText(p.name.slice(0,6),W/2-240,y); c.fillStyle='#fff'; c.textAlign='center'; CO.holes.forEach((h,k)=>{ const v=p.sc[k]; if(v!=null){ c.fillStyle=v<h.par?'#5fd068':v>h.par?'#ff8a8a':'#fff'; c.fillText(String(v),W/2-90+k*42,y); } }); c.fillStyle='#ffd23f'; c.fillText(String(totals(p)),W/2+190,y); }); } }
-  return {update,draw,destroy(){ if(canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); removeEventListener('pointercancel',onUp); } },
-    _dbg:{PL,get o(){return o;},get phase(){return phase;},get cur(){return cur;},set ang(v){ang=v;},fire,get hi(){return hi;},skip(){ phT=0; }}};
+  return {update,draw,destroy(){ if(G3) G3.destroy(); if(canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); removeEventListener('pointercancel',onUp); } },
+    _dbg:{go:k=>startHole(k),PL,get o(){return o;},get phase(){return phase;},get cur(){return cur;},set ang(v){ang=v;},fire,get hi(){return hi;},skip(){ phT=0; }}};
 }
 function stageShow(ctx,w,h,si,t){ const CO=COURSES[si],TT=TH[CO.th],k=Math.floor(t/4)%6,o=parseHole(CO.holes[k]); ctx.save(); ctx.scale(w/W,h/H); drawStatic(ctx,o,TT,si*6+k); drawDynamic(ctx,o,TT,t); drawFlag(ctx,o,t,0);
   const u=(t%4)/4,bx=lerp(o.tee[0],o.hole[0],Math.min(1,u*1.3)),by=lerp(o.tee[1],o.hole[1],Math.min(1,u*1.3)); if(u<.75) drawGolfBall(ctx,bx,by,'#f4f4f4',0); drawGolfer(ctx,o.tee[0],o.tee[1],Math.atan2(o.hole[1]-o.tee[1],o.hole[0]-o.tee[0]),u<.1?.4:-.2,{shirt:'#ffffff',pants:'#2f3a5a',cap:'#1e1e24',skin:SKINS[1]},t);
@@ -388,9 +400,10 @@ const getRec=i=>{ try{ const v=localStorage.getItem('arcade.golf.c'+i); return v
   stageGoal:si=>{ const C=COURSES[si],p=C.holes.reduce((a,h)=>a+h.par,0),hz=HAZN[TH[C.th].haz]||'掉進水裡'; return C.name+'（'+'★'.repeat(C.stars)+'）：6 洞、標準桿 '+p+'。用最少的桿數把球推進洞，'+hz+'會罰一桿。每洞最多打標準桿＋3 桿。'; },
   stageBest:i=>{ const v=getRec(i); return v==null?'':'最佳 '+(v>0?'+':'')+v; },
   modes:[{id:'1',label:'1 人'},{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}],
-  help:[['← →','轉動方向（↑ ↓ 微調）'],['空白鍵','按住蓄力、放開擊球'],['滑鼠拖曳','在畫面上往後拉，方向和力道跟著變，放開擊球']],
+  help:[['← →','轉動方向（↑ ↓ 微調）'],['空白鍵','按住蓄力、放開擊球'],['V','切換視角：俯瞰整洞／站在球後面'],['滑鼠拖曳','在畫面上往後拉，方向和力道跟著變，放開擊球']],
   touchHelp:[['手指拖曳','在畫面上往後拉，放開擊球'],['◀ ▶','轉動方向'],['擊球','按住蓄力、放開擊球']],
-  touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'擊球',c:'Space',act:true}]},
+  touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'視角',c:'KeyV'},{l:'擊球',c:'Space',act:true}]},
+  load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   looks:[{key:'ball',label:'球的顏色',type:'color',opts:BALLC},{key:'shirt',label:'Polo 衫',type:'color',opts:['#ffffff','#e23b3b','#3d8bff','#2e9e4f','#ffd23f','#ff7eb6','#1e1e24']},
     {key:'pants',label:'褲子',type:'color',opts:['#2f3a5a','#e8e0cc','#1e1e24','#5a4a3a','#8a8a8a']},{key:'cap',label:'帽子',type:'color',opts:['#1e1e24','#ffffff','#e23b3b','#ffd23f','#3d8bff']},
     {key:'skin',label:'膚色',opts:SKINS.map((c2,i)=>({id:String(i),label:['白皙','自然','小麥','深色'][i]}))}],
