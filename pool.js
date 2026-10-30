@@ -152,6 +152,7 @@ function create(env,opts){
   const si=clamp(opts.stage|0,0,STAGES.length-1),ST=STAGES[si],OP=opts.options||{},rule=OP.rule==='9'?'9':'8',raceTo=+(OP.race||1)||1,net=opts.net,local2=!net&&opts.mode==='2p',vsAI=!net&&!local2;
   const cloth=OP.cloth&&OP.cloth!=='stage'?OP.cloth:ST.cloth,me=net?net.me:0;
   const {ctx:c,canvas}=env.canvas2d(W,H),sfx=n=>env.sfx(n),L0=opts.look||{};
+  let G3=null; if(window.THREE&&window.__POOL3D){ try{ G3=window.__POOL3D(window.THREE,{W,H,R,TX0,TX1,TY0,TY1,MX,MY,PK,HEAD,FOOT,ballCol,cloth,room:ST.room}); }catch(e){ G3=null; } } /* 3D 畫面（載不到 three.js 就用原本的 2D） */
   const myLook={skin:['#f2c9a0','#e0ac80','#c68a5e','#8d5a3a'][+(L0.skin||1)]||'#e0ac80',hair:L0.hair||'#1a1410',shirt:L0.shirt||'#3d8bff',vest:L0.vest&&L0.vest!=='none'?L0.vest:null,long:L0.style==='long',bald:L0.style==='bald'};
   const lookOf=i=>{ if(vsAI) return i===0?myLook:ST.look; if(net){ const l=(net.looks&&net.looks[i])||{}; return {skin:['#f2c9a0','#e0ac80','#c68a5e','#8d5a3a'][+(l.skin||1)]||'#e0ac80',hair:l.hair||'#1a1410',shirt:l.shirt||(i?'#e23b3b':'#3d8bff'),vest:l.vest&&l.vest!=='none'?l.vest:null,long:l.style==='long',bald:l.style==='bald'}; } return i===0?myLook:{skin:'#c68a5e',hair:'#3a2416',shirt:'#e23b3b'}; };
   const PL=[0,1].map(i=>({name:vsAI?(i?ST.name:(opts.name||'你')):net?((net.names&&net.names[i])||'玩家 '+(i+1)):(i?'2P':'1P'),L:lookOf(i),ai:vsAI&&i===1,wins:0}));
@@ -210,7 +211,7 @@ function create(env,opts){
     net.onleave=()=>{ if(phase!=='over'&&!ended){ say('對手離線了',2); winner=me; phase='over'; phT=1.5; } };
   }
   // 滑鼠：移動瞄準、按住往後拉蓄力、放開擊球；自由球時點一下放母球
-  let drag=null,mouse=null; const toC=e=>{ const r=canvas.getBoundingClientRect?canvas.getBoundingClientRect():{left:0,top:0,width:W,height:H}; return [(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]; };
+  let drag=null,mouse=null; const toC=e=>{ const r=canvas.getBoundingClientRect?canvas.getBoundingClientRect():{left:0,top:0,width:W,height:H}; const sx=(e.clientX-r.left)*W/r.width,sy=(e.clientY-r.top)*H/r.height; return G3?G3.toTable(sx,sy):[sx,sy]; };
   const onMove=e=>{ const p=toC(e); mouse=p; if(!local(turn)) return; if(phase==='place'&&e.pointerType!=='touch'&&!drag){ if(validCue(p[0],p[1])){ cue().x=p[0]; cue().y=p[1]; } return; }
       if(phase!=='aim') return; if(drag){ const d=Math.hypot(p[0]-drag[0],p[1]-drag[1]); pow=clamp(d/170,0,1); if(d>6) drag.moved=true; } else if(e.pointerType!=='touch'){ const c0=cue(); ang=Math.atan2(p[1]-c0.y,p[0]-c0.x); } },
     onDown=e=>{ const p=toC(e); if(!local(turn)||e.button>0) return; if(phase==='place'){ if(validCue(p[0],p[1])){ cue().x=p[0]; cue().y=p[1]; confirmPlace(); } return; } if(phase!=='aim') return; drag=p; drag.moved=false; e.preventDefault&&e.preventDefault(); },
@@ -218,7 +219,7 @@ function create(env,opts){
   if(canvas.addEventListener){ canvas.addEventListener('pointerdown',onDown); addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); addEventListener('pointercancel',onUp); }
   function confirmPlace(){ if(!validCue(cue().x,cue().y)) return; phase='aim'; inHand=false; if(net) net.send({pc:[turn,cue().x,cue().y]}); aimDefault(); sfx('click'); }
   function update(dt){
-    t+=dt; if(banT>0) banT-=dt; if(strikeT>0) strikeT-=dt; if(arrowT>0) arrowT-=dt;
+    t+=dt; if(banT>0) banT-=dt; if(strikeT>0) strikeT-=dt; if(arrowT>0) arrowT-=dt; if(G3&&env.hit('KeyV')) G3.toggle();
     for(const f of potFx) f.l-=dt; potFx=potFx.filter(f=>f.l>0);
     if(ended) return;
     if(phase==='intro'){ phT-=dt; if(phT<=0||!net&&env.hit('Space')){ startRack(); } return; }
@@ -246,7 +247,19 @@ function create(env,opts){
     env.sfx(meWin?'win':'lose');
     env.end({title:local2?PL[w].name+' 獲勝！':meWin?'你贏了！':PL[w].name+' 獲勝',big:PL[0].wins+' : '+PL[1].wins,html,text:(rule==='9'?'九號球':'八號球')+'，搶 '+raceTo+' 局。',score:vsAI&&meWin?si+1:null,next:vsAI&&meWin&&si<STAGES.length-1}); }
   let thinkOK=true; // 電腦每畫一格只想一小段（落後補跑更新時不重複想）
+  function aimInfo(){ const c0=cue(),dx=Math.cos(ang),dy=Math.sin(ang); let hit=null,ht=1e9; for(const b of st.B){ if(b.in||!b.n) continue; const fx=b.x-c0.x,fy=b.y-c0.y,tp=fx*dx+fy*dy; if(tp<=0) continue; const pd2=fx*fx+fy*fy-tp*tp; if(pd2>4*R*R) continue; const tt=tp-Math.sqrt(4*R*R-pd2); if(tt<ht){ ht=tt; hit=b; } }
+    let wt=1e9; for(const [x,y] of [[TX0+R,null],[TX1-R,null],[null,TY0+R],[null,TY1-R]]){ if(x!=null&&dx){ const tt=(x-c0.x)/dx; if(tt>0) wt=Math.min(wt,tt); } if(y!=null&&dy){ const tt=(y-c0.y)/dy; if(tt>0) wt=Math.min(wt,tt); } }
+    const L=Math.min(ht,wt),gx=c0.x+dx*L,gy=c0.y+dy*L,h=hit&&ht<=wt?hit:null; return {gx,gy,hit:h,nx:h?(h.x-gx)/(R*2):0,ny:h?(h.y-gy)/(R*2):0,legal:h?legalTargets(st,turn).includes(h.n)||st.brk:true}; }
   function draw(){ thinkOK=true;
+    if(G3){ const c0=cue(),myTurn=local(turn)&&!PL[turn].ai,aimOn=phase==='aim'&&!c0.in,A=aimOn?aimInfo():null,showA=A&&(myTurn||!net);
+      const pl=(phase==='aim'||phase==='place')?(charging||pow>0?8+pow*55:4):phase==='roll'&&strikeT>0?-6:0,b0=phase==='roll'&&strikeT>0&&before?before[0]:null;
+      G3.render({B:st.B,ang,pull:pl,cue:phase==='aim'||phase==='place'||!!b0,aim:showA?A:null,place:phase==='place',placeOk:validCue(c0.x,c0.y),t,phase});
+      c.drawImage(G3.canvas,0,0,W,H);
+      for(const f of potFx){ const q=G3.toScreen(f.x,f.y,0); c.globalAlpha=f.l/.6; c.strokeStyle='#ffd23f'; c.lineWidth=2; c.beginPath(); c.arc(q[0],q[1],18-f.l*10,0,7); c.stroke(); c.globalAlpha=1; }
+      if(showA&&A.hit&&!A.legal){ const q=G3.toScreen(A.hit.x,A.hit.y,.3); c.font='900 11px '+TC; c.fillStyle='#ff8a8a'; c.textAlign='center'; c.fillText('不能先打這顆',q[0],q[1]-8); }
+      if(phase==='place'&&kitchen&&myTurn){ const a=G3.toScreen(HEAD,TY0,0),b=G3.toScreen(HEAD,TY1,0); c.strokeStyle='rgba(255,255,255,.35)'; c.setLineDash&&c.setLineDash([6,6]); c.beginPath(); c.moveTo(a[0],a[1]); c.lineTo(b[0],b[1]); c.stroke(); c.setLineDash&&c.setLineDash([]); }
+      c.fillStyle='rgba(11,10,28,.6)'; rr(c,10,H-30,env.touch?96:118,22,10); c.fill(); c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillText((env.touch?'視角鍵':'V')+'：'+(G3.view==='top'?'切到出桿視角':'切到俯瞰'),18,H-19);
+    } else {
     drawRoom(c,ST,t); drawTable(c,cloth,t);
     // 頭頂燈光
     const lg=c.createRadialGradient(MX,MY-20,20,MX,MY,380); lg.addColorStop(0,'rgba(255,245,210,.12)'); lg.addColorStop(1,'rgba(255,245,210,0)'); c.fillStyle=lg; c.fillRect(0,0,W,H);
@@ -264,6 +277,8 @@ function create(env,opts){
     // 打球的人和球桿
     if((phase==='aim'||phase==='place')&&!c0.in){ const pl=charging||pow>0?8+pow*55:4; drawShooter(c,c0.x,c0.y,ang,pl,PL[turn].L); drawCue(c,c0.x,c0.y,ang,pl); }
     else if(phase==='roll'&&strikeT>0&&before){ const b0=before[0]; drawShooter(c,b0.x,b0.y,ang,-6+(1-strikeT/.25)*-4,PL[turn].L); drawCue(c,b0.x,b0.y,ang,-6); }
+    }
+    const c0=cue(),myTurn=local(turn)&&!PL[turn].ai;
     // 上方計分列
     c.fillStyle='rgba(11,10,28,.85)'; c.fillRect(0,0,W,78);
     for(let i=0;i<2;i++){ const x=i?W-330:10,act=turn===i&&phase!=='over'; c.fillStyle=act?'rgba(255,210,63,.18)':'rgba(255,255,255,.05)'; rr(c,x,6,320,66,12); c.fill(); if(act){ c.strokeStyle='#ffd23f'; c.lineWidth=2; rr(c,x,6,320,66,12); c.stroke(); }
@@ -280,10 +295,10 @@ function create(env,opts){
     if(phase==='aim'&&myTurn){ const x=W-34,y=H-170; c.fillStyle='rgba(11,10,28,.75)'; rr(c,x-8,y-22,28,160,10); c.fill(); const g=c.createLinearGradient(0,y+130,0,y); g.addColorStop(0,'#5fd068'); g.addColorStop(.6,'#ffd23f'); g.addColorStop(1,'#ff4d4d'); c.fillStyle=g; c.fillRect(x,y+130-pow*130,12,pow*130); c.strokeStyle='#fff'; c.lineWidth=1; c.strokeRect(x,y,12,130); c.fillStyle='#fff'; c.font='700 10px '+TC; c.textAlign='center'; c.fillText('力道',x+6,y-11); }
     if(phase==='place'&&myTurn){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,W/2-200,H-34,400,26,12); c.fill(); c.fillStyle='#fff'; c.font='700 12px '+TC; c.textAlign='center'; c.fillText((kitchen?'開球：':'自由球：')+'用方向鍵或滑鼠移動白球，按空白鍵或點一下放好',W/2,H-21); }
     if(!myTurn&&!PL[turn].ai&&net&&(phase==='aim'||phase==='place')){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,W/2-110,H-34,220,26,12); c.fill(); c.fillStyle='#fff'; c.font='700 12px '+TC; c.textAlign='center'; c.fillText('等 '+PL[turn].name+' 出桿⋯',W/2,H-21); }
-    if(arrowT>0&&(phase==='place'||phase==='aim')&&!c0.in){ const lab=vsAI?(turn===0?'你':ST.name):net?(local(turn)?'你':PL[turn].name):PL[turn].name; const yy=c0.y-34+Math.sin(t*8)*4; c.fillStyle='#ffd23f'; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.beginPath(); c.moveTo(c0.x-12,yy-16); c.lineTo(c0.x+12,yy-16); c.lineTo(c0.x,yy); c.closePath(); c.stroke(); c.fill(); c.font='900 13px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeText(lab,c0.x,yy-25); c.fillText(lab,c0.x,yy-25); }
+    if(arrowT>0&&(phase==='place'||phase==='aim')&&!c0.in){ const cp=G3?G3.toScreen(c0.x,c0.y):[c0.x,c0.y]; const lab=vsAI?(turn===0?'你':ST.name):net?(local(turn)?'你':PL[turn].name):PL[turn].name; const yy=cp[1]-34+Math.sin(t*8)*4; c.fillStyle='#ffd23f'; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.beginPath(); c.moveTo(cp[0]-12,yy-16); c.lineTo(cp[0]+12,yy-16); c.lineTo(cp[0],yy); c.closePath(); c.stroke(); c.fill(); c.font='900 13px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeText(lab,cp[0],yy-25); c.fillText(lab,cp[0],yy-25); }
     if(banT>0&&banner){ c.globalAlpha=Math.min(1,banT*2); c.fillStyle='rgba(11,10,28,.78)'; rr(c,W/2-220,MY-24,440,48,14); c.fill(); c.fillStyle='#ffd23f'; c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(banner,W/2,MY); c.globalAlpha=1; }
     if(phase==='intro'){ c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-220,MY-60,440,120,16); c.fill(); c.fillStyle='#ffd23f'; c.font='900 26px '+TC; c.textAlign='center'; c.fillText(vsAI?ST.place+'　對手：'+ST.name:(rule==='9'?'九號球':'八號球'),W/2,MY-24); c.fillStyle='#fff'; c.font='700 14px '+TC; c.fillText((rule==='9'?'九號球':'八號球')+'，先贏 '+raceTo+' 局的人獲勝',W/2,MY+8); c.fillText(PL[turn].name+' 先開球',W/2,MY+34); } }
-  return {update,draw,destroy(){ if(canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); removeEventListener('pointercancel',onUp); } },
+  return {update,draw,destroy(){ if(G3) G3.destroy(); if(canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); removeEventListener('pointercancel',onUp); } },
     _dbg:{PL,get st(){return st;},get phase(){return phase;},get turn(){return turn;},aiChoose,skip(){ phT=0; }}};
 }
 function stageShow(ctx,w,h,si,t){ const ST=STAGES[si]; ctx.save(); ctx.scale(w/W,h/H); drawRoom(ctx,ST,t); drawTable(ctx,ST.cloth,t); const B=rack(si%2?'9':'8'); B.forEach((b,i)=>{ b.ru=i; b.rv=i*2; });
@@ -308,9 +323,10 @@ function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); L=L||{}; drawRoom
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人輪流'}],
   options:[{key:'rule',label:'玩法',def:'8',opts:[{id:'8',label:'八號球'},{id:'9',label:'九號球'}]},{key:'race',label:'搶幾局',def:'1',opts:[{id:'1',label:'1 局'},{id:'2',label:'搶 2 局'},{id:'3',label:'搶 3 局'}]},
     {key:'cloth',label:'台呢顏色',def:'stage',opts:[{id:'stage',label:'照球館'},{id:'#1f7a3e',label:'綠'},{id:'#1f6aa8',label:'藍'},{id:'#8a1e2a',label:'紅'},{id:'#5a2a6a',label:'紫'}]}],
-  help:[['← →','瞄準（↑ ↓ 慢慢微調）'],['空白鍵','按住蓄力，放開出桿'],['滑鼠','移到想打的方向；按住往後拉，放開出桿']],
+  help:[['← →','瞄準（↑ ↓ 慢慢微調）'],['空白鍵','按住蓄力，放開出桿'],['V','切換視角：俯瞰整桌／站在母球後面'],['滑鼠','移到想打的方向；按住往後拉，放開出桿']],
   touchHelp:[['點台面','對準點的方向'],['出桿','按住蓄力，放開出桿']],
-  touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'出桿',c:'Space',act:true}]},
+  touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'視角',c:'KeyV'},{l:'出桿',c:'Space',act:true}]},
+  load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   looks:[{key:'shirt',label:'上衣',type:'color',opts:['#3d8bff','#ffffff','#e23b3b','#1e1e24','#2e9e4f','#ffd23f','#ff7eb6']},{key:'vest',label:'背心',opts:[{id:'none',label:'不穿'},{id:'#1e1e24',label:'黑背心'},{id:'#2a2a6a',label:'藍背心'},{id:'#5a2a14',label:'咖啡背心'}]},
     {key:'style',label:'髮型',opts:[{id:'short',label:'短髮'},{id:'long',label:'長髮'},{id:'bald',label:'光頭'}]},{key:'hair',label:'髮色',type:'color',opts:['#1a1410','#3a2416','#6a4a2a','#c8a060','#d8d0c8']},
     {key:'skin',label:'膚色',opts:[{id:'0',label:'白皙'},{id:'1',label:'自然'},{id:'2',label:'小麥'},{id:'3',label:'深色'}]}],
