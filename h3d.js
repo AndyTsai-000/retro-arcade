@@ -37,7 +37,16 @@ function build(T,o){ o=o||{}; const PI=Math.PI;
   root.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=false; } });
   return {root,J}; }
 function pose(J,P){ for(const k in J){ if(k==='root') continue; const v=P[k]; if(v) J[k].rotation.set(v[0]||0,v[1]||0,v[2]||0); else J[k].rotation.set(0,0,0); } if(P.y!=null) J.pelvis.position.y=.97+P.y; }
+// 手臂 IK：讓手腕到世界座標 tw（THREE.Vector3），pole 是手肘要朝的方向（世界座標向量）；s 是 'L' 或 'R'
+function ik(T,J,s,tw,pole){ const sh=J['sh'+s],el=J['el'+s],ch=J.chest,L1=.29,L2=.25,V=T.Vector3;
+  ch.updateWorldMatrix(true,false); const q=new T.Quaternion(); ch.getWorldQuaternion(q); q.invert();
+  const tl=ch.worldToLocal(tw.clone()),p0=sh.position,v=tl.clone().sub(p0),d=Math.min(Math.max(v.length(),.08),L1+L2-.003),u=v.normalize();
+  let pp=(pole||new V(0,-1,0)).clone().applyQuaternion(q); pp.sub(u.clone().multiplyScalar(pp.dot(u))); if(pp.lengthSq()<1e-6) pp.set(0,-1,0); pp.normalize();
+  const cl=x=>Math.max(-1,Math.min(1,x)),al=Math.acos(cl((L1*L1+d*d-L2*L2)/(2*L1*d))),bend=Math.PI-Math.acos(cl((L1*L1+L2*L2-d*d)/(2*L1*L2)));
+  const a1=u.clone().multiplyScalar(Math.cos(al)).add(pp.multiplyScalar(Math.sin(al))),f=p0.clone().add(u.clone().multiplyScalar(d)).sub(p0.clone().add(a1.clone().multiplyScalar(L1))).normalize();
+  const Y=a1.clone().negate(),Z=f.clone().sub(a1.clone().multiplyScalar(f.dot(a1))); if(Z.lengthSq()<1e-8) Z.set(0,0,1); Z.normalize(); const X=new V().crossVectors(Y,Z);
+  sh.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(X,Y,Z)); el.rotation.set(-bend,0,0); }
 // 兩組姿勢之間內插
 function mix(A,B,k){ const o={}; for(const n of new Set([...Object.keys(A),...Object.keys(B)])){ if(n==='y'){ o.y=(A.y||0)+((B.y||0)-(A.y||0))*k; continue; } const a=A[n]||[0,0,0],b=B[n]||[0,0,0]; o[n]=[a[0]+(b[0]-a[0])*k,(a[1]||0)+((b[1]||0)-(a[1]||0))*k,(a[2]||0)+((b[2]||0)-(a[2]||0))*k]; } return o; }
-window.__H3D={build,pose,mix};
+window.__H3D={build,pose,mix,ik};
 })();
