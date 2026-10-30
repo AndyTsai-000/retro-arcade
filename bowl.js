@@ -97,6 +97,7 @@ function create(env,opts){
   const net=opts.net,N=+(opts.variant||5)||5,L=opts.look||{ball:BALLS[0],lane:'#d9a45c',bg:'alley'},me=net?net.me:0;
   let np=net?net.count:Math.max(1,Math.min(4,+(opts.mode||1)||1));
   const {ctx,canvas}=env.canvas2d(W,H);
+  let G3=null; if(window.THREE&&window.__BOWL3D){ try{ G3=window.__BOWL3D(window.THREE,{W,H,LW,PINY,BR,PITCH,SPOTS,HALL,L}); }catch(e){ G3=null; } } /* 3D 畫面（載不到 three.js 就用原本的 2D） */
   // 滑鼠或手指按在畫面上，等同按住投球鍵
   let md=false,mdHit=false; const onDown=e=>{ md=true; mdHit=true; e.preventDefault(); },onUp=()=>{ md=false; };
   canvas.addEventListener('pointerdown',onDown); addEventListener('pointerup',onUp); addEventListener('pointercancel',onUp);
@@ -253,11 +254,12 @@ function create(env,opts){
     return top+12+rowH*np+3;
   }
   function draw(){
-    hall(ctx,W,H,proj,camY,L,t,HY);
-    for(const p of pins.slice().sort((a,b)=>b.y-a.y)) if(!p.out) drawPin(p);
-    // 球
     const b=ball||{x:pos,y:-6,rot:0},q=proj(b.x,b.y,BR),col=PL[cur].col;
-    if(!ball||!ball.done){ const sh=proj(b.x,b.y,0); ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(sh[0],sh[1],BR*sh[2],BR*sh[2]*.35,0,0,7); ctx.fill();
+    if(G3){ const showP=phase==='aim'&&step===1&&local(cur)&&!PL[cur].ai; G3.render({camY,pins,ball,pos,col,ufo:!!TYPES[ptype].ufo,path:showP?pathOf(pos,charging?Math.max(.12,pow):.7,TYPES[ptype].spin,TYPES[ptype].ufo):null}); ctx.drawImage(G3.canvas,0,0,W,H); }
+    else { hall(ctx,W,H,proj,camY,L,t,HY);
+    for(const p of pins.slice().sort((a,b)=>b.y-a.y)) if(!p.out) drawPin(p); }
+    // 球
+    if(!G3&&(!ball||!ball.done)){ const sh=proj(b.x,b.y,0); ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(sh[0],sh[1],BR*sh[2],BR*sh[2]*.35,0,0,7); ctx.fill();
       ctx.fillStyle=col; ctx.beginPath(); ctx.arc(q[0],q[1],BR*q[2],0,7); ctx.fill();
       ctx.fillStyle='rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(q[0]-BR*q[2]*.35,q[1]-BR*q[2]*.4,BR*q[2]*.22,0,7); ctx.fill();
       const ufo=ball?ball.ufo:!!TYPES[ptype].ufo,R=BR*q[2];
@@ -283,7 +285,7 @@ function create(env,opts){
           const pp=pathOf(pos,charging?Math.max(.12,pow):.7,TYPES[ptype].spin,TYPES[ptype].ufo); ctx.strokeStyle='#ff3b3b'; ctx.lineWidth=2; ctx.setLineDash([4,3]); ctx.beginPath(); pp.forEach((q,i)=>{ i?ctx.lineTo(sx(q[0]),sy(q[1])):ctx.moveTo(sx(q[0]),sy(q[1])); }); ctx.stroke(); ctx.setLineDash([]);
           ctx.fillStyle=col; ctx.beginPath(); ctx.arc(sx(pos),sy(-6),3,0,7); ctx.fill(); ctx.textAlign='center'; ctx.font='700 9px '+TC; ctx.fillStyle='#6fd3ff'; ctx.fillText('路徑',ox+mw/2,oy-7);
           // 球道上也畫一條
-          ctx.strokeStyle='rgba(255,59,59,.85)'; ctx.lineWidth=2; ctx.setLineDash([6,5]); ctx.beginPath(); pp.forEach((q,i)=>{ const a=proj(q[0],q[1],.2); i?ctx.lineTo(a[0],a[1]):ctx.moveTo(a[0],a[1]); }); ctx.stroke(); ctx.setLineDash([]);
+          if(!G3){ ctx.strokeStyle='rgba(255,59,59,.85)'; ctx.lineWidth=2; ctx.setLineDash([6,5]); ctx.beginPath(); pp.forEach((q,i)=>{ const a=proj(q[0],q[1],.2); i?ctx.lineTo(a[0],a[1]):ctx.moveTo(a[0],a[1]); }); ctx.stroke(); ctx.setLineDash([]); }
           // 力道條
           ctx.fillStyle='rgba(11,10,28,.8)'; ctx.fillRect(W/2-90,H-34,180,14); ctx.fillStyle='#2b2759'; ctx.fillRect(W/2-86,H-31,172,8); ctx.fillStyle=pow>.85?'#ff5d4f':pow>.5?'#ffd23f':'#86dc4f'; ctx.fillRect(W/2-86,H-31,172*(charging?pow:0),8);
         }
@@ -330,6 +332,7 @@ const thumb=(ctx,w,h,t)=>scene(ctx,w,h,{ball:'#ff5d4f',lane:'#d9a45c',bg:'alley'
   help:[['← →','選球種（直球、曲球、飛碟球），確認後改成選站位'],['Space','確認球種；選站位時按住蓄力、放開丟球（按住滑鼠左鍵也可以）'],['↑','回去重選球種']],
   touchHelp:[['◀ ▶','選球種，確認後改成選站位'],['投球','確認球種；選站位時按住蓄力、放開丟球（按住畫面也可以）']],
   touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'投球',c:'Space',act:true}]},
+  load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   looks:[{key:'ball',label:'球的顏色',type:'color',opts:['#ff5d4f','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#4f9dff','#b98cff','#ff7eb6']},
     {key:'lane',label:'球道顏色',type:'color',opts:['#d9a45c','#e8c890','#b9783a','#9ad0e8','#c8a0e0','#9fd68a']},
     {key:'bg',label:'遊戲背景',opts:[{id:'alley',label:'球館'},{id:'neon',label:'霓虹'},{id:'day',label:'白天'}]}],
