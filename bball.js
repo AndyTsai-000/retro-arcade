@@ -159,7 +159,9 @@ function drawHoop(c,CT,t,swish,front){ // front＝籃框前半圈與網子（畫
 function create(env,opts){
   const si=clamp(opts.stage|0,0,STAGES.length-1),ST=STAGES[si],CT=COURT[ST.court],OP=opts.options||{},net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p';
   const coop=(OP.team==='coop')&&(local2||net&&net.count>1),TARGET=+OP.to||11,TLIM=(+OP.time||4)*60;
-  const {ctx:c,canvas}=env.canvas2d(W,H),sfx=n=>{ env.sfx(n); if(net&&net.host) evq.push(n); };
+  const {ctx:c,canvas}=env.canvas2d(W,H);
+  let G3=null; /* 3D 畫面（載不到 three.js 就用原本的 2D），球員建好後才建立 */
+  const sfx=n=>{ env.sfx(n); if(net&&net.host) evq.push(n); };
   const myL=opts.look||{},jcol=myL.color||'#3d8bff',myHair=+(myL.hair||0),mySkin=SKINS[+(myL.skin||1)]||SKINS[1];
   // 誰控制誰：team 0＝自己（左邊進攻往右），team 1＝對手；雙人對打時 team 1 由 2P 控制
   const humanTeams=net?(net.count>1?(coop?[0,0]:[0,1]):[0]):local2?(coop?[0,0]:[0,1]):[0];
@@ -171,6 +173,7 @@ function create(env,opts){
         :{col:foeCol,col2:ST.col2,skin:SKINS[(si+k*3)%6],hair:(si+k)%5,hairCol:HAIRC[(si*2+k)%6],shoe:k%2?'#1e1e24':'#f4f4f4',num:[3,10,33][k],sock:k===1,band:ST.col2},
       name:mine?(k===0?(opts.name||'你'):['阿翔','小林','大頭'][k]):ST.names[k],skill:mine?.7:ST.ai}); }
   // 人類控制的球員（每個人類一位，可以換人）
+  if(window.THREE&&window.__BBALL3D&&window.__H3D){ try{ G3=window.__BBALL3D(window.THREE,{W,H,HX,HY,RIMZ,ARC,CT,shade,bg:(cc,tt,sw)=>drawCourt(cc,CT,tt,sw),players:P.map(p=>p.look)}); }catch(e){ G3=null; } }
   const ctrl=humanTeams.map((tm,h)=>({tm,pi:tm*3+(coop&&h===1?1:0),sp:0}));
   let ball={h:-1,x:0,y:0,z:0,vx:0,vy:0,vz:0,shot:null,pass:null},score=[0,0],pos=0,cleared=true,clock=12,time=TLIM,t=0,pause=1.6,msg='',msgT=0,swish=0,over=null,ended=false,evq=[],sendT=0,meter=[0,0],lastTouch=-1,sudden=false,introT=2.5;
   const say=(s,d)=>{ msg=s; msgT=d||1.8; };
@@ -287,7 +290,7 @@ function create(env,opts){
   }
   let sentHit={s:0,p:0,j:0,x:0};
   function update(dt){
-    t+=dt; if(msgT>0) msgT-=dt; if(swish>0) swish-=dt*1.4; if(showQT>0) showQT-=dt;
+    t+=dt; if(G3&&env.hit('KeyV')) G3.toggle(); if(msgT>0) msgT-=dt; if(swish>0) swish-=dt*1.4; if(showQT>0) showQT-=dt;
     if(introT>0){ introT-=dt; if(!net&&(env.hit('Space')||env.hit('Enter'))) introT=0; return; }
     if(client){ const inp=readIn(0); if(inp.shoot) sentHit.s++; if(inp.pass) sentHit.p++; if(inp.jump) sentHit.j++; if(inp.special) sentHit.x++;
       sendT-=dt; if(sendT<=0){ sendT=1/30; net.send({i:[inp.mx,inp.my,inp.shootHeld?1:0,sentHit.s,sentHit.p,sentHit.j,sentHit.x]}); sentHit={s:0,p:0,j:0,x:0}; }
@@ -316,6 +319,12 @@ function create(env,opts){
     if(meWin&&!net&&!local2){ try{ const k='arcade.bball.best',old=+localStorage.getItem(k)||0; if(si+1>old) localStorage.setItem(k,String(si+1)); localStorage.setItem('arcade.bball.w.'+si,'1'); }catch(e){} }
     env.sfx(title.includes('贏')||title.includes('獲勝！')?'win':'lose'); env.end({title,big:score[0]+' : '+score[1],html,text:'先拿到 '+TARGET+' 分或時間到分數多的贏。三分線內 1 分、外 2 分，必殺灌籃 2 分。',score:meWin&&!net&&!local2?si+1:null,next:meWin&&!net&&!local2&&si<STAGES.length-1}); }
   function draw(){
+    if(G3){ G3.render({P,b:ball,t,swish,ctrl:ctrl.map(o=>({pi:o.pi}))}); c.drawImage(G3.canvas,0,0,W,H);
+      ctrl.forEach((cc,hi)=>{ const p=P[cc.pi],col=hi===0?'#ffd23f':'#3ddbd9',q=G3.head(p.i),tag=local2||coop&&ctrl.length>1?(hi+1)+'P':'你';
+        c.fillStyle=col; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.font='900 13px '+TC; c.textAlign='center'; c.textBaseline='bottom'; c.strokeText(tag,q[0],q[1]-6); c.fillText(tag,q[0],q[1]-6); c.beginPath(); c.moveTo(q[0]-5,q[1]-4); c.lineTo(q[0]+5,q[1]-4); c.lineTo(q[0],q[1]+2); c.fill();
+        if(introT>0||pause>0&&t<3){ const yy=q[1]-26+Math.sin(t*8)*5; c.beginPath(); c.moveTo(q[0]-14,yy-20); c.lineTo(q[0]+14,yy-20); c.lineTo(q[0],yy); c.closePath(); c.stroke(); c.fill(); } });
+      c.fillStyle='rgba(11,10,28,.6)'; rr(c,10,H-30,env.touch?96:118,22,10); c.fill(); c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillText((env.touch?'視角鍵':'V')+'：'+(G3.view==='side'?'切到近景':'切到全景'),18,H-19);
+    } else {
     drawCourt(c,CT,t,swish);
     drawHoop(c,CT,t,swish,false);
     // 依深度排序畫球員和球
@@ -328,7 +337,7 @@ function create(env,opts){
       if(hp&&handAt){ const dr=(hp.pose==='dribble'||hp.pose==='idle'||hp.pose==='run')&&hp.z<2&&!hp.act; bx=handAt[0]+hp.face*2*s; if(dr){ const fy=SY(hp.y)-6*s,u=Math.abs(Math.sin(t*9)); by=lerp(fy,handAt[1]+7*s,u); } else by=handAt[1]-6*s; }
       c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(bx,SY(ball.y),7*s,2.5*s,0,0,7); c.fill(); drawBallSpr(c,bx,by,6.5*s,t); }});
     items.sort((a,b)=>a.y-b.y); for(const it of items) it.f();
-    drawHoop(c,CT,t,swish,true);
+    drawHoop(c,CT,t,swish,true); }
     // 計分板
     c.fillStyle='rgba(11,10,28,.82)'; rr(c,W/2-190,6,380,54,12); c.fill();
     c.fillStyle=jcol; c.fillRect(W/2-180,14,8,38); c.fillStyle=FOE; c.fillRect(W/2+172,14,8,38);
@@ -339,7 +348,7 @@ function create(env,opts){
     if(!cleared&&ctrl.some(o=>o.tm===pos)){ c.fillStyle='rgba(180,30,50,.85)'; rr(c,W/2-120,68,240,24,12); c.fill(); c.fillStyle='#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText('換邊了：先把球運到三分線外',W/2,80); }
     if(msgT>0&&msg){ c.font='900 20px '+TC; c.textAlign='center'; c.lineWidth=5; c.strokeStyle='#0b0a1c'; c.strokeText(msg,W/2,H*.42); c.fillStyle='#ffd23f'; c.fillText(msg,W/2,H*.42); }
     if(introT>0){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,W/2-210,170,420,90,16); c.fill(); c.fillStyle='#ffd23f'; c.font='900 24px '+TC; c.textAlign='center'; c.fillText('對手：'+ST.name,W/2,200); c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText('3 對 3 半場鬥牛：先拿到 '+TARGET+' 分的贏',W/2,228); c.fillText(pos===0?'你們先攻':'對手先攻',W/2,248); } }
-  return {update,draw,destroy(){},_dbg:{P,get ball(){return ball;},get score(){return score;},ctrl,get over(){return over;}}};
+  return {update,draw,destroy(){ if(G3) G3.destroy(); },_dbg:{P,get ball(){return ball;},get score(){return score;},ctrl,get over(){return over;}}};
 }
 
 /* ---------- 開始畫面、縮圖、造型預覽 ---------- */
@@ -366,9 +375,10 @@ function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); drawCourt(ctx,COU
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   options:[{key:'to',label:'搶幾分',def:'11',opts:[{id:'7',label:'7 分'},{id:'11',label:'11 分'},{id:'21',label:'21 分'}]},{key:'time',label:'時間',def:'4',opts:[{id:'3',label:'3 分鐘'},{id:'4',label:'4 分鐘'},{id:'6',label:'6 分鐘'}]},
     {key:'team',label:'雙人／連線玩法',def:'pvp',opts:[{id:'pvp',label:'玩家對打'},{id:'coop',label:'兩人同隊打電腦'}]}],
-  help:[['↑ ↓ ← →','移動'],['J','投籃（靠近籃框自動上籃、灌籃）；防守時抄截'],['K','傳球；防守時換人'],['L 或 空白鍵','跳：蓋火鍋、搶籃板'],['雙人','1P：WASD、F 投／抄、G 傳、H 跳　2P：方向鍵、Enter 投／抄、右 Shift 傳、/ 跳']],
+  help:[['↑ ↓ ← →','移動'],['J','投籃（靠近籃框自動上籃、灌籃）；防守時抄截'],['K','傳球；防守時換人'],['L 或 空白鍵','跳：蓋火鍋、搶籃板'],['V','切換視角：全景／跟著球的近景'],['雙人','1P：WASD、F 投／抄、G 傳、H 跳　2P：方向鍵、Enter 投／抄、右 Shift 傳、/ 跳']],
+  load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   touchHelp:[['方向盤','移動'],['投籃／抄截','進攻投籃（靠近籃框自動上籃），防守抄球'],['傳球','傳球；防守時換人'],['蓋火鍋','跳起來蓋火鍋、搶籃板']],
-  touch:{left:'dpad',right:[{l:'傳球',c:'KeyK'},{l:'蓋火鍋',c:'KeyL'},{l:'投籃',c:'KeyJ',act:true}]},
+  touch:{left:'dpad',right:[{l:'視角',c:'KeyV'},{l:'傳球',c:'KeyK'},{l:'蓋火鍋',c:'KeyL'},{l:'投籃',c:'KeyJ',act:true}]},
   looks:[{key:'color',label:'球衣顏色',type:'color',opts:['#3d8bff','#e23b3b','#2e9e4f','#ffd23f','#7a5aff','#ff9d3d','#1e1e24','#f4f4f4']},
     {key:'skin',label:'膚色',opts:SKINS.map((c2,i)=>({id:String(i),label:['白皙','自然','小麥','古銅','深色','淡色'][i]}))},
     {key:'hair',label:'髮型',opts:[{id:'0',label:'短髮'},{id:'1',label:'爆炸頭'},{id:'2',label:'綁辮子'},{id:'3',label:'頭帶'},{id:'4',label:'光頭'}]},

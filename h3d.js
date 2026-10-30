@@ -25,8 +25,8 @@ function build(T,o){ o=o||{}; const PI=Math.PI;
   add(head,sph(.112),hair,0,.135,-.01,1.02,o.longHair?1.05:.85,1.06); if(o.longHair) add(head,cyl(.08,.1,.22),hair,0,.12,-.07);
   if(o.cap){ const cm=mat(o.cap,20); add(head,new T.SphereGeometry(.118,16,8,0,PI*2,0,PI/2),cm,0,.14,0); add(head,new T.CylinderGeometry(.1,.1,.012,16,1,false,0,PI),cm,0,.14,.08).rotation.y=-PI/2; }
   if(o.helmet){ const hm=mat(o.helmet,80); add(head,new T.SphereGeometry(.13,18,10,0,PI*2,0,PI*.58),hm,0,.12,0); for(const s of [-1,1]) add(head,sph(.045),hm,s*.12,.08,-.01,.6,1,1); }
-  const arm=s=>{ const sh=G(); sh.position.set(s*.2,.24,0); chest.add(sh); add(sh,sph(.065),shirt,0,0,0);
-    add(sh,cyl(.055,.045,.29),o.shortSleeve!==false?shirt:shirt,0,0,0); if(o.shortSleeve!==false){ sh.children[1].scale.y=.45; add(sh,cyl(.046,.042,.17),skin,0,-.12,0); }
+  const arm=s=>{ const sh=G(); sh.position.set(s*.2,.24,0); chest.add(sh); const am=o.sleeveless?skin:shirt; add(sh,sph(.065),am,0,0,0);
+    add(sh,cyl(.055,.045,.29),am,0,0,0); if(o.shortSleeve!==false){ sh.children[1].scale.y=.45; add(sh,cyl(.046,.042,.17),skin,0,-.12,0); }
     const el=G(); el.position.y=-.29; sh.add(el); add(el,sph(.044),skin,0,0,0); add(el,cyl(.042,.032,.25),o.longSleeve?shirt:skin,0,0,0);
     const wr=G(); wr.position.y=-.25; el.add(wr); add(wr,sph(.04),o.gloves?mat(o.gloves):skin,0,-.05,0,.9,1.3,.6); return {sh,el,wr}; };
   const L=arm(1),R=arm(-1); J.shL=L.sh; J.elL=L.el; J.hdL=L.wr; J.shR=R.sh; J.elR=R.el; J.hdR=R.wr;
