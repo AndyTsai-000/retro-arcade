@@ -643,15 +643,16 @@ function create(env,opts){
     const snap=!net&&kind!=='mj'&&a.t!=='resign'?JSON.stringify(G):null,err=doAct(p,a);
     if(err){ say(err); sfx('bump'); } else { if(snap) hist.push(snap); sel=-1; broadcast(); } }
   function undo(){ if(!hist.length||G.over) return; G=JSON.parse(hist.pop()); lastP=-2; aiT=0; sel=-1; sndSeq=G.seq; animSeq=G.anim?G.anim.id:-1; anim=null; say('悔棋',1); }
+  let gotSt=false,hiT=0; /* 客人還沒收到盤面前不能畫，也不能算 */
   if(net){
-    if(client) net.onmsg=m=>{ if(m.st) G=m.st; if(m.bad&&m.bad[0]===me){ say(m.bad[1]); sfx('bump'); } };
-    else { net.onmsg=(m,from)=>{ if(!m.act) return; const err=doAct(from,m.act); if(err) net.send({bad:[from,err]}); broadcast(); };
+    if(client) net.onmsg=m=>{ if(m.st){ G=m.st; gotSt=true; } if(m.bad&&m.bad[0]===me){ say(m.bad[1]); sfx('bump'); } };
+    else { net.onmsg=(m,from)=>{ if(m.hi){ broadcast(); return; } if(!m.act) return; const err=doAct(from,m.act); if(err) net.send({bad:[from,err]}); broadcast(); };
       net.onleave=i=>{ left.add(i); names[i]+='（離開）'; broadcast(); }; }
   }
   if(!client){ M.setup(); broadcast(); }
 
   function update(dt){
-    t+=dt; if(msgT>0) msgT-=dt;
+    t+=dt; if(msgT>0) msgT-=dt; if(client&&!gotSt){ hiT-=dt; if(hiT<=0){ hiT=1; net.send({hi:1}); } return; }
     if(G.seq!==sndSeq){ sndSeq=G.seq; if(G.snd) sfx(G.snd); }
     if(G.anim&&G.anim.id!==animSeq){ animSeq=G.anim.id; anim={path:G.anim.path,v:G.anim.v,flip:G.anim.flip,t:0}; }
     if(anim){ anim.t+=dt; if(anim.t>(M.animDur?M.animDur(anim):.25)) anim=null; }
@@ -709,7 +710,7 @@ function create(env,opts){
     if(B.length){ const bw=(PW-20-(B.length-1)*8)/B.length; B.forEach((b,j)=>btn(b.label,X+10+j*(bw+8),444,bw,b.fn,b.dis,j===0&&b.label==='虛手'&&!b.dis)); } }
   let thinkOK=true; // 電腦思考每畫一格只想一小段：落後補跑好幾次更新時不會每次都想，畫面才不會掉格
   function draw(){ thinkOK=true;
-    btns=[]; drawBg(c,W,H,L.bg,t);
+    btns=[]; drawBg(c,W,H,L.bg,t); if(client&&!gotSt){ c.fillStyle='#fff'; c.font='900 20px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('等待房主的棋盤…',W/2,H/2); return; }
     if(kind==='mj'){ M.draw(); c.textAlign='left'; c.textBaseline='middle';
       if(G.log){ c.font='700 12px '+TC; const tx=fit(G.log,300),w=c.measureText(tx).width+20; c.fillStyle='rgba(11,10,28,.72)'; rr(c,10,10,w,22,11); c.fill(); c.fillStyle='#fff'; c.textAlign='left'; c.fillText(tx,20,21); } }
     else { M.draw(); drawPanel(); }

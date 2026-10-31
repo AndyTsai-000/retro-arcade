@@ -6,12 +6,13 @@
 <meta property="og:description" content="樓梯大逃亡、卡丁車、水球炸翻天、躲避球、足球、棒球、保齡球…打開就能玩，還能開房間連線。">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://andytsai-000.github.io/retro-arcade/icon-512.png">
-<meta name="description" content="十二款小遊戲，從動作、賽車、球類到益智都有，電腦手機都能玩，可開房間和朋友連線。">
+<meta name="description" content="三十七款小遊戲，從動作、賽車、球類、射擊到派對都有，電腦手機都能玩，可開房間和朋友連線。">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="跨界遊戲區">
 <title>跨界遊戲區</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
 <style>
 /* 版面：大廳是三張「卡帶」並排；進遊戲後變成一個填滿畫面的機台（上方列、畫面、觸控按鈕）。 */
@@ -219,7 +220,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
     <p>放學後的網咖、電腦課偷玩的那幾款。選一張卡帶就能開始，電腦用鍵盤、手機用畫面上的按鈕。</p>
   </header>
   <nav class="cats" id="cats" aria-label="遊戲分類"></nav>
-  <main class="shelf" id="shelf"></main>
+  <main class="shelf" id="shelf"><p style="grid-column:1/-1;text-align:center;padding:48px 0;opacity:.7">遊戲載入中…</p></main>
   <p class="note">紀錄只存在這台裝置的瀏覽器裡。　版本 <span id="ver"></span></p>
 </div>
 
@@ -244,7 +245,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=194; // 每次改版加一
+window.ARCADE_V=195; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -464,7 +465,8 @@ function musicWant(){
 setInterval(()=>{ try{ Music.set(musicWant()); }catch(e){} },250);
 
 /* ---------- 大廳 ---------- */
-const thumbs=[];
+/* 大廳只畫看得到的卡帶，封面圖也等捲到附近才下載 */
+const thumbs=[],thumbIO=window.IntersectionObserver?new IntersectionObserver(es=>{ for(const e of es){ const th=thumbs.find(x=>x.el===e.target); if(th) th.vis=e.isIntersecting; } },{rootMargin:'300px'}):null;
 function bestText(g){
   if(g.hubBest) return g.hubBest();
   const v=parseFloat(load('arcade.best.'+g.id)); if(!isFinite(v)) return '尚無紀錄';
@@ -479,7 +481,7 @@ function buildCats(){
 }
 function buildHub(){
   buildCats();
-  const shelf=$('#shelf'); shelf.innerHTML=''; thumbs.length=0;
+  const shelf=$('#shelf'); shelf.innerHTML=''; thumbs.length=0; if(thumbIO) thumbIO.disconnect();
   ORDER.forEach((id,i)=>{
     if(hubCat!=='all'&&CAT_OF[id]!==hubCat) return;
     const g=G[id]; g.id=id; const cn=(CATS.find(c=>c[0]===CAT_OF[id])||[])[1];
@@ -488,7 +490,7 @@ function buildHub(){
       '<div class="info"><h2>'+g.name+'</h2><p class="desc">'+g.desc+'</p><div class="foot"><span class="best">'+bestText(g)+'</span><span class="go">開始</span></div></div>';
     b.addEventListener('click',()=>open(id));
     shelf.appendChild(b);
-    thumbs.push({g,ctx:b.querySelector('canvas').getContext('2d')});
+    const th={g,el:b,vis:!thumbIO,ctx:b.querySelector('canvas').getContext('2d')}; thumbs.push(th); if(thumbIO) thumbIO.observe(b);
   });
 }
 const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -502,7 +504,7 @@ function drawCover(ctx,g,ims,t){ const n=ims.length,per=6,k=Math.floor(t/per)%n,
   kb(ims[k],k,u,1); if(n>1&&fade>0) kb(ims[(k+1)%n],k+1,0,fade);
   const gr=ctx.createLinearGradient(0,170,0,270); gr.addColorStop(0,'rgba(11,10,28,0)'); gr.addColorStop(1,'rgba(11,10,28,.75)'); ctx.fillStyle=gr; ctx.fillRect(0,170,480,100);
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 34px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; ctx.lineJoin='round'; ctx.strokeText(g.name,240,238); ctx.fillStyle='#ffd23f'; ctx.fillText(g.name,240,238); }
-function drawThumbs(t){ for(const th of thumbs){ try{ const ims=cover(th.g.id); if(ims&&ims.length) drawCover(th.ctx,th.g,ims,still?1.3:t); else th.g.thumb(th.ctx,480,270,still?1.3:t);}catch(e){} } }
+function drawThumbs(t){ for(const th of thumbs){ if(!th.vis) continue; try{ const ims=cover(th.g.id); if(ims&&ims.length) drawCover(th.ctx,th.g,ims,still?1.3:t); else th.g.thumb(th.ctx,480,270,still?1.3:t);}catch(e){} } }
 
 /* ---------- 輸入 ---------- */
 const keys={},hits={};
@@ -856,7 +858,7 @@ function askRoom(){
 }
 function togglePause(){
   if(Net.peer) return;
-  if(state==='running'){ state='paused'; if(inst.pause) inst.pause(true);
+  if(state==='running'){ state='paused'; if(inst.pause) inst.pause(true); try{ if(document.pointerLockElement) document.exitPointerLock(); }catch(e){} /* 不然游標藏著點不到選單 */
     showCard('<h3>暫停</h3><div class="row"><button class="btn main" id="rGo">繼續</button><button class="btn" id="rHelp">遊戲操作</button><button class="btn" id="rMenu">回到遊戲大廳</button></div>');
     on('rGo',togglePause); on('rMenu',toMenu); on('rHelp',showHelp); $('#bPause').textContent='繼續'; }
   else if(state==='paused'){ state='running'; if(inst.pause) inst.pause(false); ov.hidden=true; document.body.classList.add('playing'); acc=0; $('#bPause').textContent='暫停'; }
@@ -1191,11 +1193,11 @@ $('#hubName').addEventListener('click',()=>nameModal());
 showName();
 if(!myName) nameModal();
 
-const STEP=1/120;
+const STEP=1/120; let hubTick=0,pauseTick=0;
 function frame(ts){
   requestAnimationFrame(frame);
   const dt=Math.min(.05,(ts-last)/1000||0); last=ts;
-  if(state==='hub'){ drawThumbs(ts/1000); return; }
+  if(state==='hub'){ if(!(hubTick=(hubTick+1)%2)) drawThumbs(ts/1000); return; } /* 封面動得慢，隔一格畫就夠 */
   if(lookPrev&&state==='ready'){ try{ if(lookPrev.v) lookPrev.v.draw(); else if(lookPrev.ctx) lookPrev.g.preview(lookPrev.ctx,360,200,lookPrev.look,ts/1000); }catch(e){} }
   if(stagePrev&&state==='ready'){ try{ stagePrev.v.draw(); }catch(e){} }
   if(!inst) return;
@@ -1204,7 +1206,7 @@ function frame(ts){
     acc+=dt; let n=0;
     while(acc>=STEP&&n<8&&live()){ inst.update(STEP); acc-=STEP; n++; for(const k in hits) delete hits[k]; }
   }
-  if(inst) inst.draw();
+  if(inst&&(state!=='paused'||!(pauseTick=(pauseTick+1)%30))) inst.draw(); /* 暫停時畫面不動，省電 */
 }
 buildHub(); $('#ver').textContent=window.ARCADE_V||'';
 requestAnimationFrame(frame);
