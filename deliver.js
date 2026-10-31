@@ -512,6 +512,10 @@ function drawCockpit(c,vx,vw,L,speed,lean,t,mirrorL,mirrorR,fuel,night,nav){ con
   phoneNav(c,nav,t,night); // 手機畫在最上面
   c.restore(); }
 // 整個第一人稱世界
+function ensureBld(lv,S,pal,arc){
+  if(!lv.bld){ lv.bld=[]; const sd0=Math.floor(lv.L)%997; for(const sd of [-1,1]){ let d=-400,i=0; while(d<lv.L+1600){ const w=56+hash(i,sd+3+sd0,201)*70,id=i*2+(sd>0?1:0)+sd0*1000;
+      const nf=S.pal==='us'?3+Math.floor(hash(id,21)*7):2+Math.floor(hash(id,21)*(S.pal==='jp'?6:5)); lv.bld.push({d,w,side:sd,id,nf,hh:(arc?54:46)+nf*34,col:hcol(pal.bld,id,202),sc:hcol(pal.sign,id,203),txt:hcol(S.sign,id,204)}); d+=w+(hash(i,sd+3+sd0,205)<.1?16:0); i++; } }
+    lv.hmap=[]; for(const b of lv.bld) if(b.side<0) for(let d=Math.floor(b.d/8);d<(b.d+b.w)/8;d++) lv.hmap[d+200]=b.hh; } }
 function drawFP(c,vx,vw,st){
   const {lv,S,M,px,pd,simT,t}=st,F=vw*.6,camH=14,cx=vx+vw/2,hz=H*.46,cd=pd-6,night=S.night,pal=PAL[S.pal],arc=S.pal==='tw'||S.pal==='th',dim=night?.42:S.evening?.9:1;
   const X=(x,s)=>cx+(x-px)*s*M,proj=(x,d,h)=>{ const dz=d-cd; if(dz<2.5) return null; const s=F/dz; return [cx+(x-px)*s*M,hz+(camH-(h||0))*s,s,dz]; };
@@ -529,9 +533,7 @@ function drawFP(c,vx,vw,st){
     c.fillStyle=shade(haze,.92+hash(i,9)*.14); c.fillRect(x,hz-h,w2+1,h+1); if(night){ c.fillStyle='rgba(255,230,128,.5)'; for(let j=0;j<3;j++) c.fillRect(x+3+j*w2*.3,hz-h+5+((i+j)%3)*9,2,3); } }
   { const hg2=c.createLinearGradient(0,hz-110,0,hz); hg2.addColorStop(0,'rgba(0,0,0,0)'); hg2.addColorStop(1,HZ); c.globalAlpha=night?.5:.7; c.fillStyle=hg2; c.fillRect(vx-40,hz-110,vw+80,110); c.globalAlpha=1; }
   // 兩旁的房子：同一邊連成一整排（騎樓、鐵窗、冷氣、頂樓加蓋、招牌），每一關固定
-  if(!lv.bld){ lv.bld=[]; const sd0=Math.floor(lv.L)%997; for(const sd of [-1,1]){ let d=-400,i=0; while(d<lv.L+1600){ const w=56+hash(i,sd+3+sd0,201)*70,id=i*2+(sd>0?1:0)+sd0*1000;
-      const nf=S.pal==='us'?3+Math.floor(hash(id,21)*7):2+Math.floor(hash(id,21)*(S.pal==='jp'?6:5)); lv.bld.push({d,w,side:sd,id,nf,hh:(arc?54:46)+nf*34,col:hcol(pal.bld,id,202),sc:hcol(pal.sign,id,203),txt:hcol(S.sign,id,204)}); d+=w+(hash(i,sd+3+sd0,205)<.1?16:0); i++; } }
-    lv.hmap=[]; for(const b of lv.bld) if(b.side<0) for(let d=Math.floor(b.d/8);d<(b.d+b.w)/8;d++) lv.hmap[d+200]=b.hh; }
+  ensureBld(lv,S,pal,arc);
   // 地面：人行道磚、紅線、柏油（有深淺、補丁、輪胎痕）、左邊房子的影子
   const walk=night?'#3e3c48':shade(pal.walk,dim); c.fillStyle=walk; c.fillRect(vx-40,hz,vw+80,H-hz+40);
   const asph=S.rain?'#30323a':night?'#2e2e36':S.pal==='us'?'#55555a':'#5c5c60',tgt=st.target,red=S.pal==='tw';
@@ -708,6 +710,7 @@ function create(env,opts){
   const net=opts.net,two=!net&&opts.mode==='2p',humans=net?net.count:two?2:1,me=net?net.me:0,host=!net||net.host,si=clamp(opts.stage||0,0,STAGES.length-1),S=STAGES[si];
   const seed=net?(Number(net.seed)>>>0)||7:Math.floor(Math.random()*1e9),lv=buildLevel(si,seed),M=S.left?-1:1;
   const {ctx:c}=env.canvas2d(W,H);
+  let G3=null; if(window.THREE&&window.__DELIVER3D){ try{ ensureBld(lv,S,PAL[S.pal],S.pal==='tw'||S.pal==='th'); G3=window.__DELIVER3D(window.THREE,{W,H,lv,S,M,ROADW,LANE,PAL,shade,hash,hcol,lightOf,crossers,crossPeds,phoneNav,drawLandmark,CAR_COL,SHIRT,SKIN,PANTS,SCOL,BOXC,TC}); }catch(e){ console.error(e); G3=null; } } /* 3D 第一人稱（載不到 three.js 就用原本的 2D） */
   // 玩法：各自搶單（電腦補到 4 人）／分隊對戰／玩家同隊打電腦／玩家對決（不加電腦）；分隊時整隊淨收入相加
   let mode=(opts.options&&opts.options.team)||'ffa'; if(humans===1&&mode==='pvp') mode='ffa'; if(mode==='coop'&&humans>3) mode='vs';
   let num=net?Math.min(6,net.count+(net.bots||0)):4;
@@ -733,7 +736,7 @@ function create(env,opts){
   const pop=(p,txt,col)=>fx.push({k:'txt',x:p.x,d:p.d+30,txt,col,t:0,n:p.n});
 
   // 引擎聲（只有自己／1P）
-  try{ const ac=env.audio(),out=env.out(); if(ac&&out){ const o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain(); o.type='sawtooth'; f.type='lowpass'; f.frequency.value=500; g.gain.value=0; o.connect(f); f.connect(g); g.connect(out); o.start(); engine={o,g,ac}; } }catch(e){}
+  try{ const ac=env.audio(),out=env.out(); if(ac&&out){ const o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain(); o.type='sawtooth'; f.type='lowpass'; f.frequency.value=500; g.gain.value=0; o.connect(f); f.connect(g); g.connect(out); o.start(); const nb=ac.createBuffer(1,ac.sampleRate*2,ac.sampleRate),nd=nb.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1; const ns=ac.createBufferSource(); ns.buffer=nb; ns.loop=true; const nf=ac.createBiquadFilter(); nf.type='bandpass'; nf.frequency.value=700; nf.Q.value=.5; const ng=ac.createGain(); ng.gain.value=0; ns.connect(nf); nf.connect(ng); ng.connect(out); ns.start(); engine={o,g,ac,ns,ng}; } }catch(e){}
 
   // 按鍵：1P 方向鍵（單人時 WASD 也可以）、2P 用 WASD
   function input(p,dt){ if(p.ai) return botInput(p,dt); const k=env.keys; let L,R,U,D;
@@ -863,7 +866,7 @@ function create(env,opts){
     for(let i=0,k=ff?10:1;i<k&&!ended;i++) step(dt);
     // 闖紅燈機車的喇叭警告
     const own=ps[me]; for(const I of lv.inter){ if(Math.abs(I.d-own.d)>420) continue; const cr=[]; crossers(lv,I,simT,cr); for(const e of cr) if(e.k==='runner'&&e.warn){ const key=I.idx+':'+Math.floor((simT+I.off)/CYC); if(!own.warned[key]){ own.warned[key]=1; env.sfx('beep'); env.sfx('beep'); } } }
-    if(engine&&!ps[me].remote){ const v=Math.abs(ps[me].v); try{ engine.o.frequency.setTargetAtTime(55+v*.55,engine.ac.currentTime,.05); engine.g.gain.setTargetAtTime(t>-3&&!ps[me].done?.018+v/250*.03:0,engine.ac.currentTime,.1); }catch(e){} }
+    if(engine&&!ps[me].remote){ const v=Math.abs(ps[me].v); try{ engine.o.frequency.setTargetAtTime(55+v*.55,engine.ac.currentTime,.05); engine.g.gain.setTargetAtTime(t>-3&&!ps[me].done?.018+v/250*.03:0,engine.ac.currentTime,.1); engine.ng.gain.setTargetAtTime(!ps[me].done?Math.pow(v/250,2)*.05:0,engine.ac.currentTime,.15); }catch(e){} }
     for(let n=0;n<num;n++){ const p=ps[n]; camD[n]=camD[n]===0&&t<-2.9?p.d:lerp(camD[n]||p.d,p.d+Math.max(0,p.v)*.35,Math.min(1,dt*4)); }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/15; if(net.host) net.send({ks:ps.map(pack)}); else net.send({k:pack(ps[me])}); }
       if(net.host&&(ps.every(p=>p.done)||t>SHIFT+1)){ endT+=dt; if(endT>1.5){ const list=ps.map(statOf); net.send({ks:ps.map(pack)}); net.send({end:list}); conclude(list); } } }
@@ -875,7 +878,9 @@ function create(env,opts){
     const p=ps[n],o=order(p),tgt=o&&!p.done?(p.phase==='pick'?o.shop:o.cus):null,shake=p.fall>0?Math.sin(t*60)*4*p.fall:0;
     c.save(); c.translate(shake,0);
     const riders=ps.filter(q=>q!==p).map(q=>({x:q.x,d:q.d,look:q.look,n:q.n,name:num>1?names[q.n]:'',ghost:!!net}));
-    drawFP(c,vx,vw,{lv,S,M,px:p.x,pd:p.d,simT,t,lean:p.lean,locals:locals.filter(l=>l.n===p.n),riders,target:tgt});
+    const navI={dist:tgt?(tgt.d-p.d)/10:0,pick:p.phase==='pick',pd:p.d,lv,o:p.done?null:o,oi:p.oi,left:o&&!p.done?p.deadline-t:null,food:p.food,done:p.done};
+    if(G3){ G3.render({n,two,vx,vw,px:p.x,pd:p.d,v:p.v,fuel:p.fuel,lean:p.lean,fall:p.fall,look:p.look,simT,t,locals:locals.filter(l=>l.n===p.n),riders,target:tgt,nav:navI,gas:p.v>5&&!p.remote}); const q=G3.q; c.drawImage(G3.canvas,vx*q,0,vw*q,H*q,vx,0,vw,H); }
+    else drawFP(c,vx,vw,{lv,S,M,px:p.x,pd:p.d,simT,t,lean:p.lean,locals:locals.filter(l=>l.n===p.n),riders,target:tgt});
     c.restore();
     c.save(); c.beginPath(); c.rect(vx,0,vw,H); c.clip();
     // 照後鏡：後面 220 以內的車；身旁看不到的車用紅色箭頭提醒
@@ -884,14 +889,16 @@ function create(env,opts){
     for(const e of lv.veh) look(e.x,e.d,e.h,e.k==='taxi'?'#f5c518':e.col);
     for(const q of ps) if(q!==p) look(q.x,q.d,28,q.look.bike);
     for(const dx of side){ const sx=dx<0?vx+18:vx+vw-18,a=.6+.4*Math.sin(t*12); c.fillStyle='rgba(255,60,60,'+a+')'; c.beginPath(); if(dx<0){ c.moveTo(sx-10,H*.55); c.lineTo(sx+8,H*.55-18); c.lineTo(sx+8,H*.55+18); } else { c.moveTo(sx+10,H*.55); c.lineTo(sx-8,H*.55-18); c.lineTo(sx-8,H*.55+18); } c.fill(); }
+    if(G3&&p.v>170&&p.fall<=0){ const a=(p.v-170)/80*.16; c.strokeStyle='rgba(255,255,255,'+a+')'; c.lineWidth=1.5; c.beginPath(); const ccx=vx+vw/2,ccy=H*.47; for(let i=0;i<14;i++){ const an=i*2.399+Math.floor(t*14)*.7,r0=vw*(.42+(i%4)*.05),r1=r0+vw*.12; c.moveTo(ccx+Math.cos(an)*r0,ccy+Math.sin(an)*r0*.72); c.lineTo(ccx+Math.cos(an)*r1,ccy+Math.sin(an)*r1*.72); } c.stroke(); }
     // 天氣、夜晚
     if(S.rain){ c.strokeStyle='rgba(190,210,255,.45)'; c.lineWidth=1.2; c.beginPath(); for(let i=0;i<80;i++){ const x=vx+((i*97+t*40)%vw),y=((i*53+t*800)%H); c.moveTo(x,y); c.lineTo(x-4,y+16); } c.stroke();
       c.fillStyle='rgba(200,220,255,.18)'; for(let i=0;i<6;i++){ c.beginPath(); c.arc(vx+((i*173)%vw),(i*97+t*20)%(H*.6),6+i%3*3,0,7); c.fill(); } }
     if(S.wind&&windT>0){ c.fillStyle='rgba(255,255,255,.75)'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText(windDir*M>0?'強風 →→→':'←←← 強風',vx+vw/2,124); c.strokeStyle='rgba(255,255,255,.4)'; c.lineWidth=2; c.beginPath(); for(let i=0;i<10;i++){ const y=(i*61)%H,x=vx+((t*600*windDir*M+i*140)%vw+vw)%vw; c.moveTo(x,y); c.lineTo(x-40*windDir*M,y); } c.stroke(); }
     if(S.night){ const g=c.createRadialGradient(vx+vw/2,H*.62,40,vx+vw/2,H*.62,vw*.7); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(5,5,25,.45)'); c.fillStyle=g; c.fillRect(vx,0,vw,H); }
     else if(S.evening){ c.fillStyle='rgba(255,120,60,.07)'; c.fillRect(vx,0,vw,H); }
-    // 自己的機車
-    drawCockpit(c,vx,vw,p.look,p.v,p.lean,t,mL,mR,p.fuel,S.night,{dist:tgt?(tgt.d-p.d)/10:0,pick:p.phase==='pick',pd:p.d,lv,o:p.done?null:o,oi:p.oi,left:o&&!p.done?p.deadline-t:null,food:p.food,done:p.done});
+    // 自己的機車（3D 版的車頭已經畫在畫面裡；這裡補名字和闖紅燈警告）
+    if(G3){ for(const l of G3.labels()){ const q=G3.project(l.x,l.d,l.h,vx,vw); if(!q) continue; if(l.k==='warn'){ c.fillStyle='#ff3030'; c.strokeStyle='#fff'; c.lineWidth=3; c.font='900 34px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.strokeText('！',q[0],q[1]); c.fillText('！',q[0],q[1]); } else { c.globalAlpha=l.a; c.font='700 11px '+TC; const w2=c.measureText(l.txt).width+10; c.fillStyle='rgba(11,10,28,.6)'; rr(c,q[0]-w2/2,q[1]-16,w2,15,7); c.fill(); c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(l.txt,q[0],q[1]-8.5); c.globalAlpha=1; } } }
+    else drawCockpit(c,vx,vw,p.look,p.v,p.lean,t,mL,mR,p.fuel,S.night,navI);
     if(p.fall>0){ c.fillStyle='rgba(255,60,60,'+Math.min(.35,p.fall*.3)+')'; c.fillRect(vx,0,vw,H); for(let i=0;i<5;i++){ const a=t*5+i*1.26; c.fillStyle='#ffd23f'; c.font='22px sans-serif'; c.textAlign='center'; c.fillText('★',vx+vw/2+Math.cos(a)*90,H*.42+Math.sin(a)*30); } }
     // 取餐／送餐進度
     if(p.stopT>0){ const w2=160; c.fillStyle='rgba(11,10,28,.8)'; rr(c,vx+vw/2-w2/2-6,H*.6-6,w2+12,30,10); c.fill(); c.fillStyle='#3a3670'; rr(c,vx+vw/2-w2/2,H*.6+8,w2,10,5); c.fill(); c.fillStyle='#86dc4f'; rr(c,vx+vw/2-w2/2,H*.6+8,w2*p.stopT/.8,10,5); c.fill();
@@ -934,7 +941,7 @@ function create(env,opts){
     if(two){ view(0,398,0,.74); view(402,398,1,.74); c.fillStyle='#0b0a1c'; c.fillRect(398,0,4,H); }
     else view(0,W,me,1);
   }
-  return {update,draw,destroy(){ if(engine){ try{ engine.o.stop(); engine.o.disconnect(); }catch(e){} } },_dbg:{ps,lv,get t(){return t;},get simT(){return simT;},total}};
+  return {update,draw,destroy(){ if(engine){ try{ engine.o.stop(); engine.o.disconnect(); engine.ns.stop(); engine.ns.disconnect(); }catch(e){} } if(G3) G3.destroy(); },_dbg:{ps,lv,get t(){return t;},get simT(){return simT;},total}};
 }
 
 /* ---------- 開始畫面示意圖、縮圖、造型預覽 ---------- */
@@ -972,6 +979,7 @@ function preview(ctx,w,h,L,t){ // 我的造型：正面＋側面（寫實）
   stageBest:i=>{ try{ const v=localStorage.getItem('arcade.deliver.b.'+i); return v==null?'':'最高 $'+v; }catch(e){ return ''; } },
   help:[['← →','左右移動（雙人時是 1P）'],['↑','加油門'],['↓','煞車；停下來再按是倒車'],['W A S D','雙人時 2P 的油門、方向、煞車'],['停在綠框裡','取餐、送餐、加油（在機車道停一下）']],
   touchHelp:[['◀ ▶','左右移動'],['▲','加油門'],['▼','煞車；停下來再按是倒車'],['停在綠框裡','取餐、送餐、加油（在機車道停一下）']],
+  load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   touch:m=>m==='2p'?{left:[{l:'◀',c:'KeyA'},{l:'▶',c:'KeyD'},{l:'▲',c:'KeyW',act:true},{l:'▼',c:'KeyS'}],right:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'},{l:'▲',c:'ArrowUp',act:true},{l:'▼',c:'ArrowDown'}]}
     :{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'▼',c:'ArrowDown'},{l:'▲',c:'ArrowUp',act:true}]},
   options:[{key:'team',label:'玩法',def:'ffa',opts:[{id:'ffa',label:'各自搶單（電腦補到 4 人）'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],

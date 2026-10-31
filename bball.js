@@ -250,7 +250,7 @@ function create(env,opts){
   const KM=[{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['KeyJ','KeyX'],p:['KeyK','KeyC'],j:['KeyL','Space'],x:[]},
     {u:'KeyW',d:'KeyS',l:'KeyA',r:'KeyD',s:['KeyF'],p:['KeyG'],j:['KeyH'],x:[]},{u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',s:['Enter'],p:['ShiftRight'],j:['Slash'],x:[]}];
   function readIn(h){ const m=local2?KM[h+1]:KM[0],K=env.keys,any=a=>a.some(k=>env.hit(k)),held=a=>a.some(k=>K[k]);
-    return {mx:(K[m.r]?1:0)-(K[m.l]?1:0),my:(K[m.d]?1:0)-(K[m.u]?1:0),shoot:any(m.s),shootHeld:held(m.s),pass:any(m.p),jump:any(m.j),special:any(m.x)}; }
+    return {mx:G3?(K[m.u]?1:0)-(K[m.d]?1:0):(K[m.r]?1:0)-(K[m.l]?1:0),my:G3?(K[m.r]?1:0)-(K[m.l]?1:0):(K[m.d]?1:0)-(K[m.u]?1:0),shoot:any(m.s),shootHeld:held(m.s),pass:any(m.p),jump:any(m.j),special:any(m.x)}; }
   const remoteIn={mx:0,my:0,shoot:false,shootHeld:false,pass:false,jump:false,special:false};
   function humanAct(p,inp,cc){ const hd=holder(),canJump=p.z<1&&!p.act&&p.fallT<=0;
     if(hd===p){ if(inp.shoot||inp.jump) startShot(p,false); else if(inp.pass) doPass(p,inp.mx||p.face,inp.my); return; } // 進攻：投籃（靠近籃框自動上籃／灌籃）、傳球
@@ -375,7 +375,7 @@ function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); drawCourt(ctx,COU
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   options:[{key:'to',label:'搶幾分',def:'11',opts:[{id:'7',label:'7 分'},{id:'11',label:'11 分'},{id:'21',label:'21 分'}]},{key:'time',label:'時間',def:'4',opts:[{id:'3',label:'3 分鐘'},{id:'4',label:'4 分鐘'},{id:'6',label:'6 分鐘'}]},
     {key:'team',label:'雙人／連線玩法',def:'pvp',opts:[{id:'pvp',label:'玩家對打'},{id:'coop',label:'兩人同隊打電腦'}]}],
-  help:[['↑ ↓ ← →','移動'],['J','投籃（靠近籃框自動上籃、灌籃）；防守時抄截'],['K','傳球；防守時換人'],['L 或 空白鍵','跳：蓋火鍋、搶籃板'],['V','切換視角：全景／跟著球的近景'],['雙人','1P：WASD、F 投／抄、G 傳、H 跳　2P：方向鍵、Enter 投／抄、右 Shift 傳、/ 跳']],
+  help:[['↑ ↓ ← →','移動（↑ 往籃框走）'],['J','投籃（靠近籃框自動上籃、灌籃）；防守時抄截'],['K','傳球；防守時換人'],['L 或 空白鍵','跳：蓋火鍋、搶籃板'],['V','切換視角：全景／跟著球的近景'],['雙人','1P：WASD、F 投／抄、G 傳、H 跳　2P：方向鍵、Enter 投／抄、右 Shift 傳、/ 跳']],
   load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   touchHelp:[['方向盤','移動'],['投籃／抄截','進攻投籃（靠近籃框自動上籃），防守抄球'],['傳球','傳球；防守時換人'],['蓋火鍋','跳起來蓋火鍋、搶籃板']],
   touch:{left:'dpad',right:[{l:'視角',c:'KeyV'},{l:'傳球',c:'KeyK'},{l:'蓋火鍋',c:'KeyL'},{l:'投籃',c:'KeyJ',act:true}]},

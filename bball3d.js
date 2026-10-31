@@ -31,19 +31,19 @@ function make(T,o){ const {W,H,HX,HY,RIMZ,ARC,CT,bg,shade}=o,PI=Math.PI,H3=windo
     for(const gx of [620,680,740]) for(const yy of [220,420]){ c.beginPath(); c.moveTo(U(gx),V(yy)); c.lineTo(U(gx),V(yy+(yy<320?-12:12))); c.stroke(); }
     c.font='900 '+Math.round(60*k)+'px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='rgba(255,255,255,.14)'; c.fillText('鬥魂',U(250),V(320)); }
   const ftx=new T.CanvasTexture(fc); ftx.anisotropy=8;
-  const floor=add(new T.PlaneGeometry((G1-G0)/40,(Y1-Y0)/40),CT.wood?ph('#ffffff',70,{map:ftx,specular:0x2a2a2a}):new T.MeshLambertMaterial({map:ftx}),X((G0+G1)/2),0,Z((Y0+Y1)/2)); floor.rotation.x=-PI/2; floor.castShadow=false;
+  const floor=add(new T.PlaneGeometry((G1-G0)/40,(Y1-Y0)/40),CT.wood?ph('#ffffff',25,{map:ftx,specular:0x101010}):new T.MeshLambertMaterial({map:ftx}),X((G0+G1)/2),0,Z((Y0+Y1)/2)); floor.rotation.x=-PI/2; floor.castShadow=false;
   const outC=CT.bg==='park'?'#4f7a3a':CT.bg==='beach'?'#e2cf98':shade(CT.floor,.62);
   const outer=add(new T.PlaneGeometry(160,160),new T.MeshLambertMaterial({color:col(outC)}),0,-.01,0); outer.rotation.x=-PI/2; outer.castShadow=false;
   /* 背景：原本的 2D 背景（看台、街景、海邊⋯）貼在場地後面一面大牆上 */
   const bc=document.createElement('canvas'); bc.width=800; bc.height=170; const btx=new T.CanvasTexture(bc),BW=66,BH=BW/3*170/800,BZ=Z(-200); btx.wrapS=T.RepeatWrapping; btx.repeat.set(3,1);
-  const back=add(new T.PlaneGeometry(BW,BH),new T.MeshBasicMaterial({map:btx,fog:false}),X(400),BH/2-.05,BZ); back.castShadow=back.receiveShadow=false;
-  for(const s of [-1,1]){ const sd=add(new T.PlaneGeometry(40,BH),new T.MeshBasicMaterial({map:btx,fog:false}),X(400)+s*BW/2,BH/2-.05,BZ+20); sd.rotation.y=-s*PI/2; sd.castShadow=sd.receiveShadow=false; }
+  const back=add(new T.PlaneGeometry(BW,BH),new T.MeshBasicMaterial({map:btx,fog:false}),X(400),BH/2-.05,BZ); back.castShadow=back.receiveShadow=false; const bk2=add(new T.PlaneGeometry(BW,BH),back.material,X(400),BH/2-.05,Z(840)); bk2.rotation.y=PI; bk2.castShadow=bk2.receiveShadow=false; const bk3=add(new T.PlaneGeometry(BW,BH),back.material,X(1060),BH/2-.05,Z(320)); bk3.rotation.y=-PI/2; bk3.castShadow=bk3.receiveShadow=false;
+  if(0) for(const s of [-1,1]){ const sd=add(new T.PlaneGeometry(40,BH),new T.MeshBasicMaterial({map:btx,fog:false}),X(400)+s*BW/2,BH/2-.05,BZ+20); sd.rotation.y=-s*PI/2; sd.castShadow=sd.receiveShadow=false; }
   const drawBack=(t,sw)=>{ const c=bc.getContext('2d'); const g=c.createLinearGradient(0,0,0,170); g.addColorStop(0,'#'+scene.background.getHexString()); g.addColorStop(1,night?'#2a2050':'#e8f2fa'); c.fillStyle=g; c.fillRect(0,0,800,170); bg(c,t,sw); btx.needsUpdate=true; }; drawBack(0,0);
   // 場邊的東西：鐵籠街頭的鐵絲網、夜間的燈柱
   if(CT.bg==='cage'){ const fcv=document.createElement('canvas'); fcv.width=fcv.height=64; const f=fcv.getContext('2d'); f.strokeStyle='rgba(200,205,215,.85)'; f.lineWidth=2; f.beginPath(); f.moveTo(0,0); f.lineTo(64,64); f.moveTo(64,0); f.lineTo(0,64); f.stroke();
     const ftx2=new T.CanvasTexture(fcv); ftx2.wrapS=ftx2.wrapT=T.RepeatWrapping; ftx2.repeat.set(60,8); const fm=new T.MeshBasicMaterial({map:ftx2,transparent:true,side:T.DoubleSide,depthWrite:false});
-    const fen=add(new T.PlaneGeometry(30,4),fm,X(410),2,Z(-60)); fen.castShadow=false; for(let i=-15;i<=15;i+=3) add(new T.CylinderGeometry(.05,.05,4,8),ph('#8a8e98',60),X(410)+i,2,Z(-60)); }
-  if(night) for(const gx of [-60,880]){ add(new T.CylinderGeometry(.08,.12,9,10),ph('#4a4e58',40),X(gx),4.5,Z(-90)); const lp=add(new T.BoxGeometry(1.2,.3,.5),new T.MeshBasicMaterial({color:0xfff6d8}),X(gx),9,Z(-90)+.2); lp.castShadow=false; }
+    const fen=add(new T.PlaneGeometry(30,4),fm,X(900),2,Z(320)); fen.rotation.y=-PI/2; fen.castShadow=false; for(let i=-15;i<=15;i+=3) add(new T.CylinderGeometry(.05,.05,4,8),ph('#8a8e98',60),X(900),2,Z(320)+i); }
+  if(night) for(const gy of [-70,710]){ add(new T.CylinderGeometry(.08,.12,9,10),ph('#4a4e58',40),X(900),4.5,Z(gy)); const lp=add(new T.BoxGeometry(.5,.3,1.2),new T.MeshBasicMaterial({color:0xfff6d8}),X(900)-.2,9,Z(gy)); lp.castShadow=false; }
   /* 籃架：籃板、籃框、籃網 */
   const RX=X(HX),RY=3.05,RZ=Z(HY),hoop=new T.Group(); scene.add(hoop);
   const boardCv=document.createElement('canvas'); boardCv.width=360; boardCv.height=210; { const c=boardCv.getContext('2d'); c.fillStyle='rgba(230,240,250,.28)'; c.fillRect(0,0,360,210); c.strokeStyle='#ffffff'; c.lineWidth=10; c.strokeRect(5,5,350,200); c.strokeStyle=o.rimC||'#e8402a'; c.lineWidth=8; c.strokeRect(120,92,120,90); }
@@ -89,7 +89,7 @@ function make(T,o){ const {W,H,HX,HY,RIMZ,ARC,CT,bg,shade}=o,PI=Math.PI,H3=windo
       case 'fall': return {y:-.55,spine:[-.2,0,0],shL:[-1.2,0,.9],shR:[-1.2,0,-.9],elL:[-.4,0,0],elR:[-.4,0,0],hipL:[-1.1,0,.15],hipR:[-.8,0,-.15],knL:[1.2,0,0],knR:[.9,0,0]};
       default: { const br=Math.sin(t*2.4+i)*.02; return {y:-.03,spine:[.06+br,0,0],hipL:[-.08,0,.05],hipR:[-.08,0,-.05],knL:[.16,0,0],knR:[.16,0,0],anL:[-.08,0,-.05],anR:[-.08,0,.05],shL:[.05,0,.14],shR:[.05,0,-.14],elL:[-.3,0,0],elR:[-.3,0,0]}; } } }
   /* 鏡頭 */
-  const cam=new T.PerspectiveCamera(36,W/H,.1,200); let view='side',lastT=null,cx=X(550),hand=new T.Vector3(),hand2=new T.Vector3(),tmp=new T.Vector3(),bshow=null,blend=0,wasHeld=false,frame=0,fallT=[0,0,0,0,0,0];
+  const cam=new T.PerspectiveCamera(36,W/H,.1,200); let czS=0,view='side',lastT=null,cx=X(-150),hand=new T.Vector3(),hand2=new T.Vector3(),tmp=new T.Vector3(),bshow=null,blend=0,wasHeld=false,frame=0,fallT=[0,0,0,0,0,0];
   function render(st){ const {P,b,t,swish}=st,dt=lastT==null?.016:Math.min(.1,Math.max(0,t-lastT)); lastT=t; frame++;
     if(frame%4===1) drawBack(t,swish);
     // 球員
@@ -117,8 +117,9 @@ function make(T,o){ const {W,H,HX,HY,RIMZ,ARC,CT,bg,shade}=o,PI=Math.PI,H3=windo
     bshow=[bx,by,bz]; ball.position.set(bx,by,bz);
     // 鏡頭：側面轉播（像原本的畫面）或跟著球的近景
     const fx=X(b.x);
-    if(view==='side'){ cx+=(X(550)+(fx-X(550))*.2-cx)*Math.min(1,dt*3); cam.position.set(cx,7.8,Z(320)+18.5); cam.lookAt(cx+.4,.6,Z(320)+.4); cam.fov=36; }
-    else { const fz=Z(b.y); cx+=(fx+(RX-fx)*.3-cx)*Math.min(1,dt*4); cam.position.set(cx-1.5,3.4,fz+8.4); cam.lookAt(cx+1.2,1.4,fz-.4); cam.fov=42; }
+    const fz=Z(b.y); czS+=(fz-czS)*Math.min(1,dt*3); // 鏡頭在進攻方後面、面對籃框
+    if(view==='side'){ cx+=(X(-150)+Math.max(0,fx-X(200))*.3-cx)*Math.min(1,dt*3); cam.position.set(cx,7.4,czS*.45+Z(320)*.55); cam.lookAt(X(590),.9,czS*.3); cam.fov=40; }
+    else { cx+=(fx-7.6-cx)*Math.min(1,dt*4); cam.position.set(cx,3.5,czS*.85); cam.lookAt(fx+(RX-fx)*.6,1.7,czS+(RZ-czS)*.5); cam.fov=46; }
     cam.updateProjectionMatrix(); sun.target.position.set(X(450),0,Z(320)); r.render(scene,cam); }
   return {canvas:cv,get view(){ return view; },toggle(){ view=view==='side'?'near':'side'; },
     toScreen(x,y,h){ tmp.set(X(x),h||0,Z(y)).project(cam); return [(tmp.x+1)/2*W,(1-tmp.y)/2*H]; },

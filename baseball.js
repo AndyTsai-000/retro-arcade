@@ -537,7 +537,7 @@ function create(env,opts){
       if(showBat&&!swung&&u<1.1&&(!G3||b3)){ const ok=Math.abs(pitT+.04-p.T)<(DERBY?.13:.09); ctx.strokeStyle=ok?'#5fff7a':'rgba(255,210,63,.85)'; ctx.lineWidth=ok?3:2; ctx.beginPath(); ctx.arc(x,y,r+3+Math.max(0,1-uu)*46,0,7); ctx.stroke();
         if(ok){ ctx.font='900 14px '+TC; ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText('打！',x,y-r-14); ctx.fillStyle='#5fff7a'; ctx.fillText('打！',x,y-r-14); } } }
     else if(p&&S.phase==='result'){ const x=ZX+p.ax*ZW,y=ZY-p.ay*ZH; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(x,y,8,0,7); ctx.fill(); }
-    { const col=cols[batTeam()],big=cheerT>0; [[22,0],[46,1],[W-46,2],[W-22,3]].forEach(([x,k])=>(!showPit||x<W/2)&&cheerGirl(ctx,x,214,.9,col,t*(big?9:4)+k*.6,big,k)); }
+    { const col=cols[batTeam()],big=cheerT>0; if(!G3) [[22,0],[46,1],[W-46,2],[W-22,3]].forEach(([x,k])=>(!showPit||x<W/2)&&cheerGirl(ctx,x,214,.9,col,t*(big?9:4)+k*.6,big,k)); }
     if(hitU>=0) drawContact(hitU);
     ctx.restore();
   }
@@ -624,7 +624,7 @@ function create(env,opts){
   let lastDraw=0,lastPh='';
   function cheerLine(){ if(cheerT<=0) return; const u=cheerT,inA=Math.min(1,(3.4-Math.min(u,3.4))*4,u*3),col=cols[batTeam()],hY=H-58*inA;
     ctx.fillStyle='rgba(11,10,28,.55)'; ctx.fillRect(0,hY,W,H-hY); ctx.fillStyle=col; ctx.fillRect(0,hY,W,3);
-    for(let i=0;i<7;i++) cheerGirl(ctx,40+i*67,hY+56,1.05,col,t*9+(i%2?Math.PI:0),true,i);
+    if(G3){ G3.cheerBand(t); ctx.drawImage(G3.canvas,0,(H-58)*2,W*2,116,0,hY+3,W,58); } else for(let i=0;i<7;i++) cheerGirl(ctx,40+i*67,hY+56,1.05,col,t*9+(i%2?Math.PI:0),true,i);
     ctx.font='900 13px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.globalAlpha=inA; ctx.lineWidth=4; ctx.strokeStyle='#14122b'; ctx.strokeText('GO！GO！'+tname[batTeam()]+'！',W/2,hY-10); ctx.fillStyle='#fff'; ctx.fillText('GO！GO！'+tname[batTeam()]+'！',W/2,hY-10); ctx.globalAlpha=1; }
   function draw(){
     const now=performance.now()/1000,ddt=Math.min(.1,now-(lastDraw||now)); lastDraw=now;
