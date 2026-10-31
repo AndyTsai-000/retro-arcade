@@ -115,11 +115,11 @@ function create(env,opts){
   // 狀態
   let t=0,simT=0,ended=false,over=null,kf=[],hurtT=0,hurtA=0,hitT=0,toast=[],banT=5,evq=[],sendT=0,snapT=0,planeU=0,lastSec=99,tick=0,lt=0,tS=0,tN=0,lvl=0,spec=me,deadT=0,rankOf={},aliveN=num,firing=false,wantDrag=null,killedBy='';
   /* ---- 輸入 ---- */
-  let locked=false; const onDown=e=>{ if(e.button===2){ ads=true; e.preventDefault(); return; } if(!env.touch&&!locked&&canvas.requestPointerLock){ try{ canvas.requestPointerLock(); }catch(er){} } if(e.button===0&&locked) firing=true; else if(e.button===0&&!env.touch) wantDrag={x:e.clientX,y:e.clientY}; else wantDrag={x:e.clientX,y:e.clientY}; };
+  let locked=false,hoverF=null; const onDown=e=>{ if(e.button===2){ ads=true; e.preventDefault(); return; } if(!env.touch&&!locked&&canvas.requestPointerLock){ try{ canvas.requestPointerLock(); }catch(er){} } if(e.button===0&&locked) firing=true; else if(e.button===0&&!env.touch) wantDrag={x:e.clientX,y:e.clientY}; else wantDrag={x:e.clientX,y:e.clientY}; };
   const onUp=e=>{ if(e.button===2) ads=false; firing=false; wantDrag=null; };
-  const onMove=e=>{ if(!ME.alive) return; const sens=.0024*(ads?.55:1); if(locked){ ME.yaw-=e.movementX*sens; ME.pitch=clamp(ME.pitch-e.movementY*sens,-1.1,1.1); } else if(wantDrag){ const k=env.touch?.0065:.004; ME.yaw-=(e.clientX-wantDrag.x)*k; ME.pitch=clamp(ME.pitch-(e.clientY-wantDrag.y)*k*.75,-1.1,1.1); wantDrag.x=e.clientX; wantDrag.y=e.clientY; } };
+  const onMove=e=>{ if(!ME.alive) return; const sens=.0024*(ads?.55:1); if(locked){ ME.yaw-=e.movementX*sens; ME.pitch=clamp(ME.pitch-e.movementY*sens,-1.1,1.1); } else if(wantDrag){ const k=env.touch?.0065:.004; ME.yaw-=(e.clientX-wantDrag.x)*k; ME.pitch=clamp(ME.pitch-(e.clientY-wantDrag.y)*k*.75,-1.1,1.1); wantDrag.x=e.clientX; wantDrag.y=e.clientY; } else if(e.pointerType==='mouse'&&e.target===canvas){ ME.yaw-=e.movementX*sens; const b=canvas.getBoundingClientRect(); hoverF=(e.clientX-b.left)/b.width; } };
   const onLock=()=>{ locked=document.pointerLockElement===canvas; }; const noCtx=e=>e.preventDefault();
-  canvas.addEventListener('pointerdown',onDown); addEventListener('pointerup',onUp); addEventListener('pointermove',onMove); document.addEventListener('pointerlockchange',onLock); canvas.addEventListener('contextmenu',noCtx); canvas.style.touchAction='none';
+  canvas.addEventListener('pointerdown',onDown); addEventListener('pointerup',onUp); addEventListener('pointermove',onMove); document.addEventListener('pointerlockchange',onLock); canvas.addEventListener('contextmenu',noCtx); canvas.addEventListener('pointerleave',()=>{ hoverF=null; }); canvas.style.touchAction='none';
   /* ---- 武器 ---- */
   const curG=p=>p.guns[p.wi]?GUN[p.guns[p.wi].k]:null,gunK=p=>p.guns[p.wi]?p.guns[p.wi].k:'';
   function applyPick(p,L){ const [ty,kd]=L.k.split(':'); if(ty==='g'){ const G=GUN[kd]; let s=p.guns[0]==null?0:p.guns[1]==null?1:-1; if(s<0){ if(p.guns[p.wi]&&GUN[p.guns[p.wi].k].tier<G.tier) s=p.wi; else if(GUN[p.guns[1-p.wi].k].tier<G.tier) s=1-p.wi; } if(s<0) return false; if(p.guns[0]&&p.guns[1]&&p.guns[s]&&p.guns[s].k===kd) return false; if(p.guns[0]&&p.guns[0].k===kd||p.guns[1]&&p.guns[1].k===kd) return false; p.guns[s]={k:kd,mag:G.mag}; if(!p.guns[p.wi]||GUN[p.guns[p.wi].k].tier<G.tier) p.wi=s; return G.n; } if(ty==='a'){ const v=kd==='2'?75:40; if(p.ar>=v) return false; p.ar=v; return kd==='2'?'重型防彈衣':'防彈衣'; } if(p.band>=6&&kd==='1') return false; if(kd==='1'){ p.band++; return '繃帶'; } p.band+=3; return '急救包'; }
@@ -140,7 +140,7 @@ function create(env,opts){
     let fx=(K.KeyW||K.ArrowUp?1:0)-(K.KeyS||K.ArrowDown?1:0),sx=(K.KeyD||K.ArrowRight?1:0)-(K.KeyA||K.ArrowLeft?1:0); const l=Math.hypot(fx,sx)||1,sy=Math.sin(p.yaw),cy=Math.cos(p.yaw),mx=(-sy*fx-cy*sx)/l,mz=(-cy*fx+sy*sx)/l; if(!p.alive) return;
     if(p.st==='fall'){ const gy=W2.groundY(p.x,p.z),h=p.y-gy; p.x+=mx*(h>4?22:6)*dt; p.z+=mz*(h>4?22:6)*dt; p.y-=(fx<0?7:fx>0?18:12)*dt; if(h<=.1){ p.st='ground'; p.y=gy; p.vy=0; sfx('land'); } return; }
     if(env.hit('Space')&&p.gr){ p.vy=6.8; p.gr=false; } const ds=(sx||fx)?1:0,inW=W2.groundY(p.x,p.z)<-.5,sp=(ads?3.6:K.ShiftLeft?5.2:7)*(inW?.55:1)*(p.rl>0?.82:1); p.mv=moveP(p,mx*ds,mz*ds,sp,dt)>.0005?1:0;
-    if(env.hit('Digit1')&&p.guns[0]){ p.wi=0; p.rl=0; sfx('click'); } if(env.hit('Digit2')&&p.guns[1]){ p.wi=1; p.rl=0; sfx('click'); } if(env.hit('KeyQ')){ if(p.guns[1-p.wi]){ p.wi=1-p.wi; p.rl=0; sfx('click'); } }
+    if(env.hit('Digit1')&&p.guns[0]){ p.wi=0; p.rl=0; sfx('click'); } if(env.hit('Digit2')&&p.guns[1]){ p.wi=1; p.rl=0; sfx('click'); } if(env.hit('KeyG')){ if(p.guns[1-p.wi]){ p.wi=1-p.wi; p.rl=0; sfx('click'); } }
     if(env.hit('KeyH')&&p.band>0&&p.hp<100){ p.band--; p.hp=Math.min(100,p.hp+30); sfx('heal'); note('用了繃帶 +30'); if(client) net.send({hl:1}); }
     if(env.hit('KeyZ')) ads=!ads; const g=p.guns[p.wi],G=g?GUN[g.k]:null; if(p.cd>0) p.cd-=dt; if(p.rl>0){ p.rl-=dt; if(p.rl<=0&&g){ g.mag=G.mag; sfx('click'); } } else if(g&&(env.hit('KeyR')&&g.mag<G.mag||g.mag<=0)){ p.rl=G.rl; sfx('place'); }
     const fire=firing||K.KeyJ; if(fire&&g&&p.rl<=0&&p.cd<=0&&g.mag>0){ p.cd=G.rate; g.mag--; shootCam(p,g.k); recoil=Math.min(.06,recoil+(G.tier>=4?.05:G.pel?.04:.012)); flashT=.05; sfx(G.tier>=4||G.pel?'boom':'pop'); } else if(fire&&!g&&!p.warned){ p.warned=1; note('還沒有槍，快去撿！'); }
@@ -172,6 +172,7 @@ function create(env,opts){
     else net.onmsg=(m,from)=>{ const p=P[from]; if(!p) return; if(m.i){ const a=m.i; p.x=a[0]; p.y=a[1]; p.z=a[2]; p.yaw=a[3]; p.mv=a[4]; p.st=a[5]==='p'?'plane':a[5]==='f'?'fall':'ground'; if(a[6]) { p.guns[0]={k:a[6],mag:9}; p.wi=0; } } if(m.f&&p.alive){ const f=m.f; fireFrom(p,f[0],f[1],f[2],f[3],f[4],f[5],f[6]); } if(m.pk!=null&&!taken.has(m.pk)){ taken.add(m.pk); const L=W2.loot[m.pk]; if(L&&L.k[0]==='a') p.ar=Math.max(p.ar,L.k==='a:2'?75:40); evq.push({e:'l',id:m.pk}); } if(m.hl){ p.hp=Math.min(100,p.hp+30); } }; }
   function update(dt){ if(ended) return; dt=Math.min(dt,.05); t+=dt; if(banT>0) banT-=dt; if(hurtT>0) hurtT-=dt; if(hitT>0) hitT-=dt; if(flashT>0){ flashT-=dt; if(flashT<=0) flash.intensity=0; } recoil*=Math.pow(.002,dt); for(const k of kf) k.l-=dt; kf=kf.filter(k=>k.l>0); for(const s of toast) s.l-=dt; toast=toast.filter(s=>s.l>0);
     if(host){ simT+=dt; if(planeU<1) planeU=Math.min(1,planeU+dt/PLANE.dur); stepZone(dt); for(const p of P) if(p.bot&&p.alive) stepBot(p,dt); }
+    if(hoverF!=null&&!locked&&ME.alive){ if(hoverF<.04) ME.yaw+=dt*1.8; else if(hoverF>.96) ME.yaw-=dt*1.8; } /* 游標到左右邊緣時繼續轉 */
     stepHuman(dt);
     if(!host){ for(const p of P) if(p!==ME&&p.tx!=null){ const f=Math.min(1,dt*10); p.x+=(p.tx-p.x)*f; p.y+=(p.ty-p.y)*f; p.z+=(p.tz-p.z)*f; } sendT-=dt; if(sendT<=0&&ME.alive){ sendT=1/15; net.send({i:[+ME.x.toFixed(2),+ME.y.toFixed(2),+ME.z.toFixed(2),+ME.yaw.toFixed(2),ME.mv,ME.st[0],gunK(ME)]}); } } else if(net){ snapT-=dt; if(snapT<=0){ snapT=1/10; net.send({s:packS()}); evq=[]; } }
     if(!ME.alive){ deadT+=dt; const al=P.filter(p=>p.alive); if(al.length&&(!P[spec]||!P[spec].alive)) spec=al[0].i; }
@@ -235,9 +236,9 @@ function art(ctx,w,h,si,t){ const M=MAPS[si]; ctx.save(); ctx.scale(w/W,h/H); co
   stages:MAPS.map(m=>m.name),stars:MAPS.map(m=>m.stars),stageLabel:'選擇地圖',stageShow:(ctx,w,h,si,t)=>art(ctx,w,h,si,t),stageGoal:si=>MAPS[si].name+'：跳傘落地、撿槍、躲毒圈，活到最後。星星越多電腦越準。',
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'n',label:'參賽人數',def:'20',opts:[{id:'12',label:'12 人'},{id:'20',label:'20 人'},{id:'30',label:'30 人'}]},{key:'team',label:'連線玩法',def:'ffa',opts:[{id:'ffa',label:'各自為戰'},{id:'coop',label:'玩家同隊打電腦'}]}],
-  help:[['W A S D','移動（方向鍵也可以）'],['滑鼠','點一下畫面後轉視角、左鍵開火；右鍵瞄準'],['空白鍵','跳傘、跳躍'],['Q H','Q 換槍、H 用繃帶']],
+  help:[['W A S D','移動（方向鍵也可以）'],['滑鼠','移動轉左右；點一下畫面後也能看上下、左鍵開火；右鍵瞄準'],['空白鍵','跳傘、跳躍'],['G H','G 換槍、H 用繃帶']],
   touchHelp:[['方向盤','移動'],['滑畫面','轉視角'],['開火','會自動微調瞄準'],['跳／換槍／補血','跳傘跳躍、換武器、用繃帶']],
-  touch:{left:'dpad',right:[{l:'補血',c:'KeyH'},{l:'換槍',c:'KeyQ'},{l:'跳',c:'Space'},{l:'開火',c:'KeyJ',act:true}]},
+  touch:{left:'dpad',right:[{l:'補血',c:'KeyH'},{l:'換槍',c:'KeyG'},{l:'跳',c:'Space'},{l:'開火',c:'KeyJ',act:true}]},
   best:{label:'最高分',fmt:v=>v+' 分',lower:false},
   looks:[{key:'shirt',label:'衣服',type:'color',opts:['#6a7a4a','#3a4a6a','#8a4a3a','#4a4a50','#a88a4a','#c8c8c0','#7a3a5a','#2a2e38']},{key:'helm',label:'頭盔',type:'color',opts:['#3a4a3a','#4a4a50','#6a5a3a','#2a3a4a','#a83a3a','#e8e8e0']}],
   load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); },
