@@ -1,4 +1,4 @@
-// 環島地產王：擲骰子繞棋盤，買地、蓋房子、收過路費。三張地圖（寶島環遊、環遊世界、甜點樂園），
+// 環島地產王：擲骰子繞棋盤，買地、蓋房子、收過路費。十張地圖、棋盤 40 格，
 // 和電腦玩、同一台輪流玩，或開房間 2～4 人連線（房主負責運算、其他人送動作，人不夠電腦補）。
 (function(){
 'use strict';
@@ -12,27 +12,49 @@ const money=n=>(n<0?'-':'')+'$'+Math.abs(Math.round(n)).toString().replace(/\B(?
 const GCOL=['#9a6a4a','#5ec8ff','#ff7eb6','#ff9a3d','#e23b3b','#ffd23f','#3fae5a','#3a5ad8'];
 const MAPS=[
   {name:'寶島環遊',corner:['起點','醫院','夜市公園','救護車'],st:['捷運站','火車站','高鐵站','機場'],
-   props:['基隆','宜蘭','花蓮','台東','屏東','澎湖','高雄','台南','嘉義','雲林','彰化','南投','台中','苗栗','新竹','台北'],
+   props:['基隆','宜蘭','礁溪','花蓮','太魯閣','台東','綠島','屏東','墾丁','澎湖','金門','高雄','旗津','台南','安平','嘉義','阿里山','雲林','彰化','日月潭','台中','苗栗','新竹','台北'],
    bg:['#7ed0ff','#c8f0ff'],board:'#fff8e8',frame:'#c8864a',center:'taiwan'},
   {name:'環遊世界',corner:['起點','醫院','中央公園','救護車'],st:['港口','火車','郵輪','機場'],
-   props:['曼谷','河內','首爾','釜山','開羅','杜拜','雪梨','奧克蘭','羅馬','巴塞隆納','巴黎','倫敦','舊金山','紐約','新加坡','東京'],
+   props:['曼谷','河內','馬尼拉','首爾','釜山','開羅','杜拜','孟買','雪梨','奧克蘭','里約','羅馬','巴塞隆納','柏林','巴黎','倫敦','莫斯科','舊金山','紐約','多倫多','香港','新加坡','上海','東京'],
    bg:['#3a6ad8','#8ac8ff'],board:'#f4f8ff',frame:'#3a4a8a',center:'world'},
-  {name:'甜點樂園',corner:['起點','保健室','彩虹公園','救護車'],st:['小火車','熱氣球','旋轉木馬','雲霄飛車'],
-   props:['糖果屋','棉花糖','布丁','果凍','餅乾','馬卡龍','冰淇淋','聖代','甜甜圈','泡芙','巧克力','可可','蛋糕','千層','水晶糖宮','彩虹城'],
-   bg:['#ffb3d9','#fff0f8'],board:'#fffaf2',frame:'#e87aa8',center:'candy'}];
-const PAT=['p','p','x','s','p','y','p']; // 每邊 7 格：地、地、機會／命運、車站、地、命運／機會、地
+  {name:'甜點樂園',corner:['起點','保健室','彩虹公園','救護車'],st:['小火車','熱氣球','旋轉木馬','雲霄飛車'],em:['🚂','🎈','🎠','🎢'],
+   props:['糖果屋','棉花糖','軟糖','布丁','果凍','奶酪','餅乾','馬卡龍','蛋塔','冰淇淋','聖代','雪花冰','甜甜圈','泡芙','可麗餅','巧克力','可可','鬆餅','蛋糕','千層','提拉米蘇','水晶糖宮','彩虹城','蜜糖堡'],
+   bg:['#ffb3d9','#fff0f8'],board:'#fffaf2',frame:'#e87aa8',center:'candy'},
+  {name:'日本之旅',corner:['起點','診所','櫻花公園','救護車'],st:['電車','新幹線','渡輪','機場'],em:['🚃','🚄','⛴','✈'],
+   props:['那霸','石垣','鹿兒島','熊本','福岡','長崎','廣島','松山','高松','神戶','奈良','大阪','京都','名古屋','金澤','富士','鎌倉','橫濱','輕井澤','日光','東京','仙台','函館','札幌'],
+   bg:['#ffc4d6','#fff0e8'],board:'#fffaf4',frame:'#c8485a',center:'japan'},
+  {name:'歐洲古堡',corner:['起點','修道院','皇家花園','馬車'],st:['驛站','港口','運河','鐵路'],em:['🐎','⚓','🛶','🚂'],
+   props:['石橋村','磨坊鎮','葡萄園','牧羊谷','鐘樓城','市集廣場','鐵匠街','酒窖','騎士團','圖書塔','教堂','大學城','銀行街','歌劇院','美術館','北方要塞','湖畔堡','獵宮','夏宮','冬宮','公爵府','王后塔','國王廳','黃金城'],
+   bg:['#6a7ea8','#d8d8e8'],board:'#f8f4e8',frame:'#5a4a6a',center:'castle'},
+  {name:'海底世界',corner:['起點','珊瑚診所','珍珠花園','大白鯊'],st:['潛水艇','海龜','鯨魚','洋流'],em:['🚢','🐢','🐳','🌊'],
+   props:['海草坡','小丑魚礁','海星灘','寄居蟹','海馬林','水母灣','章魚洞','沉船','古董箱','魔鬼魚','藍洞','火山口','珊瑚城','貝殼街','珍珠坊','海豚灣','燈籠魚','深海溝','鯨歌谷','海神殿','美人魚宮','黃金艦','水晶城','龍宮'],
+   bg:['#0a4a8a','#3ac0d8'],board:'#eefafc',frame:'#0a5a7a',center:'sea'},
+  {name:'星際殖民',corner:['起點','醫療艙','星雲公園','救援艇'],st:['太空站','蟲洞','星際列車','火箭港'],em:['🛰','🌀','🚄','🚀'],
+   props:['月球站','月海','火衛基地','火星谷','奧林帕斯','礦業帶','穀神星','木衛城','大紅斑','木星環','冰衛星','土星環','泰坦','天王站','海王港','冥王哨','彗星','流星街','脈衝星','半人馬','獵戶座','天狼城','織女星','銀河中心'],
+   bg:['#0a0a2a','#3a2a6a'],board:'#f0f0fc',frame:'#3a3a7a',center:'space'},
+  {name:'恐龍時代',corner:['起點','草藥洞','蕨類花園','暴龍'],st:['翼龍','獨木舟','猛瑪象','火山道'],em:['🦅','🛶','🐘','🌋'],
+   props:['蕨類林','泥沼','化石坡','蛋窩','小盜龍','腕龍谷','長頸灘','三角龍','劍龍原','甲龍丘','迅猛崖','棘龍河','蛇頸湖','滄龍灣','翼手峰','蘇鐵林','琥珀坑','巨木森','恐龍骨','火山灰','熔岩池','雷龍城','暴龍王','遠古祭壇'],
+   bg:['#7a9a4a','#e8d890'],board:'#fbf6e0',frame:'#6a5a2a',center:'dino'},
+  {name:'冰雪王國',corner:['起點','暖爐屋','極光公園','雪怪'],st:['雪橇','破冰船','纜車','馴鹿'],em:['🛷','🚢','🚡','🦌'],
+   props:['雪屋村','企鵝灘','海豹岩','冰釣湖','北極狐','雪兔林','冰柱洞','松樹坡','滑雪場','雪人鎮','冰壺館','極光谷','馴鹿原','冰川','藍冰洞','白熊港','雪花街','聖誕村','冰晶塔','雪山峰','暴風嶺','冰之湖','水晶宮','冰雪王座'],
+   bg:['#8ac0e8','#f0f8ff'],board:'#f6fbff',frame:'#4a7aa8',center:'snow'},
+  {name:'法老沙漠',corner:['起點','神廟醫館','綠洲花園','沙暴'],st:['駱駝','尼羅船','商隊','飛毯'],em:['🐫','⛵','🧳','🪄'],
+   props:['沙丘村','椰棗林','水井','香料攤','陶器街','駱駝市','蘆葦河','莎草紙','石匠區','黃金礦','聖甲蟲','貓神廟','月神廟','獅身像','方尖碑','帝王谷','小金字塔','綠洲城','孟菲斯','尼羅河','太陽神殿','大金字塔','法老宮','黃金王座'],
+   bg:['#e8a84a','#fbe6b0'],board:'#fdf6e0',frame:'#a8742a',center:'desert'}];
+const PAT=['p','p','x','p','s','p','y','p','p']; // 每邊 9 格：地、地、機會／命運、地、車站、地、命運／機會、地、地
+const NT=40,SD=10; // 一圈 40 格，每邊 10 格（含轉角）
 function makeTiles(mi){ const M=MAPS[mi],T=[]; let pi=0,si=0;
-  for(let i=0;i<32;i++){ const side=Math.floor(i/8),k=i%8;
+  for(let i=0;i<NT;i++){ const side=Math.floor(i/SD),k=i%SD;
     if(k===0){ T.push({i,type:['start','hosp','park','amb'][side],name:M.corner[side]}); continue; }
     const p=PAT[k-1];
-    if(p==='p'){ const g=Math.floor(pi/2),price=600+g*260; T.push({i,type:'prop',name:M.props[pi],g,price,base:Math.round(price*.1/10)*10,cost:Math.round(price*.5/10)*10}); pi++; }
+    if(p==='p'){ const g=Math.floor(pi/3),price=600+g*260; T.push({i,type:'prop',name:M.props[pi],g,price,base:Math.round(price*.1/10)*10,cost:Math.round(price*.5/10)*10}); pi++; }
     else if(p==='s'){ T.push({i,type:'st',name:M.st[si++],price:1500}); }
     else T.push({i,type:(p==='x')===(side%2===0)?'chance':'fate',name:(p==='x')===(side%2===0)?'機會':'命運'}); }
   return T; }
 // 格子在棋盤上的位置：0 在右下角，往左、往上、往右、往下繞一圈
 const STEPT=.28; // 棋子走一格的時間
-const BS=488,BX=6,BY=6,CN=62,EG=(BS-CN*2)/7;
-function rect(i){ const side=Math.floor(i/8),k=i%8;
+const BS=488,BX=6,BY=6,CN=58,EG=(BS-CN*2)/(SD-1);
+function rect(i){ const side=Math.floor(i/SD),k=i%SD;
   if(k===0) return [[BS-CN,BS-CN],[0,BS-CN],[0,0],[BS-CN,0]][side].concat([CN,CN,side]);
   if(side===0) return [BS-CN-k*EG,BS-CN,EG,CN,0]; if(side===1) return [0,BS-CN-k*EG,CN,EG,1]; if(side===2) return [CN+(k-1)*EG,0,EG,CN,2]; return [BS-CN,CN+(k-1)*EG,CN,EG,3]; }
 const center=i=>{ const [x,y,w,h]=rect(i); return [BX+x+w/2,BY+y+h/2]; };
@@ -50,7 +72,7 @@ function chibi(c,x,y,s,p,o){ const RH=window.__RHY; if(!RH){ c.fillStyle=p.col; 
 
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
-  const net=opts.net,client=!!net&&!net.host,OP=opts.options||{},mi=clamp(opts.stage|0,0,2),M=MAPS[mi],TI=makeTiles(mi);
+  const net=opts.net,client=!!net&&!net.host,OP=opts.options||{},mi=clamp(opts.stage|0,0,MAPS.length-1),M=MAPS[mi],TI=makeTiles(mi);
   const hot=!net&&opts.mode==='local',seats=net?clamp(net.count+(net.bots||0),2,4):clamp(+OP.seats||4,2,4);
   const humans=net?net.count:hot?seats:1,me=net?net.me:0,ROUNDS=+OP.rounds||15,START=+OP.cash||15000,PACE=({slow:2,normal:1.5,fast:1})[OP.pace||'normal']||1.5; // 動作之間停多久
   const isAI=p=>p>=humans||left.has(p),left=new Set(),sfx=n=>env.sfx(n);
@@ -84,7 +106,7 @@ function create(env,opts){
     G.phase='roll'; log('輪到 '+names[G.turn]+'，擲骰子！'); }
   function roll(p){ if(G.phase!=='roll'||G.turn!==p) return '還沒輪到你'; const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6); G.dice=[a,b]; G.ds++; sfx('rattle'); move(p,a+b,.9); log(names[p]+' 擲出 '+(a+b)+' 點'); return null; }
   function move(p,steps,delay){ const pl=G.pl[p],path=[]; let pos=pl.pos,passed=false;
-    for(let k=0;k<Math.abs(steps);k++){ pos=(pos+(steps>0?1:31))%32; path.push(pos); if(pos===0&&steps>0) passed=true; }
+    for(let k=0;k<Math.abs(steps);k++){ pos=(pos+(steps>0?1:NT-1))%NT; path.push(pos); if(pos===0&&steps>0) passed=true; }
     G.ms++; G.mv={p,from:pl.pos,path,s:G.ms,delay}; pl.pos=pos; if(passed){ G.pl[p].cash+=2000; G.passBonus=p; }
     G.phase='wait'; G.wait=delay+path.length*STEPT+.3*PACE; G.after='land'; }
   function warp(p,to){ G.ms++; G.mv={p,from:G.pl[p].pos,path:[to],s:G.ms,delay:0,warp:1}; G.pl[p].pos=to; G.phase='wait'; G.wait=1.1; G.after='land'; }
@@ -107,11 +129,11 @@ function create(env,opts){
   function applyCard(){ const p=G.turn,pl=G.pl[p],e=G.cardFx||{}; G.card=null;
     if(e.card){ pl.cards[e.card]++; toast(names[p]+' 拿到'+(e.card==='buy'?'購地卡':'換地卡')+'！','#ffd23f'); sfx('item'); return endSoon(1); }
     if(e.gain){ gain(p,e.gain); return endSoon(1); }
-    if(e.goto!=null){ return move(p,(32-pl.pos)%32||32,0); }
+    if(e.goto!=null){ return move(p,(NT-pl.pos)%NT||NT,0); }
     if(e.fwd){ return move(p,e.fwd,0); }
     if(e.up){ const mine=owned(p).filter(i=>TI[i].type==='prop'&&G.tiles[i].lv<3); if(mine.length){ const i=mine[0]; G.tiles[i].lv++; toast('「'+TI[i].name+'」免費加蓋！'); sfx('item'); } else toast('沒有可以加蓋的地'); return endSoon(1); }
     if(e.each){ for(const q of alive()) if(q!==p) pay(q,p,Math.min(e.each,Math.max(0,G.pl[q].cash))); return endSoon(1.2); }
-    if(e.station){ let k=1; while(TI[(pl.pos+k)%32].type!=='st') k++; return move(p,k,0); }
+    if(e.station){ let k=1; while(TI[(pl.pos+k)%NT].type!=='st') k++; return move(p,k,0); }
     if(e.free){ pl.free++; return endSoon(1); }
     if(e.tax){ pay(p,-2,e.tax*owned(p).length); return endSoon(1); }
     if(e.fine){ pay(p,-2,e.fine); return endSoon(1); }
@@ -283,12 +305,22 @@ function drawBoard(c,mi,t){ const M=MAPS[mi],TI=makeTiles(mi);
     c.textAlign='center'; c.textBaseline='middle';
     if(T.type==='prop'){ const col=GCOL[T.g]; c.fillStyle=col; // 內側的顏色帶
       if(side===0) rr(c,X+3,Y+3,w-6,11,4); else if(side===2) rr(c,X+3,Y+h-14,w-6,11,4); else if(side===1) rr(c,X+w-14,Y+3,11,h-6,4); else rr(c,X+3,Y+3,11,h-6,4); c.fill();
-      const tx=X+w/2+(side===1?-6:side===3?6:0),ty=Y+h/2+(side===0?5:side===2?-5:0); c.fillStyle='#2a1a26'; c.font='900 '+(T.name.length>3?9.5:11.5)+'px '+TC; c.fillText(T.name,tx,ty-7,w-16); c.fillStyle='#8a6a4a'; c.font='700 9.5px '+TC; c.fillText('$'+T.price,tx,ty+8); }
-    else if(T.type==='st'){ c.fillStyle='#5a5a7a'; c.font='18px '+TC; c.fillText(['🚇','🚆','🚄','✈'][Math.floor(T.i/8)],X+w/2,Y+h/2-8); c.fillStyle='#2a1a26'; c.font='900 10px '+TC; c.fillText(T.name,X+w/2,Y+h/2+11,w-6); }
+      const tx=X+w/2+(side===1?-6:side===3?6:0),ty=Y+h/2+(side===0?5:side===2?-5:0); c.fillStyle='#2a1a26'; c.font='900 '+(T.name.length>3?9.5:11.5)+'px '+TC; c.fillText(T.name,tx,ty-7,side%2?w-16:w-5); c.fillStyle='#8a6a4a'; c.font='700 9.5px '+TC; c.fillText('$'+T.price,tx,ty+8); }
+    else if(T.type==='st'){ c.fillStyle='#5a5a7a'; c.font='18px '+TC; c.fillText((M.em||['🚇','🚆','🚄','✈'])[Math.floor(T.i/SD)],X+w/2,Y+h/2-8); c.fillStyle='#2a1a26'; c.font='900 10px '+TC; c.fillText(T.name,X+w/2,Y+h/2+11,w-4); }
     else if(T.type==='chance'||T.type==='fate'){ const k=T.type==='chance'; c.fillStyle=k?'#ff9a3d':'#7a5cff'; c.font='900 22px '+TC; c.fillText(k?'？':'★',X+w/2,Y+h/2-7); c.font='900 11px '+TC; c.fillText(T.name,X+w/2,Y+h/2+13); }
     else { const col={start:'#e23b3b',hosp:'#3fae5a',park:'#ff9a3d',amb:'#3d8bff'}[T.type]; c.fillStyle=shade(col,1.75); rr(c,X+4,Y+4,w-8,h-8,8); c.fill();
       c.fillStyle=col; c.font='900 13px '+TC; c.fillText(T.name,X+w/2,Y+h-14,w-8); c.font='22px '+TC; c.fillText({start:'🏁',hosp:'🏥',park:'🌳',amb:'🚑'}[T.type],X+w/2,Y+h/2-6);
       if(T.type==='start'){ c.font='700 9px '+TC; c.fillStyle='#8a2a2a'; c.fillText('經過 +$2,000',X+w/2,Y+11); } } } }
+const tri=(c,a,b,d,e,f,g)=>{ c.beginPath(); c.moveTo(a,b); c.lineTo(d,e); c.lineTo(f,g); c.fill(); },circ=(c,a,b,r)=>{ c.beginPath(); c.arc(a,b,r,0,7); c.fill(); };
+const ARTS={
+  japan:{sky:['#ffd9e4','#fff4e0'],f(c,x,y,s,cx,cy,t){ c.fillStyle='#e8344a'; circ(c,cx+s*.22,y+s*.34,s*.1); c.fillStyle='#5a7aa8'; tri(c,x-s*.05,y+s*.82,cx,y+s*.3,x+s*1.05,y+s*.82); c.fillStyle='#fff'; c.beginPath(); c.moveTo(cx-s*.13,y+s*.46); c.lineTo(cx,y+s*.3); c.lineTo(cx+s*.13,y+s*.46); c.lineTo(cx+s*.06,y+s*.43); c.lineTo(cx,y+s*.48); c.lineTo(cx-s*.06,y+s*.43); c.fill(); c.fillStyle='#8ac86a'; c.fillRect(x,y+s*.8,s,s*.2);
+    c.fillStyle='#d8343a'; c.fillRect(x+s*.14,y+s*.62,6,s*.24); c.fillRect(x+s*.3,y+s*.62,6,s*.24); c.fillRect(x+s*.1,y+s*.6,s*.26,6); c.fillRect(x+s*.13,y+s*.67,s*.2,4); c.fillStyle='#ffb0c8'; for(let k=0;k<26;k++){ const q=(k*37)%100/100; circ(c,x+q*s+Math.sin(t+k)*5,y+((k*53+t*16)%100)/100*s,2.6); } }},
+  castle:{sky:['#7a8ec0','#e8e0e8'],f(c,x,y,s,cx,cy,t){ c.fillStyle='#fff'; for(const [a,b] of [[.2,.34],[.78,.4]]){ circ(c,x+a*s,y+b*s,12); circ(c,x+a*s+14,y+b*s+2,10); circ(c,x+a*s-14,y+b*s+3,9); } c.fillStyle='#6a9a5a'; c.beginPath(); c.ellipse(cx,y+s*1.02,s*.75,s*.3,0,0,7); c.fill(); c.fillStyle='#b8b4c0'; c.fillRect(cx-s*.26,cy,s*.52,s*.32); for(let k=0;k<7;k++) c.fillRect(cx-s*.26+k*s*.08,cy-8,s*.04,8); for(const k of [-1,1]){ c.fillStyle='#a4a0ae'; c.fillRect(cx+k*s*.28-s*.07,cy-s*.12,s*.14,s*.44); c.fillStyle='#4a5a98'; tri(c,cx+k*s*.28-s*.09,cy-s*.12,cx+k*s*.28,cy-s*.3,cx+k*s*.28+s*.09,cy-s*.12); } c.fillStyle='#5a4a3a'; rr(c,cx-s*.06,cy+s*.14,s*.12,s*.18,s*.05); c.fill(); c.fillStyle='#e23b3b'; c.fillRect(cx+s*.28,cy-s*.38,2,s*.1); tri(c,cx+s*.285,cy-s*.38,cx+s*.285+16+Math.sin(t*3)*2,cy-s*.35,cx+s*.285,cy-s*.32); }},
+  sea:{sky:['#3ac0d8','#0a4a8a'],f(c,x,y,s,cx,cy,t){ c.fillStyle='#e8d8a0'; c.beginPath(); c.ellipse(cx,y+s*1.02,s*.8,s*.2,0,0,7); c.fill(); for(const [a,co] of [[.14,'#ff7a8a'],[.26,'#ffb04a'],[.82,'#c87aff'],[.92,'#ff7a8a']]){ c.strokeStyle=co; c.lineWidth=6; c.lineCap='round'; for(const d of [-1,0,1]){ c.beginPath(); c.moveTo(x+a*s,y+s*.92); c.lineTo(x+a*s+d*10,y+s*.74); c.stroke(); } } c.lineCap='butt'; for(const [a,b,co,z] of [[.3,.55,'#ff9a3d',1],[.68,.68,'#ffd23f',.8],[.6,.42,'#7ad8ff',.7]]){ const q=x+a*s+Math.sin(t*.8+a*9)*14; c.fillStyle=co; c.beginPath(); c.ellipse(q,y+b*s,18*z,10*z,0,0,7); c.fill(); tri(c,q-16*z,y+b*s,q-30*z,y+b*s-9*z,q-30*z,y+b*s+9*z); c.fillStyle='#14122b'; circ(c,q+9*z,y+b*s-2,2); } c.fillStyle='rgba(255,255,255,.6)'; for(let k=0;k<12;k++) circ(c,x+(k*23%100)/100*s,y+s-((k*41+t*18)%100)/100*s,2+k%3); }},
+  space:{sky:['#05061e','#2a1a5a'],f(c,x,y,s,cx,cy,t){ c.fillStyle='#fff'; for(let k=0;k<50;k++) c.fillRect(x+(k*73%100)/100*s,y+(k*41%100)/100*s,1.6,1.6); c.fillStyle='#ffb04a'; circ(c,x+s*.74,y+s*.42,s*.13); c.strokeStyle='#ffe0a0'; c.lineWidth=3; c.beginPath(); c.ellipse(x+s*.74,y+s*.42,s*.21,s*.05,-.3,0,7); c.stroke(); c.fillStyle='#b8b8c8'; c.beginPath(); c.ellipse(cx,y+s*1.04,s*.7,s*.26,0,0,7); c.fill(); c.fillStyle='#9090a4'; circ(c,cx-s*.24,y+s*.88,8); circ(c,cx+s*.2,y+s*.92,6); c.fillStyle='rgba(180,230,255,.75)'; c.beginPath(); c.arc(cx-s*.05,y+s*.82,s*.11,Math.PI,0); c.fill(); const rx=x+s*.26,ry=y+s*.55+Math.sin(t)*6; c.fillStyle='#e8ecf4'; rr(c,rx-8,ry-22,16,40,8); c.fill(); c.fillStyle='#e23b3b'; tri(c,rx-8,ry-14,rx,ry-34,rx+8,ry-14); tri(c,rx-8,ry+8,rx-17,ry+20,rx-8,ry+18); tri(c,rx+8,ry+8,rx+17,ry+20,rx+8,ry+18); c.fillStyle='#ffb02a'; tri(c,rx-5,ry+18,rx,ry+32+Math.sin(t*20)*4,rx+5,ry+18); c.fillStyle='#3d8bff'; circ(c,rx,ry-6,4); }},
+  dino:{sky:['#f8c070','#fbe8b0'],f(c,x,y,s,cx,cy,t){ c.fillStyle='#6a5048'; tri(c,x+s*.42,y+s*.82,x+s*.72,y+s*.3,x+s*1.02,y+s*.82); c.fillStyle='#ff5a2a'; tri(c,x+s*.67,y+s*.39,x+s*.72,y+s*.3,x+s*.77,y+s*.39); c.fillStyle='rgba(70,60,60,.5)'; for(let k=0;k<4;k++) circ(c,x+s*.72+Math.sin(t+k)*8,y+s*.26-((k*9+t*6)%40),8+k*2); c.fillStyle='#7aa84a'; c.fillRect(x,y+s*.8,s,s*.2); const q=x+s*.3,w=y+s*.74; c.fillStyle='#4f9a5a'; c.beginPath(); c.ellipse(q,w,s*.16,s*.08,0,0,7); c.fill(); tri(c,q-s*.13,w,q-s*.34,w+6,q-s*.1,w+s*.05); c.strokeStyle='#4f9a5a'; c.lineWidth=11; c.lineCap='round'; c.beginPath(); c.moveTo(q+s*.1,w-4); c.quadraticCurveTo(q+s*.18,w-s*.2,q+s*.13,w-s*.3); c.stroke(); c.lineCap='butt'; c.fillStyle='#4f9a5a'; c.fillRect(q-s*.09,w,9,s*.1); c.fillRect(q+s*.05,w,9,s*.1); c.fillStyle='#14122b'; circ(c,q+s*.14,w-s*.31,2); c.fillStyle='#3a7a3a'; for(const a of [.06,.9]) for(let k=-2;k<=2;k++){ c.save(); c.translate(x+a*s,y+s*.82); c.rotate(k*.55); c.beginPath(); c.ellipse(0,-s*.1,5,s*.1,0,0,7); c.fill(); c.restore(); } }},
+  snow:{sky:['#a8d4f0','#f0f8ff'],f(c,x,y,s,cx,cy,t){ c.fillStyle='rgba(120,255,190,.32)'; c.beginPath(); c.moveTo(x,y+s*.36); for(let q=0;q<=s;q+=12) c.lineTo(x+q,y+s*.36+Math.sin(q/30+t)*12); c.lineTo(x+s,y+s*.56); c.lineTo(x,y+s*.56); c.fill(); c.fillStyle='#b8d0e4'; tri(c,x-s*.08,y+s*.82,x+s*.28,y+s*.42,x+s*.62,y+s*.82); tri(c,x+s*.4,y+s*.82,x+s*.75,y+s*.36,x+s*1.1,y+s*.82); c.fillStyle='#fff'; tri(c,x+s*.2,y+s*.51,x+s*.28,y+s*.42,x+s*.36,y+s*.51); tri(c,x+s*.67,y+s*.46,x+s*.75,y+s*.36,x+s*.83,y+s*.46); c.fillRect(x,y+s*.8,s,s*.2); const q=cx,w=y+s*.78; c.fillStyle='#22283a'; c.beginPath(); c.ellipse(q,w,14,20,0,0,7); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.ellipse(q,w+3,9,14,0,0,7); c.fill(); c.fillStyle='#22283a'; circ(c,q,w-20,10); c.fillStyle='#fff'; circ(c,q-4,w-21,2.6); circ(c,q+4,w-21,2.6); c.fillStyle='#ff9a3d'; tri(c,q-4,w-17,q,w-12,q+4,w-17); c.fillStyle='#fff'; for(let k=0;k<26;k++) circ(c,x+(k*37%100)/100*s,y+((k*59+t*14)%100)/100*s,1.8); }},
+  desert:{sky:['#f8c868','#fdeec0'],f(c,x,y,s,cx,cy,t){ c.fillStyle='#fff4c0'; circ(c,x+s*.8,y+s*.36,s*.08); const py=(a,z,co)=>{ c.fillStyle=co; tri(c,x+a*s-z,y+s*.82,x+a*s,y+s*.82-z*.95,x+a*s+z,y+s*.82); c.fillStyle='rgba(0,0,0,.14)'; tri(c,x+a*s,y+s*.82-z*.95,x+a*s+z,y+s*.82,x+a*s+z*.2,y+s*.82); }; py(.68,s*.2,'#d8a860'); py(.36,s*.32,'#e8bc70'); py(.12,s*.13,'#d09c58'); c.fillStyle='#e0b060'; c.beginPath(); c.moveTo(x,y+s*.82); c.quadraticCurveTo(cx,y+s*.74,x+s,y+s*.84); c.lineTo(x+s,y+s); c.lineTo(x,y+s); c.fill(); const q=x+s*.72,w=y+s*.84; c.fillStyle='#a8743a'; c.beginPath(); c.ellipse(q,w,18,9,0,0,7); c.fill(); circ(c,q,w-9,7); c.fillRect(q-14,w,4,14); c.fillRect(q+10,w,4,14); c.strokeStyle='#a8743a'; c.lineWidth=5; c.beginPath(); c.moveTo(q+15,w-2); c.lineTo(q+24,w-14); c.stroke(); circ(c,q+26,w-17,5); }}};
 function centerArt(c,mi,x,y,s,t){ const cx=x+s/2,cy=y+s/2; c.save(); rr(c,x,y,s,s,14); c.clip();
   if(mi===0){ const g=c.createLinearGradient(x,y,x,y+s); g.addColorStop(0,'#bfeaff'); g.addColorStop(1,'#5ec8ff'); c.fillStyle=g; c.fillRect(x,y,s,s);
     c.strokeStyle='rgba(255,255,255,.5)'; c.lineWidth=2; for(let k=0;k<6;k++){ c.beginPath(); for(let q=0;q<=s;q+=10) c.lineTo(x+q,y+s*.15+k*s*.15+Math.sin(q/18+k)*3); c.stroke(); }
@@ -305,6 +337,7 @@ function centerArt(c,mi,x,y,s,t){ const cx=x+s/2,cy=y+s/2; c.save(); rr(c,x,y,s,
     c.strokeStyle='rgba(255,255,255,.4)'; c.lineWidth=1.5; c.beginPath(); c.ellipse(cx,cy,R,R*.35,0,0,7); c.stroke(); c.beginPath(); c.ellipse(cx,cy,R*.35,R,0,0,7); c.stroke();
     const a=t*.6,px=cx+Math.cos(a)*R*1.25,py=cy+Math.sin(a)*R*.5; c.fillStyle='#fff'; c.save(); c.translate(px,py); c.rotate(a+Math.PI/2); c.beginPath(); c.ellipse(0,0,10,3,0,0,7); c.fill(); c.fillRect(-2,-10,4,20); c.restore();
     c.fillStyle='#ffd23f'; c.beginPath(); c.moveTo(x+s*.12,y+s*.86); c.lineTo(x+s*.18,y+s*.6); c.lineTo(x+s*.24,y+s*.86); c.fill(); c.fillStyle='#e8c070'; c.beginPath(); c.moveTo(x+s*.75,y+s*.88); c.lineTo(x+s*.85,y+s*.7); c.lineTo(x+s*.95,y+s*.88); c.fill(); }
+  else if(ARTS[MAPS[mi].center]){ const A=ARTS[MAPS[mi].center],g=c.createLinearGradient(x,y,x,y+s); g.addColorStop(0,A.sky[0]); g.addColorStop(1,A.sky[1]); c.fillStyle=g; c.fillRect(x,y,s,s); A.f(c,x,y,s,cx,cy,t); }
   else { const g=c.createLinearGradient(x,y,x,y+s); g.addColorStop(0,'#ffd6ec'); g.addColorStop(1,'#ffeef8'); c.fillStyle=g; c.fillRect(x,y,s,s);
     const cols=['#ff5d5d','#ffb000','#ffe14d','#5fd068','#4fb8ff','#b77bff']; cols.forEach((col,k)=>{ c.strokeStyle=col; c.lineWidth=7; c.beginPath(); c.arc(cx,y+s*.78,s*.42-k*7,Math.PI,0); c.stroke(); });
     c.fillStyle='#fff0f6'; rr(c,cx-40,cy-10,80,60,6); c.fill(); for(const k of [-1,1]){ c.fillStyle='#ffe0ee'; c.fillRect(cx+k*40-12,cy-30,24,80); c.fillStyle='#ff7eb6'; c.beginPath(); c.moveTo(cx+k*40-16,cy-30); c.lineTo(cx+k*40,cy-56); c.lineTo(cx+k*40+16,cy-30); c.fill(); }
@@ -316,16 +349,16 @@ function centerArt(c,mi,x,y,s,t){ const cx=x+s/2,cy=y+s/2; c.save(); rr(c,x,y,s,
   c.font='900 13px '+TC; c.fillStyle='#14122b'; c.strokeText(MAPS[mi].name,cx,y+50); c.fillText(MAPS[mi].name,cx,y+50); }
 
 function stageShow(ctx,w,h,si,t){ const k=Math.min(w/W,h/H); ctx.fillStyle='#14122b'; ctx.fillRect(0,0,w,h); ctx.save(); ctx.translate((w-BS*k*1.0)/2-BX*k,0); ctx.scale(k*1,k*1); const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,MAPS[si].bg[0]); g.addColorStop(1,MAPS[si].bg[1]); ctx.fillStyle=g; ctx.fillRect(-200,0,W+400,H);
-  drawBoard(ctx,si,t); const RH=window.__RHY; if(RH){ for(let p=0;p<4;p++){ const i=(Math.floor(t*2)+p*5)%32,[x,y]=center(i); RH.drawChibi(ctx,x,y+12,1.05,{t,body:PCOL[p],pants:'#2b2b44',shoe:'#fff',hairStyle:CHARS[p].hair,acc:CHARS[p].acc,capCol:PCOL[p],bob:Math.abs(Math.sin(t*4+p))*2}); } } ctx.restore(); }
-function thumb(ctx,w,h,t){ stageShow(ctx,w,h,Math.floor(t/4)%3,t); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.12)+'px '+TC; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; ctx.strokeText('環島地產王',w/2,h*.88); ctx.fillStyle='#ffd23f'; ctx.fillText('環島地產王',w/2,h*.88); }
+  drawBoard(ctx,si,t); const RH=window.__RHY; if(RH){ for(let p=0;p<4;p++){ const i=(Math.floor(t*2)+p*7)%NT,[x,y]=center(i); RH.drawChibi(ctx,x,y+12,1.05,{t,body:PCOL[p],pants:'#2b2b44',shoe:'#fff',hairStyle:CHARS[p].hair,acc:CHARS[p].acc,capCol:PCOL[p],bob:Math.abs(Math.sin(t*4+p))*2}); } } ctx.restore(); }
+function thumb(ctx,w,h,t){ stageShow(ctx,w,h,Math.floor(t/4)%MAPS.length,t); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.12)+'px '+TC; ctx.lineWidth=7; ctx.strokeStyle='#14122b'; ctx.strokeText('環島地產王',w/2,h*.88); ctx.fillStyle='#ffd23f'; ctx.fillText('環島地產王',w/2,h*.88); }
 function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#7ed0ff'); g.addColorStop(1,'#c8f0ff'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
   const RH=window.__RHY; if(RH) RH.drawChibi(ctx,w/2,h*.9,h/60,{t,body:L.color||PCOL[0],pants:'#2b2b44',shoe:'#fff',hairStyle:L.hair||'boy',acc:L.acc||'cap',capCol:L.color||PCOL[0],bob:Math.abs(Math.sin(t*3))*2,armL:.3+Math.sin(t*4)*.4,armR:.3}); }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).rich={
   name:'環島地產王',tag:'PROPERTY KING',color:'#e23b3b',online:true,maxPlayers:4,bots:true,minPlayers:2,
-  desc:'擲骰子繞著寶島、世界或甜點樂園跑，買地蓋房子收過路費！和電腦玩、同一台輪流玩，或開房間 2～4 人連線。',
+  desc:'擲骰子繞著 40 格棋盤跑，十張地圖從寶島、海底到外太空，買地蓋房子收過路費！和電腦玩、同一台輪流玩，或開房間 2～4 人連線。',
   goal:'擲骰子前進，買地、蓋房子，別人停到你的地要付過路費。打完回合數時總資產最多的人贏（或其他人都破產）。',
-  stageGoal:si=>'地圖「'+MAPS[si].name+'」：停到空地可以買，機會、命運可能抽到購地卡（停到別人的地時付原價強制買下）和換地卡（停在自己的地上時跟別人的地互換），再停到自己的地可以加蓋（最多三層大樓），同色兩塊都買下過路費加倍。經過起點拿 $2,000；機會、命運卡有好有壞；停到救護車會被送去'+MAPS[si].corner[1]+'休息一回合；罰款會放進'+MAPS[si].corner[2]+'，誰停到就全部拿走。錢不夠會自動賣房賣地，還是不夠就破產。',
+  stageGoal:si=>'地圖「'+MAPS[si].name+'」：停到空地可以買，機會、命運可能抽到購地卡（停到別人的地時付原價強制買下）和換地卡（停在自己的地上時跟別人的地互換），再停到自己的地可以加蓋（最多三層大樓），同色三塊都買下過路費加倍。經過起點拿 $2,000；機會、命運卡有好有壞；停到救護車會被送去'+MAPS[si].corner[1]+'休息一回合；罰款會放進'+MAPS[si].corner[2]+'，誰停到就全部拿走。錢不夠會自動賣房賣地，還是不夠就破產。',
   stages:MAPS.map(m=>m.name),stageLabel:'選擇地圖',
   modes:[{id:'1p',label:'和電腦玩'},{id:'local',label:'同一台輪流玩'}],
   options:[{key:'seats',label:'人數',def:'4',opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}]},

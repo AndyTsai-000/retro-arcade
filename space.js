@@ -1,4 +1,4 @@
-// 太空艦隊：縱向捲軸射擊。自動開火，只要移動和放炸彈；50 個星域，每關最後打王。單人、同機雙人合作、連線 2～4 人合作（房主運算）。
+// 太空艦隊：縱向捲軸射擊。自動開火，只要移動和放炸彈；50 個星域，每關最後打王。單人闖關，過一關開下一關。
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PIX='"Press Start 2P","Noto Sans TC",monospace';
@@ -229,13 +229,13 @@ function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); drawBg(ctx,si,
 function thumb(ctx,w,h,t){ stageShow(ctx,w,h,16,t); }
 function preview(ctx,w,h,L,t){ L=L||{}; ctx.save(); ctx.scale(w/W,h/H); drawBg(ctx,0,t); put(ctx,shipSpr(L.color||'#3ddbd9',L.ship||'0'),W/2,H/2,0,3); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).space={
-  name:'太空艦隊',tag:'STAR FLEET',color:'#6fb4ff',online:true,maxPlayers:4,
-  desc:'縱向捲軸射擊：戰機會自動開火，你只要閃子彈、撿武器，每個星域的最後打巨大的王。可以雙人或連線一起打。',
+  name:'太空艦隊',tag:'STAR FLEET',color:'#6fb4ff',
+  desc:'縱向捲軸射擊：戰機會自動開火，你只要閃子彈、撿武器，每個星域的最後打巨大的王。共 50 關，過一關開下一關。',
   goal:'躲開子彈撐到王出現，打倒王就過關。撿「武」升級武器、「盾」擋一次、「爆」多一顆炸彈。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),stageShow,stageGoal:si=>STAGES[si].name+'：撐過敵機，打倒最後的王。白點是你的中彈位置，只有那裡被打到才算。',
   stageBest:i=>{ try{ const v=localStorage.getItem('arcade.space.w.'+STAGES[i].rec); return v?'最高 '+v:''; }catch(e){ return ''; } },
-  modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  help:[['↑ ↓ ← →','移動（自動開火，也可以用滑鼠拖）'],['J 或 空白鍵','放炸彈：清光子彈'],['雙人','2P：WASD 移動、F 炸彈']],
+  stageLocked:i=>{ if(i===0) return false; for(let k=i-1;k<STAGES.length;k++){ try{ if(localStorage.getItem('arcade.space.w.'+STAGES[k].rec)) return false; }catch(e){ return false; } } return true; }, // 過了前一關才解鎖；打過後面關卡的舊紀錄照算
+  help:[['↑ ↓ ← →','移動（自動開火，也可以用滑鼠拖）'],['J 或 空白鍵','放炸彈：清光子彈']],
   touchHelp:[['手指拖曳','移動戰機（自動開火）'],['炸彈','清光畫面上的子彈']],
   touch:{left:'dpad',right:[{l:'炸彈',c:'KeyJ',act:true}]},
   best:{label:'最高分',fmt:v=>v+' 分',lower:false},
