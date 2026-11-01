@@ -6,11 +6,11 @@ const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,TAU=Math.PI*2,pick=a=>a[Math.floor(Math.random()*a.length)];
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 const ROLE={wolf:{n:'狼人',c:'#ff4d6d',d:'晚上一起選一個人殺掉。把好人殺到比狼人少就贏。'},seer:{n:'預言家',c:'#b98cff',d:'每晚查驗一個人是好人還是狼人。'},witch:{n:'女巫',c:'#5fd068',d:'一瓶解藥救人、一瓶毒藥毒人，各用一次。'},hunter:{n:'獵人',c:'#ffb02a',d:'死掉時可以開槍帶走一個人（被毒死不能開槍）。'},vill:{n:'平民',c:'#7ab8ff',d:'沒有技能，靠推理在白天投出狼人。'},guard:{n:'守衛',c:'#3ddbd9',d:'每晚守一人擋狼刀，可守自己，不能連守同一人；和解藥救同一人會奶穿死亡，擋不了毒。'},knight:{n:'騎士',c:'#e8c050',d:'白天發言時可翻牌決鬥一人（限一次）：對方是狼就出局並立刻天黑；對方是好人你就出局。'},wking:{n:'狼王',c:'#ff2a4a',d:'狼人陣營。被刀、被放逐或被獵槍帶走時可開槍帶一人；被毒死或是最後一隻狼時不能開槍。'}};
-const READ={6:.3,7:.05,8:.02,9:.18,10:.1,12:.2};
-const WN={6:2,7:2,8:2,9:3,10:3,12:4},GOD={6:['seer','witch'],7:['seer','witch','hunter'],8:['seer','witch','hunter'],9:['seer','witch','hunter'],10:['seer','witch','hunter'],12:['seer','witch','hunter','guard']},GODS=['seer','witch','hunter','guard','knight'],fixN=n=>[6,7,8,9,10,12].includes(n)?n:n<6?6:n===11?12:n>12?12:n;
+const READ={6:.3,7:.05,8:.02,9:.18,10:.1,12:.27};
+const WN={6:2,7:2,8:2,9:3,10:3,12:4},GOD={6:['seer','witch'],7:['seer','witch','hunter'],8:['seer','witch','hunter'],9:['seer','witch','hunter'],10:['seer','witch','hunter'],12:['seer','witch','hunter','knight']},GODS=['seer','witch','hunter','guard','knight'],fixN=n=>[6,7,8,9,10,12].includes(n)?n:n<6?6:n===11?12:n>12?12:n;
 /* 神職設定存成「人數:神職,神職」；人數不同就用該人數的預設 */
 const pickedGods=(v,n)=>{ const m=String(v||'').split(':'); return +m[0]===n?(m[1]?m[1].split(',').slice(0,GOD[n].length):[]):GOD[n].slice(); };
-const godsOf=(v,n)=>{ const a=pickedGods(v,n); for(const k of GODS) if(a.length<GOD[n].length&&!a.includes(k)) a.push(k); return a; }; /* 神職人數固定，沒選滿就自動補 */
+const godsOf=(v,n)=>{ const a=pickedGods(v,n); for(const k of GOD[n].concat(GODS)) if(a.length<GOD[n].length&&!a.includes(k)) a.push(k); return a; }; /* 神職人數固定，沒選滿就自動補 */
 const setOf=(n,v)=>{ const w=WN[n],a=[]; for(let i=0;i<w;i++) a.push(n===12&&i===w-1?'wking':'wolf'); a.push(...godsOf(v,n)); while(a.length<n) a.push('vill'); return a; };
 const BOTN=['阿明','小美','老王','阿珠','大頭','小林','阿翔','小芳','阿財','阿嬌','小虎','阿桃'];
 const SK=['#ffdcb8','#f2c39a','#e0ac80','#c68a5e'],HR=['#2a1a10','#6a3a1a','#111','#c8903a','#7a2a1a','#3a2a4a'],CL=['#ff5d4f','#3d8bff','#5fd068','#ffd23f','#b98cff','#ff9d3d','#3ddbd9','#ff7eb6','#8a9ab8','#e8e8e8','#a85a2a','#2f6f4a'];
