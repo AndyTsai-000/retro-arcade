@@ -245,7 +245,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=195; // 每次改版加一
+window.ARCADE_V=196; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -591,7 +591,9 @@ function bindChips(after){
 let optSel={};
 function loadOpts(g){ optSel={}; for(const o of g.options||[]){ const v=load('arcade.opt.'+g.id+'.'+o.key),ids=o.opts.map(x=>x.id); optSel[o.key]=ids.includes(v)?v:(o.def!=null?o.def:ids[0]); } }
 // 設定可以宣告 only:[關卡編號]，只在選到那幾關時出現（例如牌桌派對的德州撲克設定）
-const visOpts=g=>(g.options||[]).filter(o=>!o.only||o.only.includes(stageSel));
+const visOpts=g=>(g.options||[]).filter(o=>(!o.only||o.only.includes(stageSel))&&!(o.solo&&Net.sid));
+const noteOf=g=>g.optNote?g.optNote(optSel,Net.sid?Net.count+(Net.bots||0):0):''; /* 依目前設定變動的說明（狼人殺的角色） */
+const goalOf=(g,si)=>(g.stageGoal?g.stageGoal(si):g.goal)+(g.optNote?'<br><b>'+noteOf(g)+'</b>':'');
 function optsHtml(g,ro){
   return visOpts(g).map(o=>ro?'<p>'+o.label+'：'+((o.opts.find(x=>x.id===optSel[o.key])||{}).label||'')+'</p>'
     :'<div class="chips"><span class="olbl">'+o.label+'</span>'+o.opts.map(x=>'<button class="chip'+(x.id===optSel[o.key]?' sel':'')+'" data-ok="'+o.key+'" data-ov="'+x.id+'">'+x.label+'</button>').join('')+'</div>').join('');
@@ -745,9 +747,9 @@ function startCard(){
   showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas>'+stInfo()+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+
-    '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+(g.stageGoal?g.stageGoal(stageSel):g.goal)+'</p><div class="lkhead">操作說明</div><div id="sgHelp">'+helpHtml(g)+'</div></div></div>');
+    '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+goalOf(g,stageSel)+'</p><div class="lkhead">操作說明</div><div id="sgHelp">'+helpHtml(g)+'</div></div></div>');
   closeLook(); demo(g); leftTrack(g);
-  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); const gl=$('#sgGoal'); if(gl&&g.stageGoal) gl.textContent=g.stageGoal(stageSel); const hb=$('#sgHelp'); if(hb&&g.stageHelp) hb.innerHTML=helpHtml(g); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
+  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); const gl=$('#sgGoal'); if(gl&&g.stageGoal) gl.textContent=g.stageGoal(stageSel); const hb=$('#sgHelp'); if(hb&&g.stageHelp) hb.innerHTML=helpHtml(g); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ bindOpts(g,()=>{ const gl=$('#sgGoal'); if(gl&&g.optNote) gl.innerHTML=goalOf(g,stageSel); }); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
   const sel=card.querySelector('.lklist .sg.sel,.lklist .chip.sel[data-s]'); if(sel) sel.scrollIntoView({block:'nearest'});
 }
@@ -893,7 +895,7 @@ function showHelp(){
   const g=cur; if(!g) return; SFX.click();
   if(state==='running'&&!Net.peer){ state='paused'; helpPaused=true; if(inst&&inst.pause) inst.pause(true); }
   const si=inst&&lastOpts&&lastOpts.stage!=null?lastOpts.stage:stageSel,H=helpOf(g,si); /* 遊戲中就顯示正在玩的那一種 */
-  mcard.innerHTML='<h3>'+(g.stageHelp&&g.stages?g.stages[si]:g.name)+'　遊戲操作</h3><p>'+(g.stageGoal?g.stageGoal(si):g.goal)+'</p>'+helpHtml(g,si)+
+  mcard.innerHTML='<h3>'+(g.stageHelp&&g.stages?g.stages[si]:g.name)+'　遊戲操作</h3><p>'+goalOf(g,si)+'</p>'+helpHtml(g,si)+
     (isTouch&&H.touchHelp&&H.help&&H.touchHelp!==H.help?'<details><summary>接鍵盤時的按鍵</summary>'+helpHtml({help:H.help})+'</details>':'')+
     '<div class="row"><button class="btn main" id="hOk">'+(helpPaused?'繼續遊戲':'知道了')+'</button></div>';
   modal.hidden=false; $('#hOk').addEventListener('click',closeHelp); $('#hOk').focus();
@@ -1133,7 +1135,7 @@ function roomCard(){
     '<ol class="who">'+Net.names.map((n,i)=>'<li'+(i===Net.me?' class="me"':'')+'>'+n+(i===0?'（房主）':'')+'</li>').join('')+'</ol>'+
     (g.stagePreview?stageHtml(!!g.stageViewer&&g.ready()):'')+
     (Net.host?'<p>把房號告訴朋友。朋友要打開同一個網址、選同一款遊戲再輸入房號。</p>':(Net.hostConn&&Net.hostConn.relay?'<p>目前透過轉送連線，反應會比直接連線慢一點。</p>':''))+
-    botsHtml(g)+(Net.host?chipsHtml(g.netVariants===false?{stages:g.stages,stars:g.stars,stageBest:g.stageBest}:g)+optsHtml(g)+'<p class="warn" id="nWarn"></p><div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
+    botsHtml(g)+(g.optNote?'<p><b>'+noteOf(g)+'</b></p>':'')+(Net.host?chipsHtml(g.netVariants===false?{stages:g.stages,stars:g.stars,stageBest:g.stageBest}:g)+optsHtml(g)+'<p class="warn" id="nWarn"></p><div class="row"><button class="btn main" id="nStart">開始遊戲</button></div>'
       :(g.stages?'<p>關卡：第 '+(stageSel+1)+' 關　'+g.stages[stageSel]+(variantName(g)?'　'+variantName(g):'')+'</p>':(variantName(g)?'<p>賽制：'+variantName(g)+'</p>':''))+optsHtml(g,true)+'<p>等房主按開始…</p>')+
     '<div class="row"><button class="btn" id="nLeave">離開房間</button></div>');
   bindChips(()=>roster()); bindOpts(g,()=>{ if(Net.host) roster(); });

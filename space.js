@@ -1,46 +1,112 @@
-// 太空艦隊：縱向捲軸射擊。自動開火，只要移動和放炸彈；10 個星域，每關最後打王。單人、同機雙人合作、連線 2～4 人合作（房主運算）。
+// 太空艦隊：縱向捲軸射擊。自動開火，只要移動和放炸彈；50 個星域，每關最後打王。單人、同機雙人合作、連線 2～4 人合作（房主運算）。
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PIX='"Press Start 2P","Noto Sans TC",monospace';
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,k)=>a+(b-a)*k,TAU=Math.PI*2;
 function mul(seed){ let a=seed>>>0||1; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+// 50 關：難度照關卡平滑上升；原本的十關保留原紀錄（rec）
+const OLD10=[0,5,11,16,22,27,33,38,44,49];
 const STAGES=[
-  {name:'初航星帶',stars:1,k:.5,sky:['#050a24','#10245a'],neb:'#3d6bff',pl:'#6fb4ff',boss:'#4f9dff',len:42},
-  {name:'翡翠星雲',stars:1,k:.58,sky:['#03140f','#0c3a30'],neb:'#2fd08a',pl:'#7fe8b8',boss:'#3ddb9a',len:46},
-  {name:'熔岩小行星',stars:2,k:.66,sky:['#1a0605','#44140c'],neb:'#ff6a2a',pl:'#ff9a5a',boss:'#ff7a3d',len:50},
-  {name:'紫晶裂谷',stars:2,k:.74,sky:['#10062a','#2e1260'],neb:'#a85aff',pl:'#c89aff',boss:'#b06aff',len:52},
-  {name:'冰環行星',stars:3,k:.82,sky:['#04121f','#123a54'],neb:'#6fe0ff',pl:'#c8f4ff',boss:'#5fd4f0',len:55},
-  {name:'機械要塞',stars:3,k:.9,sky:['#0c0e14','#262c3c'],neb:'#8a9ab8',pl:'#a8b4c8',boss:'#d8a040',len:58},
-  {name:'黃金太陽',stars:4,k:.98,sky:['#1c0f02','#4e2c06'],neb:'#ffc23f',pl:'#ffe08a',boss:'#ffb02a',len:60},
-  {name:'血月戰線',stars:4,k:1.06,sky:['#180208','#44081c'],neb:'#ff3b6b',pl:'#ff8aa8',boss:'#ff3b6b',len:62},
-  {name:'黑洞邊緣',stars:5,k:1.14,sky:['#020208','#141030'],neb:'#6a5aff',pl:'#2a2050',boss:'#8a7aff',len:64},
-  {name:'銀河終戰',stars:5,k:1.22,sky:['#080218','#2a0a4a'],neb:'#ff5ad4',pl:'#ffb0ec',boss:'#ff5ad4',len:68}];
+  ['初航星帶','#050a24','#10245a','#3d6bff','#6fb4ff','#4f9dff'],
+  ['晨曦航道','#0a0a2a','#2a2a6a','#ff8ab0','#ffc0a0','#ff8a7a'],
+  ['碎冰帶','#04101f','#14385a','#7ac8ff','#d0f0ff','#5fb4e8'],
+  ['藍環外圍','#030c28','#0c2c6c','#3d9bff','#8ad0ff','#3d8bff'],
+  ['流星雨區','#070718','#1c1c48','#8a8aff','#d8d8ff','#ffb02a'],
+  ['翡翠星雲','#03140f','#0c3a30','#2fd08a','#7fe8b8','#3ddb9a'],
+  ['螢光孢子海','#02120f','#084038','#3dffc8','#a0ffe0','#3ddbd9'],
+  ['綠洲衛星','#04140a','#123c1c','#6fdc4a','#b8f08a','#86dc4f'],
+  ['藤蔓殘骸','#0a1206','#28381a','#9aba3a','#d0dc7a','#a8c83a'],
+  ['翠玉小行星','#021410','#0a3a34','#20c8a0','#70e0c8','#2fd0b0'],
+  ['砂岩峽谷','#160c04','#40240e','#d88a3a','#f0c080','#e0964a'],
+  ['熔岩小行星','#1a0605','#44140c','#ff6a2a','#ff9a5a','#ff7a3d'],
+  ['火山衛星','#1c0403','#4c1006','#ff4a1a','#ff8a4a','#ff5a2a'],
+  ['灰燼航線','#100c0c','#34282a','#c86a4a','#c8a090','#d8704a'],
+  ['赤銅礦帶','#140805','#3c1c10','#d8703a','#e8a880','#d88040'],
+  ['星火走廊','#160a14','#401c34','#ff7a5a','#ffb8a0','#ff6a7a'],
+  ['紫晶裂谷','#10062a','#2e1260','#a85aff','#c89aff','#b06aff'],
+  ['迷幻星雲','#160428','#44105c','#e05aff','#f0a8ff','#d85aff'],
+  ['水晶迷宮','#0a0a2c','#26246c','#8a7aff','#c8c0ff','#9a8aff'],
+  ['靛藍風暴','#04062a','#101a6c','#4a5aff','#a0b0ff','#5a6aff'],
+  ['深海行星','#010e1c','#04304c','#1a9ac8','#70d0e8','#20b0d8'],
+  ['極光帶','#02101c','#0a3048','#3dffb0','#a8ffe0','#3de0c8'],
+  ['冰環行星','#04121f','#123a54','#6fe0ff','#c8f4ff','#5fd4f0'],
+  ['霜雪彗星','#061220','#1c3c58','#a8e0ff','#e8f8ff','#8ad0f0'],
+  ['寒晶要塞','#060c1c','#1c2c4c','#7aa8e8','#c0d8f4','#7ab0f0'],
+  ['鋼鐵船塢','#0a0c10','#242a34','#7a8a9a','#b0bcc8','#c0a060'],
+  ['廢棄太空站','#0c0c0e','#2c2a2c','#8a8078','#b8b0a8','#b89060'],
+  ['機械要塞','#0c0e14','#262c3c','#8a9ab8','#a8b4c8','#d8a040'],
+  ['齒輪星帶','#0e0c0a','#30281c','#b89050','#d0c0a0','#d09840'],
+  ['電磁風暴','#060a18','#142048','#5ac8ff','#b0e8ff','#40d0ff'],
+  ['沙海星球','#181004','#46300c','#e8b040','#f4d890','#e8a830'],
+  ['琥珀星雲','#1a0e02','#4a2a06','#ffa02a','#ffd080','#ffa830'],
+  ['日冕航線','#1e0c02','#54260a','#ff9a2a','#ffc870','#ff9030'],
+  ['黃金太陽','#1c0f02','#4e2c06','#ffc23f','#ffe08a','#ffb02a'],
+  ['烈陽熔爐','#200802','#581c04','#ff8a1a','#ffc060','#ff7a1a'],
+  ['暗紅矮星','#180404','#440e0e','#e84a3a','#ff9a8a','#e8503a'],
+  ['戰火航道','#180606','#42140e','#ff5a3a','#ffa080','#ff5a30'],
+  ['猩紅艦隊','#1a0208','#4a0a1a','#ff2a5a','#ff8aa0','#ff3a5a'],
+  ['血月戰線','#180208','#44081c','#ff3b6b','#ff8aa8','#ff3b6b'],
+  ['赤霧星域','#16020c','#401026','#e83a7a','#ff90b8','#f0407a'],
+  ['幽影星雲','#06041a','#1a1440','#6a4ac8','#a890e0','#7a5ae0'],
+  ['重力陷阱','#040414','#14123a','#5a5ae8','#9090e8','#6a6af0'],
+  ['虛空裂縫','#04020e','#180c30','#8a3ae8','#b890f0','#9a4af0'],
+  ['事象之界','#020208','#100c28','#5a4ae8','#8880d0','#7a6af8'],
+  ['黑洞邊緣','#020208','#141030','#6a5aff','#2a2050','#8a7aff'],
+  ['星骸墳場','#080810','#20202c','#7a7a9a','#a8a8c0','#a08ab8'],
+  ['時空亂流','#08021c','#240a50','#c04aff','#e0a0ff','#d050ff'],
+  ['超新星遺跡','#10021a','#380a40','#ff6ac0','#ffb8e0','#ff70c8'],
+  ['皇家艦隊','#0a0218','#28104a','#e0b040','#f0d890','#ffc840'],
+  ['銀河終戰','#080218','#2a0a4a','#ff5ad4','#ffb0ec','#ff5ad4']
+].map((a,i)=>({name:a[0],sky:[a[1],a[2]],neb:a[3],pl:a[4],boss:a[5],stars:Math.ceil((i+1)/10),k:.5+.88*i/49,len:Math.round(42+i*.6),rec:OLD10.includes(i)?OLD10.indexOf(i):10+i}));
 const COL=['#3ddbd9','#ffd23f','#ff7eb6','#86dc4f'];
 /* ---------- 精靈圖快取（有光暈的東西先畫好，畫面才順） ---------- */
 const CACHE={};
-function spr(key,w,h,f){ let e=CACHE[key]; if(!e){ e=document.createElement('canvas'); e.width=w*2; e.height=h*2; const c=e.getContext('2d'); c.scale(2,2); c.translate(w/2,h/2); f(c); e.hw=w/2; e.hh=h/2; CACHE[key]=e; } return e; }
+function spr(key,w,h,f,res){ let e=CACHE[key]; if(!e){ res=res||2; e=document.createElement('canvas'); e.width=w*res; e.height=h*res; const c=e.getContext('2d'); c.scale(res,res); c.translate(w/2,h/2); f(c); e.hw=w/2; e.hh=h/2; CACHE[key]=e; } return e; }
 const put=(c,s,x,y,a,k)=>{ if(a||k){ c.save(); c.translate(x,y); if(a) c.rotate(a); if(k) c.scale(k,k); c.drawImage(s,-s.hw,-s.hh,s.hw*2,s.hh*2); c.restore(); } else c.drawImage(s,x-s.hw,y-s.hh,s.hw*2,s.hh*2); };
 const shade=(h,f)=>{ const n=parseInt(h.slice(1),16),q=v=>clamp(Math.round(v*f),0,255); return 'rgb('+q(n>>16)+','+q(n>>8&255)+','+q(n&255)+')'; };
 function metal(c,x0,x1,col){ const g=c.createLinearGradient(x0,0,x1,0); g.addColorStop(0,shade(col,.45)); g.addColorStop(.45,shade(col,1.2)); g.addColorStop(.6,col); g.addColorStop(1,shade(col,.4)); return g; }
 const poly=(c,p)=>{ c.beginPath(); p.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1])); c.closePath(); };
-function shipSpr(col,kind){ return spr('p'+col+kind,70,76,c=>{ const mir=(f)=>{ f(1); c.save(); c.scale(-1,1); f(1); c.restore(); };
-    if(kind==='1'){ mir(()=>{ poly(c,[[3,-6],[32,18],[32,24],[12,18],[8,28],[3,26]]); c.fillStyle=metal(c,0,32,col); c.fill(); }); }
-    else if(kind==='2'){ mir(()=>{ poly(c,[[4,-18],[12,-2],[28,-12],[24,14],[10,24],[3,26]]); c.fillStyle=metal(c,0,28,col); c.fill(); }); }
-    else mir(()=>{ poly(c,[[3,-14],[20,4],[34,8],[30,16],[14,18],[10,28],[3,26]]); c.fillStyle=metal(c,0,34,col); c.fill(); c.fillStyle='#d8dee8'; c.fillRect(30,-2,3,12); });
-    const b=c.createLinearGradient(-8,0,8,0); b.addColorStop(0,'#7a8498'); b.addColorStop(.5,'#f4f6fa'); b.addColorStop(1,'#6a7488'); c.fillStyle=b; c.beginPath(); c.moveTo(0,-34); c.quadraticCurveTo(9,-14,8,18); c.lineTo(5,28); c.lineTo(-5,28); c.lineTo(-8,18); c.quadraticCurveTo(-9,-14,0,-34); c.fill();
-    const w=c.createLinearGradient(0,-20,0,-2); w.addColorStop(0,'#bff4ff'); w.addColorStop(1,'#1a5a9a'); c.fillStyle=w; c.beginPath(); c.ellipse(0,-11,4.2,10,0,0,TAU); c.fill(); c.fillStyle=col; c.fillRect(-1.6,6,3.2,14); }); }
-function foeSpr(t,col){ return spr('f'+t+col,t==='tank'?90:60,t==='tank'?80:60,c=>{ const mir=f=>{ f(); c.save(); c.scale(-1,1); f(); c.restore(); };
-    if(t==='scout'){ mir(()=>{ poly(c,[[0,16],[18,-12],[8,-14],[3,-2]]); c.fillStyle=metal(c,0,18,col); c.fill(); }); c.fillStyle='#262c3c'; c.beginPath(); c.ellipse(0,0,6,12,0,0,TAU); c.fill(); c.fillStyle='#ff5d5d'; c.beginPath(); c.arc(0,4,3,0,TAU); c.fill(); }
-    else if(t==='weave'){ mir(()=>{ c.fillStyle=metal(c,0,24,col); c.beginPath(); c.moveTo(0,-10); c.quadraticCurveTo(26,-16,22,6); c.quadraticCurveTo(10,2,0,14); c.fill(); }); c.fillStyle='#14182a'; c.beginPath(); c.arc(0,0,7,0,TAU); c.fill(); c.fillStyle='#ffd23f'; c.beginPath(); c.arc(0,1,3.4,0,TAU); c.fill(); }
+/* 機型：俯視的飛機外型。fus＝機身寬度表 [y,半寬]；其他部位只寫右半邊，畫的時候左右對稱 */
+const SHIPS=[
+  {fus:[[-36,0],[-28,3.2],[-14,5.6],[4,6],[22,5.4],[30,4]],wing:[[4,-12],[9,0],[30,14],[31,19],[5,17]],flap:[[9,14.5],[24,15.2],[24,18],[9,17.5]],tail:[[4,20],[15,29],[15,32],[4,29]],can:[-17,8,3.4],noz:[[0,31,3.6]],mis:[[31,6,14]]},
+  {fus:[[-37,0],[-26,3.4],[-10,5.6],[14,6],[30,4.4]],wing:[[4,-10],[31,24],[31,27],[4,27]],flap:[[8,23.5],[29,24.5],[29,27],[8,27]],can:[-14,8,3.2],noz:[[0,32,3.8]],mis:[[20,10,12]]},
+  {fus:[[-35,0],[-24,3.6],[-8,6.4],[16,7],[28,5]],wing:[[5,6],[30,-12],[33,-8],[24,10],[6,20]],flap:[[9,14],[22,8],[24,10],[9,18]],canard:[[5,-14],[15,-9],[15,-6],[5,-8]],tail:[[7,20],[17,28],[17,31],[7,28]],eng:[[6,8,30,3.6]],noz:[[6,32,3.2]],can:[-13,8,3.2]},
+  {fus:[[-36,0],[-24,4],[-6,7.6],[18,8.4],[28,7]],wing:[[6,-6],[32,14],[30,19],[7,18]],flap:[[10,15.5],[26,16.5],[26,18.5],[10,18]],tail:[[7,18],[19,30],[15,33],[7,28]],fin:[[7,8],[13,18],[12,23],[7,18]],intake:[[6.4,-8,3,8]],noz:[[4.4,30,2.8]],can:[-15,7.5,3.2]},
+  {fus:[[-36,0],[-26,3.4],[-12,5.2],[0,9],[24,10],[30,9]],wing:[[8,-2],[33,12],[33,18],[10,18]],flap:[[12,15],[24,16],[24,18],[12,18]],tail:[[9,20],[21,29],[21,33],[9,30]],fin:[[6,14],[9,9],[10,22],[6,24]],intake:[[6.4,-6,3.6,10]],eng:[[5.5,5,31,4.2]],noz:[[5.5,33,3.8]],can:[-14,8,3.4],mis:[[23,4,12],[16,2,12]]},
+  {fus:[[-36,0],[-28,3],[-12,5],[10,5.6],[28,5]],wing:[[5,-2],[30,18],[30,23],[5,23]],flap:[[8,20],[28,21],[28,23],[8,23]],canard:[[4.5,-20],[14,-14],[14,-11],[4.5,-14]],noz:[[3.6,30,3]],can:[-20,7,3],mis:[[26,10,10]]},
+  {fus:[[-24,0],[-10,6],[6,6.5],[12,3]],wing:[[0,-26],[34,10],[28,16],[18,8],[10,18],[0,10]],flap:[[19,5],[29,12],[28,16],[18,8]],intake:[[5,-8,4,3]],noz:[[6,14,2.4]],can:[-13,5,3.6]},
+  {fus:[[-37,0],[-30,5],[-18,8.4],[20,9],[30,8.4]],wing:[[8,-8],[15,8],[30,22],[30,27],[8,27]],flap:[[10,24],[28,24.5],[28,27],[10,27]],noz:[[0,31,3],[5.5,30,2.6]],can:[-21,5,4],white:1}];
+function drawShip(c,S,col,foe){ const line='rgba(0,0,0,.5)',both=f=>{ f(); c.save(); c.scale(-1,1); f(); c.restore(); },plate=(p,x0,x1,f0,f1)=>{ const g=c.createLinearGradient(x0,0,x1,0); g.addColorStop(0,shade(col,f0)); g.addColorStop(1,shade(col,f1)); poly(c,p); c.fillStyle=g; c.fill(); c.lineWidth=.6; c.strokeStyle=line; c.stroke(); };
+  both(()=>{ if(S.tail) plate(S.tail,0,22,1,.62);
+    /* 主翼：明暗、前緣亮線、襟翼、蒙皮線 */
+    plate(S.wing,0,34,1.12,.66); c.save(); poly(c,S.wing); c.clip(); c.strokeStyle='rgba(0,0,0,.2)'; c.lineWidth=.45; for(let x=9;x<34;x+=6.5){ c.beginPath(); c.moveTo(x,-30); c.lineTo(x,32); c.stroke(); } c.strokeStyle='rgba(255,255,255,.55)'; c.lineWidth=.9; c.beginPath(); S.wing.slice(0,2).forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1])); c.stroke(); c.restore();
+    if(S.flap){ poly(c,S.flap); c.fillStyle='rgba(0,0,0,.28)'; c.fill(); }
+    if(S.canard) plate(S.canard,0,16,1.1,.7);
+    for(const m of S.mis||[]){ c.fillStyle='#e8ecf2'; c.fillRect(m[0]-.9,m[1],1.8,m[2]); c.fillStyle='#d83a3a'; c.beginPath(); c.moveTo(m[0]-.9,m[1]); c.lineTo(m[0],m[1]-2.4); c.lineTo(m[0]+.9,m[1]); c.fill(); c.fillStyle='#5a6270'; c.fillRect(m[0]-1.8,m[1]+m[2]-2.4,3.6,2.4); }
+    for(const e of S.eng||[]){ const g=c.createLinearGradient(e[0]-e[3],0,e[0]+e[3],0); g.addColorStop(0,shade(col,.5)); g.addColorStop(.5,shade(col,1.05)); g.addColorStop(1,shade(col,.45)); c.fillStyle=g; rr(c,e[0]-e[3],e[1],e[3]*2,e[2]-e[1],2); c.fill(); c.lineWidth=.6; c.strokeStyle=line; c.stroke(); } });
+  /* 機身：圓筒明暗 */
+  const hw=Math.max(...S.fus.map(q=>q[1])),body=S.white?'#eef0f4':col,path=()=>{ c.beginPath(); const f=S.fus; c.moveTo(0,f[0][0]); for(let i=1;i<f.length;i++) c.lineTo(f[i][1],f[i][0]); for(let i=f.length-1;i>0;i--) c.lineTo(-f[i][1],f[i][0]); c.closePath(); };
+  const g=c.createLinearGradient(-hw,0,hw,0); g.addColorStop(0,shade(body,.5)); g.addColorStop(.38,shade(body,1.22)); g.addColorStop(.62,shade(body,1)); g.addColorStop(1,shade(body,.45)); path(); c.fillStyle=g; c.fill(); c.lineWidth=.7; c.strokeStyle=line; c.stroke();
+  const f0=S.fus[0][0],f1=S.fus[S.fus.length-1][0]; c.save(); path(); c.clip(); c.fillStyle=S.white?'#23262e':'rgba(24,28,38,.86)'; c.fillRect(-hw,f0,hw*2,S.white?11:9); c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=.45; for(let y=f0+16;y<f1;y+=8){ c.beginPath(); c.moveTo(-hw,y); c.lineTo(hw,y); c.stroke(); } c.beginPath(); c.moveTo(0,S.can[0]+S.can[1]+2); c.lineTo(0,f1); c.stroke(); c.restore();
+  if(S.white){ c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=.6; c.strokeRect(-4.5,-8,9,26); }
+  both(()=>{ for(const q of S.intake||[]){ c.fillStyle='#10131b'; c.fillRect(q[0]-q[2]/2,q[1],q[2],q[3]); } if(S.fin){ poly(c,S.fin); c.fillStyle=shade(col,.42); c.fill(); c.lineWidth=.5; c.strokeStyle=line; c.stroke(); }
+    for(const n of S.noz){ if(!n[0]) continue; c.fillStyle='#2a2e38'; c.beginPath(); c.ellipse(n[0],n[1],n[2],n[2]*.8,0,0,TAU); c.fill(); c.fillStyle='#0a0c12'; c.beginPath(); c.ellipse(n[0],n[1],n[2]*.62,n[2]*.48,0,0,TAU); c.fill(); } });
+  for(const n of S.noz) if(!n[0]){ c.fillStyle='#2a2e38'; c.beginPath(); c.ellipse(0,n[1],n[2],n[2]*.8,0,0,TAU); c.fill(); c.fillStyle='#0a0c12'; c.beginPath(); c.ellipse(0,n[1],n[2]*.62,n[2]*.48,0,0,TAU); c.fill(); }
+  /* 座艙罩 */
+  const[cy,ch,cw]=S.can,w=c.createLinearGradient(0,cy-ch,0,cy+ch); w.addColorStop(0,foe?'#ffb0a0':'#d8f6ff'); w.addColorStop(.55,foe?'#a82020':'#2a78b8'); w.addColorStop(1,foe?'#400808':'#0c2c50'); c.fillStyle=w; c.beginPath(); c.ellipse(0,cy,cw,ch,0,0,TAU); c.fill(); c.lineWidth=.8; c.strokeStyle='rgba(10,14,24,.85)'; c.stroke(); c.beginPath(); c.moveTo(-cw*.8,cy+ch*.35); c.lineTo(cw*.8,cy+ch*.35); c.stroke(); c.fillStyle='rgba(255,255,255,.65)'; c.beginPath(); c.ellipse(-cw*.3,cy-ch*.35,cw*.22,ch*.3,0,0,TAU); c.fill(); }
+function shipSpr(col,kind){ return spr('p'+col+kind,76,84,c=>drawShip(c,SHIPS[kind]||SHIPS[0],col),4); }
+function foeSpr(t,col){ return spr('f'+t+col,t==='tank'?90:60,t==='tank'?80:60,c=>{ const jet=(k,s)=>{ c.save(); c.rotate(Math.PI); c.scale(s,s); drawShip(c,SHIPS[k],col,true); c.restore(); };
+    if(t==='scout') jet(0,.56);
+    else if(t==='weave') jet(2,.62);
     else if(t==='gun'){ c.fillStyle=metal(c,-20,20,col); c.beginPath(); for(let i=0;i<6;i++){ const a=i/6*TAU+.52; c.lineTo(Math.cos(a)*20,Math.sin(a)*20); } c.closePath(); c.fill(); c.strokeStyle='rgba(0,0,0,.5)'; c.lineWidth=1.5; c.stroke(); c.fillStyle='#262c3c'; c.fillRect(-4,6,8,18); c.fillStyle='#ff5d5d'; c.beginPath(); c.arc(0,0,7,0,TAU); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(-2,-2,2,0,TAU); c.fill(); }
     else if(t==='spin'){ for(let i=0;i<4;i++){ c.save(); c.rotate(i*TAU/4); c.fillStyle=metal(c,-8,8,col); c.beginPath(); c.moveTo(-7,0); c.lineTo(0,-24); c.lineTo(7,0); c.fill(); c.restore(); } c.fillStyle='#14182a'; c.beginPath(); c.arc(0,0,9,0,TAU); c.fill(); c.fillStyle='#3ddbd9'; c.beginPath(); c.arc(0,0,4.5,0,TAU); c.fill(); }
-    else if(t==='dive'){ poly(c,[[0,24],[10,-6],[20,-16],[6,-12],[0,-20],[-6,-12],[-20,-16],[-10,-6]]); c.fillStyle=metal(c,-20,20,col); c.fill(); c.fillStyle='#ffb02a'; c.beginPath(); c.arc(0,4,3.6,0,TAU); c.fill(); }
+    else if(t==='dive') jet(3,.58);
     else if(t==='rock'){ c.fillStyle='#6a6058'; c.beginPath(); for(let i=0;i<9;i++){ const a=i/9*TAU,r=16+((i*37)%7); c.lineTo(Math.cos(a)*r,Math.sin(a)*r); } c.closePath(); c.fill(); c.fillStyle='rgba(255,255,255,.14)'; c.beginPath(); c.arc(-5,-6,6,0,TAU); c.fill(); c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.arc(6,5,5,0,TAU); c.fill(); }
-    else { mir(()=>{ poly(c,[[8,-26],[40,-14],[42,14],[22,28],[8,22]]); c.fillStyle=metal(c,0,42,col); c.fill(); c.fillStyle='#262c3c'; c.fillRect(28,10,6,20); }); c.fillStyle='#262c3c'; c.beginPath(); c.ellipse(0,0,14,28,0,0,TAU); c.fill(); c.fillStyle='#ff5d5d'; c.beginPath(); c.arc(0,4,8,0,TAU); c.fill(); c.fillStyle='#ffe0a0'; c.beginPath(); c.arc(-2,2,3,0,TAU); c.fill(); } }); }
+    else jet(6,1.25); }); }
 function bossSpr(si,col){ return spr('b'+si,260,160,c=>{ const n=2+si%3,mir=f=>{ f(); c.save(); c.scale(-1,1); f(); c.restore(); };
     mir(()=>{ for(let i=0;i<n;i++){ const k=i/n,x=30+k*90,y=-20+k*44; poly(c,[[x-24,y-20],[x+24,y-30+(si%2)*12],[x+18,y+22],[x-4,y+40],[x-28,y+18]]); c.fillStyle=metal(c,x-28,x+24,i%2?shade(col,.7):col); c.fill(); c.strokeStyle='rgba(0,0,0,.45)'; c.lineWidth=1.5; c.stroke(); c.fillStyle='#232838'; c.fillRect(x-5,y+18,10,24+(i%2)*8); c.fillStyle=col; c.fillRect(x-2,y+36,4,8+(i%2)*8); } });
-    const b=c.createLinearGradient(-42,0,42,0); b.addColorStop(0,'#2a3044'); b.addColorStop(.5,'#8a94ac'); b.addColorStop(1,'#232838'); c.fillStyle=b; c.beginPath(); c.moveTo(0,-62); c.lineTo(38,-30); c.lineTo(44,30); c.lineTo(14,62); c.lineTo(-14,62); c.lineTo(-44,30); c.lineTo(-38,-30); c.closePath(); c.fill(); c.strokeStyle='rgba(0,0,0,.5)'; c.lineWidth=2; c.stroke();
+    const b=c.createLinearGradient(-42,0,42,0); b.addColorStop(0,'#2a3044'); b.addColorStop(.5,'#8a94ac'); b.addColorStop(1,'#232838'); c.fillStyle=b; c.beginPath(); const hull=[[[0,-62],[38,-30],[44,30],[14,62],[-14,62],[-44,30],[-38,-30]],[[0,-70],[30,-30],[52,24],[20,60],[-20,60],[-52,24],[-30,-30]],[...Array(14).keys()].map(i=>[Math.cos(i/14*TAU)*54,Math.sin(i/14*TAU)*46]),[[-20,-62],[20,-62],[24,-24],[54,-12],[54,22],[18,62],[-18,62],[-54,22],[-54,-12],[-24,-24]],[[0,-50],[16,-66],[34,-42],[50,-52],[48,26],[14,62],[-14,62],[-48,26],[-50,-52],[-34,-42],[-16,-66]]][si%5]; poly(c,hull); c.fill(); c.strokeStyle='rgba(0,0,0,.5)'; c.lineWidth=2; c.stroke();
     c.fillStyle=shade(col,.8); c.fillRect(-30,-22,60,6); c.fillRect(-34,14,68,5); const g=c.createRadialGradient(0,0,2,0,0,24); g.addColorStop(0,'#fff'); g.addColorStop(.35,col); g.addColorStop(1,'#141826'); c.fillStyle=g; c.beginPath(); c.arc(0,0,22,0,TAU); c.fill(); c.strokeStyle='#fff'; c.globalAlpha=.4; c.stroke(); c.globalAlpha=1; }); }
 const ebSpr=(col,r)=>spr('e'+col+r,r*5,r*5,c=>{ const g=c.createRadialGradient(0,0,0,0,0,r*2.4); g.addColorStop(0,'#fff'); g.addColorStop(.32,'#fff'); g.addColorStop(.42,col); g.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=g; c.beginPath(); c.arc(0,0,r*2.4,0,TAU); c.fill(); });
 const beamSpr=col=>spr('pb'+col,14,34,c=>{ const g=c.createLinearGradient(0,-16,0,16); g.addColorStop(0,'#fff'); g.addColorStop(.5,col); g.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=g; c.beginPath(); c.moveTo(0,-16); c.lineTo(3.4,-8); c.lineTo(2.4,16); c.lineTo(-2.4,16); c.lineTo(-3.4,-8); c.closePath(); c.fill(); });
@@ -53,12 +119,12 @@ function bg(si){ if(bgCache[si]) return bgCache[si]; const S=STAGES[si],e=docume
   for(let i=0;i<220;i++){ c.fillStyle='rgba(255,255,255,'+(.2+R()*.6)+')'; const s=R()<.08?2:1; c.fillRect(R()*800,R()*1000,s,s); }
   bgCache[si]=e; return e; }
 function planet(c,x,y,r,col,ring){ const g=c.createRadialGradient(x-r*.4,y-r*.4,r*.1,x,y,r); g.addColorStop(0,'#fff'); g.addColorStop(.25,col); g.addColorStop(1,'#05060f'); c.fillStyle=g; c.beginPath(); c.arc(x,y,r,0,TAU); c.fill(); if(ring){ c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=r*.09; c.beginPath(); c.ellipse(x,y,r*1.6,r*.34,-.3,0,TAU); c.stroke(); } }
-function drawBg(c,si,t){ const e=bg(si),y=(t*22)%1000; c.drawImage(e,0,y-1000,800,1000); c.drawImage(e,0,y,800,1000); const S=STAGES[si],py=((t*9)%(H+500))-250; planet(c,160+si*60,py,70+si*6,S.pl,si%2===0);
+function drawBg(c,si,t){ const e=bg(si),y=(t*22)%1000; c.drawImage(e,0,y-1000,800,1000); c.drawImage(e,0,y,800,1000); const S=STAGES[si],py=((t*9)%(H+500))-250; planet(c,160+si%10*60,py,70+si%10*6,S.pl,si%2===0);
   c.fillStyle='rgba(255,255,255,.75)'; for(let i=0;i<34;i++){ const v=70+(i%5)*55,yy=((t*v+i*97)%(H+20))-10,x=(i*233)%W; c.fillRect(x,yy,1.3,v/22); } }
 
 /* ---------- 遊戲本體 ---------- */
 function create(env,opts){
-  const net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p',si=clamp(opts.stage||0,0,9),S=STAGES[si],K=S.k,np=net?Math.min(4,net.count):local2?2:1,me=net?net.me:0;
+  const net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p',si=clamp(opts.stage||0,0,STAGES.length-1),S=STAGES[si],K=S.k,np=net?Math.min(4,net.count):local2?2:1,me=net?net.me:0;
   const {ctx:c,canvas}=env.canvas2d(W,H),R=mul((net?net.seed:Date.now())>>>0||7),sfx=n=>{ env.sfx(n); if(net&&net.host) evq.push(n); };
   const looks=[]; for(let i=0;i<np;i++) looks.push(Object.assign({color:COL[i%4],ship:String(i%3)},(net?net.looks&&net.looks[i]:i===0?opts.look:null)||{}));
   const PL=looks.map((L,i)=>({i,x:W/2+(i-(np-1)/2)*80,y:H-70,lv:1,lives:3,bomb:2,inv:2.5,sh:0,score:0,dead:false,col:L.color,ship:L.ship,fire:0,name:net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':(opts.name||'你')}));
@@ -81,7 +147,7 @@ function create(env,opts){
     else if(clock>18&&K>.75&&!E.some(e=>e.t==='tank')) add('tank',200+R()*400,-50,{vy:36,stop:90});
     else { for(let i=0;i<n;i++) add('scout',80+i*(640/(n-1||1)),-30-(i%2)*40,{vy:70+K*60}); }
     spawnT=gap+R()*.8; }
-  function startBoss(){ const hp=Math.round((260+si*150)*(np>1?1+.5*(np-1):1)); boss={x:W/2,y:-90,tx:W/2,hp,hpM:hp,t:0,cd:1.2,ph:0,pat:0,hit:0,dying:0,beam:0,bx:0}; warn=2.6; sfx('trap'); }
+  function startBoss(){ const hp=Math.round((260+si*36)*(np>1?1+.5*(np-1):1)); boss={x:W/2,y:-90,tx:W/2,hp,hpM:hp,t:0,cd:1.2,ph:0,pat:0,hit:0,dying:0,beam:0,bx:0}; warn=2.6; sfx('trap'); }
   function bossAI(dt){ const b=boss; b.t+=dt; if(b.hit>0) b.hit-=dt; if(b.dying>0){ b.dying-=dt; shake=Math.max(shake,5); if(Math.random()<dt*20) blast(b.x+(Math.random()-.5)*210,b.y+(Math.random()-.5)*110,28,'#ff9d3d'); if(Math.random()<dt*8) sfx('bump'); if(b.dying<=0){ blast(b.x,b.y,120,'#fff'); flash=.8; shake=14; sfx('boom'); boss=null; bossDone=true; for(let i=0;i<8;i++) PW.push({k:'c',x:W/2+(i-3.5)*50,y:90,vy:80}); over={win:true,T:2.6}; sfx('win'); } return; }
     if(b.y<105){ b.y+=dt*70; return; } b.x+=(b.tx-b.x)*dt*.9; if(Math.abs(b.tx-b.x)<14||b.t%4<dt) b.tx=170+R()*460;
     const hpK=b.hp/b.hpM,stage=hpK>.66?0:hpK>.33?1:2,diff=K*(1+stage*.28); b.cd-=dt;
@@ -126,7 +192,7 @@ function create(env,opts){
     if(over){ over.T-=dt; if(over.T<=0&&!ended){ ended=true; if(net) net.send({end:snapEnd()}); finish(); } }
   }
   const snapEnd=()=>({win:over.win,sc:PL.map(p=>p.score)});
-  function finish(){ const total=PL.reduce((a,p)=>a+p.score,0),win=over.win; if(win&&!net){ try{ const k='arcade.space.w.'+si,o=+localStorage.getItem(k)||0; if(total>o) localStorage.setItem(k,String(total)); }catch(e){} } env.sfx(win?'win':'lose');
+  function finish(){ const total=PL.reduce((a,p)=>a+p.score,0),win=over.win; if(win&&!net){ try{ const k='arcade.space.w.'+S.rec,o=+localStorage.getItem(k)||0; if(total>o) localStorage.setItem(k,String(total)); }catch(e){} } env.sfx(win?'win':'lose');
     env.end({title:win?S.name+' 突破！':'艦隊全滅',big:total+' 分',html:np>1?'<table class="ls"><tr><th>駕駛員</th><th>分數</th></tr>'+PL.map(p=>'<tr><td>'+p.name+'</td><td>'+p.score+'</td></tr>').join('')+'</table>':'',text:win?'擊敗 '+kills+' 架敵機':'撐到第 '+Math.floor(clock)+' 秒',score:!net?total:null,next:win&&!net&&si<STAGES.length-1}); }
   // 連線：房主算全部，傳快照；客人只送按鍵
   const R0=v=>Math.round(v);
@@ -144,7 +210,7 @@ function create(env,opts){
     if(boss){ const b=boss; if(b.beam>0){ const on=b.beam<.9,w=on?44:3+Math.sin(t*50)*2; const g=c.createLinearGradient(b.bx-w,0,b.bx+w,0); g.addColorStop(0,'rgba(255,60,120,0)'); g.addColorStop(.5,on?'#fff':'#ff5d8f'); g.addColorStop(1,'rgba(255,60,120,0)'); c.fillStyle=g; c.fillRect(b.bx-w,b.y,w*2,H); } if(!b.dying||Math.sin(t*50)>-.4){ put(c,bossSpr(si,S.boss),b.x,b.y+Math.sin(t*2)*4); if(b.hit>0){ c.globalCompositeOperation='lighter'; c.globalAlpha=.55; put(c,bossSpr(si,S.boss),b.x,b.y); c.globalAlpha=1; c.globalCompositeOperation='source-over'; } } }
     for(const e of E){ const s=foeSpr(e.t,FOE[e.t].col); put(c,s,e.x,e.y,e.a||.0001); if(e.hit>0){ c.globalCompositeOperation='lighter'; put(c,s,e.x,e.y,e.a||.0001); c.globalCompositeOperation='source-over'; } }
     for(const b of B){ if(b.k===1) put(c,missSpr(),b.x,b.y,Math.atan2(b.vy,b.vx)+Math.PI/2); else put(c,beamSpr(PL[b.o]?PL[b.o].col:PL[0].col),b.x,b.y+6,Math.atan2(b.vy,b.vx)+Math.PI/2); }
-    for(const p of PL){ if(p.dead) continue; if(p.inv>0&&Math.floor(t*14)%2) continue; const fl=8+Math.sin(t*50)*3; c.fillStyle='#ffb02a'; c.beginPath(); c.moveTo(p.x-4,p.y+26); c.lineTo(p.x+4,p.y+26); c.lineTo(p.x,p.y+26+fl*1.8); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.moveTo(p.x-2,p.y+26); c.lineTo(p.x+2,p.y+26); c.lineTo(p.x,p.y+26+fl); c.fill();
+    for(const p of PL){ if(p.dead) continue; if(p.inv>0&&Math.floor(t*14)%2) continue; const fl=8+Math.sin(t*50)*3; for(const n of (SHIPS[p.ship]||SHIPS[0]).noz) for(const d of n[0]?[-1,1]:[1]){ const fx=p.x+d*n[0],fy=p.y+n[1]+n[2]*.6,fw=n[2]*.9; c.fillStyle='#ffb02a'; c.beginPath(); c.moveTo(fx-fw,fy); c.lineTo(fx+fw,fy); c.lineTo(fx,fy+fl*1.7); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.moveTo(fx-fw*.5,fy); c.lineTo(fx+fw*.5,fy); c.lineTo(fx,fy+fl*.9); c.fill(); }
       c.save(); c.translate(p.x,p.y); c.scale(1-Math.abs(p.tilt||0)*.14,1); put(c,shipSpr(p.col,p.ship),0,0); c.restore(); if(p.sh>0){ c.strokeStyle='rgba(61,219,217,'+(.5+.3*Math.sin(t*6))+')'; c.lineWidth=3; c.beginPath(); c.arc(p.x,p.y,36,0,TAU); c.stroke(); } c.fillStyle='#fff'; c.beginPath(); c.arc(p.x,p.y,3,0,TAU); c.fill(); c.strokeStyle=p.col; c.lineWidth=1.4; c.stroke();
       if(np>1||t<3.2){ const lab=np>1?p.name.slice(0,6):'你'; if(np>1||t<3.2){ c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='bottom'; c.lineWidth=3; c.strokeStyle='#0b0a1c'; c.strokeText(lab,p.x,p.y-38); c.fillStyle=p.col; c.fillText(lab,p.x,p.y-38); } } }
     for(const b of EB) put(c,ebSpr(b.c,b.r),b.x,b.y);
@@ -160,19 +226,19 @@ function create(env,opts){
   return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',dn); removeEventListener('pointermove',mv); removeEventListener('pointerup',up); },_dbg:{PL,get E(){return E;},get boss(){return boss;},get clock(){return clock;},set clock(v){clock=v;},get over(){return over;}}};
 }
 function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); drawBg(ctx,si,t); const S=STAGES[si]; put(ctx,bossSpr(si,S.boss),W/2,120+Math.sin(t*1.2)*8); for(let i=0;i<7;i++){ const a=t*.9+i/7*TAU; put(ctx,ebSpr('#ff5d8f',5),W/2+Math.cos(a)*(90+((t*50)%140)),130+Math.sin(a)*(90+((t*50)%140))); } put(ctx,shipSpr('#3ddbd9','0'),W/2+Math.sin(t)*150,H-90); for(let i=0;i<6;i++) put(ctx,beamSpr('#3ddbd9'),W/2+Math.sin(t)*150,H-120-((t*700+i*60)%340)); ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillStyle='rgba(6,8,24,.7)'; rr(ctx,14,14,290,48,10); ctx.fill(); ctx.fillStyle='#ffd23f'; ctx.font='900 26px '+TC; ctx.fillText(S.name+'　'+'★'.repeat(S.stars),28,38); ctx.restore(); }
-function thumb(ctx,w,h,t){ stageShow(ctx,w,h,3,t); }
+function thumb(ctx,w,h,t){ stageShow(ctx,w,h,16,t); }
 function preview(ctx,w,h,L,t){ L=L||{}; ctx.save(); ctx.scale(w/W,h/H); drawBg(ctx,0,t); put(ctx,shipSpr(L.color||'#3ddbd9',L.ship||'0'),W/2,H/2,0,3); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).space={
   name:'太空艦隊',tag:'STAR FLEET',color:'#6fb4ff',online:true,maxPlayers:4,
   desc:'縱向捲軸射擊：戰機會自動開火，你只要閃子彈、撿武器，每個星域的最後打巨大的王。可以雙人或連線一起打。',
   goal:'躲開子彈撐到王出現，打倒王就過關。撿「武」升級武器、「盾」擋一次、「爆」多一顆炸彈。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),stageShow,stageGoal:si=>STAGES[si].name+'：撐過敵機，打倒最後的王。白點是你的中彈位置，只有那裡被打到才算。',
-  stageBest:i=>{ try{ const v=localStorage.getItem('arcade.space.w.'+i); return v?'最高 '+v:''; }catch(e){ return ''; } },
+  stageBest:i=>{ try{ const v=localStorage.getItem('arcade.space.w.'+STAGES[i].rec); return v?'最高 '+v:''; }catch(e){ return ''; } },
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動（自動開火，也可以用滑鼠拖）'],['J 或 空白鍵','放炸彈：清光子彈'],['雙人','2P：WASD 移動、F 炸彈']],
   touchHelp:[['手指拖曳','移動戰機（自動開火）'],['炸彈','清光畫面上的子彈']],
   touch:{left:'dpad',right:[{l:'炸彈',c:'KeyJ',act:true}]},
   best:{label:'最高分',fmt:v=>v+' 分',lower:false},
-  looks:[{key:'color',label:'機身顏色',type:'color',opts:['#3ddbd9','#ffd23f','#ff7eb6','#86dc4f','#ff7a3d','#b98cff','#e8ecf4','#4f9dff']},{key:'ship',label:'機型',opts:[{id:'0',label:'突擊型'},{id:'1',label:'三角翼'},{id:'2',label:'前掠翼'}]}],
+  looks:[{key:'color',label:'機身顏色',type:'color',opts:['#3ddbd9','#ffd23f','#ff7eb6','#86dc4f','#ff7a3d','#b98cff','#e8ecf4','#4f9dff']},{key:'ship',label:'機型',opts:[{id:'0',label:'突擊型'},{id:'1',label:'三角翼'},{id:'2',label:'前掠翼'},{id:'3',label:'隱形戰機'},{id:'4',label:'重型雙發'},{id:'5',label:'鴨翼戰機'},{id:'6',label:'飛翼轟炸機'},{id:'7',label:'太空梭'}]}],
   thumb,preview,create};
 })();
