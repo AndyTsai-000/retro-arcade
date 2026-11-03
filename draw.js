@@ -5,11 +5,11 @@ const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 const WORDS={
-  animal:['貓咪','小狗','大象','長頸鹿','企鵝','烏龜','兔子','獅子','鯊魚','章魚','蝴蝶','蜜蜂','蝸牛','恐龍','貓頭鷹','斑馬','無尾熊','海豚','螃蟹','青蛙','蛇','猴子','老鼠','母雞','金魚'],
-  food:['珍珠奶茶','雞排','小籠包','西瓜','香蕉','蘋果','披薩','漢堡','薯條','壽司','甜甜圈','冰淇淋','蛋糕','荷包蛋','滷肉飯','泡麵','臭豆腐','鳳梨','櫻桃','葡萄','熱狗','棒棒糖','蚵仔煎','粽子','湯圓'],
-  thing:['雨傘','手機','眼鏡','剪刀','牙刷','電風扇','馬桶','時鐘','鑰匙','吉他','鋼琴','腳踏車','飛機','火車','機車','帆船','火箭','安全帽','書包','鉛筆','氣球','電視','沙發','檯燈','皇冠'],
-  place:['台北101','城堡','金字塔','摩天輪','游泳池','燈塔','夜市','廟宇','學校','公園','便利商店','沙灘','火山','彩虹','雪人','月亮','太陽','颱風','聖誕樹','溜滑梯','鬼屋','機場','醫院','動物園','瀑布'],
-  act:['打籃球','游泳','釣魚','睡覺','跳舞','刷牙','放風箏','洗澡','滑手機','吃飯','爬山','打噴嚏','唱KTV','騎機車','拍照','跳繩','做瑜珈','擦眼淚','烤肉','衝浪','放煙火','玩躲貓貓','搭捷運','打麻將','追公車']};
+  animal:['貓咪','小狗','大象','長頸鹿','企鵝','烏龜','兔子','獅子','鯊魚','章魚','蝴蝶','蜜蜂','蝸牛','恐龍','貓頭鷹','斑馬','無尾熊','海豚','螃蟹','青蛙','蛇','猴子','老鼠','母雞','金魚','老虎','刺蝟','松鼠','駱駝','孔雀'],
+  food:['珍珠奶茶','雞排','小籠包','西瓜','香蕉','蘋果','披薩','漢堡','薯條','壽司','甜甜圈','冰淇淋','蛋糕','荷包蛋','滷肉飯','泡麵','臭豆腐','鳳梨','櫻桃','葡萄','熱狗','棒棒糖','蚵仔煎','粽子','湯圓','牛肉麵','豆花','芒果冰','烤玉米','草莓'],
+  thing:['雨傘','手機','眼鏡','剪刀','牙刷','電風扇','馬桶','時鐘','鑰匙','吉他','鋼琴','腳踏車','飛機','火車','機車','帆船','火箭','安全帽','書包','鉛筆','氣球','電視','沙發','檯燈','皇冠','冰箱','吹風機','枕頭','掃把','望遠鏡'],
+  place:['台北101','城堡','金字塔','摩天輪','游泳池','燈塔','夜市','廟宇','學校','公園','便利商店','沙灘','火山','彩虹','雪人','月亮','太陽','颱風','聖誕樹','溜滑梯','鬼屋','機場','醫院','動物園','瀑布','沙漠','小島','森林','圖書館','遊樂園'],
+  act:['打籃球','游泳','釣魚','睡覺','跳舞','刷牙','放風箏','洗澡','滑手機','吃飯','爬山','打噴嚏','唱KTV','騎機車','拍照','跳繩','做瑜珈','擦眼淚','烤肉','衝浪','放煙火','玩躲貓貓','搭捷運','打麻將','追公車','打電動','溜冰','踢足球','看電影','寫作業']};
 const CAT=[['all','全部'],['animal','動物'],['food','美食'],['thing','生活用品'],['place','地點與景色'],['act','動作']],PAL=['#1c1c22','#ffffff','#e23b3b','#ff9d3d','#ffd23f','#3fae5a','#2f8fe8','#7a4ac8','#ff7eb6','#8a5a2a'],SIZES=[3,7,14,26];
 // 單人：電腦畫。座標用 0～100 的正方形（x 可以超出到 -30～130，白板比較寬），每筆是 [顏色, 點, 填色?]
 const C={k:'#1c1c22',r:'#e23b3b',o:'#ff9d3d',y:'#ffd23f',g:'#3fae5a',b:'#2f8fe8',p:'#ff7eb6',n:'#8a5a2a',w:'#ffffff',s:'#9aa3ad',lg:'#a8e06a',lb:'#9fd8ff',t:'#e8c18a',v:'#7a4ac8',dg:'#2a7a3a',dn:'#5a3a1a'};
@@ -106,19 +106,22 @@ function create(env,opts){
   const place=()=>{ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=r.left+(r.width-W*s)/2-env.stage.getBoundingClientRect().left,oy=r.top+(r.height-H*s)/2-env.stage.getBoundingClientRect().top; wrap.style.left=(ox+550*s)+'px'; wrap.style.top=(oy+454*s)+'px'; wrap.style.width=(238*s)+'px'; wrap.style.height=(36*s)+'px'; };
   addEventListener('resize',place); place();
   const norm=s=>String(s||'').replace(/\s/g,'').toLowerCase();
-  function submit(){ const v=inp.value.trim(); if(!v) return; inp.value=''; if(solo) soloGuess(v); else if(client) net.send({guess:v}); else guess(0,v); inp.focus(); }
+  function submit(){ const v=inp.value.trim(); if(!v) return; inp.value=''; if(!solo&&G.phase==='pick'&&G.dr===me&&G.pm==='own'){ const w=cleanW(v); if(!w) return; if(client) net.send({choose:w}); else chooseWord(w); env.sfx('click'); return; } if(solo) soloGuess(v); else if(client) net.send({guess:v}); else guess(0,v); inp.focus(); }
   btn.addEventListener('click',submit); inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ submit(); e.preventDefault(); } e.stopPropagation(); });
   // 聊天紀錄用 canvas 畫
   const chatC=document.createElement('canvas'); chatC.width=476; chatC.height=480; const chx=chatC.getContext('2d'); function renderChat(){ const x=chx; x.setTransform(2,0,0,2,0,0); x.clearRect(0,0,238,240); x.textBaseline='top'; x.font='700 12px '+TC; let y=236; for(let i=chat.length-1;i>=0&&y>0;i--){ const m=chat[i],s=(m.who?m.who+'：':'')+m.txt,lines=[]; let line=''; for(const ch of s){ if(x.measureText(line+ch).width>226){ lines.push(line); line=''; } line+=ch; } lines.push(line); y-=lines.length*16+2; lines.forEach((ln,k)=>{ x.fillStyle=m.col||'#e8e6ff'; x.fillText(ln,4,y+k*16); }); } }
   /* ---- 房主流程 ---- */
   const broadcast=()=>{ if(net&&net.host) net.send({st:G}); };
   function pick3(){ const p=pool().slice(),o=[]; for(let i=0;i<3;i++) o.push(p.splice(Math.floor(Math.random()*p.length),1)[0]); return o; }
-  function beginTurn(){ G.dr=G.turn%n; G.phase='pick'; G.choices=pick3(); G.word=''; G.T=12; G.got=[]; G.reveal=0; G.hint=''; clearBoard(); net&&net.send({clear:1}); env.sfx('go'); broadcast(); }
-  function chooseWord(w){ if(G.phase!=='pick') return; G.word=w; G.phase='draw'; G.T=SEC; G.hint=[...w].map(ch=>'＿').join(' '); broadcast(); }
+  function beginTurn(){ G.dr=G.turn%n; G.phase='pick'; G.choices=pick3(); G.pm=null; G.own=false; G.word=''; G.T=15; G.got=[]; G.reveal=0; G.hint=''; clearBoard(); net&&net.send({clear:1}); env.sfx('go'); broadcast(); }
+  /* 出題方式：電腦出題（三選一）或自訂題目（自己打字，最多 10 個字） */
+  const cleanW=v=>String(v||'').replace(/\s+/g,'').slice(0,10);
+  function setPm(pm){ if(G.phase!=='pick'||G.pm) return; G.pm=pm==='own'?'own':'cpu'; G.T=Math.max(G.T,G.pm==='own'?30:10); broadcast(); }
+  function chooseWord(w){ if(G.phase!=='pick') return; w=cleanW(w); if(!w) return; G.own=!G.choices.includes(w); G.word=w; G.phase='draw'; G.T=SEC; G.hint=[...w].map(ch=>'＿').join(' '); broadcast(); }
   function guess(from,v){ if(G.phase!=='draw'){ const m={who:names[from],txt:v}; if(net) net.send({chat:m}); say(m.who,m.txt); return; } if(from===G.dr){ return; } if(G.got.includes(from)) return;
     if(norm(v)===norm(G.word)){ const rank=G.got.length,pts=Math.round(40+60*(G.T/SEC))+Math.max(0,(3-rank)*10); G.score[from]+=pts; G.score[G.dr]+=Math.round(25+15*(G.T/SEC)); G.got.push(from); const m={who:'',txt:'🎉 '+names[from]+' 猜對了！+'+pts,col:'#86dc4f'}; if(net) net.send({chat:m,ok:from}); say('',m.txt,m.col); env.sfx('win'); if(G.got.length>=n-1) endTurn(); broadcast(); }
     else { const close=[...norm(G.word)].filter(ch=>norm(v).includes(ch)).length>=Math.max(1,norm(G.word).length-1); const m={who:names[from],txt:v}; if(net) net.send({chat:m}); say(m.who,m.txt); if(close){ const h={who:'',txt:'💡 '+names[from]+' 很接近了！',col:'#ffd23f'}; if(net) net.send({chat:h}); say('',h.txt,h.col); } } }
-  function endTurn(){ G.phase='result'; G.T=4.5; const m={who:'',txt:'答案是「'+G.word+'」',col:'#ffb36b'}; if(net) net.send({chat:m}); say('',m.txt,m.col); broadcast(); }
+  function endTurn(){ G.phase='result'; G.T=4.5; const m={who:'',txt:'答案是「'+G.word+'」'+(G.own?'（自訂題目）':''),col:'#ffb36b'}; if(net) net.send({chat:m}); say('',m.txt,m.col); broadcast(); }
   function hostTick(dt){ G.T-=dt; if(G.phase==='pick'&&G.T<=0) chooseWord(G.choices[0]);
     else if(G.phase==='draw'){ const W2=[...G.word]; const k=Math.floor((1-G.T/SEC)*W2.length*.7); if(k!==G.reveal&&W2.length>1){ G.reveal=k; G.hint=W2.map((ch,i)=>i<k&&(i*7+G.turn)%2===0?ch:'＿').join(' '); broadcast(); } if(G.T<=0) endTurn(); }
     else if(G.phase==='result'&&G.T<=0){ G.turn++; if(G.turn>=G.total){ G.phase='end'; broadcast(); if(net) net.send({over:1}); finish(); } else beginTurn(); }
@@ -132,6 +135,8 @@ function create(env,opts){
   const TOOLS=(()=>{ const a=[]; PAL.forEach((col,i)=>a.push({k:'c',col,x:BX+2+i*29,y:BY+BH+8,w:25,h:25})); SIZES.forEach((z,i)=>a.push({k:'z',i,x:BX+300+i*30,y:BY+BH+8,w:26,h:25})); a.push({k:'undo',x:BX+424,y:BY+BH+8,w:48,h:25,l:'復原'},{k:'clr',x:BX+476,y:BY+BH+8,w:48,h:25,l:'清除'}); return a; })();
   const hit=(q,a)=>q[0]>=a.x&&q[0]<=a.x+a.w&&q[1]>=a.y&&q[1]<=a.y+a.h;
   function onDown(e){ const q=toG(e); if(solo){ return; }
+    if(G.phase==='pick'&&G.dr===me&&!G.pm){ [['cpu',BY+120],['own',BY+196]].forEach(([pm,y])=>{ if(hit(q,{x:BX+BW/2-140,y,w:280,h:58})){ if(client){ net.send({pm}); G.pm=pm; } else setPm(pm); env.sfx('click'); if(pm==='own') setTimeout(()=>{ try{ inp.focus(); }catch(er){} },50); } }); return; }
+    if(G.phase==='pick'&&G.dr===me&&G.pm==='own') return;
     if(G.phase==='pick'&&G.dr===me){ G.choices.forEach((w,i)=>{ const a={x:BX+BW/2-110,y:BY+110+i*62,w:220,h:50}; if(hit(q,a)){ if(client) net.send({choose:w}); else chooseWord(w); env.sfx('click'); } }); return; }
     if(!iDraw()) return; for(const a of TOOLS) if(hit(q,a)){ env.sfx('click'); if(a.k==='c'){ curCol=a.col; } else if(a.k==='z') curSz=a.i; else if(a.k==='undo'){ strokes.pop(); redraw(); sendDraw({undo:1}); } else { clearBoard(); sendDraw({clear:1}); } return; }
     if(q[0]<BX||q[0]>BX+BW||q[1]<BY||q[1]>BY+BH) return; try{ canvas.setPointerCapture(e.pointerId); }catch(er){} const p=[(q[0]-BX)/BW,(q[1]-BY)/BH]; pen={c:curCol,z:SIZES[curSz],p:[p]}; strokes.push(pen); seg(p,p,pen.c,pen.z); outbox.push({n:1,c:pen.c,z:pen.z,p:[p.map(v=>+v.toFixed(3))]}); e.preventDefault(); }
@@ -143,7 +148,7 @@ function create(env,opts){
   function applyDraw(list){ for(const o of list){ if(o.n){ pen2={c:o.c,z:o.z,p:[]}; strokes.push(pen2); } if(!pen2) continue; for(const p of o.p){ const l=pen2.p[pen2.p.length-1]; seg(l||p,p,pen2.c,pen2.z); pen2.p.push(p); } } }
   let pen2=null;
   function clientMsg(m){ if(m.st){ const was=G.phase,wasT=G.turn; G=m.st; if(G.turn!==wasT&&G.phase==='pick') clearBoard(); if(was!==G.phase&&G.phase==='pick') env.sfx('go'); } if(m.chat) say(m.chat.who,m.chat.txt,m.chat.col); if(m.ok!=null&&m.ok===me) env.sfx('win'); if(m.clear) clearBoard(); if(m.undo){ strokes.pop(); redraw(); } if(m.dw&&m.by!==me) applyDraw(m.dw); if(m.over) finish(); }
-  if(net){ if(client) net.onmsg=clientMsg; else net.onmsg=(m,from)=>{ if(m.guess) guess(from,m.guess); if(m.choose&&from===G.dr) chooseWord(m.choose); if(from===G.dr&&G.phase==='draw'){ if(m.dw){ applyDraw(m.dw); net.send({dw:m.dw,by:from}); } if(m.clear){ clearBoard(); net.send({clear:1}); } if(m.undo){ strokes.pop(); redraw(); net.send({undo:1}); } } }; if(!client) beginTurn(); }
+  if(net){ if(client) net.onmsg=clientMsg; else net.onmsg=(m,from)=>{ if(m.guess) guess(from,m.guess); if(m.pm&&from===G.dr) setPm(m.pm); if(m.choose&&from===G.dr) chooseWord(m.choose); if(from===G.dr&&G.phase==='draw'){ if(m.dw){ applyDraw(m.dw); net.send({dw:m.dw,by:from}); } if(m.clear){ clearBoard(); net.send({clear:1}); } if(m.undo){ strokes.pop(); redraw(); net.send({undo:1}); } } }; if(!client) beginTurn(); }
   /* ---- 單人：電腦畫 ---- */
   function soloNext(){ if(soloI>=soloList.length){ G.phase='end'; finish(); return; } wipe(); G.phase='draw'; G.T=SEC>45?45:SEC; G.word=soloList[soloI].w; G.hint=[...G.word].map(()=>'＿').join(' '); soloP=0; soloStroke=0; G.reveal=0; env.sfx('go'); }
   function soloGuess(v){ say(names[0],v); if(G.phase!=='draw') return; const it=soloList[soloI]; if(norm(v)===norm(it.w)||(it.alt||[]).some(a=>norm(a)===norm(v))){ const pts=Math.round(40+60*(G.T/45)); G.score[0]+=pts; soloGood++; say('','🎉 答對了！+'+pts,'#86dc4f'); env.sfx('win'); soloEnd(); } else env.sfx('bump'); }
@@ -158,28 +163,30 @@ function create(env,opts){
   function draw(){ const g=c.createLinearGradient(0,0,W,H); g.addColorStop(0,'#2a2460'); g.addColorStop(1,'#4a2a70'); c.fillStyle=g; c.fillRect(0,0,W,H); c.fillStyle='rgba(255,255,255,.04)'; for(let i=0;i<14;i++){ c.beginPath(); c.arc((i*137)%W,(i*91)%H,18+i%4*14,0,7); c.fill(); }
     // 題目列
     c.fillStyle='rgba(11,10,28,.75)'; rr(c,BX,8,BW,42,11); c.fill(); c.textAlign='center'; c.textBaseline='middle'; const drawer=!solo&&G.dr===me; let top='';
-    if(G.phase==='pick') top=solo?'':drawer?'選一個題目來畫':names[G.dr]+' 正在選題目⋯'; else if(G.phase==='draw') top=drawer?'你要畫：'+G.word:G.hint; else if(G.phase==='result') top='答案：'+G.word;
+    if(G.phase==='pick') top=solo?'':drawer?(!G.pm?'選出題方式':G.pm==='own'?'在右下輸入你要畫的題目':'選一個題目來畫'):names[G.dr]+' 正在選題目⋯'; else if(G.phase==='draw') top=drawer?'你要畫：'+G.word:G.hint; else if(G.phase==='result') top='答案：'+G.word;
     c.font='900 21px '+TC; c.fillStyle=drawer&&G.phase==='draw'?'#ffd23f':'#fff'; c.fillText(top,BX+BW/2,29,BW-110);
     const left=Math.max(0,Math.ceil(G.T)); if(G.phase==='draw'||G.phase==='pick'){ c.fillStyle=left<=10?'#ff5d6d':'#3ddbd9'; c.beginPath(); c.arc(BX+BW-24,29,17,0,7); c.fill(); c.fillStyle='#14122b'; c.font='900 15px '+TC; c.fillText(left,BX+BW-24,30); }
     if(!solo){ c.fillStyle='#cfc8ff'; c.font='700 11px '+TC; c.textAlign='left'; c.fillText('第 '+(Math.min(G.turn,G.total-1)+1)+' / '+G.total+' 回',BX+10,29); }
     // 畫布
     c.fillStyle='rgba(0,0,0,.3)'; rr(c,BX+3,BY+4,BW,BH,8); c.fill(); c.save(); rr(c,BX,BY,BW,BH,8); c.clip(); c.drawImage(board,BX,BY,BW,BH); c.restore(); c.strokeStyle='#ffd23f'; c.lineWidth=2.5; rr(c,BX,BY,BW,BH,8); c.stroke();
-    if(G.phase==='pick'&&!solo){ c.fillStyle='rgba(11,10,28,.72)'; c.fillRect(BX,BY,BW,BH); if(drawer) G.choices.forEach((w,i)=>{ const x=BX+BW/2-110,y=BY+110+i*62; c.fillStyle='#ffd23f'; rr(c,x,y,220,50,12); c.fill(); c.fillStyle='#14122b'; c.font='900 21px '+TC; c.textAlign='center'; c.fillText(w,x+110,y+26); }); else { c.fillStyle='#fff'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText(names[G.dr]+' 準備畫圖',BX+BW/2,BY+BH/2); } }
+    if(G.phase==='pick'&&!solo){ c.fillStyle='rgba(11,10,28,.72)'; c.fillRect(BX,BY,BW,BH); if(drawer&&!G.pm){ [['電腦出題','從三個題目選一個',BY+120,'#ffd23f'],['自訂題目','自己打字出題',BY+196,'#3ddbd9']].forEach(([a,b,y,col])=>{ const x=BX+BW/2-140; c.fillStyle=col; rr(c,x,y,280,58,14); c.fill(); c.fillStyle='#14122b'; c.textAlign='center'; c.font='900 21px '+TC; c.fillText(a,x+140,y+22); c.font='700 12px '+TC; c.fillText(b,x+140,y+44); }); }
+      else if(drawer&&G.pm==='own'){ c.fillStyle='#fff'; c.textAlign='center'; c.font='900 20px '+TC; c.fillText('在右下的輸入框打題目，按 Enter',BX+BW/2,BY+BH/2-14); c.font='700 13px '+TC; c.fillStyle='#cfc8ff'; c.fillText('最多 10 個字；時間到還沒打，會改用電腦出的題目',BX+BW/2,BY+BH/2+16); }
+      else if(drawer) G.choices.forEach((w,i)=>{ const x=BX+BW/2-110,y=BY+110+i*62; c.fillStyle='#ffd23f'; rr(c,x,y,220,50,12); c.fill(); c.fillStyle='#14122b'; c.font='900 21px '+TC; c.textAlign='center'; c.fillText(w,x+110,y+26); }); else { c.fillStyle='#fff'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText(names[G.dr]+' 準備畫圖',BX+BW/2,BY+BH/2); } }
     // 工具
     if(iDraw()){ for(const a of TOOLS){ if(a.k==='c'){ c.fillStyle=a.col; rr(c,a.x,a.y,a.w,a.h,6); c.fill(); c.strokeStyle=curCol===a.col?'#ffd23f':'rgba(255,255,255,.4)'; c.lineWidth=curCol===a.col?3:1; c.stroke(); } else if(a.k==='z'){ c.fillStyle=curSz===a.i?'#ffd23f':'rgba(255,255,255,.14)'; rr(c,a.x,a.y,a.w,a.h,6); c.fill(); c.fillStyle=curSz===a.i?'#14122b':'#fff'; c.beginPath(); c.arc(a.x+a.w/2,a.y+a.h/2,Math.min(10,SIZES[a.i]*.42+1),0,7); c.fill(); } else { c.fillStyle='rgba(255,255,255,.14)'; rr(c,a.x,a.y,a.w,a.h,6); c.fill(); c.fillStyle='#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText(a.l,a.x+a.w/2,a.y+13); } } }
     else { c.fillStyle='#cfc8ff'; c.font='700 13px '+TC; c.textAlign='center'; c.fillText(solo?'第 '+(soloI+1)+' / '+soloList.length+' 題　總分 '+G.score[0]:G.phase==='draw'&&G.got.includes(me)?'你猜對了，等其他人⋯':G.phase==='draw'?'看圖在右下打字猜':'',BX+BW/2,BY+BH+21); }
     // 右邊：分數、對話
     const X=550; c.fillStyle='rgba(11,10,28,.72)'; rr(c,X-4,8,246,166,11); c.fill(); c.textAlign='left'; c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.fillText(solo?'分數':'排行榜',X+6,23); const L=names.map((m,i)=>({m,s:G.score[i],i})).sort((a,b)=>b.s-a.s); L.slice(0,8).forEach((q,k)=>{ const y=42+k*16; c.font=(q.i===me?'900 ':'700 ')+'12px '+TC; c.fillStyle=G.got&&G.got.includes(q.i)?'#86dc4f':q.i===G.dr&&!solo?'#ffb36b':q.i===me?'#ffd23f':'#fff'; c.textAlign='left'; c.fillText((q.i===G.dr&&!solo?'✏ ':'')+q.m.slice(0,9),X+6,y); c.textAlign='right'; c.fillText(q.s,X+232,y); });
     c.fillStyle='rgba(11,10,28,.72)'; rr(c,X-4,180,246,268,11); c.fill(); c.drawImage(chatC,X,194,238,240);
-    if(drawer&&G.phase==='draw'){ inp.disabled=true; inp.placeholder='你在畫圖，不能猜'; } else { inp.disabled=false; inp.placeholder='輸入答案，按 Enter'; } }
+    if(drawer&&G.phase==='pick'&&G.pm==='own'){ inp.disabled=false; inp.placeholder='輸入題目，按 Enter'; } else if(drawer&&G.phase==='draw'){ inp.disabled=true; inp.placeholder='你在畫圖，不能猜'; } else { inp.disabled=false; inp.placeholder='輸入答案，按 Enter'; } }
   renderChat();
-  return {update,draw,destroy(){ removeEventListener('resize',place); if(wrap.parentNode) wrap.remove(); },_dbg:{get G(){return G;},guess,soloGuess,get soloList(){return soloList;},chooseWord}};
+  return {update,draw,destroy(){ removeEventListener('resize',place); if(wrap.parentNode) wrap.remove(); },_dbg:{get G(){return G;},setPm,submitWord:v=>{ inp.value=v; submit(); },guess,soloGuess,get soloList(){return soloList;},chooseWord}};
 }
 function art(ctx,w,h,t){ ctx.save(); ctx.scale(w/W,h/H); const g=ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,'#2a2460'); g.addColorStop(1,'#4a2a70'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; rr(ctx,150,50,500,350,10); ctx.fill(); ctx.strokeStyle='#ffd23f'; ctx.lineWidth=4; ctx.stroke(); const it=CPU[Math.floor(t/4)%CPU.length],u=Math.min(1,(t%4)/3),total=it.s.reduce((a,s)=>a+s[1].length,0); let left=Math.floor(u*total); ctx.lineCap='round'; ctx.lineJoin='round'; for(const [col,p,f,lw] of it.s){ if(left<=1) break; ctx.strokeStyle=col; ctx.lineWidth=lw?lw*1.7:f?3:7; ctx.beginPath(); p.forEach((q,i)=>{ if(i<left){ const x=150+q[0]*500,y=50+q[1]*350; i?ctx.lineTo(x,y):ctx.moveTo(x,y); } }); if(f&&left>=p.length){ ctx.closePath(); ctx.fillStyle=col; ctx.fill(); } ctx.stroke(); left-=p.length; } ctx.fillStyle='#14122b'; rr(ctx,250,420,300,50,14); ctx.fill(); ctx.fillStyle='#ffd23f'; ctx.font='900 26px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('猜猜我畫什麼？',W/2,445); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).draw={
   name:'你畫我猜',tag:'DRAW & GUESS',color:'#ffd23f',online:true,maxPlayers:8,minPlayers:2,
   desc:'一個人畫、其他人猜！連線時輪流畫題目，越快猜對分數越高。一個人玩時，換電腦畫給你猜。',
-  goal:'輪到你就選題目畫出來；其他時候看圖打字猜答案。全部輪完分數最高的贏。',
+  goal:'輪到你畫時，先選「電腦出題」（三選一）或「自訂題目」（自己打字）再畫；其他時候看圖打字猜答案。全部輪完分數最高的贏。',
   modes:[{id:'1p',label:'單人（電腦畫）'}],
   options:[{key:'cat',label:'題目類型',def:'all',opts:CAT.map(q=>({id:q[0],label:q[1]}))},{key:'rounds',label:'每人畫幾輪',def:'2',opts:[{id:'1',label:'1 輪'},{id:'2',label:'2 輪'},{id:'3',label:'3 輪'}]},{key:'sec',label:'每題秒數',def:'70',opts:[{id:'50',label:'50 秒'},{id:'70',label:'70 秒'},{id:'90',label:'90 秒'}]}],
   help:[['滑鼠','輪到你時在白板上畫圖'],['Enter','輸入答案後送出']],touchHelp:[['手指','輪到你時在白板上畫圖'],['輸入框','打字猜答案']],
