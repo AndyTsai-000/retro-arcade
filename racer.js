@@ -165,11 +165,17 @@ const OBS={
   ramp:{d(c,x,y,w,th,t,o){ c.fillStyle=o.water?'#5ac8ff':th.snowy?'#e8f2fb':'#ffd23f'; c.beginPath(); c.moveTo(x-w*.5,y); c.lineTo(x-w*.42,y-w*.12); c.lineTo(x+w*.42,y-w*.12); c.lineTo(x+w*.5,y); c.fill();
     c.fillStyle=o.water?'#ffffff':th.snowy?'#3d8bff':'#14122b'; for(let i=0;i<6;i++) c.fillRect(x-w*.4+i*w*.15,y-w*.1,w*.06,w*.08); }},
   ice:{d(c,x,y,w){ c.fillStyle='rgba(160,220,255,.75)'; c.beginPath(); c.ellipse(x,y-w*.02,w*.5,w*.07,0,0,7); c.fill(); c.fillStyle='rgba(255,255,255,.7)'; c.fillRect(x-w*.2,y-w*.05,w*.3,w*.015); }},
-  log:{d(c,x,y,w,th,t,o){ const b=o.water?Math.sin(t*3)*w*.01:0; c.fillStyle='#7a5432'; rr(c,x-w*.5,y-w*.14+b,w,w*.14,w*.07); c.fill(); c.fillStyle='#c8a070'; c.beginPath(); c.ellipse(x-w*.5+w*.04,y-w*.07+b,w*.035,w*.065,0,0,7); c.fill(); c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=Math.max(1,w*.006); c.beginPath(); c.moveTo(x-w*.3,y-w*.1+b); c.lineTo(x+w*.4,y-w*.1+b); c.stroke(); }},
+  log:{d(c,x,y,w,th,t,o){ const b=o.water?Math.sin(t*3)*w*.01:0,u=o.ww?w/o.ww:w/1300,hh=(o.h&&!o.water?o.h*1.05:w*.14/u)*u,r=hh/2; c.fillStyle='rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(x,y+b,w*.5,hh*.25,0,0,7); c.fill(); const g=c.createLinearGradient(0,y-hh+b,0,y+b); g.addColorStop(0,'#9a6a40'); g.addColorStop(.5,'#7a5432'); g.addColorStop(1,'#4a321e'); c.fillStyle=g; rr(c,x-w*.5,y-hh+b,w,hh,r); c.fill();
+    c.strokeStyle='rgba(40,24,10,.35)'; c.lineWidth=Math.max(1,hh*.06); for(let i=0;i<5;i++){ const yy=y-hh*(.2+i*.15)+b; c.beginPath(); c.moveTo(x-w*.45+i*w*.07,yy); c.lineTo(x+w*.3-i*w*.05,yy); c.stroke(); } c.fillStyle='#c8a070'; c.beginPath(); c.ellipse(x-w*.5+r*.4,y-r+b,r*.45,r*.95,0,0,7); c.fill(); c.strokeStyle='rgba(120,80,40,.6)'; c.beginPath(); c.ellipse(x-w*.5+r*.4,y-r+b,r*.22,r*.5,0,0,7); c.stroke(); }},
   ring:{d(c,x,y,w,th,t){ c.save(); c.translate(x,y-w*.55); c.scale(1,1); c.strokeStyle='#ff9d3d'; c.lineWidth=Math.max(2,w*.1); c.beginPath(); c.ellipse(0,0,w*.42,w*.42,0,0,7); c.stroke(); c.strokeStyle='rgba(255,255,255,.7)'; c.lineWidth=Math.max(1,w*.03); c.beginPath(); c.ellipse(0,0,w*.42,w*.42,0,Math.PI*1.1,Math.PI*1.6); c.stroke(); c.restore(); glow(c,x,y-w*.55,w*.5,'rgba(255,200,80,'+(.25+.15*Math.sin(t*6))+')'); }},
-  can:{d(c,x,y,w,th,t){ const b=Math.sin(t*4)*w*.1; c.fillStyle='#3ddbd9'; rr(c,x-w*.25,y-w*1.0-b,w*.5,w*.8,w*.1); c.fill(); c.fillStyle='#14122b'; c.font='900 '+Math.max(4,w*.4)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('N',x,y-w*.6-b); glow(c,x,y-w*.6-b,w*.9,'rgba(61,219,217,.35)'); }},
-  hurdle:{d(c,x,y,w){ c.fillStyle='#f4f4f4'; c.fillRect(x-w*.48,y-w*.2,w*.03,w*.2); c.fillRect(x+w*.45,y-w*.2,w*.03,w*.2); for(let i=0;i<6;i++){ c.fillStyle=i%2?'#ff4d4d':'#f4f4f4'; c.fillRect(x-w*.5+i*w/6,y-w*.22,w/6+.5,w*.05); } }},
-  lowbar:{d(c,x,y,w){ c.fillStyle='#5a3a22'; c.fillRect(x-w*.5,y-w*.6,w*.03,w*.6); c.fillRect(x+w*.47,y-w*.6,w*.03,w*.6); c.fillStyle='#7a5432'; rr(c,x-w*.5,y-w*.62,w,w*.07,w*.03); c.fill(); c.fillStyle='#2f8a3a'; for(let i=0;i<7;i++){ c.beginPath(); c.ellipse(x-w*.42+i*w*.14,y-w*.56,w*.05,w*.03,0,0,7); c.fill(); } }},
+  can:{d(c,x,y,w,th,t){ const b=Math.sin(t*4)*w*.06,cy=y-w*.62-b; glow(c,x,cy,w*1.1,'rgba(61,219,217,.45)'); c.strokeStyle='rgba(160,255,250,.85)'; c.lineWidth=Math.max(1,w*.03); c.beginPath(); c.ellipse(x,y-w*.02,w*.5,w*.12,0,0,7); c.stroke();
+    c.fillStyle='#1a8f9a'; rr(c,x-w*.24,y-w*1.0-b,w*.48,w*.78,w*.12); c.fill(); c.fillStyle='#3ddbd9'; rr(c,x-w*.2,y-w*.98-b,w*.3,w*.74,w*.1); c.fill(); c.fillStyle='#c8ccd6'; rr(c,x-w*.1,y-w*1.1-b,w*.2,w*.12,w*.03); c.fill();
+    c.fillStyle='#fff'; c.font='900 '+Math.max(4,w*.34)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('N',x,cy); }},
+  hurdle:{d(c,x,y,w,th,t,o){ const u=w/((o&&o.ww)||1300),hh=(o&&o.h||150)*1.05*u,bw=Math.max(1.5,w*.035); c.fillStyle='rgba(0,0,0,.2)'; c.fillRect(x-w*.5,y-1,w,Math.max(2,hh*.08)); c.fillStyle='#d8d8d8'; c.fillRect(x-w*.48,y-hh,w*.03,hh); c.fillRect(x+w*.45,y-hh,w*.03,hh); c.fillRect(x-w*.5,y-w*.012,w*.08,w*.012); c.fillRect(x+w*.42,y-w*.012,w*.08,w*.012); for(let i=0;i<6;i++){ c.fillStyle=i%2?'#ff4d4d':'#f4f4f4'; c.fillRect(x-w*.5+i*w/6,y-hh-bw*.4,w/6+.5,bw); } }},
+  lowbar:{d(c,x,y,w,th,t,o){ const u=w/((o&&o.ww)||4600),by=y-235*u,tw=Math.max(2,90*u),bt=Math.max(2,46*u); /* 兩邊大樹幹＋一根橫過整條路、大約到頭的高度的樹枝 */
+    for(const sx of [-1,1]){ const tx=x+sx*w*.5; c.fillStyle='#5a3a22'; c.fillRect(tx-tw/2,y-900*u,tw,900*u); c.fillStyle='rgba(0,0,0,.25)'; c.fillRect(tx+(sx<0?0:-tw/2),y-900*u,tw/2,900*u); c.fillStyle='#2f7a34'; c.beginPath(); c.ellipse(tx,y-980*u,330*u,240*u,0,0,7); c.fill(); c.fillStyle='#3f9a40'; c.beginPath(); c.ellipse(tx-sx*80*u,y-1040*u,220*u,160*u,0,0,7); c.fill(); }
+    c.fillStyle='rgba(0,0,0,.18)'; c.fillRect(x-w*.5,y-4*u,w,Math.max(2,40*u)); const g=c.createLinearGradient(0,by-bt,0,by+bt); g.addColorStop(0,'#9a6a40'); g.addColorStop(1,'#5a3a22'); c.fillStyle=g; c.beginPath(); c.moveTo(x-w*.5,by-bt*1.4); for(let i=0;i<=10;i++){ const xx=x-w*.5+i*w/10; c.lineTo(xx,by-bt*(1.3-i*.06)+Math.sin(i*1.7)*bt*.2); } for(let i=10;i>=0;i--){ const xx=x-w*.5+i*w/10; c.lineTo(xx,by+bt*(.6-i*.03)+Math.sin(i*1.7)*bt*.2); } c.fill();
+    for(let i=0;i<14;i++){ const xx=x-w*.45+i*w*.065,yy=by-bt*.3+Math.sin(i*2.3)*bt*.6; c.fillStyle=i%3?'#2f8a3a':'#47a84a'; c.beginPath(); c.ellipse(xx,yy+bt*.9,55*u,30*u,Math.sin(i)*.6,0,7); c.fill(); } }},
   pit:{d(c,x,y,w,th){ c.fillStyle=th.pitCol||'#3a7fd0'; c.beginPath(); c.ellipse(x,y-w*.02,w*.5,w*.06,0,0,7); c.fill(); c.fillStyle='rgba(255,255,255,.35)'; c.fillRect(x-w*.25,y-w*.04,w*.2,w*.01); c.fillRect(x+w*.1,y-w*.01,w*.15,w*.01); }},
   mud:{d(c,x,y,w){ c.fillStyle='#6a4a2a'; c.beginPath(); c.ellipse(x,y-w*.02,w*.5,w*.07,0,0,7); c.fill(); c.fillStyle='rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(x+w*.1,y-w*.03,w*.15,w*.02,0,0,7); c.fill(); }},
   spring:{d(c,x,y,w,th,t){ c.strokeStyle='#9aa0aa'; c.lineWidth=Math.max(1,w*.06); c.beginPath(); for(let i=0;i<5;i++){ c.lineTo(x+(i%2?-1:1)*w*.25,y-i*w*.08); } c.stroke(); c.fillStyle='#ff4d4d'; rr(c,x-w*.4,y-w*.42,w*.8,w*.1,w*.04); c.fill(); }},
@@ -293,11 +299,11 @@ function jetModel(L){ L=L||{}; const type=L.boat||'pwc',key='j:'+[type,L.hull,L.
     for(const x of [-.25,.25]) box(.16,.06,.05,ph('#e82424'),x,type==='speed'?.85:.6,type==='speed'?-2.42:-1.78);
     return g; }}; }
 /* 萌寵障礙賽跑：接近真實比例的動物，四腳奔跑（兔子、青蛙用跳的，企鵝搖擺走），跑步動作分 6 格 */
-const ANI3={cat:{len:1.5,leg:.42,w:.52,col:'#e8a24a',ear:'pt',snout:.16,tail:'long',lr:.1,chest:'#f8e8d0'},dog:{len:1.65,leg:.5,w:.58,col:'#c8905a',ear:'flop',snout:.32,tail:'up',lr:.11,chest:'#f0dcc0'},
-  bunny:{len:1.15,leg:.3,w:.62,col:'#eeeae6',ear:'long',snout:.1,tail:'puff',lr:.1,hop:1},bear:{len:1.8,leg:.55,w:.85,col:'#8a5a36',ear:'round',snout:.28,tail:'stub',lr:.16},
-  panda:{len:1.8,leg:.55,w:.85,col:'#f4f4f0',dark:'#26262c',ear:'round',snout:.24,tail:'stub',lr:.16},fox:{len:1.6,leg:.46,w:.5,col:'#e8742a',ear:'big',snout:.34,tail:'bush',lr:.095,sock:'#2a2020',chest:'#f8f0e8'},
-  penguin:{biped:1,col:'#22242c'},frog:{frog:1,col:'#5fbf4a'}};
-function animalModel(L){ L=L||{}; const kind=ANI3[L.animal]?L.animal:'cat',A=ANI3[kind],key='a:'+[kind,L.cloth,L.hat].join();
+const ANI3={cat:{len:1.55,leg:.44,w:.48,col:'#d98a3a',ear:'pt',snout:.1,tail:'long',lr:.085,chest:'#f6e6cc',stripe:'#9a5a20'},dog:{len:1.7,leg:.52,w:.54,col:'#d0823a',ear:'pt',snout:.3,tail:'curl',lr:.1,chest:'#f6ecdc'},
+  bunny:{len:1.15,leg:.3,w:.58,col:'#d8d0c6',ear:'long',snout:.08,tail:'puff',lr:.09,hop:1,chest:'#f4f0ea'},bear:{len:1.9,leg:.56,w:.86,col:'#7a4e2e',ear:'round',snout:.3,tail:'stub',lr:.16,chest:'#9a6a44',hump:1},
+  panda:{len:1.8,leg:.55,w:.85,col:'#f2f0ea',dark:'#22222a',ear:'round',snout:.24,tail:'stub',lr:.16},fox:{len:1.65,leg:.46,w:.46,col:'#d8642a',ear:'big',snout:.38,tail:'bush',lr:.08,sock:'#2a2020',chest:'#f8f0e8'},
+  penguin:{biped:1,col:'#22242c'},frog:{frog:1,col:'#5fbf4a'},tiger:{len:1.9,leg:.54,w:.62,col:'#e0802a',ear:'round',snout:.22,tail:'long',lr:.13,chest:'#f8f0e0',stripe:'#2a1a10'},husky:{len:1.75,leg:.54,w:.55,col:'#7e838e',ear:'pt',snout:.32,tail:'curl',lr:.1,chest:'#f4f4f4'}};
+function animalModel(L){ L=L||{}; const kind=ANI3[L.animal]?L.animal:'cat',A=ANI3[kind],key='a2:'+[kind,L.cloth,L.hat].join();
   return {key,build:T=>{ const K=mk3(T),{g,PI,ph,add,box,ball,limb}=K,fur=ph(A.col,12),dk=ph(A.dark||shade(A.col,.7),12),blk=ph('#15151c',90),wht=ph('#ffffff',20),vest=ph(L.cloth||'#ff4d4d',30),legs=[],U=g.userData;
     const eye=(x,y,z,r,p)=>{ ball(r,blk,x,y,z,0,0,0,p); ball(r*.35,wht,x-r*.3,y+r*.35,z+r*.6,0,0,0,p); };
     const numTex=()=>{ const cv=document.createElement('canvas'); cv.width=cv.height=64; const c=cv.getContext('2d'); c.fillStyle='#fff'; c.beginPath(); c.arc(32,32,29,0,7); c.fill(); c.fillStyle='#14122b'; c.font='900 38px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(L.num||1),32,35); return new T.MeshBasicMaterial({map:new T.CanvasTexture(cv)}); };
@@ -324,14 +330,20 @@ function animalModel(L){ L=L||{}; const kind=ANI3[L.animal]?L.animal:'cat',A=ANI
       return g; }
     /* 四腳動物 */
     const by=A.leg+.28,hl=A.len/2,body=new T.Group(); g.add(body);
-    ball(.5,fur,0,by,0,A.w*1.15,.72,hl*1.05,body); if(A.chest) ball(.42,ph(A.chest,10),0,by-.08,hl*.55,A.w*1.05,.55,.55,body);
-    if(kind==='panda') ball(.5,dk,0,by+.02,hl*.45,A.w*1.2,.76,.42,body);
-    { const bl=add(new T.SphereGeometry(.5,20,10,0,PI*2,0,PI*.36),vest,0,by,-.05,0,0,0,body); bl.scale.set(A.w*1.2,.76,hl*.62); add(new T.CircleGeometry(.15,18),numTex(),0,by+.385,-.05,-PI/2,0,0,body); } /* 背上的賽馬布和號碼 */
+    ball(.5,fur,0,by,0,A.w*1.1,.66,hl*1.05,body); ball(.44,fur,0,by+.02,hl*.42,A.w*1.12,.72,.5,body); if(A.hump) ball(.4,fur,0,by+.16,hl*.38,A.w*1.05,.62,.45,body); if(A.chest) ball(.36,ph(A.chest,10),0,by-.1,hl*.62,A.w*1.0,.55,.42,body);
+    ball(.36,ph(shade(A.col,.9),10),0,by-.18,0,A.w*1.0,.4,hl*.85,body);
+    if(kind==='panda') ball(.5,dk,0,by+.02,hl*.42,A.w*1.18,.74,.36,body);
+    if(A.stripe){ const sm=ph(A.stripe,10); for(let i=0;i<5;i++) add(new T.TorusGeometry(A.w*.5,.035,6,16,PI*.9),sm,0,by+.02,-hl*.6+i*hl*.26,0,PI/2,PI*.05,body).scale.set(1,1.25,1); }
+    { const bl=add(new T.SphereGeometry(.5,20,10,0,PI*2,0,PI*.3),vest,0,by+.02,-.08,0,0,0,body); bl.scale.set(A.w*1.12,.7,hl*.42); add(new T.CircleGeometry(.13,18),numTex(),0,by+.36,-.08,-PI/2,0,0,body); } /* 背上小號碼布 */
     /* 頭：脖子往前上方、口鼻、耳朵、眼睛 */
-    const head=new T.Group(); head.position.set(0,by+.42,hl*.92); body.add(head); limb([0,-.38,-.3],[0,-.05,-.05],.2*A.w/.5,fur,head,.17*A.w/.5);
-    const hr=.27+A.w*.12; ball(hr,fur,0,0,0,1,.92,1.05,head); ball(hr*.6,ph(A.chest||shade(A.col,1.08),10),0,-hr*.32,hr*.62+A.snout*.5,1,.75,1+A.snout*2.2,head); ball(hr*.17,blk,0,-hr*.18,hr*.75+A.snout*1.25,1.2,.85,1,head);
-    eye(-hr*.42,hr*.2,hr*.78,hr*.12,head); eye(hr*.42,hr*.2,hr*.78,hr*.12,head);
-    if(kind==='panda') for(const sx of [-1,1]) ball(hr*.24,dk,sx*hr*.42,hr*.16,hr*.7,1,1.25,.6,head);
+    const head=new T.Group(); head.position.set(0,by+.4,hl*.95); body.add(head); limb([0,-.4,-.34],[0,-.05,-.05],.19*A.w/.5,fur,head,.15*A.w/.5); add(new T.TorusGeometry(.15*A.w/.5+.03,.035,6,18),vest,0,-.2,-.18,PI/2-.55,0,0,head); ball(.05,ph('#ffd23f',120),0,-.3,-.05,1,1,.4,head);
+    const hr=.22+A.w*.1,sn=A.snout; ball(hr,fur,0,0,0,1,.9,1.05,head); ball(hr*.55,ph(A.chest||shade(A.col,1.1),10),0,-hr*.34,hr*.55,1.05,.7,.9,head);
+    ball(hr*.42,ph(kind==='cat'||kind==='bunny'?(A.chest||A.col):A.col,10),0,-hr*.18,hr*(.72+sn*.9),1,.72,1+sn*2.4,head); ball(hr*.36,ph(A.chest||shade(A.col,1.12),10),0,-hr*.36,hr*(.7+sn*.9),.95,.5,1+sn*2.2,head);
+    { const nz=hr*(.75+sn*.9)+hr*.42*(1+sn*2.4)*.92; ball(hr*.12,blk,0,-hr*.08,nz,1.3,.85,.8,head); limb([0,-hr*.16,nz-.01],[0,-hr*.36,nz-.04],.012,blk,head); }
+    const ez=hr*1.05*Math.sqrt(1-.42*.42-.2*.2); for(const sx of [-1,1]){ ball(hr*.15,ph(kind==='cat'?'#c8b030':kind==='fox'?'#d89a30':'#3a2410',60),sx*hr*.42,hr*.18,ez-hr*.05,1,1,.55,head); ball(hr*.09,blk,sx*hr*.42,hr*.18,ez+hr*.02,kind==='cat'?.55:1,1.1,.5,head); ball(hr*.035,wht,sx*hr*.39,hr*.23,ez+hr*.06,0,0,0,head); }
+    if(kind==='panda') for(const sx of [-1,1]) ball(hr*.24,dk,sx*hr*.42,hr*.14,ez-hr*.14,1,1.35,.55,head);
+    if(kind==='fox') for(const sx of [-1,1]) ball(hr*.3,wht,sx*hr*.42,-hr*.3,hr*.5,1,.8,.8,head);
+    if(A.stripe) for(let i=0;i<3;i++) box(hr*.08,.02,hr*.5,ph(A.stripe,10),(i-1)*hr*.22,hr*.86,-hr*.05,0,0,0,head);
     for(const sx of [-1,1]){ if(A.ear==='pt'||A.ear==='big'){ const s2=A.ear==='big'?1.5:1; add(new T.ConeGeometry(hr*.32*s2,hr*.7*s2,4),A.ear==='big'?dk:fur,sx*hr*.5,hr*.78,-hr*.05,0,PI/4,-sx*.25,head); add(new T.ConeGeometry(hr*.18*s2,hr*.45*s2,4),ph('#ffb8c0'),sx*hr*.5,hr*.74,hr*.06,0,PI/4,-sx*.25,head); }
       else if(A.ear==='flop') ball(hr*.3,dk,sx*hr*.85,-hr*.05,-hr*.1,.45,1.25,.85,head);
       else if(A.ear==='long'){ ball(hr*.24,fur,sx*hr*.32,hr*1.35,-hr*.15,.6,2.5,.4,head); ball(hr*.14,ph('#ffb8c0'),sx*hr*.32,hr*1.3,-hr*.08,.5,2.2,.2,head); }
@@ -344,9 +356,10 @@ function animalModel(L){ L=L||{}; const kind=ANI3[L.animal]?L.animal:'cat',A=ANI
       const lo=new T.Group(); lo.position.set(0,-u,front?0:-.04); up.add(lo); limb([0,0,0],[0,-(A.leg*.5),0],lw*.85,lc,lo,lw); ball(lw*1.25,lc,0,-(A.leg*.5)-.02,.05,1,.6,1.4,lo); legs.push({up,lo,front,sx}); }
     /* 尾巴 */
     const tail=new T.Group(); tail.position.set(0,by+.1,-hl*.98); body.add(tail);
-    if(A.tail==='long'){ const cv=new T.CatmullRomCurve3([[0,0],[.12,-.28],[.38,-.42],[.6,-.38],[.7,-.28]].map(q=>new T.Vector3(0,q[0],q[1]))); add(new T.TubeGeometry(cv,20,.055,8),fur,0,0,0,0,0,0,tail); ball(.058,fur,0,.7,-.28,0,0,0,tail); }
+    if(A.tail==='long'){ const cv=new T.CatmullRomCurve3([[0,0],[.12,-.28],[.38,-.42],[.6,-.38],[.7,-.28]].map(q=>new T.Vector3(0,q[0],q[1]))); add(new T.TubeGeometry(cv,20,.05,8),fur,0,0,0,0,0,0,tail); ball(.052,A.stripe?ph(A.stripe,10):fur,0,.7,-.28,0,0,0,tail); if(A.stripe) for(const u of [.3,.5]){ const q=cv.getPoint(u); ball(.056,ph(A.stripe,10),q.x,q.y,q.z,1,.5,1,tail); } }
     else if(A.tail==='up'){ limb([0,0,0],[0,.32,-.22],.07,fur,tail); }
-    else if(A.tail==='bush'){ ball(.2,fur,0,.12,-.3,1,1,2,tail); ball(.13,wht,0,.18,-.62,1,1,1.2,tail); }
+    else if(A.tail==='curl'){ add(new T.TorusGeometry(.14,.06,8,18,PI*1.6),fur,0,.2,-.08,0,PI/2,0,tail); ball(.07,ph(A.chest||'#fff'),0,.14,.04,0,0,0,tail); }
+    else if(A.tail==='bush'){ ball(.18,fur,0,.06,-.32,1,1,2.3,tail); ball(.13,wht,0,.08,-.7,1,1,1.3,tail); }
     else if(A.tail==='puff') ball(.16,wht,0,.05,-.05,0,0,0,tail);
     else ball(.1,fur,0,0,-.03,0,0,0,tail);
     U.pose=(m,p)=>{ const a=(p==null?0:p)*PI*2,run=p!=null;
@@ -359,11 +372,53 @@ function animalModel(L){ L=L||{}; const kind=ANI3[L.animal]?L.animal:'cat',A=ANI
 function v3draw(c,S,f,x,y,u){ const F=S.f[f]||S.f[0],k=u/S.ppu; c.drawImage(F.c,x-F.ax*k,y-F.ay*k,V3S*k,V3S*k); }
 const v3frame=(x,extra)=>clamp(Math.round((V3.cx?(x-V3.cx)/V3.cx*2:0)+(extra||0))+2,0,4);
 /* 機車王的造型換成極速大亂鬥的車款：速克達→機車、重機／越野→重型機車（越野配越野胎） */
-function motoModel(L,col){ L=L||{}; const look={body:L.body==='scooter'?'scooter':'bike',color:L.bike||col||'#ff4d4d',driver:'helmet',part:L.body==='dirt'?'exhaust':'none',wheel:L.body==='dirt'?'offroad':'std',deco:''};
-  const key='m:'+look.body+look.color+look.wheel+(L.helm||'')+(L.suit||'');
-  return {key,build:T=>{ const g=window.ARCADE_GAMES.kart._buildKart(T,look),u=g.userData,ph=new T.Color(look.color).getHex(),hm=new T.MeshPhongMaterial({color:new T.Color(L.helm||'#ffd23f'),shininess:120,specular:0x888888}),sm=new T.MeshPhongMaterial({color:new T.Color(L.suit||'#2f3a5a'),shininess:20});
-    if(u.shadow) u.shadow.visible=false; if(u.head) u.head.traverse(o=>{ if(o.isMesh&&o.material.color&&o.material.color.getHex()===ph) o.material=hm; });
-    if(u.driver) u.driver.traverse(o=>{ if(o.isMesh&&o.material.color&&o.material.color.getHex()===0xf4f4f8) o.material=sm; }); return g; }}; }
+/* 機車：自己做的 3D 模型——仿賽重機（整流罩、雙眼大燈、倒立前叉、高位排氣管、壓車姿勢）、大羊速克達、越野車 */
+function motoModel(L,col){ L=L||{}; const type=L.body==='scooter'?'scooter':L.body==='dirt'?'dirt':'sport',D=decoSet(L),bc=L.bike||col||'#ff4d4d';
+  const key='m2:'+[type,bc,L.helm,L.suit,L.helmet,L.deco].join();
+  return {key,build:T=>{ const K=mk3(T),{g,ph,box,add,ball,limb,hull,PI}=K,body=ph(bc,110),dark=ph('#17171d',40),metal=ph('#b8bcc6',120),gold=ph('#d9a521',110),wh=ph('#f6f6f6',80),
+      lamp=new T.MeshBasicMaterial({color:0xfff6d8}),red=new T.MeshBasicMaterial({color:0xff2a2a}),amb=new T.MeshBasicMaterial({color:0xffa020}),glass=new T.MeshPhongMaterial({color:0x223040,transparent:true,opacity:.7,shininess:160,specular:0xffffff});
+    const wheel=(z,r,w,knob,rim)=>{ add(new T.CylinderGeometry(r,r,w,26),dark,0,r,z,0,0,PI/2); add(new T.TorusGeometry(r*.97,w*.18,6,26),ph('#2a2a30',10),0,r,z,0,PI/2); add(new T.CylinderGeometry(r*.66,r*.66,w+.02,22),rim||ph('#2c2c34',90),0,r,z,0,0,PI/2);
+      for(let q=0;q<5;q++) box(.03,r*1.2,.06,metal,0,r,z,q*PI/5); add(new T.CylinderGeometry(r*.48,r*.48,.03,20),metal,w*.5+.02,r,z,0,0,PI/2);
+      if(knob) for(let q=0;q<18;q++){ const a=q/18*PI*2; box(w+.06,.07,.1,dark,0,r+Math.sin(a)*r,z+Math.cos(a)*r,a); } };
+    const rd={top:L.suit||'#2f3a5a',pants:shadeHex(L.suit||'#2f3a5a',.7),head:L.helmet||(type==='dirt'?'mx':type==='scooter'?'half':'full'),helm:L.helm||'#ffd23f',glove:'#1c1c24'};
+    if(type==='sport'){
+      wheel(-1.45,.6,.36,0,ph('#202028',90)); wheel(1.5,.6,.28,0,ph('#202028',90));
+      hull([[-1.9,1.66],[-1.72,1.34],[-.95,1.12],[-.32,.6],[.95,.52],[1.55,.84],[1.86,1.24],[1.66,1.6],[.92,1.76],[.25,1.84],[-.32,1.56],[-1.2,1.5]],.64,body);
+      hull([[-.3,.58],[.95,.5],[1.5,.8],[1.2,.82],[.2,.72]],.68,dark);
+      box(.66,.07,1.5,wh,0,1.18,.55,.24); box(.66,.05,1.1,wh,0,1.52,-1.25,-.1);
+      box(.5,.1,.85,dark,0,1.54,-.78); box(.5,.42,.05,glass,0,1.8,1.38,.62); box(.46,.04,.3,body,0,1.66,1.62,.2);
+      for(const x of [-.13,.13]){ box(.15,.07,.05,lamp,x,1.32,1.86,0,0,x>0?-.25:.25); }
+      box(.34,.05,.04,red,0,1.62,-1.92); for(const x of [-.32,.32]) box(.08,.05,.05,amb,x,1.36,1.7);
+      for(const x of [-.16,.16]){ limb([x,.6,1.5],[x,1.1,1.36],.06,gold); limb([x,1.1,1.36],[x,1.68,1.18],.07,metal); }
+      box(.3,.06,.62,body,0,1.26,1.52,-.1); for(const x of [-.22,.22]) box(.08,.1,1.35,dark,x,.72,-.78,.2);
+      box(.48,.46,.72,ph('#34343c',60),0,.86,.2); limb([.26,.72,-.2],[.3,1.28,-1.62],.1,metal,null,.14); limb([.3,1.28,-1.62],[.31,1.33,-1.78],.14,dark);
+      limb([-.38,1.66,1.08],[.38,1.66,1.08],.035,dark); for(const x of [-.36,.36]) box(.12,.07,.04,dark,x,1.86,1.3);
+      if(D.has('num')){ add(new T.CylinderGeometry(.22,.22,.68,20),wh,0,1.2,-.05,0,0,PI/2); }
+      if(D.has('flame')) for(const x of [-.33,.33]) for(let q=0;q<3;q++) box(.02,.08,.5-q*.1,ph('#ff8a1a',60),x,1.05+q*.14,1.0-q*.12,.25);
+      rider3(K,Object.assign(rd,{hip:[0,1.78,-.72],sh:[0,2.22,.28],hand:[.38,1.68,1.06],knee:[.4,1.38,-.05],foot:[.3,.86,-.68]})); }
+    else if(type==='scooter'){
+      wheel(-1.2,.46,.36); wheel(1.25,.46,.3);
+      hull([[-1.65,1.3],[-1.55,.95],[-.95,.78],[-.35,.58],[.7,.56],[1.18,.78],[1.6,1.22],[1.5,1.78],[1.05,2.0],[.82,1.62],[.55,.98],[-.35,.98],[-.55,1.32],[-1.05,1.45]],.62,body);
+      box(.64,.08,1.2,wh,0,1.05,.95,-.55); box(.5,.15,1.05,dark,0,1.5,-.95); box(.44,.06,.3,body,0,1.9,1.5,.35);
+      box(.38,.08,.05,lamp,0,1.48,1.62); box(.32,.06,.04,red,0,1.35,-1.67); for(const x of [-.3,.3]) box(.08,.05,.05,amb,x,1.85,1.12);
+      box(.36,.3,.05,glass,0,2.12,1.18,.5); limb([-.46,1.88,.92],[.46,1.88,.92],.04,dark);
+      limb([.22,.6,-.6],[.26,.75,-1.5],.09,metal,null,.11); for(const x of [-.14,.14]) limb([x,.46,1.25],[x,1.5,1.2],.05,metal);
+      if(D.has('num')) add(new T.CylinderGeometry(.2,.2,.64,20),wh,0,1.15,-.6,0,0,PI/2);
+      rider3(K,Object.assign(rd,{hip:[0,1.65,-.95],sh:[0,2.32,-.62],hand:[.46,1.88,.9],knee:[.32,1.5,.2],foot:[.26,1.02,.42]})); }
+    else {
+      wheel(-1.35,.64,.34,1); wheel(1.55,.66,.24,1);
+      hull([[-.25,1.3],[.62,1.2],[1.0,1.55],[.72,1.88],[-.2,1.78]],.62,body); box(.4,.12,1.55,dark,0,1.9,-.55);
+      box(.32,.05,1.0,body,0,1.98,-1.55,-.28); box(.3,.05,.85,body,0,1.42,1.75,.32); box(.5,.42,.05,wh,0,1.7,1.3,-.2);
+      for(const x of [-.16,.16]){ limb([x,.66,1.55],[x,1.35,1.3],.065,gold); limb([x,1.35,1.3],[x,2.0,1.06],.075,metal); }
+      box(.42,.5,.62,ph('#34343c',60),0,1.0,.15); for(const x of [-.2,.2]) box(.07,.08,1.4,metal,x,.85,-.65,.3);
+      limb([.26,1.1,.0],[.3,1.62,-1.3],.08,metal,null,.11); limb([-.52,2.08,1.0],[.52,2.08,1.0],.04,dark); box(.3,.05,.04,red,0,1.95,-2.0);
+      box(.6,.36,.03,ph('#ffffff',30),0,1.62,-.9,0,PI/2);
+      rider3(K,Object.assign(rd,{hip:[0,2.15,-.6],sh:[0,2.72,-.08],hand:[.5,2.08,1.0],knee:[.4,1.62,.18],foot:[.32,1.05,-.15]})); }
+    if(D.has('box')){ box(.62,.45,.55,ph('#22222a',40),0,(type==='dirt'?2.2:type==='scooter'?1.78:1.85),(type==='sport'?-1.5:-1.45)); box(.5,.06,.04,red,0,(type==='dirt'?2.1:type==='scooter'?1.68:1.75),(type==='sport'?-1.79:-1.74)); }
+    if(D.has('side')) for(const x of [-.46,.46]) box(.26,.5,.75,ph('#22222a',40),x,1.15,-1.15);
+    if(D.has('flag')){ limb([-.25,1.4,-1.6],[-.25,3.4,-1.75],.025,metal); box(.04,.36,.6,ph('#ff4d4d',10),-.25,3.2,-2.05); }
+    return g; }}; }
+function shadeHex(h,k){ const n=parseInt(h.slice(1),16),f=v=>Math.round(clamp(v*k,0,255)); return '#'+((f(n>>16)<<16)|(f(n>>8&255)<<8)|f(n&255)).toString(16).padStart(6,'0'); }
 /* 路上的車：轎車、計程車、廂型車，和極速大亂鬥同樣的材質風格 */
 function carModel(o){ const key='c:'+(o.big?'van':o.taxi?'taxi':'car')+(o.col||'');
   return {key,build:T=>{ const g=new T.Group(),PI=Math.PI,col=new T.Color(o.col||'#3d8bff'),paint=new T.MeshPhongMaterial({color:col,shininess:100,specular:0x777777}),dark=new T.MeshPhongMaterial({color:0x1c1c24,shininess:40}),
@@ -385,8 +440,11 @@ function carModel(o){ const key='c:'+(o.big?'van':o.taxi?'taxi':'car')+(o.col||'
     return g; }}; }
 function motoBack(c,x,y,w,o,t){ const L=o.look||{},type=L.body||'sport',bc=L.bike||o.col||'#ff4d4d',D=decoSet(L),S=type==='scooter',X=type==='dirt';
   { const M=motoModel(L,o.col),S3=v3get(M.key,M.build,'back',5.2); if(S3){ c.save(); c.translate(x,y); if(D.has('glow')) glow(c,0,-w*.02,w*.6,'rgba(80,220,255,.6)');
-      c.fillStyle='rgba(0,0,0,.32)'; c.beginPath(); c.ellipse(0,0,w*.36,w*.07,0,0,7); c.fill(); c.rotate((o.lean||0)*.45); if(o.crash) c.rotate(Math.sin(t*14)*.8);
-      v3draw(c,S3,v3frame(x,-(o.lean||0)*1.2),0,0,w*.58);
+      c.fillStyle='rgba(0,0,0,.32)'; c.beginPath(); c.ellipse(0,0,w*.36,w*.07,0,0,7); c.fill(); const sl=o.slip||0;
+      if(o.drift){ for(let q=0;q<7;q++){ const u=((t*3+q/7)%1),sx=(-sl*w*.28)+(q%2?1:-1)*u*w*.35; c.fillStyle='rgba(235,235,240,'+(.42*(1-u))+')'; c.beginPath(); c.arc(sx,-w*.05-u*w*.25,w*(.07+u*.2),0,7); c.fill(); } }
+      c.rotate((o.lean||0)*.62+sl*.12); if(o.crash) c.rotate(Math.sin(t*14)*.8);
+      v3draw(c,S3,v3frame(x,-(o.lean||0)*1.2-sl*1.6),0,0,w*.58);
+      if(o.drift){ c.fillStyle='rgba(255,200,80,.9)'; for(let q=0;q<4;q++){ const a=t*40+q*1.7; c.fillRect(-sl*w*.2+Math.sin(a)*w*.12,-w*.02-Math.abs(Math.cos(a))*w*.06,w*.025,w*.012); } }
       if(o.boost) mExhaustFlame(c,S?0:w*.1,-w*(S?.42:.4),w,L,t,0,1);
       if(o.night) glow(c,0,-w*(S?.55:.62),w*.3,'rgba(255,40,40,.5)'); c.restore(); return; } }
   c.save(); c.translate(x,y);
@@ -589,7 +647,7 @@ function jetSide(c,x,y,w,L,t){ L=L||{}; { const M=jetModel(L),S3=v3get(M.key,M.b
 
 // 動物
 const ANIMALS={cat:{fur:'#f4b45a',ear:'pt',tail:'long',name:'貓咪'},dog:{fur:'#c8905a',ear:'flop',tail:'short',name:'小狗'},bunny:{fur:'#f4f0f0',ear:'long',tail:'puff',name:'兔子'},bear:{fur:'#9a6a42',ear:'round',tail:'puff',name:'小熊'},
-  panda:{fur:'#ffffff',ear:'round',tail:'puff',dark:'#2a2a30',name:'熊貓'},fox:{fur:'#ff8a3a',ear:'pt',tail:'fluffy',name:'狐狸'},penguin:{fur:'#2a2a3a',ear:'none',tail:'none',belly:'#fff',name:'企鵝'},frog:{fur:'#6fcf5a',ear:'eyes',tail:'none',name:'青蛙'}};
+  panda:{fur:'#ffffff',ear:'round',tail:'puff',dark:'#2a2a30',name:'熊貓'},fox:{fur:'#ff8a3a',ear:'pt',tail:'fluffy',name:'狐狸'},penguin:{fur:'#2a2a3a',ear:'none',tail:'none',belly:'#fff',name:'企鵝'},frog:{fur:'#6fcf5a',ear:'eyes',tail:'none',name:'青蛙'},tiger:{fur:'#e8892a',ear:'round',tail:'long',name:'老虎'},husky:{fur:'#8a8e98',ear:'pt',tail:'short',name:'哈士奇'}};
 function animalEars(c,x,y,r,A,dark){ const ec=A.dark||shade(A.fur,.85); c.fillStyle=ec;
   if(A.ear==='pt') for(const s of [-1,1]){ c.beginPath(); c.moveTo(x+s*r*.75,y-r*.3); c.lineTo(x+s*r*.55,y-r*1.15); c.lineTo(x+s*r*.15,y-r*.75); c.fill(); }
   else if(A.ear==='long') for(const s of [-1,1]){ c.beginPath(); c.ellipse(x+s*r*.38,y-r*1.25,r*.2,r*.6,s*.15,0,7); c.fill(); c.fillStyle='#ffb0c0'; c.beginPath(); c.ellipse(x+s*r*.38,y-r*1.25,r*.09,r*.42,s*.15,0,7); c.fill(); c.fillStyle=ec; }
@@ -747,6 +805,7 @@ function makeCreate(G){ return function create(env,opts){
     k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1); k.tz=k.z; k.tx=k.x; ks.push(k); }
   const my=ks[me],locals=ks.filter(k=>k.local);
   let t=0,cd=3.4,intro=2.2,lastBeep=4,ended=false,endT=0,remain=null,lastTick=99,sendT=0,cer=null,toastQ=new Map();
+  if(opts.preview){ intro=0; cd=0; my.ai={lane:0,skill:.9,nt:0,err:0}; } /* 開始畫面預覽：直接開跑、自己由電腦駕駛 */
   const toast=(k,s)=>{ if(k.local) toastQ.set(k.i,{s,t:2}); };
   // 引擎聲（機車、快艇）
   let osc=null,og=null; try{ if(G.engine&&env.audio&&env.audio()){ const AC=env.audio(); osc=AC.createOscillator(); og=AC.createGain(); osc.type=G.engine; og.gain.value=.025; osc.connect(og); og.connect(env.out()); osc.start(); } }catch(e){ osc=null; }
@@ -776,12 +835,16 @@ function makeCreate(G){ return function create(env,opts){
     // 轉向與離心力
     const air=k.airY>0;
     if(P.drift){ k.vx+=inp.steer*P.steer*dt*(air?.3:1)*(.35+.65*Math.min(1,sp*1.4)); k.vx-=s.curve*sp*P.cent*dt; k.vx*=Math.exp(-(k.iceT>0?P.grip*.3:P.grip)*dt); k.x+=k.vx*dt; }
-    else { const g=(k.iceT>0?.45:1)*(TH.grip||1); k.x+=inp.steer*dt*P.steer*(air?.35:1)*(.3+.7*Math.min(1,sp*1.5))*g; k.x-=dt*sp*s.curve*P.cent*(2-g); }
-    k.lean+=((inp.steer||0)*.8-k.lean)*Math.min(1,dt*8); if(k.iceT>0) k.iceT-=dt;
+    else { if(P.skid){ const want=inp.brake&&Math.abs(inp.steer||0)>.3&&sp>.42&&!air&&k.crashT<=0; /* 甩尾：煞車＋轉向，放開時甩得夠久就加速 */
+        if(want&&!k.dr){ k.dr=Math.sign(inp.steer); k.drT=0; if(k.local) env.sfx('skid'); }
+        else if(k.dr&&(!inp.brake||sp<.3||k.crashT>0||air)){ if(k.drT>.6&&k.crashT<=0){ k.boostT=Math.max(k.boostT,.55+Math.min(.9,k.drT*.35)); if(k.local){ env.sfx('boost'); toast(k,'甩尾加速！'); } } k.dr=0; }
+        if(k.dr){ k.drT+=dt; k.gauge=(k.gauge||0)+dt*.12; if(k.gauge>=1){ k.gauge=0; if(k.charges<3) k.charges++; if(k.local) toast(k,'甩尾集氣！氮氣 +1'); } } }
+      const g=(k.iceT>0?.45:1)*(TH.grip||1),dm=k.dr?(Math.sign(inp.steer||0)===k.dr?1.25:.6):1; k.x+=inp.steer*dt*P.steer*dm*(air?.35:1)*(.3+.7*Math.min(1,sp*1.5))*g; k.x-=dt*sp*s.curve*P.cent*(2-g)*(k.dr?.45:1); }
+    k.lean+=((inp.steer||0)*(k.dr?1.1:.8)-k.lean)*Math.min(1,dt*8); if(k.iceT>0) k.iceT-=dt; k.slip=(k.slip||0)+(((k.dr||0)*.9+(k.dr?0:(inp.steer||0)*.15*sp))-(k.slip||0))*Math.min(1,dt*7);
     // 速度
     let max=P.max*(k.boostT>0?P.boostMul:1)*(inp.max||1); const off=Math.abs(k.x)>1; if(off&&!air) max*=P.offMax;
     if(G.down){ const sl=(segY(C,Math.floor(k.z/SEGL)+1,t)-segY(C,Math.floor(k.z/SEGL),t))/SEGL; k.v+=(-sl*P.g+(inp.gas?P.tuck:0)+(k.boostT>0?P.acc:0))*dt; k.v-=(k.v/max)*(k.v/max)*P.drag*P.max*dt; if(inp.brake) k.v-=P.brake*dt; if(off&&!air) k.v-=k.v*1.5*dt; k.v=Math.max(P.minV||0,k.v); }
-    else { if(inp.gas&&k.v<max) k.v=Math.min(max,k.v+P.acc*dt*(1-.4*k.v/P.max)); else if(inp.brake) k.v-=P.brake*dt; else k.v-=P.decel*dt; if(k.v>max) k.v-=Math.min(k.v-max,P.acc*1.2*dt); k.v=Math.max(0,k.v); }
+    else { if(inp.gas&&k.v<max&&!k.dr) k.v=Math.min(max,k.v+P.acc*dt*(1-.4*k.v/P.max)); else if(k.dr) k.v-=P.decel*.35*dt; else if(inp.brake) k.v-=P.brake*dt; else k.v-=P.decel*dt; if(k.v>max) k.v-=Math.min(k.v-max,P.acc*1.2*dt); k.v=Math.max(0,k.v); }
     if(k.boostT>0) k.boostT-=dt;
     // 跳躍（跳台、跑步跳起來）
     if(inp.jump&&!air&&k.crashT<=0&&P.jumpV&&k.slideT<=0){ k.vy=P.jumpV; k.airY=1; if(k.local) env.sfx('spring'); }
@@ -798,7 +861,7 @@ function makeCreate(G){ return function create(env,opts){
       else if(dxw<car.ww*.5+P.ww*.5+380&&Math.abs(dz)<200){ (car.near=car.near||new Set()).add(k.i); } }
     k.bx-=s.curve*sp*dt*90;
     if(k.fin==null&&k.z>=C.finish*SEGL){ k.fin=t; if(k.local) env.sfx('win'); }
-    k.flags=(k.crashT>0?1:0)|(k.boostT>0?2:0)|(k.slideT>0?4:0)|(k.ghost>0?8:0);
+    k.flags=(k.crashT>0?1:0)|(k.boostT>0?2:0)|(k.slideT>0?4:0)|(k.ghost>0?8:0)|(k.dr?16:0);
   }
   // 電腦：照技術開，看前面障礙物換線，跑步的會跳和滑
   function aiInput(k){ const a=k.ai,s=segAt(C,k.z),inp={steer:0,gas:true,brake:false,jump:false,slide:false,use:false,max:1};
@@ -865,7 +928,7 @@ function makeCreate(G){ return function create(env,opts){
   }
   // 每段要畫的動態物件：選手、車流
   function itemsFor(view){ const items={},add=(z,it)=>{ const i=Math.floor(z/SEGL); it.f=(z-i*SEGL)/SEGL; (items[i]=items[i]||[]).push(it); };
-    for(const k of ks){ if(k.left) continue; const mine=k===view; add(k.z,{x:k.x,ww:P.ww,air:k.airY,d:(px,py,w)=>{ const gh=(k.flags&8)&&Math.floor(t*10)%2; if(gh) c.globalAlpha=.45; G.drawBack(c,px,py,w,{look:k.look,lean:k.lean,crash:k.flags&1,boost:k.flags&2,slide:k.flags&4,night:TH.night,spd:k.v/P.max,num:k.i+1,air:0,col:COLORS[k.i%6]},t+k.i); c.globalAlpha=1;
+    for(const k of ks){ if(k.left) continue; const mine=k===view; add(k.z,{x:k.x,ww:P.ww,air:k.airY,d:(px,py,w)=>{ const gh=(k.flags&8)&&Math.floor(t*10)%2; if(gh) c.globalAlpha=.45; G.drawBack(c,px,py,w,{look:k.look,lean:k.lean,slip:k.remote?(k.flags&16?Math.sign(k.lean||1)*.9:0):(k.slip||0),drift:k.flags&16,crash:k.flags&1,boost:k.flags&2,slide:k.flags&4,night:TH.night,spd:k.v/P.max,num:k.i+1,air:0,col:COLORS[k.i%6]},t+k.i); c.globalAlpha=1;
       if(!mine||t<3){ c.font='900 '+Math.max(9,Math.min(16,w*.13))+'px '+TC; c.textAlign='center'; c.textBaseline='bottom'; const tc=k.team!=null?TEAMS[k.team].col:'#fff'; c.lineWidth=3; c.strokeStyle='#0b0a1c'; const nm=mine?(local2?(k.i+1)+'P':'你'):k.name;
         if(w>18){ c.strokeText(nm,px,py-w*G.tagH); c.fillStyle=mine?'#ffd23f':tc; c.fillText(nm,px,py-w*G.tagH); } } }}); }
     for(const car of traffic){ const z=carZ(car,t); if(z<0||z>C.n*SEGL) continue; add(z,{x:car.x,ww:car.ww,d:(px,py,w)=>OBS.car.d(c,px,py,w,TH,t,car)}); }
@@ -903,7 +966,13 @@ function makeCreate(G){ return function create(env,opts){
   function draw(){ if(cer){ drawCeremony(); return; }
     const views=local2?[[ks[0],{x:0,y:0,w:W/2-1,h:H}],[ks[1],{x:W/2+1,y:0,w:W/2-1,h:H}]]:[[my,{x:0,y:0,w:W,h:H}]];
     c.fillStyle='#000'; c.fillRect(0,0,W,H);
-    for(const [k,vp] of views){ const camK=intro>0?{x:k.x,z:k.z-(intro/2.2)*SEGL*14,airY:0,bx:k.bx}:k; renderView(c,vp,C,camK,itemsFor(k),t+(intro>0?3-intro:0),{me:k.i}); hud(vp,k); } }
+    for(const [k,vp] of views){ const camK=intro>0?{x:k.x,z:k.z-(intro/2.2)*SEGL*14,airY:0,bx:k.bx}:k,roll=G.roll&&intro<=0?-(k.lean||0)*G.roll-(k.slip||0)*G.roll*.5:0;
+      if(roll){ c.save(); c.beginPath(); c.rect(vp.x,vp.y,vp.w,vp.h); c.clip(); const cx=vp.x+vp.w/2,cy=vp.y+vp.h*.6,sh=(k.v>P.max*.9||k.boostT>0)?(Math.random()-.5)*(k.boostT>0?3:1.2):0; c.translate(cx+sh,cy); c.rotate(roll); c.scale(1.1,1.1); c.translate(-cx,-cy); }
+      renderView(c,vp,C,camK,itemsFor(k),t+(intro>0?3-intro:0),{me:k.i}); if(roll) c.restore();
+      if(G.roll&&intro<=0) speedFx(vp,k); hud(vp,k); } }
+  function speedFx(vp,k){ const u=clamp((k.v/P.max-.62)/.5,0,1)+(k.boostT>0?.6:0); if(u<=0) return; c.save(); c.beginPath(); c.rect(vp.x,vp.y,vp.w,vp.h); c.clip(); const cx=vp.x+vp.w/2,cy=vp.y+vp.h*.45,R=Math.hypot(vp.w,vp.h)*.6;
+    c.strokeStyle='rgba(255,255,255,'+Math.min(.5,u*.3)+')'; c.lineWidth=1.5; c.beginPath(); for(let i=0;i<34;i++){ const a=i*2.39996+(i%3)*.2,f=((t*2.6+i*.137)%1),r0=R*(.35+f*.55),r1=r0+R*(.08+u*.14); c.moveTo(cx+Math.cos(a)*r0,cy+Math.sin(a)*r0*.7); c.lineTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1*.7); } c.stroke();
+    const g=c.createRadialGradient(cx,cy,R*.45,cx,cy,R); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,k.boostT>0?'rgba(40,200,255,'+Math.min(.35,u*.22)+')':'rgba(0,0,0,'+Math.min(.3,u*.2)+')'); c.fillStyle=g; c.fillRect(vp.x,vp.y,vp.w,vp.h); c.restore(); }
   return {update,draw,destroy(){ try{ if(osc){ osc.stop(); osc.disconnect(); } }catch(e){} },_dbg:{ks,C,get t(){ return t; },skip(){ intro=0; cd=0; },auto(k){ k.auto=true; }}};
 }; }
 
@@ -925,7 +994,7 @@ function motoTheme(S){ const T=Object.assign({},MOTO_TH[S.th]); const m=S.mod||'
   if(m.includes('fog')){ T.mist=2.4; T.fog='#dfe6ea'; }
   return T; }
 const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',tagH:1.65,useText:'氮氣加速！',chargeCol:'#3ddbd9',
-  P:{max:12500,acc:5200,brake:12000,decel:2600,offMax:.5,steer:2.4,cent:.3,wall:1.55,boostMul:1.4,ww:320},
+  P:{max:12500,acc:5200,brake:12000,decel:2600,offMax:.5,steer:2.4,cent:.3,wall:1.55,boostMul:1.45,ww:320,skid:1},roll:.11,
   stages:mkStages([['晨光市區','city'],['海岸公路','coast'],['河濱大道','town'],['港口倉庫','port'],['山腳小鎮','town',{mod:'sunset'}],['黃昏海岸','coast',{mod:'sunset'}],
     ['雨夜市區','city',{mod:'night rain'}],['蜿蜒山路','mountain'],['跨海大橋','bridge'],['霓虹夜街','neon'],['高山雲霧','mountain',{mod:'fog'}],['暴雨高速','city',{mod:'rain'}],['不夜城','neon',{mod:'rain'}],['天險峭壁','mountain',{mod:'sunset'}],['颱風夜','coast',{mod:'night rain'}]],
     (st,i)=>({len:2600+st*450,curve:1.6+st*.9,hill:1200+st*700,ai:.66+st*.06,traffic:5+st*3,works:st>=2})),
@@ -937,7 +1006,7 @@ const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',
       out.push(car); } return out; },
   place(C,r){ const S=C.S; for(let i=C.start+60;i<C.finish-30;i++){ const s=C.segs[i];
       if(S.works&&r()<.0035){ const lane=[-.66,0,.66][(r()*3)|0]; for(let q=0;q<6;q++){ const s2=C.segs[i+q*2]; if(s2) s2.obs.push({k:'cone',x:lane+(q%2?.12:-.12),dz:80,ww:170}); } s.obs.push({k:'barrier',x:lane,dz:40,ww:560}); i+=16; continue; }
-      if(r()<.004){ const id='c'+i; s.obs.push({k:'can',x:(r()*1.4-.7),dz:100,ww:220,good:1,id,taken:new Set(),gone(p){ return this.taken.has(p); }}); } } },
+      if(r()<.004){ const id='c'+i; s.obs.push({k:'can',x:(r()*1.4-.7),dz:100,ww:430,good:1,id,taken:new Set(),gone(p){ return this.taken.has(p); }}); } } },
   onObs(k,ob,A){ if(ob.k==='can'){ ob.taken.add(k.i); if(k.charges<3) k.charges++; A.toast(k,'拿到氮氣瓶'); if(k.local) A.sfx('item'); return; } A.crash(k,1.2,'撞到路障了！'); },
   nearMiss(k,A){ k.gauge=(k.gauge||0)+.34; if(k.gauge>=1){ k.gauge=0; if(k.charges<3) k.charges++; A.toast(k,'驚險超車！氮氣 +1'); if(k.local) A.sfx('item'); } else if(k.local) A.toast(k,'驚險超車！'); },
   gaugeOf:k=>k.gauge||0,
@@ -952,8 +1021,8 @@ const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',
     {key:'nitro',label:'加速特效',opts:[{id:'blue',label:'藍焰'},{id:'fire',label:'火焰'},{id:'green',label:'綠焰'},{id:'rainbow',label:'彩虹'}]}],
   desc:'騎一般輕型機車、重型機車或越野機車，在市區、海岸、山路、霓虹夜街和雨天高速公路飆車（造型可選車款和後箱、側箱、彩繪、霓虹底燈等配件）。閃過車流、驚險超車集滿氮氣，撿氮氣瓶加速；雨天路滑、霧天看不遠。共 15 關，單人、雙人分割畫面或開房間連線。',
   goal:'從起點騎到終點，前 3 名過關。路上有一般車輛，撞到會摔車；2 星以上的關卡有車會換車道（先閃方向燈再切過來，星數越高越多）；從車旁邊驚險超車三次可以集到一瓶氮氣，路上也撿得到氮氣瓶（最多存 3 瓶）。',
-  help:[['↑ ↓','油門、煞車'],['← →','轉向'],['X','用氮氣加速'],['W A S D Q','雙人 1P（左半畫面），Q 用氮氣'],['↑ ↓ ← → Enter','雙人 2P（右半畫面），Enter 用氮氣']],
-  touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車'],['氮氣','用氮氣加速']],
+  help:[['↑ ↓','油門、煞車'],['← →','轉向'],['↓ + ← →','高速時甩尾過彎，放開加速'],['X','用氮氣加速'],['W A S D Q','雙人 1P（左半畫面），Q 用氮氣'],['↑ ↓ ← → Enter','雙人 2P（右半畫面），Enter 用氮氣']],
+  touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車；按著煞再轉向＝甩尾'],['氮氣','用氮氣加速']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'煞',c:'ArrowDown'},{l:'氮氣',c:'KeyX',act:true}]}};
 // ---- 2. 雪山大滑降 ----
 const SLED_BASE={sky:['#7ac4f4','#e8f6ff'],far:'snowmtn',farCol:'#a8c8e0',farCol2:'#d0e4f2',ground:['#f6f9ff','#eaf1fa'],road:['#e2edf8','#d8e6f4'],rumble:null,edgeLine:'#9cc0e4',spr:[['pine',6],['rock',1],['snowman',.4]],edge:['pole',5,1.18],dens:.5,near:1.4,spread:2.2,fog:'#e8f2fa',snowy:1,pine:'#2f6a4a',rock:'#8a8a92',nosign:1};
@@ -963,7 +1032,7 @@ function sledTheme(S){ const T=Object.assign({},SLED_BASE,S.tx||{}); const m=S.m
   if(m.includes('storm')){ T.snowfall=2; T.mist=2.6; T.fog='#e4ecf4'; T.sky=['#a8b4c4','#d8e0ea']; } else if(!m.includes('clear')) T.snowfall=1;
   if(m.includes('aurora')){ T.aurora=1; }
   return T; }
-const SLED={id:'sled',name:'雪山大滑降',camH:1150,kmh:110,down:1,tagH:1.35,useText:'衝刺！',chargeCol:'#ff7a1a',
+const SLED={id:'sled',name:'雪山大滑降',camH:1150,kmh:110,down:1,roll:.07,tagH:1.35,useText:'衝刺！',chargeCol:'#ff7a1a',
   P:{max:12000,g:52000,tuck:1600,acc:3000,drag:.5,brake:7000,offMax:.6,steer:2.1,cent:.26,wall:1.42,boostMul:1.3,ww:380,minV:600,jumpV:0,grav:3400},
   stages:mkStages([['初學者雪坡','',{mod:'clear'}],['松林小徑','',{tx:{spr:[['pine',9],['rock',1]],dens:.75}}],['雪人樂園','',{tx:{spr:[['snowman',4],['pine',4],['cabin',1]]}}],
     ['木屋村莊','',{tx:{spr:[['cabin',4],['pine',4],['snowman',1]]}}],['冰湖滑道','',{ice:1,tx:{road:['#cfe6f8','#c2dcf2']}}],['黃昏雪嶺','',{mod:'sunset'}],
@@ -1000,7 +1069,7 @@ function jetTheme(S){ const T=Object.assign({},JET_BASE,S.tx||{}); const m=S.mod
   if(m.includes('green')){ T.road=['#3a8a7a','#368274']; T.ground=['#2f7a5a','#2c7254']; T.far='hills'; T.farCol='#3f7a3a'; T.farCol2='#6a9a5a'; }
   if(m.includes('ice')){ T.road=['#5ab0e0','#54a8d8']; T.ground=['#3a90c8','#3488c0']; T.far='snowmtn'; T.farCol='#a8c8e0'; T.farCol2='#d0e4f2'; T.sky=['#9ad0f0','#e8f6ff']; }
   return T; }
-const JET={id:'jet',name:'浪尖快艇賽',camH:820,kmh:120,engine:'square',tagH:1.4,useText:'渦輪加速！',chargeCol:'#ff9d3d',
+const JET={id:'jet',name:'浪尖快艇賽',camH:820,kmh:120,roll:.08,engine:'square',tagH:1.4,useText:'渦輪加速！',chargeCol:'#ff9d3d',
   P:{max:11500,acc:4800,brake:6500,decel:2000,offMax:.7,steer:3.4,grip:2.4,cent:.5,wall:1.2,boostMul:1.42,ww:360,drift:1,jumpV:0,grav:3000},
   stages:mkStages([['椰林海灣','',{tx:{spr:[['island',4],['boat',1]]}}],['平靜河道','',{mod:'green',tx:{spr:[['tree',5],['house',1],['bush',2]],dens:.5,near:1.4}}],['珊瑚淺灘','',{tx:{road:['#5ac8e8','#52c0e0'],ground:['#3aa8d8','#36a0d0']}}],
     ['港灣航道','',{tx:{spr:[['container',3],['crane',2],['boat',3]],dens:.35}}],['紅樹林','',{mod:'green',tx:{spr:[['mangrove',6]],dens:.55,near:1.4}}],['夕陽海峽','',{mod:'sunset'}],
@@ -1034,8 +1103,8 @@ const JET={id:'jet',name:'浪尖快艇賽',camH:820,kmh:120,engine:'square',tagH
 // ---- 6. 萌寵障礙賽跑 ----
 const RUN_BASE={sky:['#7ac8ff','#e8f8ff'],far:'hills',farCol:'#6aae5a',farCol2:'#9ad08a',ground:['#7ac85a','#70bc50'],road:['#d4573a','#cc5236'],rumble:['#ffffff','#f4f4f4'],lanes:4,spr:[['tree',4],['bush',3],['crowd',1],['balloon',1]],edge:null,dens:.5,near:1.35,spread:1.8,fog:'#e0f2ff',nosign:1,flowers:1};
 function runTheme(S){ const T=Object.assign({},RUN_BASE,S.tx||{}); const m=S.mod||''; if(m.includes('night')){ T.night=1; T.sky=['#120c30','#3a2a6a']; T.fog='#2a2050'; T.ground=T.ground.map(x=>shade(x,.5)); T.road=T.road.map(x=>shade(x,.6)); } return T; }
-const RUN={id:'run',name:'萌寵障礙賽跑',camH:720,kmh:40,run:1,tagH:1.25,useText:'衝刺！',chargeCol:'#ff8a1a',speedUnit:'KM/H',
-  P:{max:8600,acc:7000,brake:0,decel:0,offMax:.6,steer:3,cent:.2,wall:1.12,boostMul:1.4,ww:300,jumpV:1500,grav:4600,slide:1,jumpLead:13},
+const RUN={id:'run',name:'萌寵障礙賽跑',camH:720,kmh:40,roll:.025,run:1,tagH:1.25,useText:'衝刺！',chargeCol:'#ff8a1a',speedUnit:'KM/H',
+  P:{max:8600,acc:7000,brake:0,decel:0,offMax:.6,steer:3,cent:.2,wall:1.12,boostMul:1.4,ww:300,jumpV:1700,grav:4600,slide:1,jumpLead:14},
   stages:mkStages([['草地運動會',''],['森林步道','',{tx:{spr:[['tree',6],['pine',3],['bush',2]],road:['#a8784a','#a07044']}}],['花園小徑','',{tx:{spr:[['bush',6],['tree',2],['balloon',1]],road:['#d8c8a8','#d0c0a0']}}],
     ['沙灘跑道','',{tx:{spr:[['palm',5],['rock',1],['crowd',1]],ground:['#f0dc9c','#e8d48c'],road:['#e8c88a','#e0c080'],far:'sea',farCol:'#3a9ad8',pitCol:'#3a9ad8'}}],
     ['蘑菇森林','',{tx:{spr:[['mushroom',6],['tree',2]],ground:['#5aa83a','#52a034']}}],['糖果樂園','',{tx:{spr:[['candy',6],['balloon',2]],ground:['#ffc6e0','#ffb8d8'],road:['#ff8ac0','#f882b8'],sky:['#ffc8e8','#fff0f8'],far:'hills',farCol:'#ffa8d0',farCol2:'#ffd0e4',pitCol:'#8a5a3a'}}],
@@ -1051,13 +1120,13 @@ const RUN={id:'run',name:'萌寵障礙賽跑',camH:720,kmh:40,run:1,tagH:1.25,us
     for(let i=C.start+30;i<C.finish-15;i++){ const s=C.segs[i]; if(i-last<6) continue;
       if(r()<S.hurdles){ last=i; const k=r(); const pick=k<.4?'hurdle':k<.55&&S.low?'lowbar':k<.68&&S.pits?'pit':k<.8?'log':k<.9&&S.mud?'mud':'hurdle';
         const full=pick==='pit'||pick==='lowbar'||(pick==='log'&&r()<.5);
-        const ob={k:pick,x:full?0:[-.55,0,.55][(r()*3)|0],dz:100,ww:full?3600:1300,hw:full?1900:620};
+        const ob={k:pick,x:full?0:[-.55,0,.55][(r()*3)|0],dz:100,ww:pick==='lowbar'?4600:full?3600:1300,hw:pick==='lowbar'?2300:full?1900:620};
         if(pick==='hurdle'||pick==='log') ob.h=pick==='log'?110:150; if(pick==='pit') ob.h=20; if(pick==='lowbar'){ ob.low=1; } if(pick==='mud'){ ob.mud=1; ob.h=30; } s.obs.push(ob); continue; }
       if(r()<.008){ const id='k'+i; s.obs.push({k:'carrot',x:(r()*1.2-.6),dz:100,ww:240,hw:200,good:1,id,taken:new Set(),gone(p){ return this.taken.has(p); }}); }
       else if(S.springs&&r()<.002){ s.obs.push({k:'spring',x:(r()*1-.5),dz:100,ww:380,hw:200,good:1,spring:1}); } } },
   onObs(k,ob,A){ if(ob.k==='carrot'){ ob.taken.add(k.i); if(k.charges<3) k.charges++; A.toast(k,'吃到紅蘿蔔！衝刺 +1'); if(k.local) A.sfx('heal'); return; }
     if(ob.spring){ if(k.airY<=0){ k.vy=2300; k.airY=1; A.toast(k,'彈簧！跳好高'); if(k.local) A.sfx('spring'); } return; }
-    if(ob.low){ if(k.slideT>0) return; A.crash(k,.9,'撞到樹枝了！要按 ↓ 滑過去'); return; }
+    if(ob.low){ if(k.slideT>0&&k.airY<=0) return; A.crash(k,.9,k.airY>0?'跳起來撞到樹枝了！要按 ↓ 滑過去':'撞到樹枝了！要按 ↓ 滑過去'); return; }
     if(ob.h!=null&&k.airY>ob.h) return;
     if(ob.mud){ if(k.mudAt===ob) return; k.mudAt=ob; k.v*=.55; A.toast(k,'踩到泥巴，變慢了'); return; }
     A.crash(k,ob.k==='pit'?1.3:.9,ob.k==='pit'?'掉進水坑了！':ob.k==='log'?'被木頭絆倒了！':'撞到欄架了！'); },

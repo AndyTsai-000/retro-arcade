@@ -142,12 +142,13 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .chip{background:var(--ink);border:2px solid var(--line);border-radius:999px;padding:5px 14px;font-weight:700}
 .chip.sel{background:var(--cyan);border-color:#0b0a1c;color:#14122b}
-.chip.lock{opacity:.4;cursor:not-allowed}
+.chip.lock{opacity:.5}.chip.lock.sel{opacity:.85}
+.lockNote{color:var(--yellow,#ffd23f);font-weight:700;margin:6px 0 0}
 .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:7px;padding:4px 2px}
 .sg{height:42px;border-radius:10px;background:var(--ink);border:2px solid var(--line);color:var(--text);font-weight:900;font-size:15px;cursor:pointer}
 .sg.done{background:#24503a;border-color:#3f8a5f}
 .sg.sel{background:var(--cyan);border-color:#0b0a1c;color:#14122b}
-.sg.lock{opacity:.3;cursor:not-allowed}
+.sg.lock{opacity:.4}.sg.lock.sel{opacity:.8}
 .sgInfo{font-weight:700;margin:4px 0 0}
 .sgSplit .lkL .lk{height:auto}
 .sgSplit .lkL{position:static}
@@ -245,7 +246,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=208; // 每次改版加一
+window.ARCADE_V=209; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -307,6 +308,7 @@ const SFX={
   go(){tone(880,.4,'square',.06);},
   boost(){noise(.5,.08);tone(200,.5,'sawtooth',.05,3);},
   bump(){noise(.1,.12);},
+  skid(){noise(.4,.07);tone(1100,.35,'sawtooth',.018,.55);},
   rattle(){for(let i=0;i<9;i++) tone(1400+Math.random()*900,.03,'square',.03,.7,i*.095);},
   lap(){tone(784,.1,'square',.05);tone(1047,.2,'square',.05,1,.1);},
   win(){[523,659,784,1047].forEach((f,i)=>tone(f,.18,'square',.06,1,i*.13));},
@@ -735,7 +737,7 @@ function open(id){
 // 關卡很多的遊戲（stageGrid）：左邊示意圖和開始按鈕，右邊只放關卡數字，不用一直往下拉
 function gridHtml(g){
   return '<div class="sgrid">'+g.stages.map((s,i)=>{ const lock=g.stageLocked&&g.stageLocked(i),done=g.stageBest&&g.stageBest(i);
-    return lock?'<button class="sg lock" disabled title="過了前一關才會解鎖">'+(i+1)+'</button>':'<button class="sg'+(done?' done':'')+(i===stageSel?' sel':'')+'" data-s="'+i+'" title="'+s+'">'+(i+1)+'</button>'; }).join('')+'</div>';
+    return lock?'<button class="sg lock'+(i===stageSel?' sel':'')+'" data-s="'+i+'" title="過了前一關才會解鎖（可以先看畫面）">'+(i+1)+'</button>':'<button class="sg'+(done?' done':'')+(i===stageSel?' sel':'')+'" data-s="'+i+'" title="'+s+'">'+(i+1)+'</button>'; }).join('')+'</div>';
 }
 function gridInfo(g){ const i=stageSel,b=g.stageBest&&g.stageBest(i); if(g.stageLabel) return g.stages[i]+(b?'　<small>'+b+'</small>':''); return '第 '+(i+1)+' 關　'+g.stages[i]+(g.stars?'　<span class="stars">'+'★'.repeat(g.stars[i])+'</span>':'')+(b?'　<small>'+b+'</small>':''); }
 function startCard(){
@@ -744,25 +746,28 @@ function startCard(){
     showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas><p>'+g.goal+'</p><p class="hint">按上方「遊戲操作」可以看按鍵說明。</p>'+optsHtml(g)+
       '<p class="sgInfo" id="sgInfo">'+gridInfo(g)+'</p><div class="row"><button class="btn main" id="sGo">開始</button>'+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div></div>'+
       '<div class="lklist"><div class="lkhead">選擇關卡</div>'+gridHtml(g)+'</div></div>');
-    closeLook(); demo(g);
-    bindChips(()=>{ $('#sgInfo').innerHTML=gridInfo(g); }); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sLook',()=>{SFX.click();lookCard();});
+    closeLook(); demo(g); lockSync(g);
+    bindChips(()=>{ $('#sgInfo').innerHTML=gridInfo(g); lockSync(g); }); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sLook',()=>{SFX.click();lookCard();});
     const sel=card.querySelector('.sg.sel'); if(sel) sel.scrollIntoView({block:'nearest'});
     return; }
   // 一般遊戲也用左右兩欄：左邊示意圖、說明、目前選的關卡和開始按鈕；右邊是關卡、賽制、玩法和操作說明
   const stInfo=()=>g.stages?'<p class="sgInfo" id="sgInfo">'+gridInfo(g)+'</p>':'';
   // 右邊列出關卡名稱（有難度的加星數）；只有貓咪數獨那種關卡很多的遊戲（stageGrid）才只放數字
-  const stageChips=!g.stages?'':!g.stageGrid?'<div class="lkhead">'+(g.stageLabel||'選擇關卡')+'</div><div class="chips">'+g.stages.map((s,i)=>(g.stageLocked&&g.stageLocked(i)?'<button class="chip lock" disabled title="過了前一關才會解鎖">🔒 '+(i+1)+'　'+s+'</button>':'<button class="chip'+(i===stageSel?' sel':'')+'" data-s="'+i+'">'+(i+1)+'　'+s+(g.stars?'　<span class="stars">'+'★'.repeat(g.stars[i])+'</span>':'')+(g.stageBest&&g.stageBest(i)?'　<small>'+g.stageBest(i)+'</small>':'')+'</button>')).join('')+'</div>':'<div class="lkhead">選擇關卡</div>'+gridHtml(g);
+  const stageChips=!g.stages?'':!g.stageGrid?'<div class="lkhead">'+(g.stageLabel||'選擇關卡')+'</div><div class="chips">'+g.stages.map((s,i)=>(g.stageLocked&&g.stageLocked(i)?'<button class="chip lock'+(i===stageSel?' sel':'')+'" data-s="'+i+'" title="過了前一關才會解鎖（可以先看畫面）">🔒 '+(i+1)+'　'+s+'</button>':'<button class="chip'+(i===stageSel?' sel':'')+'" data-s="'+i+'">'+(i+1)+'　'+s+(g.stars?'　<span class="stars">'+'★'.repeat(g.stars[i])+'</span>':'')+(g.stageBest&&g.stageBest(i)?'　<small>'+g.stageBest(i)+'</small>':'')+'</button>')).join('')+'</div>':'<div class="lkhead">選擇關卡</div>'+gridHtml(g);
   const varChips=g.variants?'<div class="lkhead">賽制</div><div class="chips">'+g.variants.map(v=>'<button class="chip'+(v.id===variantSel?' sel':'')+'" data-v="'+v.id+'">'+v.label+'</button>').join('')+'</div>':'';
   const optBlock='<div id="optBox">'+(visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):'')+'</div>';
   showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas>'+stInfo()+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+
     '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+goalOf(g,stageSel)+'</p><div class="lkhead">操作說明</div><div id="sgHelp">'+helpHtml(g)+'</div></div></div>');
-  closeLook(); demo(g); leftTrack(g);
-  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); const gl=$('#sgGoal'); if(gl&&(g.stageGoal||g.optNote)) gl.innerHTML=goalOf(g,stageSel); const hb=$('#sgHelp'); if(hb&&g.stageHelp) hb.innerHTML=helpHtml(g); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ const reOpt=()=>{ if(!g.optNote) return; const gl=$('#sgGoal'),ob=$('#optBox'); if(gl) gl.innerHTML=goalOf(g,stageSel); if(ob){ ob.innerHTML='<div class="lkhead">玩法設定</div>'+optsHtml(g); bindOpts(g,reOpt); } }; bindOpts(g,reOpt); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
+  closeLook(); demo(g); leftTrack(g); lockSync(g);
+  bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); lockSync(g); const gl=$('#sgGoal'); if(gl&&(g.stageGoal||g.optNote)) gl.innerHTML=goalOf(g,stageSel); const hb=$('#sgHelp'); if(hb&&g.stageHelp) hb.innerHTML=helpHtml(g); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ const reOpt=()=>{ if(!g.optNote) return; const gl=$('#sgGoal'),ob=$('#optBox'); if(gl) gl.innerHTML=goalOf(g,stageSel); if(ob){ ob.innerHTML='<div class="lkhead">玩法設定</div>'+optsHtml(g); bindOpts(g,reOpt); } }; bindOpts(g,reOpt); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
   const sel=card.querySelector('.lklist .sg.sel,.lklist .chip.sel[data-s]'); if(sel) sel.scrollIntoView({block:'nearest'});
 }
+// 選到還沒解鎖的關卡：可以看畫面，但開始鈕停用
+function lockSync(g){ const L=!!(g.stages&&g.stageLocked&&g.stageLocked(stageSel)); card.querySelectorAll('.lkL [data-m],#sGo,#sNet').forEach(b=>b.disabled=L);
+  let n=$('#lockNote'); if(L&&!n){ const r=card.querySelector('.lkL .row'); if(r){ n=document.createElement('p'); n.id='lockNote'; n.className='lockNote'; n.textContent='🔒 過了前一關才能玩這一關'; r.after(n); } } else if(!L&&n) n.remove(); }
 // 有 3D 賽道預覽的遊戲：開始畫面左邊直接飛一圈選到的賽道（3D 元件還沒載入就先載入，載入前顯示縮圖）
 function leftTrack(g){
   if(!g.stageViewer||!g.stages) return; const cv=$('#demoCv')||$('#demoBox'); if(!cv) return;
@@ -771,10 +776,37 @@ function leftTrack(g){
     box.innerHTML=''; let v=null; try{ v=g.stageViewer(box,stageSel); }catch(e){} if(v) stagePrev={v}; };
   if(g.ready()) mount(); else g.load().then(mount).catch(()=>{});
 }
-// 開始畫面的示意圖：用這款遊戲的動態縮圖一直播放
+// 開始畫面左邊：在背景直接跑一局選到的關卡（沒有聲音、不吃按鍵），點哪一關就看到那一關進去後的真實畫面
+let prev=null;
+function closePrev(){ if(prev){ try{ if(prev.inst) prev.inst.destroy(); }catch(e){} prev=null; } }
+function canLive(g){ return !!g.stages&&g.livePreview!==false&&!g.stageViewer&&!STAGE_SHOTS[g.id]; }
+function mkPrev(g,key){
+  closePrev(); if(g.load&&!(g.ready&&g.ready())){ if(!g._pvLoad){ g._pvLoad=1; g.load().catch(()=>{}); } return null; }
+  const box=document.createElement('div'),E={stage:box,keys:{},touch:isTouch,preview:true,hit:()=>false,sfx:()=>{},audio:()=>null,out:()=>null,
+    canvas2d(w,h){ const c=document.createElement('canvas'),S=2; c.width=w*S; c.height=h*S; box.appendChild(c); const x=c.getContext('2d'); x.scale(S,S); return {canvas:c,ctx:x}; },
+    end(){ if(prev&&prev.box===box&&!prev.dead) prev.dead=performance.now(); } };
+  const m=g.modes?(g.modes.find(q=>!q.kb)||g.modes[0]).id:undefined;
+  prev={g,key,box,warm:0,acc:0};
+  try{ prev.inst=g.create(E,{options:Object.assign({},optSel),stage:stageSel,mode:m,variant:variantSel,look:lookOf(g),name:myName,net:null,first:0,preview:true}); }catch(e){ prev.fail=1; }
+  return prev;
+}
+function livePrev(g,dt,ctx){
+  if(!canLive(g)) return false; const key=JSON.stringify([stageSel,variantSel,optSel]);
+  let p=prev; if(!p||p.g!==g||p.key!==key||(p.dead&&performance.now()-p.dead>1500)) p=mkPrev(g,key);
+  if(!p||p.fail) return false;
+  try{
+    const WARM=g.previewWarm!=null?g.previewWarm:4; /* 先快轉跳過倒數 */
+    if(p.warm<WARM){ const t1=performance.now(); while(p.warm<WARM&&!p.dead&&performance.now()-t1<14){ for(let i=0;i<10;i++) p.inst.update(STEP); p.warm+=10*STEP; } if(p.warm<WARM&&!p.dead) return false; }
+    else if(!p.dead){ p.acc+=dt; let n=0; while(p.acc>=STEP&&n<8&&!p.dead){ p.inst.update(STEP); p.acc-=STEP; n++; } }
+    p.inst.draw();
+  }catch(e){ p.fail=1; return false; }
+  ctx.fillStyle='#0b0a1c'; ctx.fillRect(0,0,480,270);
+  for(const c of p.box.querySelectorAll('canvas')){ if(!c.width||!c.height) continue; const k=Math.min(480/c.width,270/c.height),w=c.width*k,h=c.height*k; ctx.drawImage(c,(480-w)/2,(270-h)/2,w,h); }
+  return true;
+}
 function demo(g){
-  const cv=$('#demoCv'); if(!cv) return; const ctx=cv.getContext('2d'); ctx.scale(2,2); const t0=performance.now();
-  const loop=()=>{ if(!cv.isConnected||cur!==g) return; const tt=still?1.3:(performance.now()-t0)/1000; try{ const sc=stageCover(g.id,stageSel); if(sc){ const z=1.03+.03*Math.sin(tt*.4); ctx.drawImage(sc,240-240*z,135-135*z,480*z,270*z); ctx.fillStyle='rgba(11,10,28,.72)'; const nm=g.stages?g.stages[stageSel]:g.name; ctx.font='900 17px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle'; const nw=ctx.measureText(nm).width+22; ctx.fillRect(8,8,nw,30); ctx.fillStyle='#ffd23f'; ctx.fillText(nm,19,24); } else if(g.stageShow&&g.stages&&!(COVERS[g.id]&&!STAGE_SHOTS[g.id]&&false)) g.stageShow(ctx,480,270,stageSel,tt); else g.thumb(ctx,480,270,tt); }catch(e){} if(!still) requestAnimationFrame(loop); };
+  const cv=$('#demoCv'); if(!cv) return; const ctx=cv.getContext('2d'); ctx.scale(2,2); const t0=performance.now(); let lt=t0;
+  const loop=()=>{ if(!cv.isConnected||cur!==g||state!=='ready'){ closePrev(); return; } const now=performance.now(),tt=still?1.3:(now-t0)/1000,dt=Math.min(.05,(now-lt)/1000); lt=now; try{ const sc=stageCover(g.id,stageSel); if(livePrev(g,dt,ctx)){} else if(sc){ const z=1.03+.03*Math.sin(tt*.4); ctx.drawImage(sc,240-240*z,135-135*z,480*z,270*z); ctx.fillStyle='rgba(11,10,28,.72)'; const nm=g.stages?g.stages[stageSel]:g.name; ctx.font='900 17px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle'; const nw=ctx.measureText(nm).width+22; ctx.fillRect(8,8,nw,30); ctx.fillStyle='#ffd23f'; ctx.fillText(nm,19,24); } else if(g.stageShow&&g.stages&&!(COVERS[g.id]&&!STAGE_SHOTS[g.id]&&false)) g.stageShow(ctx,480,270,stageSel,tt); else g.thumb(ctx,480,270,tt); }catch(e){} if(!still) requestAnimationFrame(loop); };
   loop();
 }
 // 有賽道預覽的遊戲：選好關卡後先看環境圖和路線圖，再決定要不要進去
@@ -788,7 +820,8 @@ function mountStage(i,v3){ closeStage();
   if(v3){ let v=null; try{ v=cur.stageViewer($('#spBox'),i); }catch(e){} if(v) stagePrev={v}; else $('#spBox').textContent='這台裝置無法顯示 3D 畫面'; }
 }
 async function enter(opts){
-  const g=cur; if(!g.stagePreview) return start(opts);
+  const g=cur; if(g.stages&&g.stageLocked&&g.stageLocked(opts.stage||0)) return;
+  if(!g.stagePreview) return start(opts);
   SFX.click(); closeLook(); state='ready'; const i=opts.stage||0;
   let v3=!!g.stageViewer;
   if(v3&&!g.ready()){ showCard('<h3>載入賽道中…</h3>'); try{ await g.load(); }catch(e){ v3=false; } if(cur!==g||state!=='ready') return; }

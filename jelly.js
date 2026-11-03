@@ -38,7 +38,7 @@ function makeLevel(i){ const L=LEVELS[i],r=rng(4421*(i+1)),d=i/29,cols=[],ents=[
     if(kind==='flat'){ flat(4+Math.floor(r()*5)); if(r()<(i<3?.25:.5)) ents.push({t:'slime',x:(x0+2)*TS,y:(gy-1)*TS}); }
     else if(kind==='gap'){ flat(2); const g=Math.min(i<4?2:i<10?3:4,2+Math.floor(r()*(1+d*2.4))); for(let k=0;k<g;k++) col(); /* 最寬 4 格，跑起來跳得過 */ for(let k=0;k<g+1;k++) coins.push({x:(x0+2+k)*TS+16,y:(gy-3-Math.sin(k/g*Math.PI)*1.5)*TS}); flat(3); }
     else if(kind==='step'){ const ng=clamp(gy+pick([-2,-1,-1,1,1,2]),8,13); flat(2); gy=ng; flat(4+Math.floor(r()*3)); }
-    else if(kind==='blocks'){ flat(2); const y=gy-3,n=3+Math.floor(r()*3); for(let k=0;k<n;k++){ const a=ground(gy); a[y]=k===Math.floor(n/2)?3:(r()<.35?3:2); if(a[y]===3) a.item=r()<.3?'fruit':'coin'; }
+    else if(kind==='blocks'){ flat(2); const y=gy-4, /* 問號箱離地 3 格：要真的跳起來才撞得到，變大也不會直接頂到；跳高一點可以站上去 */n=3+Math.floor(r()*3); for(let k=0;k<n;k++){ const a=ground(gy); a[y]=k===Math.floor(n/2)?3:(r()<.35?3:2); if(a[y]===3) a.item=r()<.3?'fruit':'coin'; }
       if(r()<.6) ents.push({t:'slime',x:(x0+3)*TS,y:(gy-1)*TS}); if(!starPlan[0]&&r()<.6){ starPlan[0]=1; stars.push({x:(x0+2+Math.floor(n/2))*TS+16,y:(y-2.5)*TS,id:0}); } flat(2); }
     else if(kind==='pillar'){ flat(2); const h=2+Math.floor(r()*2),a=ground(gy),b=ground(gy); for(let y=gy-h;y<gy;y++){ a[y]=7; b[y]=7; } a.pillTop=gy-h; flat(2); if(r()<.5) ents.push({t:i>=4&&r()<.5?'spiky':'slime',x:(x0+6)*TS,y:(gy-1)*TS}); flat(2); }
     else if(kind==='enemies'){ flat(8); const n=1+Math.floor(r()*(1+d*2)); for(let k=0;k<n;k++) ents.push({t:i>=7&&r()<.35?'spiky':'slime',x:(x0+2+k*2)*TS,y:(gy-1)*TS}); if(i>=7&&r()<.5) ents.push({t:'bee',x:(x0+5)*TS,y:(gy-4)*TS}); }
@@ -196,7 +196,7 @@ function create(env,opts){
     if(P.goal){ clearT+=dt; if(clearT<1.2){ P.vx=0; } else { P.vx=120; P.face=1; } }
     else { const acc=P.on?1400:900,max=200; if(left&&!right){ P.vx=Math.max(-max,P.vx-acc*dt); P.face=-1; } else if(right&&!left){ P.vx=Math.min(max,P.vx+acc*dt); P.face=1; } else { const fr=(P.on?1600:300)*dt; P.vx=Math.abs(P.vx)<=fr?0:P.vx-Math.sign(P.vx)*fr; }
       if(jumpHit) P.buf=.12; else P.buf-=dt; if(P.on) P.coyote=.1; else P.coyote-=dt;
-      if(P.buf>0&&P.coyote>0){ P.vy=-560; P.on=false; P.coyote=0; P.buf=0; P.jumping=true; sfx('spring'); }
+      if(P.buf>0&&P.coyote>0){ P.vy=-600; P.on=false; P.coyote=0; P.buf=0; P.jumping=true; sfx('spring'); }
       if(P.jumping&&!jumpHeld&&P.vy<-340) P.vy=-340; } // 早放開跳比較低
     P.vy=Math.min(760,P.vy+(P.vy<0&&jumpHeld?1250:1700)*dt); if(P.vy>=0) P.jumping=false;
     if(Math.abs(P.vx)>10&&P.on) P.run+=dt; if(P.inv>0) P.inv-=dt; if(P.star>0) P.star-=dt;
@@ -290,6 +290,7 @@ function create(env,opts){
     if(mode!=='map'&&lv){ for(let k=0;k<3;k++){ const got=stars.find(s=>s.id===k&&s.got); c.fillStyle=got?'#ffb000':'rgba(255,255,255,.3)'; c.font='900 18px '+TC; c.fillText('★',170+k*20,25); }
       c.fillStyle='#cfd0ff'; c.font='700 13px '+TC; c.fillText(lv.L.name,240,25); }
     else { c.fillStyle='#cfd0ff'; c.font='700 13px '+TC; c.fillText('世界地圖',170,25); } }
+  if(opts.preview) enter(cur); /* 開始畫面預覽：直接進關卡 */
   return {update,draw,destroy(){},_dbg:{get mode(){return mode;},get P(){return P;},get lv(){return lv;},enter,get lives(){return lives;},set lives(v){lives=v;},get boss(){return bossObj;},get cur(){return cur;},get avatar(){return avatar;},levelClear}};
 }
 
