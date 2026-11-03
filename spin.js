@@ -96,28 +96,60 @@ function emblem(c,k,r){ c.beginPath();
 function drawTop(c,x,y,s,P,col,ang,frac,o){ o=o||{}; const B=TOP[P.top]||TOPS[0],sh=B.sh,R=20*s,tilt=o.tilt||0,ta=o.ta||0,tx=Math.cos(ta)*tilt*s,ty=Math.sin(ta)*tilt*s*SQ,bk=BITK[B.bit],rt=ratOf(B.rat),main=B.c,acc=B.a;
   c.save(); c.translate(x,y);
   if(!o.noShadow){ c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(tx*.5+2*s,1.5*s,R*1.05,R*SQ*1.05,0,0,TAU); c.fill(); c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(tx*.3+s,1*s,R*.6,R*SQ*.6,0,0,TAU); c.fill(); }
-  // 底座
-  const bitC=bk==='needle'?'#c8ccd6':bk==='ball'?'#8a8f9c':bk==='rush'?'#ffb02a':bk==='taper'?'#7a8090':'#5a5f6c';
-  c.fillStyle='#1a1c22'; c.beginPath(); c.moveTo(tx*.2-4*s,-7*s+ty*.2); c.lineTo(tx*.2+4*s,-7*s+ty*.2); c.lineTo(0,bk==='needle'?1.5*s:0); c.closePath(); c.fill();
-  c.fillStyle=bitC; c.beginPath(); c.ellipse(tx*.3,-6*s+ty*.3,6.5*s,6.5*s*SQ,0,0,TAU); c.fill();
-  // 棘輪（齒數照型號，高度照 60／70／80）
-  const rh=6+(rt.h-55)/5,ry=-rh*s+ty*.6,rx=tx*.6;
-  c.fillStyle='#2a2d36'; c.beginPath(); c.ellipse(rx,ry+2.5*s,13*s,13*s*SQ,0,0,TAU); c.fill();
-  c.fillStyle='#4a4f5c'; c.beginPath(); c.ellipse(rx,ry,13*s,13*s*SQ,0,0,TAU); c.fill();
-  c.fillStyle='#70778a'; for(let i=0;i<rt.teeth;i++){ const a=ang*.999+i/rt.teeth*TAU; c.beginPath(); c.ellipse(rx+Math.cos(a)*11*s,ry+Math.sin(a)*11*s*SQ,2.6*s,2.6*s*SQ,0,0,TAU); c.fill(); }
-  // 刀刃：金屬外環＋彩色塑膠＋配色花紋＋中心徽章
+  // 底座：彩色圓柱＋照種類的尖端
+  const bitC=bk==='needle'?'#c8ccd6':bk==='ball'?'#8a8f9c':bk==='rush'?'#ffb02a':bk==='taper'?'#7a8090':'#5a5f6c',bx0=tx*.3,byT=-7*s+ty*.3;
+  c.fillStyle='#14161b'; c.beginPath();
+  if(bk==='needle'){ c.moveTo(bx0-3.4*s,byT+3*s); c.lineTo(bx0+3.4*s,byT+3*s); c.lineTo(0,1.2*s); }
+  else if(bk==='ball'){ c.moveTo(bx0-4*s,byT+3*s); c.lineTo(bx0+4*s,byT+3*s); c.quadraticCurveTo(4.2*s,0,0,.6*s); c.quadraticCurveTo(-4.2*s,0,bx0-4*s,byT+3*s); }
+  else { const w=bk==='taper'?1.6:bk==='rush'?3.6:2.8; c.moveTo(bx0-4.2*s,byT+3*s); c.lineTo(bx0+4.2*s,byT+3*s); c.lineTo(w*s,0); c.lineTo(-w*s,0); }
+  c.closePath(); c.fill();
+  const bg=c.createLinearGradient(bx0-6.5*s,0,bx0+6.5*s,0); bg.addColorStop(0,shade(bitC,-.5)); bg.addColorStop(.35,shade(bitC,.35)); bg.addColorStop(1,shade(bitC,-.6));
+  c.fillStyle=bg; c.beginPath(); c.ellipse(bx0,byT+3*s,6.5*s,6.5*s*SQ,0,0,Math.PI); c.lineTo(bx0-6.5*s,byT); c.ellipse(bx0,byT,6.5*s,6.5*s*SQ,0,Math.PI,TAU); c.closePath(); c.fill();
+  c.fillStyle=shade(bitC,.15); c.beginPath(); c.ellipse(bx0,byT,6.5*s,6.5*s*SQ,0,0,TAU); c.fill();
+  // 棘輪：塑膠圓柱＋外緣凸塊（凸塊數＝型號第一個數字，高度照 60／70／80）
+  const rh=6+(rt.h-55)/5,ry=-rh*s+ty*.6,rx=tx*.6,rc='#30343f';
+  const rg=c.createLinearGradient(rx-13*s,0,rx+13*s,0); rg.addColorStop(0,'#1a1c22'); rg.addColorStop(.3,'#5a6070'); rg.addColorStop(.55,'#2c3038'); rg.addColorStop(1,'#121318');
+  c.fillStyle=rg; c.beginPath(); c.ellipse(rx,ry+3*s,13*s,13*s*SQ,0,0,Math.PI); c.lineTo(rx-13*s,ry); c.ellipse(rx,ry,13*s,13*s*SQ,0,Math.PI,TAU); c.closePath(); c.fill();
+  for(let i=0;i<rt.teeth;i++){ const a=ang+i/rt.teeth*TAU,w=.32,p=(r,t)=>[rx+Math.cos(t)*r*s,ry+Math.sin(t)*r*s*SQ];
+    const q=[p(12,a-w),p(16,a-w*.7),p(16,a+w*.7),p(12,a+w)]; c.fillStyle=Math.sin(a)>0?'#4a505e':'#272a33';
+    c.beginPath(); q.forEach((v,j)=>j?c.lineTo(v[0],v[1]+2.6*s):c.moveTo(v[0],v[1]+2.6*s)); for(let j=3;j>=0;j--) c.lineTo(q[j][0],q[j][1]); c.closePath(); c.fill();
+    c.fillStyle='#5c6372'; c.beginPath(); q.forEach((v,j)=>j?c.lineTo(v[0],v[1]):c.moveTo(v[0],v[1])); c.closePath(); c.fill(); }
+  c.fillStyle=rc; c.beginPath(); c.ellipse(rx,ry,13*s,13*s*SQ,0,0,TAU); c.fill();
+  // 刀刃：金屬厚度
   const by=ry-(5*s),bx=rx+tx*.4;
-  for(let k=5;k>=1;k--){ c.save(); c.translate(bx,by+k*1.1*s); c.scale(1,SQ); c.rotate(ang); bladePath(c,sh,R); c.fillStyle=k>3?'#20232c':k>1?shade(B.m,-.55):shade(B.m,-.3); c.fill(); c.restore(); } /* 刀刃厚度 */
+  for(let k=5;k>=1;k--){ c.save(); c.translate(bx,by+k*1.1*s); c.scale(1,SQ); c.rotate(ang); bladePath(c,sh,R); c.fillStyle=k>3?'#16181e':shade(B.m,k>1?-.62:-.4); c.fill(); c.restore(); }
   c.save(); c.translate(bx,by); c.scale(1,SQ); c.rotate(ang);
-  const g=c.createLinearGradient(-R,-R,R,R); g.addColorStop(0,shade(B.m,.6)); g.addColorStop(.35,shade(B.m,-.15)); g.addColorStop(.55,shade(B.m,.4)); g.addColorStop(1,shade(B.m,-.45));
-  bladePath(c,sh,R); c.fillStyle=g; c.fill(); c.lineWidth=1.2*s; c.strokeStyle='rgba(20,22,30,.8)'; c.stroke();
-  c.fillStyle=main; bladePath(c,sh,R*.76); c.fill();
-  c.fillStyle=acc; c.beginPath(); const sp=sh.n; for(let i=0;i<sp;i++){ const a=i/sp*TAU+(B.dir<0?.5:.15); c.moveTo(0,0); c.arc(0,0,R*.7,a,a+TAU/sp*.28); c.lineTo(0,0); } c.fill();
-  c.fillStyle=shade(main,-.35); c.beginPath(); for(let i=0;i<sp;i++){ const a=i/sp*TAU+TAU/sp*.55; c.moveTo(0,0); c.arc(0,0,R*.62,a,a+TAU/sp*.16); c.lineTo(0,0); } c.fill();
-  if(sh.k==='round'){ c.strokeStyle=acc; c.lineWidth=2*s; c.beginPath(); c.arc(0,0,R*.86,0,TAU); c.stroke(); }
-  c.fillStyle='#1a1c24'; c.beginPath(); c.arc(0,0,R*.34,0,TAU); c.fill(); c.fillStyle=shade(main,.25); c.beginPath(); c.arc(0,0,R*.28,0,TAU); c.fill();
-  c.fillStyle=acc; emblem(c,TYPES[B.type].emb,R*.18); c.fillStyle='rgba(255,255,255,.8)'; emblem(c,TYPES[B.type].emb,R*.11);
+  const rot=(x0,y0)=>[x0*Math.cos(-ang)-y0*Math.sin(-ang),x0*Math.sin(-ang)+y0*Math.cos(-ang)]; /* 光源固定在左上，不跟著轉 */
+  // 拉絲金屬：圓錐漸層做出旋轉時的反光帶
+  let g; if(c.createConicGradient){ g=c.createConicGradient(-ang-2.4,0,0); [[0,.7],[.1,-.1],[.2,.5],[.33,-.5],[.5,.15],[.62,-.35],[.75,.65],[.88,-.2],[1,.7]].forEach(v=>g.addColorStop(v[0],shade(B.m,v[1]))); }
+  else { const p1=rot(-R,-R),p2=rot(R,R); g=c.createLinearGradient(p1[0],p1[1],p2[0],p2[1]); g.addColorStop(0,shade(B.m,.6)); g.addColorStop(.5,shade(B.m,-.2)); g.addColorStop(1,shade(B.m,-.45)); }
+  bladePath(c,sh,R); c.fillStyle=g; c.fill();
+  c.save(); bladePath(c,sh,R); c.clip();
+  c.strokeStyle='rgba(255,255,255,.08)'; c.lineWidth=.6*s; for(let r=R*.45;r<R;r+=R*.07){ c.beginPath(); c.arc(0,0,r,0,TAU); c.stroke(); } /* 車床紋 */
+  const o1=rot(1.3*s,1.3*s); c.translate(o1[0],o1[1]); bladePath(c,sh,R); c.lineWidth=2.4*s; c.strokeStyle='rgba(0,0,0,.45)'; c.stroke(); c.translate(-2*o1[0],-2*o1[1]); bladePath(c,sh,R); c.strokeStyle='rgba(255,255,255,.5)'; c.lineWidth=1.6*s; c.stroke(); c.restore();
+  bladePath(c,sh,R); c.lineWidth=1*s; c.strokeStyle='rgba(12,14,20,.9)'; c.stroke();
+  // 刀刃前緣的切削面
+  const sp=sh.n; if(sh.k!=='round'){ c.strokeStyle='rgba(255,255,255,.55)'; c.lineWidth=.9*s; for(let i=0;i<sp;i++){ const a0=i/sp*TAU+(sh.k==='rhook'?TAU/sp-.02:.02); c.beginPath(); c.moveTo(Math.cos(a0)*R*.78,Math.sin(a0)*R*.78); c.lineTo(Math.cos(a0)*R*bladeR(sh,a0+.03),Math.sin(a0)*R*bladeR(sh,a0+.03)); c.stroke(); } }
+  // 彩色塑膠層（有鏤空窗口露出底下金屬）
+  const p1=rot(-R*.7,-R*.7),p2=rot(R*.7,R*.7),pg=c.createLinearGradient(p1[0],p1[1],p2[0],p2[1]); pg.addColorStop(0,shade(main,.35)); pg.addColorStop(.45,main); pg.addColorStop(1,shade(main,-.4));
+  c.fillStyle=pg; bladePath(c,sh,R*.74);
+  for(let i=0;i<sp;i++){ const a0=i/sp*TAU+TAU/sp*.5; c.moveTo(Math.cos(a0)*R*.62,Math.sin(a0)*R*.62); c.arc(0,0,R*.62,a0,a0+TAU/sp*.22); c.arc(0,0,R*.5,a0+TAU/sp*.22,a0,true); c.closePath(); }
+  c.fill('evenodd'); c.lineWidth=.8*s; c.strokeStyle=shade(main,-.6); c.stroke();
+  // 配色條紋（斜向，順著旋轉方向）
+  c.fillStyle=acc; for(let i=0;i<sp;i++){ const a0=i/sp*TAU+(B.dir<0?.55:.12),w=TAU/sp*.2,sk=.18*B.dir; c.beginPath(); c.moveTo(Math.cos(a0)*R*.4,Math.sin(a0)*R*.4); c.lineTo(Math.cos(a0+sk)*R*.7,Math.sin(a0+sk)*R*.7); c.lineTo(Math.cos(a0+sk+w)*R*.7,Math.sin(a0+sk+w)*R*.7); c.lineTo(Math.cos(a0+w)*R*.4,Math.sin(a0+w)*R*.4); c.closePath(); c.fill(); }
+  if(sh.k==='round'){ c.strokeStyle=acc; c.lineWidth=1.8*s; c.beginPath(); c.arc(0,0,R*.84,0,TAU); c.stroke(); }
+  // 金屬鉚釘
+  for(let i=0;i<sp;i++){ const a0=i/sp*TAU+TAU/sp*.85,x0=Math.cos(a0)*R*.46,y0=Math.sin(a0)*R*.46; c.fillStyle='#22252c'; c.beginPath(); c.arc(x0,y0,1.5*s,0,TAU); c.fill(); c.fillStyle=SILV; c.beginPath(); c.arc(x0,y0,1*s,0,TAU); c.fill(); }
+  // 中央鎖芯（Lock Chip）
+  c.fillStyle='#101218'; c.beginPath(); c.arc(0,0,R*.37,0,TAU); c.fill();
+  const cg=c.createLinearGradient(p1[0]*.5,p1[1]*.5,p2[0]*.5,p2[1]*.5); cg.addColorStop(0,'#f4f6fa'); cg.addColorStop(.5,'#8a90a0'); cg.addColorStop(1,'#3a3e48');
+  c.strokeStyle=cg; c.lineWidth=1.6*s; c.beginPath(); c.arc(0,0,R*.33,0,TAU); c.stroke();
+  const chg=c.createRadialGradient(...rot(-R*.1,-R*.1),0,0,0,R*.28); chg.addColorStop(0,shade(acc,.35)); chg.addColorStop(1,shade(acc,-.45));
+  c.fillStyle=chg; c.beginPath(); c.arc(0,0,R*.27,0,TAU); c.fill();
+  c.fillStyle='#14161c'; emblem(c,TYPES[B.type].emb,R*.19); c.fillStyle='#fff'; emblem(c,TYPES[B.type].emb,R*.14);
   c.restore();
+  // 鎖芯光澤
+  c.strokeStyle='rgba(255,255,255,.6)'; c.lineWidth=1.2*s; c.beginPath(); c.ellipse(bx,by,R*.22,R*.22*SQ,0,3.4,4.6); c.stroke();
   // 高速旋轉的殘影與光澤
   if(frac>.15&&!o.still){ c.save(); c.translate(bx,by); c.scale(1,SQ); c.globalAlpha=Math.min(.55,frac*.6); c.strokeStyle='rgba(255,255,255,.85)'; c.lineWidth=1.6*s;
     for(let i=0;i<3;i++){ const a=ang+i*TAU/3; c.beginPath(); c.arc(0,0,R*(.82+i*.05),a,a+1.1*B.dir,B.dir<0); c.stroke(); }
@@ -180,7 +212,7 @@ function readIn(env,i,local2){ const K=env.keys,h=c=>env.hit(c); let L,Rt,U,D,A;
 const NOIN={mx:0,my:0,dash:false};
 
 function create(env,opts){
-  const si=clamp(opts.stage|0,0,STAGES.length-1),ST=STAGES[si],OP=opts.options||{},R=roster(opts),{net,host,me,local2}=R,client=!!net&&!host,TARGET=4,RT=60,FMT3=OP.fmt==='3v3';
+  const si=clamp(opts.stage|0,0,STAGES.length-1),ST=STAGES[si],OP=opts.options||{},R=roster(opts),{net,host,me,local2}=R,client=!!net&&!host,TARGET=4,RT=60,FMT3=true;
   const {ctx:c,canvas}=env.canvas2d(W,H),bg=stadium(si);
   const colOf=i=>TOP[partsOf(R.looks[i]).top].c;
   const deckOf=i=>FMT3?(i<R.humans?myDeck(R.looks[i]):botDeck(si,i)):[partsOf(R.looks[i])];
@@ -208,7 +240,7 @@ function create(env,opts){
     const a0=Math.random()*TAU; T.forEach((f,k)=>{ const a=a0+k/T.length*TAU,r=AR*.55; f.x=Math.cos(a)*r; f.y=Math.sin(a)*r; const d=f.k.dir; f.vx=-Math.sin(a)*120*d-Math.cos(a)*30; f.vy=Math.cos(a)*120*d-Math.sin(a)*30;
       f.spin=f.ai?clamp(86+f.ai.sk*14+Math.random()*4,80,100):100; f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; }); }
   setupRound(); if(FMT3&&!R.pv&&R.humans) phase='deck';
-  // 3 對 3：開賽前組 3 顆陀螺、排出場順序（刀刃、棘輪、底座都不能重複）
+  // 一對一：每人帶 3 顆，開賽前組 3 顆陀螺、排出場順序（刀刃、棘輪、底座都不能重複）
   const CW=228,CX0=i=>34+i*252,CY0=70,SELY=CY0+192,BTN=[W/2-100,436,200,46];
   function cyc(d,slot,dir){ let i=TOPS.findIndex(q=>q.id===d[slot].top); for(let k=0;k<TOPS.length;k++){ i=(i+dir+TOPS.length)%TOPS.length; if(!clash(d,slot,TOPS[i].id)){ d[slot]=partsOf({top:TOPS[i].id}); break; } } env.sfx('click'); }
   function confirmDeck(){ const f=T[ed]; f.deck=fixDeck(f.deck); env.sfx('item');
@@ -230,7 +262,7 @@ function create(env,opts){
       if(i<2&&inR(x,y,[X+CW,CY0+96,24,60])){ const tmp=d[i]; d[i]=d[i+1]; d[i+1]=tmp; env.sfx('place'); return; } } }
   if(canvas&&canvas.addEventListener&&FMT3){ canvas.addEventListener('pointerdown',onDown); canvas.style.touchAction='none'; }
   function drawDeck(){ themeBg(c,ST.th,t); c.fillStyle='rgba(8,8,20,.72)'; c.fillRect(0,0,W,H); const d=T[ed].deck;
-    c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText((local2?(ed+1)+'P ':'')+'3 對 3：選 3 顆陀螺、排好出場順序',W/2,24);
+    c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText((local2?(ed+1)+'P ':'')+'選 3 顆陀螺、排好出場順序（每回合派一顆上場）',W/2,24);
     c.fillStyle='rgba(255,255,255,.75)'; c.font='700 13px '+TC; c.fillText('三顆的機體、棘輪、底座都不能重複　按 ◀ ▶ 換陀螺、按 ⇄ 換出場順序'+(net?'　還剩 '+Math.max(0,Math.ceil(deckT))+' 秒':''),W/2,50);
     for(let i=0;i<3;i++){ const X=CX0(i),P=d[i],B=TOP[P.top],sel=cur===i; c.fillStyle='rgba(255,255,255,.08)'; rr(c,X,CY0,CW,354,14); c.fill(); c.strokeStyle=sel?'#ffd23f':'rgba(255,255,255,.2)'; c.lineWidth=2; c.stroke();
       c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('第 '+(i+1)+' 顆出場',X+CW/2,CY0+18);
@@ -353,7 +385,7 @@ function create(env,opts){
     if(won&&!net&&!local2) recWin(ST.name);
     env.sfx(won||local2?'win':'lose');
     env.end({title:local2?keyName(winKey)+' 獲勝！':won?'你贏了！':keyName(winKey)+' 獲勝',big:ST.name,html:'<table class="ls"><tr><th>名次</th><th>選手</th><th>得分</th></tr>'+rows+'</table>',
-      text:'持久勝 1 分、擊飛勝 2 分、爆裂勝 2 分、極限勝 3 分，先拿 '+TARGET+' 分的贏。'+(FMT3?'（3 對 3：三顆輪流出場）':''),score:null,next:!net&&!local2&&won&&si<STAGES.length-1}); }
+      text:'持久勝 1 分、擊飛勝 2 分、爆裂勝 2 分、極限勝 3 分，先拿 '+TARGET+' 分的贏。'+'（每人 3 顆輪流上場）',score:null,next:!net&&!local2&&won&&si<STAGES.length-1}); }
   // 畫面
   function topScreen(f){ let x=f.x,y=f.y,z=0;
     if(f.st==='out'){ const u=Math.min(1,f.out/.6),r=hyp(f.ox,f.oy)||1; x=f.ox+f.ox/r*40*u; y=f.oy+f.oy/r*40*u; z=-30*u*u; }
@@ -425,14 +457,13 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   const st=[['攻擊',K.atk/1.5],['防禦',K.def/1.6],['持久',K.sta/1.7],['衝刺',K.dash/1.7]];
   ctx.font='700 '+Math.round(h*.045)+'px '+TC; st.forEach(([n,v],i)=>{ const y=h*(.66+i*.085); ctx.fillStyle='#fff'; ctx.fillText(n,x0,y); ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(x0+h*.12,y-h*.016,bw-h*.12,h*.032); ctx.fillStyle=['#ff4d4d','#3d8bff','#3ed16a','#ff9d3d'][i]; ctx.fillRect(x0+h*.12,y-h*.016,(bw-h*.12)*clamp(v,.1,1),h*.032); }); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).spin={name:'陀螺旋風戰',tag:'SPIN STORM',color:'#ff7a3d',online:true,maxPlayers:2,
-  desc:'20 顆熱門比賽陀螺一對一對決！蒼龍神劍、魔導神杖、鮫鯊狂鱗、蒼穹龍騎士…每顆的類型、棘輪、底座都不一樣，貼著場邊齒輪軌道能極限衝刺。1 對 1 或 3 對 3（三顆輪流出場），持久勝、擊飛勝、爆裂勝、極限勝，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
+  desc:'20 顆熱門比賽陀螺一對一對決！蒼龍神劍、魔導神杖、鮫鯊狂鱗、蒼穹龍騎士…每顆的類型、棘輪、底座都不一樣，貼著場邊齒輪軌道能極限衝刺。每人帶 3 顆、每回合各派一顆上場，持久勝、擊飛勝、爆裂勝、極限勝，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
   goal:'每回合各派一顆陀螺：比對手轉得久＝持久勝 1 分、撞出場外＝擊飛勝 2 分、撞到解體＝爆裂勝 2 分、衝刺中把對手撞出場外＝極限勝 3 分。先拿 4 分的贏。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:si=>{ const s=STAGES[si],h={ice:'冰面很滑，陀螺停不下來。',desert:'沙地摩擦大，轉速掉得快。',twin:'前後左右都有場外口袋。',lava:'碰到滾燙的軌道會掉轉速，但衝刺更猛。',space:'低重力，碗面拉回中間的力比較小。',storm:'暴風會把陀螺往一個方向吹，每隔幾秒換方向。',arena:'兩側的場外口袋特別寬。',final:'冠軍等級的對手。'}[s.th]||'';
     return s.name+'：先拿 4 分的贏。'+h; },
-  options:[{key:'fmt',label:'賽制',def:'1v1',opts:[{id:'1v1',label:'1 對 1'},{id:'3v3',label:'3 對 3（三顆輪流出場）'}]}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  help:[['↑ ↓ ← →','推動陀螺'],['空白鍵 或 X','衝刺：在場邊＝極限衝刺，在中間＝衝向對手（3 秒一次）'],['3 對 3','開賽前選 3 顆、排好順序，每回合換下一顆'],['雙人','1P 用 WASD＋F，2P 用方向鍵＋Enter'],['我的造型','選陀螺，點一下就會顯示它的類型和特色']],
+  help:[['↑ ↓ ← →','推動陀螺'],['空白鍵 或 X','衝刺：在場邊＝極限衝刺，在中間＝衝向對手（3 秒一次）'],['出場順序','開賽前選 3 顆、排好順序，每回合換下一顆'],['雙人','1P 用 WASD＋F，2P 用方向鍵＋Enter'],['我的造型','選陀螺，點一下就會顯示它的類型和特色']],
   touchHelp:[['方向盤','推動陀螺'],['衝刺','在場邊＝極限衝刺，在中間＝衝向對手']],
   touch:{left:'dpad',right:[{l:'衝刺',c:'Space',act:true}]},
   looks:[{key:'top',label:'陀螺（點一下看類型和特色）',opts:TOPS.map(q=>({id:q.id,label:q.code+' '+q.n+'（'+q.type+'）'}))}],
