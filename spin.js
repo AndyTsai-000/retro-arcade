@@ -1,6 +1,6 @@
 // 陀螺旋風戰：斜上方視角的戰鬥陀螺對戰。玩法參考現在流行的第四代比賽規則：
 // 開賽前用方向鍵選落點，裁判喊「3、2、1，GO SHOOT！」就發射，之後陀螺自己轉、自己撞；場邊齒輪軌道會讓陀螺「極限衝刺」。
-// 四種終結：持久勝 1 分、擊飛勝 2 分、爆裂勝 2 分、極限勝 3 分，先拿 4 分的贏；每人帶 3 顆輪流上場。
+// 四種終結：旋轉勝利 1 分、擊飛勝利 2 分（黃色擊飛區域或飛出護欄）、爆裂勝利 2 分、極限勝利 3 分（紅色極限區域），先拿 4 分的贏；每人帶 3 顆輪流上場。
 // 單人、同機雙人、連線最多 2 人（房主運算，客人只送落點按鍵）。
 (function(){
 'use strict';
@@ -43,16 +43,16 @@ const TOPS=[
 const TOP={}; TOPS.forEach(q=>TOP[q.id]=q);
 const PK=(a,w,k)=>({a,w,k});
 const STAGES=[
-  {name:'新手練習場',stars:1,th:'gym',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.24,'over'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
-  {name:'街頭對戰盤',stars:1,th:'street',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.26,'over'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
-  {name:'寬口競技場',stars:2,th:'arena',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.32,'over'),PK(.1,.28,'over'),PK(Math.PI-.1,.28,'over')]},
-  {name:'冰晶競技場',stars:2,th:'ice',slope:1,fric:.35,decay:.85,pk:[PK(Math.PI/2,.26,'over'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
-  {name:'沙漠鬥技場',stars:3,th:'desert',slope:1.1,fric:1.7,decay:1.25,pk:[PK(Math.PI/2,.26,'over'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
-  {name:'四口袋競技場',stars:3,th:'twin',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.2,'over'),PK(-Math.PI/2,.2,'over'),PK(0,.17,'over'),PK(Math.PI,.17,'over')]},
-  {name:'熔岩火山場',stars:4,th:'lava',slope:1,fric:1,decay:1,lava:1,pk:[PK(Math.PI/2,.26,'over'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
-  {name:'星空低重力',stars:4,th:'space',slope:.5,fric:.8,decay:.9,pk:[PK(Math.PI/2,.26,'over'),PK(0,.22,'over'),PK(Math.PI,.22,'over')]},
-  {name:'暴風競技場',stars:5,th:'storm',slope:1,fric:1,decay:1,wind:1,pk:[PK(Math.PI/2,.26,'over'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
-  {name:'冠軍決賽場',stars:5,th:'final',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.24,'over'),PK(0,.19,'over'),PK(Math.PI,.19,'over')]}];
+  {name:'新手練習場',stars:1,th:'gym',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.24,'x'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
+  {name:'街頭對戰盤',stars:1,th:'street',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.26,'x'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
+  {name:'寬口競技場',stars:2,th:'arena',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.32,'x'),PK(.1,.28,'over'),PK(Math.PI-.1,.28,'over')]},
+  {name:'冰晶競技場',stars:2,th:'ice',slope:1,fric:.35,decay:.85,pk:[PK(Math.PI/2,.26,'x'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
+  {name:'沙漠鬥技場',stars:3,th:'desert',slope:1.1,fric:1.7,decay:1.25,pk:[PK(Math.PI/2,.26,'x'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
+  {name:'四口袋競技場',stars:3,th:'twin',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.2,'x'),PK(-Math.PI/2,.2,'over'),PK(0,.17,'over'),PK(Math.PI,.17,'over')]},
+  {name:'熔岩火山場',stars:4,th:'lava',slope:1,fric:1,decay:1,lava:1,pk:[PK(Math.PI/2,.26,'x'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
+  {name:'星空低重力',stars:4,th:'space',slope:.5,fric:.8,decay:.9,pk:[PK(Math.PI/2,.26,'x'),PK(0,.22,'over'),PK(Math.PI,.22,'over')]},
+  {name:'暴風競技場',stars:5,th:'storm',slope:1,fric:1,decay:1,wind:1,pk:[PK(Math.PI/2,.26,'x'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
+  {name:'冠軍決賽場',stars:5,th:'final',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.24,'x'),PK(0,.19,'over'),PK(Math.PI,.19,'over')]}];
 STAGES.forEach(s=>s.pk.forEach(p=>p.w*=1.3)); /* 場外口袋開口加寬，比較容易被撞進洞裡 */
 const TH={gym:{bg:['#1d2a44','#0e1526'],fl:['#e8edf5','#9aa8c0'],rim:'#2a3550',acc:'#3d8bff'},
   street:{bg:['#2a2230','#121018'],fl:['#d8d0c4','#8a8070'],rim:'#3a3038',acc:'#ff7a3d'},
@@ -64,7 +64,7 @@ const TH={gym:{bg:['#1d2a44','#0e1526'],fl:['#e8edf5','#9aa8c0'],rim:'#2a3550',a
   space:{bg:['#0a0a2a','#000008'],fl:['#3a3e6a','#141630'],rim:'#22264a',acc:'#c8a0ff'},
   storm:{bg:['#3a4656','#141a24'],fl:['#cfd8e0','#7a8898'],rim:'#2a3440',acc:'#9ae0ff'},
   final:{bg:['#2a1a08','#0a0602'],fl:['#fff4d8','#c8a860'],rim:'#4a3410',acc:'#ffd23f'}};
-const FIN={spin:{n:'持久勝',p:1,col:'#9ae0ff'},over:{n:'擊飛勝',p:2,col:'#3d8bff'},burst:{n:'爆裂勝',p:2,col:'#ff7a3d'},x:{n:'極限勝',p:3,col:'#ffd23f'}};
+const FIN={spin:{n:'旋轉勝利',p:1,col:'#9ae0ff'},over:{n:'擊飛勝利',p:2,col:'#ffd23f'},burst:{n:'爆裂勝利',p:2,col:'#ff7a3d'},x:{n:'極限勝利',p:3,col:'#ff3d5a'}};
 // 電腦對手：前面的關卡出入門機體，後面越來越強
 const OPP=['dransword','knightshield','wizardarrow','hellsscythe','leonclaw','rhinohorn','unicornsting','weisstiger','cobaltdragoon','phoenixwing','crimsongaruda','tricerapress','samuraicalibur','knightlance','sharkedge','impactdrake','meteordragoon','dranbuster','pegasusblast','wizardrod'];
 const BOTN=['旋風小子','鐵壁','流星','閃電','颶風','黑曜','赤焰','白狼','銀河','雷神'];
@@ -191,9 +191,9 @@ function stadium(si){ if(stadCache[si]) return stadCache[si]; const ST=STAGES[si
   c.strokeStyle='rgba(255,255,255,.3)'; c.lineWidth=1.5; c.beginPath(); c.ellipse(CX,CY,(AR+40)*S,(AR+40)*S*SQ,0,Math.PI*1.08,Math.PI*1.92); c.stroke();
   // 得分口袋（往下凹的洞）
   for(const p of ST.pk){ c.save(); const a0=p.a-p.w,a1=p.a+p.w; c.beginPath(); for(let i=0;i<=20;i++){ const a=a0+(a1-a0)*i/20; c.lineTo(sx(Math.cos(a)*(AR+38)),sy(Math.sin(a)*(AR+38))); } for(let i=20;i>=0;i--){ const a=a0+(a1-a0)*i/20; c.lineTo(sx(Math.cos(a)*(AR-4)),sy(Math.sin(a)*(AR-4))); } c.closePath();
-    c.fillStyle='#060a18'; c.fill(); c.clip(); c.strokeStyle='rgba(61,139,255,.45)'; c.lineWidth=6; for(let i=-30;i<30;i++){ c.beginPath(); c.moveTo(sx(Math.cos(p.a)*AR)+i*14-40,sy(Math.sin(p.a)*AR)-60); c.lineTo(sx(Math.cos(p.a)*AR)+i*14+40,sy(Math.sin(p.a)*AR)+60); c.stroke(); }
+    const xz=p.k==='x'; c.fillStyle=xz?'#1c0408':'#141004'; c.fill(); c.clip(); c.strokeStyle=xz?'rgba(255,61,90,.55)':'rgba(255,210,63,.5)'; c.lineWidth=6; for(let i=-30;i<30;i++){ c.beginPath(); c.moveTo(sx(Math.cos(p.a)*AR)+i*14-40,sy(Math.sin(p.a)*AR)-60); c.lineTo(sx(Math.cos(p.a)*AR)+i*14+40,sy(Math.sin(p.a)*AR)+60); c.stroke(); }
     const hg=c.createRadialGradient(sx(Math.cos(p.a)*(AR+18)),sy(Math.sin(p.a)*(AR+18)),0,sx(Math.cos(p.a)*(AR+18)),sy(Math.sin(p.a)*(AR+18)),60); hg.addColorStop(0,'rgba(0,0,0,.7)'); hg.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=hg; c.fillRect(0,0,W,H); c.restore();
-    c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#9ac8ff'; const lx=sx(Math.cos(p.a)*(AR+22)),ly=sy(Math.sin(p.a)*(AR+22)); c.lineWidth=4; c.strokeStyle='#000'; c.strokeText('場外',lx,ly); c.fillText('場外',lx,ly); }
+    c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle=xz?'#ff6a80':'#ffd23f'; const lx=sx(Math.cos(p.a)*(AR+22)),ly=sy(Math.sin(p.a)*(AR+22)),lb=xz?'極限 3分':'擊飛 2分'; c.lineWidth=4; c.strokeStyle='#000'; c.strokeText(lb,lx,ly); c.fillText(lb,lx,ly); }
   // 碗面：中間低、遠處的內壁朝向鏡頭比較亮、近處比較暗
   const g=c.createRadialGradient(CX,CY+DIP-10,10,CX,CY+DIP,AR*S); g.addColorStop(0,T.fl[0]); g.addColorStop(1,T.fl[1]); c.fillStyle=g; E(AR-2); c.fill();
   c.save(); E(AR-2); c.clip();
@@ -331,7 +331,7 @@ function create(env,opts){
     else if(k==='burst'){ const f=T[a]; for(let i=0;i<50;i++){ const q=Math.random()*TAU,s=100+Math.random()*320; fx.push({k:'sp',x,y,z:12,vx:Math.cos(q)*s,vy:Math.sin(q)*s,vz:100+Math.random()*200,l:.4+Math.random()*.5,c:['#fff','#ffd23f','#ff7a3d',f?f.col:'#fff'][i%4]}); }
       fx.push({k:'ring',x,y,l:.6,L:.6,r:160,c:'#ff7a3d'}); fx.push({k:'glow',x,y,l:.35,L:.35,r:150}); fx.push({k:'flash',l:.2,L:.2});
       if(f) for(let j=0;j<3;j++){ const q=Math.random()*TAU; deb.push({p:j,x,y,z:14,vx:Math.cos(q)*(140+Math.random()*120),vy:Math.sin(q)*(140+Math.random()*120),vz:220+Math.random()*120,ang:0,va:(Math.random()-.5)*30,P:f.P,col:f.col,l:3}); } }
-    else if(k==='out'){ fx.push({k:'ring',x,y,l:.5,L:.5,r:120,c:b==='x'?'#ffd23f':'#3d8bff'}); for(let i=0;i<30;i++){ const q=Math.random()*TAU; fx.push({k:'sp',x,y,z:4,vx:Math.cos(q)*240,vy:Math.sin(q)*240,vz:150,l:.5,c:b==='x'?'#ffd23f':'#9ac8ff'}); } } }
+    else if(k==='out'){ fx.push({k:'ring',x,y,l:.5,L:.5,r:120,c:b==='x'?'#ff3d5a':'#ffd23f'}); for(let i=0;i<30;i++){ const q=Math.random()*TAU; fx.push({k:'sp',x,y,z:4,vx:Math.cos(q)*240,vy:Math.sin(q)*240,vz:150,l:.5,c:b==='x'?'#ff8a9a':'#ffe58a'}); } } }
   const clampAim=(f,k)=>{ const x=k?'tx':'lx',y=k?'ty':'ly',r=hyp(f[x],f[y]),m=AR-34; if(r>m){ f[x]*=m/r; f[y]*=m/r; } };
   // 電腦選落點：攻擊型靠場邊（方便衝刺），持久、防禦型放中間
   function prepAim(){ T.forEach((f,k)=>{ const L=LPOS[k]||LPOS[0]; f.x=L[0]; f.y=L[1]; f.vx=f.vy=0;
@@ -410,8 +410,8 @@ function create(env,opts){
     r=hyp(f.x,f.y); nx=f.x/r; ny=f.y/r; const wall=AR-RAD+6;
     if(r>wall){ const pk=inPk(ST,Math.atan2(f.y,f.x));
       if(pk){ const vr=f.vx*nx+f.vy*ny; if(vr<35&&r<AR+4&&rt-f.lastT>.5){ if(vr>0){ f.vx-=vr*nx*1.6; f.vy-=vr*ny*1.6; } f.x=nx*Math.min(r,wall+4); f.y=ny*Math.min(r,wall+4); } /* 口袋前緣：慢慢滑過去不會掉，被撞或衝太快才出場 */
-        else if(r>AR+6){ finish(f,f.last>=0&&rt-f.lastX<1.5?'x':'over',pk); return; } } /* 被衝刺中的對手撞出去＝極限勝 */
-      else { const vr=f.vx*nx+f.vy*ny; if(vr>300*Math.sqrt(K.wgt)&&rt-f.lastT<.35){ finish(f,f.last>=0&&rt-f.lastX<1.5?'x':'over',null); return; } /* 被重擊：直接飛過護欄出場 */
+        else if(r>AR+6){ finish(f,pk.k==='x'?'x':'over',pk); return; } } /* 掉進紅色極限區域＝極限勝利 3 分，黃色擊飛區域＝擊飛勝利 2 分 */
+      else { const vr=f.vx*nx+f.vy*ny; if(vr>300*Math.sqrt(K.wgt)&&rt-f.lastT<.35){ finish(f,'over',null); return; } /* 被重擊：直接飛過護欄出場＝擊飛勝利 */
         if(vr>0){ f.vx-=vr*nx*1.75; f.vy-=vr*ny*1.75; } f.x=nx*wall; f.y=ny*wall; const touch=!f.wallT; f.wallT=(f.wallT||0)+h; if(f.wallT>.7&&f.dashT<=0){ f.wallT=0; f.vx-=nx*200; f.vy-=ny*200; } /* 貼著場邊太久會被彈回中間 */
         const vt=f.vx*(-ny*K.dir)+f.vy*(nx*K.dir);
         if(f.dashT<=0&&f.railCD<=0&&f.spin>25&&vt>70&&(touch?Math.random()<.42*K.dash:Math.random()<.02*K.dash*(1+vt/200))){ f.dashT=.34; f.railCD=1.6; addFx('dash',f.x,f.y); snd('boost'); }
@@ -475,7 +475,7 @@ function create(env,opts){
         for(let i=0;i<T.length;i++) for(let k=i+1;k<T.length;k++) if(T[i].st==='on'&&T[k].st==='on') collide(T[i],T[k]); }
       if(phase==='fight'){ const ak=aliveKeys();
         if(ak.length<=1) endRound();
-        else if(rt>=RT){ /* 時間到：轉速最高的一方拿持久勝 */ let best=null,bs=-1; for(const f of T) if(f.st==='on'&&f.spin>bs){ bs=f.spin; best=f; } const loser=T.filter(f=>f.st==='on'&&teamKey(f)!==teamKey(best)); for(const f of loser){ f.last=best.i; f.lastT=rt; finish(f,'spin'); } endRound(); } }
+        else if(rt>=RT){ /* 時間到：轉速最高的一方拿旋轉勝利 */ let best=null,bs=-1; for(const f of T) if(f.st==='on'&&f.spin>bs){ bs=f.spin; best=f; } const loser=T.filter(f=>f.st==='on'&&teamKey(f)!==teamKey(best)); for(const f of loser){ f.last=best.i; f.lastT=rt; finish(f,'spin'); } endRound(); } }
       else { PT-=sdt; if(PT<=0){ const top=Object.keys(score).filter(k=>score[k]>=TARGET).sort((a,b)=>score[b]-score[a]); if(top.length){ winKey=top[0]; phase='over'; PT=3.2; snd('win'); voice('比賽結束！'+keyName(winKey)+' 獲勝！'); roar(1,3); if(net) net.send({end:winKey}); } else { ban=null; setupRound(); } } } }
     else if(phase==='over'){ PT-=dt; if(PT<=0&&!ended){ ended=true; finishGame(); } }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/20; net.send({s:{f:T.map(pk),sc:score,ph:phase,pt:R1(PT),rd:round,rt:R1(rt),wa:R1(windA),ev}}); ev=[]; } } }
@@ -500,7 +500,7 @@ function create(env,opts){
     if(won&&!net&&!local2) recWin(ST.name);
     env.sfx(won||local2?'win':'lose');
     env.end({title:local2?keyName(winKey)+' 獲勝！':won?'你贏了！':keyName(winKey)+' 獲勝',big:ST.name,html:'<table class="ls"><tr><th>名次</th><th>選手</th><th>得分</th></tr>'+rows+'</table>',
-      text:'持久勝 1 分、擊飛勝 2 分、爆裂勝 2 分、極限勝 3 分，先拿 '+TARGET+' 分的贏。'+'（每人 3 顆輪流上場）',score:null,next:!net&&!local2&&won&&si<STAGES.length-1}); }
+      text:'旋轉勝利 1 分、擊飛勝利 2 分、爆裂勝利 2 分、極限勝利 3 分，先拿 '+TARGET+' 分的贏。'+'（每人 3 顆輪流上場）',score:null,next:!net&&!local2&&won&&si<STAGES.length-1}); }
   // 畫面
   function topScreen(f){ let x=f.x,y=f.y,z=0; const L=LPOS[f.i]||LPOS[0];
     if(phase==='aim'){ x=L[0]; y=L[1]; z=LZ-26; }
@@ -607,10 +607,10 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   const st=[['攻擊',K.atk/1.5],['防禦',K.def/1.6],['持久',K.sta/1.7],['衝刺',K.dash/1.7]];
   ctx.font='700 '+Math.round(h*.045)+'px '+TC; st.forEach(([n,v],i)=>{ const y=h*(.66+i*.085); ctx.fillStyle='#fff'; ctx.fillText(n,x0,y); ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(x0+h*.12,y-h*.016,bw-h*.12,h*.032); ctx.fillStyle=['#ff4d4d','#3d8bff','#3ed16a','#ff9d3d'][i]; ctx.fillRect(x0+h*.12,y-h*.016,(bw-h*.12)*clamp(v,.1,1),h*.032); }); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).spin={name:'陀螺旋風戰',tag:'SPIN STORM',color:'#ff7a3d',online:true,maxPlayers:2,
-  desc:'20 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就發射，之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，持久勝、擊飛勝、爆裂勝、極限勝，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
-  goal:'選好落點發射，比對手轉得久＝持久勝 1 分、撞出場外＝擊飛勝 2 分、撞到解體＝爆裂勝 2 分、衝刺中把對手撞出場外＝極限勝 3 分。先拿 4 分的贏。',
+  desc:'20 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就發射，之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，旋轉勝利、擊飛勝利、爆裂勝利、極限勝利，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
+  goal:'選好落點發射，比對手轉得久＝旋轉勝利 1 分、撞進黃色擊飛區域或飛出場外＝擊飛勝利 2 分、撞到解體＝爆裂勝利 2 分、撞進紅色極限區域＝極限勝利 3 分。先拿 4 分的贏。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
-  stageGoal:si=>{ const s=STAGES[si],h={ice:'冰面很滑，陀螺停不下來。',desert:'沙地摩擦大，轉速掉得快。',twin:'前後左右都有場外口袋。',lava:'碰到滾燙的軌道會掉轉速，但衝刺更猛。',space:'低重力，碗面拉回中間的力比較小。',storm:'暴風會把陀螺往一個方向吹，每隔幾秒換方向。',arena:'兩側的場外口袋特別寬。',final:'冠軍等級的對手。'}[s.th]||'';
+  stageGoal:si=>{ const s=STAGES[si],h={ice:'冰面很滑，陀螺停不下來。',desert:'沙地摩擦大，轉速掉得快。',twin:'前面是紅色極限區域，後左右是黃色擊飛區域。',lava:'碰到滾燙的軌道會掉轉速，但衝刺更猛。',space:'低重力，碗面拉回中間的力比較小。',storm:'暴風會把陀螺往一個方向吹，每隔幾秒換方向。',arena:'兩側的場外口袋特別寬。',final:'冠軍等級的對手。'}[s.th]||'';
     return s.name+'：先拿 4 分的贏。'+h; },
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','開賽前移動落點，裁判喊 GO SHOOT 就自動發射'],['發射之後','陀螺自己轉、自己撞，不用操作'],['V','切換特寫鏡頭／看全場'],['雙人','1P 用 WASD，2P 用方向鍵']],
