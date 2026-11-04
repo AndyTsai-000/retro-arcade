@@ -9,7 +9,7 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v,R1=v=>Math.round(v*10)/10,hyp=Math.hypot;
 const AR=200,RAD=19,S=1.45,SQ=.6,CX=400,CY=284,TS=1.18; /* TS：陀螺畫大一點比較清楚 */
 const sx=x=>CX+x*S,sy=y=>CY+y*S*SQ;
 const DIP=18,sz=(x,y)=>sy(y)+DIP*Math.max(0,1-(x*x+y*y)/(AR*AR)); /* 碗面中間比較低，看起來有深度 */
-const LPOS=[[-AR-26,-6],[AR+26,-6]],LZ=96,LD=.55,REFX=650,REFY=214; /* 兩位選手的發射器位置、高度、飛行時間；裁判站的位置 */
+const LPOS=[[-AR-26,-6],[AR+26,-6]],LZ=96,LD=1.3,PF=.55,REFX=650,REFY=214; /* 兩位選手的發射器位置、高度、發射時間（前 PF 拉線、後面飛出去）；裁判站的位置 */
 const PCOL=['#ff4d4d','#3d8bff','#3ed16a','#ffc21a'];
 const TYPES={攻擊:{atk:1.35,def:.85,sta:.88,wgt:1,emb:'tri'},防禦:{atk:.85,def:1.35,sta:1,wgt:1.3,emb:'hex'},持久:{atk:.8,def:1,sta:1.32,wgt:1.05,emb:'ring'},
   平衡:{atk:1.1,def:1.1,sta:1.08,wgt:1.1,emb:'star'},左旋:{atk:1.15,def:1,sta:1.06,wgt:1,emb:'bolt'}};
@@ -468,8 +468,8 @@ function create(env,opts){
         if(f.local){ const q=lin[f.i]||NOIN; mx=q.mx; my=q.my; } else if(f.remote){ const b=inBuf[f.i]; if(b){ mx=b.mx||0; my=b.my||0; } }
         else { const dx=f.tx-f.lx,dy=f.ty-f.ly,d=hyp(dx,dy); if(d>5){ mx=dx/d; my=dy/d; } }
         const m=hyp(mx,my); if(m>1){ mx/=m; my/=m; } f.lx+=mx*200*dt; f.ly+=my*200*dt; clampAim(f); }
-      if(PT<=.6&&lastBeep>0){ lastBeep=0; snd('go'); voice('Go Shoot！',1); roar(.7,1.6); phase='launch'; PT=LD; } }
-    else if(phase==='launch'){ PT-=dt; for(const f of T) f.ang+=f.k.dir*40*dt; if(PT<=0){ T.forEach(land); phase='fight'; rt=0; shake=Math.max(shake,.12); snd('bump'); } }
+      if(PT<=.6&&lastBeep>0){ lastBeep=0; snd('go'); voice('Go Shoot！',1); roar(.7,1.6); snd('boost'); phase='launch'; PT=LD; } }
+    else if(phase==='launch'){ PT-=dt; const [pl]=lu(); for(const f of T) f.ang+=f.k.dir*(pl<1?10+80*yank(pl):40)*dt; /* 拉線時陀螺越轉越快 */ if(PT<=0){ T.forEach(land); phase='fight'; rt=0; shake=Math.max(shake,.12); snd('bump'); } }
     else if(phase==='fight'||phase==='after'){ const steps=Math.max(1,Math.ceil(sdt/(1/120))),h=sdt/steps; rt+=sdt; windA+=sdt*Math.PI/6;
       for(let s=0;s<steps;s++){ for(let i=0;i<T.length;i++) if(T[i].st==='on') stepTop(T[i],NOIN,h);
         for(let i=0;i<T.length;i++) for(let k=i+1;k<T.length;k++) if(T[i].st==='on'&&T[k].st==='on') collide(T[i],T[k]); }
@@ -504,21 +504,31 @@ function create(env,opts){
   // 畫面
   function topScreen(f){ let x=f.x,y=f.y,z=0; const L=LPOS[f.i]||LPOS[0];
     if(phase==='aim'){ x=L[0]; y=L[1]; z=LZ-26; }
-    else if(phase==='launch'){ const u=clamp(1-PT/LD,0,1); x=L[0]+(f.lx-L[0])*u; y=L[1]+(f.ly-L[1])*u; z=(LZ-26)*(1-u)+70*Math.sin(Math.PI*u); }
+    else if(phase==='launch'){ const u=lu()[1]; x=L[0]+(f.lx-L[0])*u; y=L[1]+(f.ly-L[1])*u; z=(LZ-26)*(1-u)+70*Math.sin(Math.PI*u); }
     else if(f.st==='out'){ const r=hyp(f.ox,f.oy)||1;
       if(f.fly){ const u=Math.min(1,f.out/.9); x=f.ox+f.ox/r*150*u; y=f.oy+f.oy/r*150*u; z=200*u-260*u*u; } /* 撞飛過護欄：往外高高飛出去 */
       else { const u=Math.min(1,f.out/.8); x=f.ox+f.ox/r*34*Math.min(1,u*1.6); y=f.oy+f.oy/r*34*Math.min(1,u*1.6); z=-55*u*u; } } /* 掉進口袋：滑進洞裡往下沉 */
     return [sx(x),sz(x,y)-z,z,x,y]; }
+  function lu(){ const u0=phase==='launch'?clamp(1-PT/LD,0,1):0; return [clamp(u0/PF,0,1),clamp((u0-PF)/(1-PF),0,1)]; } /* [拉線進度, 飛行進度] */
+  const yank=pl=>clamp((pl-.3)/.7,0,1); /* 拉線前 30% 握住繩把，後面一口氣拉出 */
   function view(k){ const z=1+(cam.z-1)*k,fx=W/2+(cam.x-W/2)*k,fy=H/2+(cam.y-H/2)*k; c.translate(W/2,H/2); c.scale(z,z); c.translate(-fx,-fy); }
   function refState(){ if(phase==='aim'){ const n=Math.ceil(PT-.6); return n<=3&&n>=1?['count',n]:['idle']; } if(phase==='launch'||(phase==='fight'&&rt<.8)) return ['go'];
     if(ban&&ban.t<2.4&&ban.to) return ['point',ban.to===keys[0]?0:1]; return ['idle']; }
   function bubble(txt){ c.font='900 15px '+TC; const w=Math.min(330,c.measureText(txt).width+52),x1=W-12-w,y1=10; c.fillStyle='rgba(255,255,255,.95)'; rr(c,x1,y1,w,32,10); c.fill(); /* 裁判對話框固定在右上角，鏡頭拉近也看得到 */
     c.beginPath(); c.moveTo(W-70,y1+30); c.lineTo(W-58,y1+44); c.lineTo(W-50,y1+30); c.fill(); c.fillStyle='#14122b'; c.textAlign='left'; c.textBaseline='middle'; c.fillText('🎙',x1+10,y1+16); c.textAlign='center'; c.fillText(txt,x1+w/2+12,y1+16,w-44); }
-  function drawLauncher(X,Y,col,sd){ c.save(); c.translate(X,Y); c.scale(sd,1);
+  function drawLauncher(X,Y,col,sd,pl,ready,cut){ c.save(); c.translate(X,Y); c.scale(sd,1);
+    const e=1-Math.pow(1-(pl||0),3),tr=ready?(Math.random()-.5)*1.6:0,hx=40+e*(cut?78:50)+tr,hy=-8+e*(cut?26:16)+tr,CE=[24,-8]; /* 拉線：握把從發射器側邊一口氣往外拉 */
+    if(pl>0&&pl<1){ c.strokeStyle='rgba(255,255,255,.55)'; c.lineCap='round'; for(let i=0;i<5;i++){ const o=(i-2)*7; c.lineWidth=2-Math.abs(i-2)*.4; c.beginPath(); c.moveTo(hx-46+o*.3,hy-30+o); c.lineTo(hx-14+o*.3,hy-9+o); c.stroke(); } } /* 速度線 */
+    // 拉繩：鋸齒繩帶，拉出來的長度越來越長
+    const cl=hyp(hx-CE[0],hy-CE[1]),ca=Math.atan2(hy-CE[1],hx-CE[0]); c.save(); c.translate(CE[0],CE[1]); c.rotate(ca); c.fillStyle='#e8e8ee'; c.fillRect(0,-2.6,cl,5.2); c.fillStyle='#9aa0ae'; for(let q=4;q<cl-4;q+=5) c.fillRect(q,-2.6,2,5.2); c.restore();
     limb(c,[-110,-50],[-46,-24],24,20,col); limb(c,[-46,-24],[-14,-12],15,12,'#e6bc96'); c.fillStyle='#d8a884'; c.beginPath(); c.ellipse(-10,-12,8,7,0,0,TAU); c.fill(); /* 選手的手 */
     const g=c.createLinearGradient(0,-16,0,4); g.addColorStop(0,'#5a606e'); g.addColorStop(.5,'#2a2d36'); g.addColorStop(1,'#14161c'); c.fillStyle=g; rr(c,-26,-16,52,18,6); c.fill();
     c.fillStyle=col; rr(c,-24,-12,48,5,2); c.fill(); c.fillStyle='#14161c'; rr(c,-7,-36,14,22,4); c.fill(); c.fillStyle='rgba(255,255,255,.25)'; c.fillRect(-5,-34,3,18);
-    c.strokeStyle='#c8ccd6'; c.lineWidth=3; c.beginPath(); c.arc(30,-22,7,0,TAU); c.stroke(); c.strokeStyle='#8a8f9c'; c.lineWidth=1.5; c.beginPath(); c.moveTo(24,-18); c.lineTo(18,-10); c.stroke();
+    c.fillStyle='#1a1c22'; c.beginPath(); c.ellipse(CE[0],CE[1],3,4,0,0,TAU); c.fill(); /* 拉繩出口 */
+    // 握把＋另一隻手（從靠鏡頭那側伸過來）
+    c.fillStyle=shade(col,-.2); rr(c,hx-4,hy-13,9,26,4); c.fill(); c.strokeStyle='#c8ccd6'; c.lineWidth=3.5; c.beginPath(); c.ellipse(hx+8,hy,8,11,0,0,TAU); c.stroke();
+    if(cut){ const sh=[200,120],hd=[hx+6,hy+2],dx=hd[0]-sh[0],dy=hd[1]-sh[1],d=Math.min(hyp(dx,dy),206),a0=Math.atan2(dy,dx),b=Math.acos(clamp(d/210,-1,1)),el=[sh[0]+Math.cos(a0-b)*105,sh[1]+Math.sin(a0-b)*105]; /* 拉繩的手：肩膀固定，手肘自然彎 */
+      limb(c,sh,el,30,24,col); limb(c,el,hd,22,16,'#e6bc96'); c.fillStyle='#d8a884'; c.beginPath(); c.ellipse(hd[0],hd[1],11,9.5,-.3,0,TAU); c.fill(); c.strokeStyle='rgba(120,70,50,.5)'; c.lineWidth=1.2; for(let q=-1;q<=1;q++){ c.beginPath(); c.moveTo(hd[0]-6,hd[1]+q*3.4); c.lineTo(hd[0]+4,hd[1]+q*3.4); c.stroke(); } }
     c.fillStyle='#1a1c22'; c.beginPath(); c.moveTo(-14,2); c.lineTo(14,2); c.lineTo(10,8); c.lineTo(-10,8); c.closePath(); c.fill(); c.restore(); }
   function draw(){ if(phase==='deck'){ drawDeck(); return; } c.save(); if(shake>0) c.translate((Math.random()-.5)*shake*24,(Math.random()-.5)*shake*24);
     c.save(); view(.12); themeBg(c,ST.th,t); c.restore();
@@ -545,10 +555,10 @@ function create(env,opts){
     for(const f of order){ const [X,Y,z,wx,wy]=topScreen(f),frac=f.spin/100;
       if(f.st==='burst') continue;
       if(f.st==='out'&&f.out>(f.fly?.9:.8)) continue;
-      if(phase==='aim'||phase==='launch'){ const u=phase==='launch'?clamp(1-PT/LD,0,1):0,L=LPOS[f.i]||LPOS[0];
+      if(phase==='aim'||phase==='launch'){ const [pl,u]=lu(),L=LPOS[f.i]||LPOS[0],jit=phase==='launch'&&pl<1&&pl>.3?(Math.random()-.5)*2.4:0;
         if(u>0) softShadow(c,sx(wx),sz(wx,wy),26*u+8,.15+.35*u);
-        drawTop(c,X,Y,S*TS,f.P,f.col,f.ang,phase==='launch'?1:0,{tilt:(1-u)*9,ta:f.i?2.4:.7,noShadow:true,still:phase==='aim'});
-        if(u<1){ c.globalAlpha=1-u; drawLauncher(sx(L[0]),sz(L[0],L[1])-LZ-u*30,PCOL[f.i],f.i?-1:1); c.globalAlpha=1; }
+        drawTop(c,X+jit,Y,S*TS,f.P,f.col,f.ang,phase==='launch'?Math.max(.3,yank(pl)):0,{tilt:(1-u)*9,ta:f.i?2.4:.7,noShadow:true,still:phase==='aim'});
+        if(u<1){ c.globalAlpha=1-u; drawLauncher(sx(L[0])+jit,sz(L[0],L[1])-LZ-u*30,PCOL[f.i],f.i?-1:1,phase==='launch'?yank(pl):0,false,false); c.globalAlpha=1; }
         if(phase==='aim'&&f.human&&round===1&&!opts.preview) meArrow(c,sx(L[0]),sz(L[0],L[1])-LZ-46,local2?(f.i+1)+'P':'你',t);
         continue; }
       let tilt=0,ta=0; if(f.st==='on'&&f.spin<28){ tilt=(28-f.spin)/28*7; ta=t*(10-f.spin*.2); } if(f.st==='stop'){ tilt=12; ta=f.ta||.7; }
@@ -581,6 +591,14 @@ function create(env,opts){
     if(phase==='aim'){ const n=Math.ceil(PT-.6); if(n>=1&&n<=3) big(String(n),CY-60,'#fff',72);
       c.font='900 15px '+TC; c.lineWidth=5; c.strokeStyle='#0b0a1c'; const vs='第 '+round+' 回合　'+TOP[T[0].P.top].n+'　對　'+TOP[T[1].P.top].n; c.strokeText(vs,W/2,H-46); c.fillStyle='#ffd23f'; c.fillText(vs,W/2,H-46);
       if(R.humans){ const hs=(env.touch?'用方向盤':local2?'1P 用 WASD、2P 用方向鍵':'用方向鍵')+'移動落點，裁判喊 GO SHOOT 就發射'; c.font='700 13px '+TC; c.strokeText(hs,W/2,H-22); c.fillStyle='#fff'; c.fillText(hs,W/2,H-22); } }
+    if(phase==='launch'){ const [pl,fu]=lu(),ye=yank(pl),inA=clamp(pl/.22,0,1),outA=1-clamp(fu/.25,0,1); /* 發射特寫：兩位選手握住拉繩，GO SHOOT 一口氣拉出 */
+      if(outA>0) for(let i=0;i<2;i++){ const f=T[i],sd=i?-1:1,sl=(1-inA)*(1-inA)*420*-sd,x0=i?W/2+4:0,y0=262,pw=W/2-4,ph=212;
+        c.save(); c.globalAlpha=outA; c.translate(sl,0); c.beginPath(); c.moveTo(x0+(i?24:0),y0); c.lineTo(x0+pw,y0); c.lineTo(x0+pw-(i?0:24),y0+ph); c.lineTo(x0,y0+ph); c.closePath(); c.save(); c.clip();
+        const bg=c.createLinearGradient(x0,y0,x0,y0+ph); bg.addColorStop(0,shade(PCOL[i],-.55)); bg.addColorStop(1,'#0b0a1c'); c.fillStyle=bg; c.fillRect(x0,y0,pw,ph);
+        c.strokeStyle='rgba(255,255,255,'+(.1+.25*ye)+')'; c.lineWidth=2; for(let q=0;q<14;q++){ const yy=y0+((q*37+t*900*(ye>0?1:.15))%ph),xx=x0+(q*61)%pw; c.beginPath(); c.moveTo(xx,yy); c.lineTo(xx+sd*90,yy+8); c.stroke(); } /* 速度線 */
+        const cx=x0+pw/2-sd*110,cy=y0+96,K2=2; c.translate(cx,cy); c.scale(K2,K2); const jt=ye>0&&ye<1?(Math.random()-.5)*1.5:0;
+        drawTop(c,jt,26,S*TS,f.P,f.col,f.ang,Math.max(.3,ye),{tilt:0,noShadow:true}); drawLauncher(jt,0,PCOL[i],sd,ye,pl<.3,true); c.restore();
+        c.strokeStyle=PCOL[i]; c.lineWidth=4; c.stroke(); c.font='900 15px '+TC; c.textAlign=i?'right':'left'; c.textBaseline='top'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const nm=R.names[i]+'　'+TOP[f.P.top].n; c.strokeText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.fillStyle='#fff'; c.fillText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.restore(); } }
     if(phase==='launch'||(phase==='fight'&&rt<.7)){ const u=phase==='launch'?1-PT/LD:1; c.save(); c.translate(W/2,CY-60); const sc=1+Math.max(0,.4-u)*.8; c.scale(sc,sc); c.translate(-W/2,-(CY-60)); big('GO SHOOT！',CY-60,'#ffd23f',58); c.restore(); }
     if(ban&&ban.t<2.2&&phase!=='aim'&&phase!=='launch'){ const F=FIN[ban.k],u=Math.min(1,ban.t*5),sc=1+(1-u)*.8; c.save(); c.translate(W/2,CY-118); c.scale(sc,sc); c.globalAlpha=Math.min(1,(2.2-ban.t)*3);
       c.font='900 40px '+TC; c.lineWidth=8; c.strokeStyle='#0b0a1c'; c.strokeText(F.n+'！',0,0); c.fillStyle=F.col; c.fillText(F.n+'！',0,0);
