@@ -1,5 +1,5 @@
 // 一桿清台：俯視角撞球，可選八號球或九號球。寫實球桌（木框、台呢、皮革球袋）、會滾動的號碼球，打球的是從上方看下去的真人。
-// 單人挑戰 10 位電腦對手（各自的球館），雙人同一台輪流，也可以連線：擊球的人送出擊球參數，大家各自模擬，停下後由擊球的人送出結果對齊。
+// 單人挑戰 20 位電腦對手（各自的球館），雙人同一台輪流，也可以連線：擊球的人送出擊球參數，大家各自模擬，停下後由擊球的人送出結果對齊。
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PIX='"Press Start 2P","Noto Sans TC",monospace';
@@ -20,7 +20,19 @@ const STAGES=[
   {name:'林教練',place:'撞球學院',stars:4,skill:.75,cloth:'#1f7a3e',room:'#2a3a30',look:{skin:'#e0ac80',hair:'#3a2416',shirt:'#ffffff',vest:'#1e1e24'}},
   {name:'美琪',place:'飯店俱樂部',stars:4,skill:.83,cloth:'#5a2a6a',room:'#2a1a2a',look:{skin:'#f2c9a0',hair:'#1a1410',shirt:'#c0392b',long:1,vest:'#1e1e24'}},
   {name:'撞球王子',place:'職業聯賽',stars:5,skill:.9,cloth:'#1a5aa0',room:'#101830',look:{skin:'#e0ac80',hair:'#1a1410',shirt:'#ffffff',vest:'#2a2a6a'}},
-  {name:'無敵大師',place:'世界錦標賽',stars:5,skill:.96,cloth:'#1a6a8a',room:'#0c1018',look:{skin:'#e0ac80',hair:'#d8d0c8',shirt:'#ffffff',vest:'#141414'}}];
+  {name:'無敵大師',place:'世界錦標賽',stars:5,skill:.96,cloth:'#1a6a8a',room:'#0c1018',look:{skin:'#e0ac80',hair:'#d8d0c8',shirt:'#ffffff',vest:'#141414'}},
+  // 第 11～20 位（依實力穿插排序；id 存紀錄用，排序變了紀錄也不會錯位）
+  {name:'小胖',place:'網咖撞球區',stars:1,skill:.22,cloth:'#2a8a4a',room:'#30282a',look:{skin:'#f2c9a0',hair:'#1a1410',shirt:'#ffd23f'}},
+  {name:'阿珠',place:'鄰里活動中心',stars:2,skill:.33,cloth:'#1f6a5a',room:'#3a3228',look:{skin:'#e0ac80',hair:'#5a3a26',shirt:'#5fd068',long:1}},
+  {name:'老王',place:'眷村球室',stars:2,skill:.43,cloth:'#2a6a3a',room:'#40362a',look:{skin:'#c68a5e',hair:'#9a9a9a',shirt:'#6a7a8a'}},
+  {name:'阿凱',place:'大學校際賽',stars:3,skill:.53,cloth:'#1a4a8a',room:'#222a3a',look:{skin:'#e0ac80',hair:'#1a1410',shirt:'#3ddbd9'}},
+  {name:'Mia',place:'海景酒吧',stars:3,skill:.62,cloth:'#1a7a8a',room:'#1a2a34',look:{skin:'#f6d6b8',hair:'#e8c070',shirt:'#ff9d3d',long:1}},
+  {name:'鐵手',place:'港口球館',stars:4,skill:.7,cloth:'#4a3a2a',room:'#1a1612',look:{skin:'#8d5a3a',hair:'#1a1410',shirt:'#2a2a30',bald:1}},
+  {name:'陳老師',place:'撞球協會',stars:4,skill:.79,cloth:'#1f6a3e',room:'#24302a',look:{skin:'#e0ac80',hair:'#5a5a5a',shirt:'#ffffff',vest:'#3a2a1a'}},
+  {name:'黑寡婦',place:'賭城俱樂部',stars:5,skill:.86,cloth:'#3a1a2a',room:'#140a10',look:{skin:'#f2c9a0',hair:'#1a1410',shirt:'#1e1e24',long:1,vest:'#8a1e2a'}},
+  {name:'台球皇帝',place:'亞洲盃決賽',stars:5,skill:.93,cloth:'#1a4aa0',room:'#0e1428',look:{skin:'#e0ac80',hair:'#1a1410',shirt:'#ffffff',vest:'#8a6a1a'}},
+  {name:'傳奇球聖',place:'名人堂表演賽',stars:5,skill:.98,cloth:'#5a1a1a',room:'#100808',look:{skin:'#c68a5e',hair:'#ffffff',shirt:'#ffffff',vest:'#2a0a0a'}}];
+STAGES.forEach((s,i)=>s.id=i); STAGES.sort((a,b)=>a.skill-b.skill);
 // 袋口與台邊（含袋口兩側斜邊）
 const PK=[[TX0-5,TY0-5,15],[MX,TY0-13,14],[TX1+5,TY0-5,15],[TX0-5,TY1+5,15],[MX,TY1+13,14],[TX1+5,TY1+5,15]];
 const SEG=(()=>{ const s=[],C=17,S=15; const add=(a,b,cc,d)=>s.push([a,b,cc,d]);
@@ -156,6 +168,7 @@ function create(env,opts){
   const myLook={skin:['#f2c9a0','#e0ac80','#c68a5e','#8d5a3a'][+(L0.skin||1)]||'#e0ac80',hair:L0.hair||'#1a1410',shirt:L0.shirt||'#3d8bff',vest:L0.vest&&L0.vest!=='none'?L0.vest:null,long:L0.style==='long',bald:L0.style==='bald'};
   const lookOf=i=>{ if(vsAI) return i===0?myLook:ST.look; if(net){ const l=(net.looks&&net.looks[i])||{}; return {skin:['#f2c9a0','#e0ac80','#c68a5e','#8d5a3a'][+(l.skin||1)]||'#e0ac80',hair:l.hair||'#1a1410',shirt:l.shirt||(i?'#e23b3b':'#3d8bff'),vest:l.vest&&l.vest!=='none'?l.vest:null,long:l.style==='long',bald:l.style==='bald'}; } return i===0?myLook:{skin:'#c68a5e',hair:'#3a2416',shirt:'#e23b3b'}; };
   const PL=[0,1].map(i=>({name:vsAI?(i?ST.name:(opts.name||'你')):net?((net.names&&net.names[i])||'玩家 '+(i+1)):(i?'2P':'1P'),L:lookOf(i),ai:vsAI&&i===1,wins:0}));
+  let aimHold=0;
   let st={rule,B:rack(rule),grp:[null,null],brk:true},turn=opts.first===1?1:0,breaker=turn,phase='intro',phT=2.2,ang=0,pow=0,spin=0,charging=false,mt=0,shotS=null,before=null,banner='',banT=0,t=0,fouls=[0,0],ended=false,waitRes=false,aiT=0,aiPlan=null,aiGen=null,pull=0,strikeT=0,potFx=[],inHand=true,kitchen=true,winner=-1,pending=null,arrowT=3;
   const local=i=>net?i===me:!PL[i].ai;
   function say(s,d){ banner=s; banT=d||2; }
@@ -229,12 +242,18 @@ function create(env,opts){
     if(phase==='place'){ const c0=cue(); c0.in=false;
       if(PL[turn].ai){ aiT-=dt; if(aiT<=0){ aiPlace(); phase='aim'; inHand=false; aiPlan=null; aiGen=null; aiT=.6; } return; }
       if(!local(turn)) return;
-      const v=dt*160; let nx=c0.x+((K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0))*v,ny=c0.y+((K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0))*v; if(validCue(nx,ny)){ c0.x=nx; c0.y=ny; }
+      const v=dt*160,kx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0),ky=(K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0); let mx=kx,my=ky;
+      if(G3&&G3.view==='cue'){ const dx=Math.cos(ang),dy=Math.sin(ang); mx=dx*-ky-dy*kx; my=dy*-ky+dx*kx; } /* 站在母球後面時：↑ 往前、→ 往右 */
+      let nx=c0.x+mx*v,ny=c0.y+my*v; if(validCue(nx,ny)){ c0.x=nx; c0.y=ny; }
       if(env.hit('Space')||env.hit('Enter')) confirmPlace(); return; }
     if(phase==='aim'){
       if(PL[turn].ai){ aiT-=dt; if(!aiPlan){ if(!aiGen) aiGen=aiChoose(); const t0=performance.now(),lim=thinkOK?6:0; thinkOK=false; let r={done:false}; while(!r.done&&performance.now()-t0<lim) r=aiGen.next(); if(r.done){ aiGen=null; aiPlan=r.value; aiPlan.t=0; } } if(aiPlan&&aiT>0) return; if(aiPlan){ aiPlan.t+=dt; let da=aiPlan.a-ang; da=Math.atan2(Math.sin(da),Math.cos(da)); ang+=da*Math.min(1,dt*5); spin=aiPlan.s; if(aiPlan.t>1.1){ pow=Math.min(aiPlan.p,(aiPlan.t-1.1)*1.6); } if(aiPlan.t>1.1+aiPlan.p/1.6+.25){ ang=aiPlan.a; pow=aiPlan.p; take(ang,pow,spin,cue().x,cue().y); pow=0; aiPlan=null; } } return; }
       if(!local(turn)) return;
-      if(K.ArrowLeft) ang-=dt*.9; if(K.ArrowRight) ang+=dt*.9; if(K.ArrowUp) ang-=dt*.1; if(K.ArrowDown) ang+=dt*.1;
+      { const kx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0),ky=(K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0);
+        if(kx||ky){ aimHold+=dt; const sp=.22+Math.min(1,aimHold*.8)*.8; /* 按一下轉一點（微調），按久了轉比較快 */
+          if(G3&&G3.view==='cue') ang+=kx*dt*sp; /* 站在母球後面：← 往左轉、→ 往右轉 */
+          else ang+=(kx*-Math.sin(ang)+ky*Math.cos(ang))*dt*sp*1.15; } /* 俯瞰：球桿尖端往按的方向轉（畫面上的上下左右） */
+        else aimHold=0; }
       spin=0;
       const held=K.Space||K.Enter; if(held&&!drag){ if(!charging){ charging=true; mt=0; } mt+=dt; pow=.5-Math.cos(mt*1.9)*.5; } else if(charging){ charging=false; pow=Math.max(.04,pow); shoot(); }
       return; }
@@ -243,7 +262,7 @@ function create(env,opts){
       if(!moving(st.B)){ if(local(turn)||PL[turn].ai&&(!net||net.host)){ if(net) net.send({rs:[turn,st.B.map(b=>[Math.round(b.x*100)/100,Math.round(b.y*100)/100,b.in?1:0]),shotS.first,shotS.pots]}); afterShot(); } else waitRes=true; } } }
   function finish(){ ended=true; const w=winner,meWin=vsAI?w===0:net?w===me:true;
     const html='<table class="ls"><tr><th>玩家</th><th>贏的局數</th></tr>'+PL.map(p=>'<tr><td>'+p.name+'</td><td>'+p.wins+'</td></tr>').join('')+'</table>';
-    if(vsAI&&meWin){ try{ const k='arcade.pool.best',old=+localStorage.getItem(k)||0; if(si+1>old) localStorage.setItem(k,String(si+1)); localStorage.setItem('arcade.pool.w.'+si,'1'); }catch(e){} }
+    if(vsAI&&meWin){ try{ const k='arcade.pool.best',old=+localStorage.getItem(k)||0; if(si+1>old) localStorage.setItem(k,String(si+1)); localStorage.setItem('arcade.pool.w.'+ST.id,'1'); }catch(e){} }
     env.sfx(meWin?'win':'lose');
     env.end({title:local2?PL[w].name+' 獲勝！':meWin?'你贏了！':PL[w].name+' 獲勝',big:PL[0].wins+' : '+PL[1].wins,html,text:(rule==='9'?'九號球':'八號球')+'，搶 '+raceTo+' 局。',score:vsAI&&meWin?si+1:null,next:vsAI&&meWin&&si<STAGES.length-1}); }
   let thinkOK=true; // 電腦每畫一格只想一小段（落後補跑更新時不重複想）
@@ -314,16 +333,16 @@ function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); L=L||{}; drawRoom
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).pool={
   coin:o=>({verb:'先開球',names:o.net?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:o.mode==='2p'?['1P','2P']:[o.name||'你',STAGES[o.stage||0].name]}),
   name:'一桿清台',tag:'BILLIARDS',color:'#ffd23f',online:true,maxPlayers:2,
-  desc:'寫實風撞球，可選八號球或九號球。木框球桌、皮革球袋、會滾動的號碼球，有瞄準輔助線，只要瞄準和控制力道。挑戰 10 位各有球館的電腦對手，也能雙人輪流或連線對打。',
+  desc:'寫實風撞球，可選八號球或九號球。木框球桌、皮革球袋、會滾動的號碼球，有瞄準輔助線，只要瞄準和控制力道。挑戰 20 位各有球館的電腦對手，也能雙人輪流或連線對打。',
   goal:'八號球：先打進第一顆球決定你打全色（1-7）或花色（9-15），清完自己的球再打進 8 號就贏。九號球：每桿先碰台上最小號的球，打進 9 號就贏。母球掉進袋子或碰錯球是犯規，換對手隨意擺母球。',
   stages:STAGES.map(s=>s.name+'（'+s.place+'）'),stars:STAGES.map(s=>s.stars),stageLabel:'選擇對手',
   stageShow,
   stageGoal:si=>'對手：'+STAGES[si].name+'（'+STAGES[si].place+'，'+'★'.repeat(STAGES[si].stars)+'）。八號球清完自己那組再打進 8 號就贏；九號球打進 9 號就贏。',
-  stageBest:i=>{ try{ return localStorage.getItem('arcade.pool.w.'+i)?'★ 贏過':''; }catch(e){ return ''; } },
+  stageBest:i=>{ try{ return localStorage.getItem('arcade.pool.w.'+STAGES[i].id)?'★ 贏過':''; }catch(e){ return ''; } },
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人輪流'}],
   options:[{key:'rule',label:'玩法',def:'8',opts:[{id:'8',label:'八號球'},{id:'9',label:'九號球'}]},{key:'race',label:'搶幾局',def:'1',opts:[{id:'1',label:'1 局'},{id:'2',label:'搶 2 局'},{id:'3',label:'搶 3 局'}]},
     {key:'cloth',label:'台呢顏色',def:'stage',opts:[{id:'stage',label:'照球館'},{id:'#1f7a3e',label:'綠'},{id:'#1f6aa8',label:'藍'},{id:'#8a1e2a',label:'紅'},{id:'#5a2a6a',label:'紫'}]}],
-  help:[['← →','瞄準（↑ ↓ 慢慢微調）'],['空白鍵','按住蓄力，放開出桿'],['V','切換視角：俯瞰整桌／站在母球後面'],['滑鼠','移到想打的方向；按住往後拉，放開出桿']],
+  help:[['↑ ↓ ← →','瞄準：球桿尖端往按的方向轉（點一下微調，按住轉快）'],['空白鍵','按住蓄力，放開出桿'],['V','切換視角：俯瞰整桌／站在母球後面'],['滑鼠','移到想打的方向；按住往後拉，放開出桿']],
   touchHelp:[['點台面','對準點的方向'],['出桿','按住蓄力，放開出桿']],
   touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'視角',c:'KeyV'},{l:'出桿',c:'Space',act:true}]},
   load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */

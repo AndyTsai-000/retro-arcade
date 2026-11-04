@@ -13,8 +13,8 @@ const LPOS=[[-AR-26,-6],[AR+26,-6]],LZ=96,LD=.55,REFX=650,REFY=214; /* 兩位選
 const PCOL=['#ff4d4d','#3d8bff','#3ed16a','#ffc21a'];
 const TYPES={攻擊:{atk:1.35,def:.85,sta:.88,wgt:1,emb:'tri'},防禦:{atk:.85,def:1.35,sta:1,wgt:1.3,emb:'hex'},持久:{atk:.8,def:1,sta:1.32,wgt:1.05,emb:'ring'},
   平衡:{atk:1.1,def:1.1,sta:1.08,wgt:1.1,emb:'star'},左旋:{atk:1.15,def:1,sta:1.06,wgt:1,emb:'bolt'}};
-const BITS={flat:{mv:1.35,sta:.82,dash:1.25,wander:1,def:0,cruise:270,curv:.35},taper:{mv:1,sta:1,dash:1,wander:.6,def:.08,cruise:140,curv:.25},ball:{mv:.8,sta:1.22,dash:.8,wander:.3,def:.05,cruise:60,curv:.2},
-  needle:{mv:.6,sta:1.12,dash:.55,wander:0,def:.2,cruise:28,curv:.1},rush:{mv:1.15,sta:.95,dash:1.65,wander:.7,def:0,cruise:300,curv:.45}};
+const BITS={flat:{mv:1.35,sta:.82,dash:1.25,wander:1,def:0,cruise:270,curv:.35,seek:3.2},taper:{mv:1,sta:1,dash:1,wander:.6,def:.08,cruise:170,curv:.25,seek:2.2},ball:{mv:.8,sta:1.22,dash:.8,wander:.3,def:.05,cruise:110,curv:.2,seek:.9},
+  needle:{mv:.6,sta:1.12,dash:.55,wander:0,def:.2,cruise:60,curv:.1,seek:.5},rush:{mv:1.15,sta:.95,dash:1.65,wander:.7,def:0,cruise:300,curv:.45,seek:3.5}};
 const BITK={F:'flat',T:'taper',B:'ball',N:'needle',HN:'needle',P:'taper',S:'needle',GF:'rush',GP:'rush',U:'taper',C:'flat',TP:'ball',BS:'needle',M:'flat',A:'flat',DB:'ball',LF:'flat',LR:'rush',R:'rush'};
 const BITN={F:'平頭',T:'錐形',B:'球頭',N:'針頭',HN:'高針頭',P:'尖頭',S:'尖釘',GF:'齒輪平頭',GP:'齒輪尖頭',U:'聯合',C:'旋風',TP:'轉換點',BS:'彈性尖釘',M:'融合',A:'加速',DB:'圓盤球頭',LF:'低平頭',LR:'低衝刺',R:'衝刺'};
 const TP_=(id,code,n,type,dir,rat,bit,sh,c,a,m,feat,x)=>({id,code,n,type,dir,rat,bit,sh,c,a,m,feat,x:x||{}});
@@ -53,6 +53,7 @@ const STAGES=[
   {name:'星空低重力',stars:4,th:'space',slope:.5,fric:.8,decay:.9,pk:[PK(Math.PI/2,.26,'over'),PK(0,.22,'over'),PK(Math.PI,.22,'over')]},
   {name:'暴風競技場',stars:5,th:'storm',slope:1,fric:1,decay:1,wind:1,pk:[PK(Math.PI/2,.26,'over'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
   {name:'冠軍決賽場',stars:5,th:'final',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.24,'over'),PK(0,.19,'over'),PK(Math.PI,.19,'over')]}];
+STAGES.forEach(s=>s.pk.forEach(p=>p.w*=1.3)); /* 場外口袋開口加寬，比較容易被撞進洞裡 */
 const TH={gym:{bg:['#1d2a44','#0e1526'],fl:['#e8edf5','#9aa8c0'],rim:'#2a3550',acc:'#3d8bff'},
   street:{bg:['#2a2230','#121018'],fl:['#d8d0c4','#8a8070'],rim:'#3a3038',acc:'#ff7a3d'},
   arena:{bg:['#1a1240','#08061a'],fl:['#dfe6ff','#8a94c8'],rim:'#2a2060',acc:'#b98cff'},
@@ -77,7 +78,7 @@ function fixDeck(d){ d=d.map(q=>partsOf(q)); for(let i=0;i<d.length;i++){ const 
 function myDeck(L){ let d=null; try{ d=JSON.parse(localStorage.getItem('arcade.spin.deck2')||'null'); }catch(e){} if(!Array.isArray(d)||d.length!==3) d=[{top:partsOf(L).top},{top:'knightshield'},{top:'wizardrod'}]; return fixDeck(d); }
 function botDeck(si,i){ const d=[]; for(let k=0;k<3;k++) d.push({top:OPP[(si*2+i+k*7)%OPP.length]}); return fixDeck(d); }
 function statsOf(p){ const T0=TOP[p.top],Ty=TYPES[T0.type],B=BITS[BITK[T0.bit]],Rr=ratOf(T0.rat),x=T0.x;
-  return {atk:Ty.atk*Rr.atk*(x.atk||1),def:Ty.def+B.def,wgt:Ty.wgt*(x.wgt||1),sta:Ty.sta*B.sta*(x.sta||1),mv:B.mv,dash:B.dash,wander:B.wander,cruise:B.cruise,curv:B.curv,res:Rr.res,low:Rr.low,dir:T0.dir}; }
+  return {atk:Ty.atk*Rr.atk*(x.atk||1),def:Ty.def+B.def,wgt:Ty.wgt*(x.wgt||1),sta:Ty.sta*B.sta*(x.sta||1),mv:B.mv,dash:B.dash,wander:B.wander,cruise:B.cruise,curv:B.curv,seek:B.seek,res:Rr.res,low:Rr.low,dir:T0.dir}; }
 // 刀刃外形：極座標 r(θ)，回傳 0～1
 function bladeR(sh,a){ const u=((a*sh.n/TAU)%1+1)%1,d=sh.d||.2,h=sh.h||2;
   if(sh.k==='hook') return 1-d+d*Math.pow(u,h);
@@ -338,7 +339,7 @@ function create(env,opts){
       const B=TOP[f.P.top],rad=B.type==='攻擊'?.74:B.type==='左旋'?.6:B.type==='平衡'?.45:.12; let a=0; for(let q=0;q<30;q++){ a=Math.random()*TAU; if(!inPk(ST,a,.4)) break; }
       const r2=AR*rad*(.85+Math.random()*.3),e=f.ai?(1-f.ai.sk)*50:0; f.tx=Math.cos(a)*r2+(Math.random()-.5)*e; f.ty=Math.sin(a)*r2+(Math.random()-.5)*e; clampAim(f,1); clampAim(f); }); }
   function land(f){ const L=LPOS[f.i]||LPOS[0],dx=f.lx-L[0],dy=f.ly-L[1],d=hyp(dx,dy)||1,r=hyp(f.lx,f.ly)||1,K=f.k; f.x=f.lx; f.y=f.ly;
-    const v0=K.cruise*.6+20; f.vx=-f.ly/r*K.dir*v0*.35-f.lx/r*v0*.8; f.vy=f.lx/r*K.dir*v0*.35-f.ly/r*v0*.8; addFx('land',f.x,f.y); } /* 落地後往中間衝、帶一點旋轉方向的偏移（花瓣路線） */
+    const v0=K.cruise*.6+20; f.vx=-f.ly/r*K.dir*v0*.6-f.lx/r*v0*.3; f.vy=f.lx/r*K.dir*v0*.6-f.ly/r*v0*.3; addFx('land',f.x,f.y); } /* 落地後往中間衝、帶一點旋轉方向的偏移（花瓣路線） */
   function setupRound(){ round++; rt=0; phase='aim'; PT=opts.preview?1.2:5.6; lastBeep=9; deb=[]; focus=null; if(!client) T.forEach(setP);
     T.forEach(f=>{ f.spin=f.ai?clamp(86+f.ai.sk*14+Math.random()*4,80,100):100; f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; });
     prepAim(); if(round>1) voice('第 '+round+' 回合，選好落點！'); }
@@ -380,25 +381,26 @@ function create(env,opts){
     c.fillStyle=cur===3?'#ffd23f':'#3ed16a'; rr(c,BTN[0],BTN[1],BTN[2],BTN[3],12); c.fill(); c.fillStyle='#14122b'; c.font='900 18px '+TC; c.fillText(local2&&ed===0?'確定，換 2P':'確定出場',W/2,BTN[1]+24);
     if(waiting){ c.fillStyle='rgba(8,8,20,.7)'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='900 24px '+TC; c.fillText('等對手組好陀螺…',W/2,H/2); } }
   // 終結判定與給分
-  function finish(f,kind,pk){ if(f.st!=='on') return; f.st=kind==='spin'?'stop':kind==='burst'?'burst':'out'; f.out=0; f.ox=f.x; f.oy=f.y;
+  function finish(f,kind,pk){ if(f.st!=='on') return; f.st=kind==='spin'?'stop':kind==='burst'?'burst':'out'; f.out=0; f.ox=f.x; f.oy=f.y; f.fly=(kind==='over'||kind==='x')&&!pk;
     const vk=teamKey(f); let to=null; if(f.last>=0&&rt-f.lastT<4&&teamKey(T[f.last])!==vk&&T[f.last].st==='on') to=teamKey(T[f.last]);
     if(!to){ const alive=[...new Set(T.filter(q=>q.st==='on'&&teamKey(q)!==vk).map(teamKey))]; if(alive.length===1) to=alive[0]; }
     const F=FIN[kind]; if(to) score[to]+=F.p;
     if(kind==='burst') addFx('burst',f.x,f.y,f.i); else if(kind!=='spin') addFx('out',f.x,f.y,0,kind);
     snd(kind==='spin'?'die':'boom'); if(kind!=='spin'){ shake=Math.max(shake,.35); hitstop=Math.max(hitstop,.12); }
     ban={k:kind,who:f.i,to,t:0}; if(host&&net) ev.push(['b',kind,f.i,to||'']);
-    focus={x:f.x,y:f.y,t:kind==='spin'?.9:1.4}; if(kind!=='spin') slow=.9; roar(kind==='spin'?.6:1,kind==='spin'?1.6:2.6);
+    focus={x:f.x,y:f.y,who:f.i,t:kind==='spin'?.9:1.4}; if(kind!=='spin') slow=.9; roar(kind==='spin'?.6:1,kind==='spin'?1.6:2.6);
     voice(F.n+'！'+(to?keyName(to)+' 得 '+F.p+' 分，':'')+'比數 '+score[keys[0]]+' 比 '+score[keys[1]]); }
   function endRound(){ phase='after'; PT=2.4; }
   function aliveKeys(){ return [...new Set(T.filter(q=>q.st==='on').map(teamKey))]; }
   function stepTop(f,inp,h){ const K=f.k,frac=f.spin/100;
     f.ang+=K.dir*(6+34*frac)*h; if(f.cd>0) f.cd-=h; if(f.railCD>0) f.railCD-=h;
     let r=hyp(f.x,f.y)||.001,nx=f.x/r,ny=f.y/r,tx=-ny*K.dir,ty=nx*K.dir;
-    let ax=-f.x*1.3*ST.slope,ay=-f.y*1.3*ST.slope;
+    let ax=-f.x*2.3*ST.slope,ay=-f.y*2.3*ST.slope; /* 碗面坡度：把陀螺一直拉回中間互撞 */
     ax+=tx*120*K.wander*K.mv*frac; ay+=ty*120*K.wander*K.mv*frac;
     f.wa+=(Math.random()-.5)*h*10; const wn=40*(.25+K.wander)*frac; ax+=Math.cos(f.wa)*wn; ay+=Math.sin(f.wa)*wn; /* 陀螺自己晃動 */
     { const v=hyp(f.vx,f.vy)||.001,vd=K.cruise*Math.pow(frac,.6)*(f.spin<20?.5:1); if(v<vd){ const a=(vd-v)*1.6; ax+=f.vx/v*a; ay+=f.vy/v*a; } /* 底座抓地自己往前跑（平頭跑得快、針頭幾乎不動） */
       f.cp=(f.cp||Math.random()*TAU)+h*(.8+Math.random()*.8); const cv=K.curv*K.dir*frac*h*(.3+.9*Math.sin(f.cp)),cs=Math.cos(cv),sn=Math.sin(cv),vx0=f.vx; f.vx=vx0*cs-f.vy*sn; f.vy=vx0*sn+f.vy*cs; } /* 順著旋轉方向轉彎，跑出花瓣路線 */
+    if(K.seek>0&&f.spin>15){ const tg=T.find(q=>q!==f&&q.st==='on'); if(tg){ const dx=tg.x-f.x,dy=tg.y-f.y,d=hyp(dx,dy); if(d>RAD*2.4){ const v=hyp(f.vx,f.vy)||1,cr=clamp((f.vx*dy-f.vy*dx)/(v*d),-1,1),tn=cr*K.seek*frac*h*clamp((rt-2.5)/2,0,1),cs=Math.cos(tn),sn=Math.sin(tn),vx0=f.vx; f.vx=vx0*cs-f.vy*sn; f.vy=vx0*sn+f.vy*cs; } } } /* 攻擊型底座一直掃向對手（真實比賽裡花瓣路線會反覆撞上中間的陀螺） */
     if(ST.wind){ const wd=Math.sin(windA)>0?1:-1; ax+=-ny*wd*70; ay+=nx*wd*70; }
     if(f.dashT>0){ f.dashT-=h; ax+=tx*1100*K.dash*(ST.lava?1.3:1); ay+=ty*1100*K.dash*(ST.lava?1.3:1);
       if(f.dashT<=0){ f.vx-=nx*260; f.vy-=ny*260; f.dEnd=rt; f.wallT=0; } }
@@ -407,24 +409,25 @@ function create(env,opts){
     f.x+=f.vx*h; f.y+=f.vy*h;
     r=hyp(f.x,f.y); nx=f.x/r; ny=f.y/r; const wall=AR-RAD+6;
     if(r>wall){ const pk=inPk(ST,Math.atan2(f.y,f.x));
-      if(pk){ const vr=f.vx*nx+f.vy*ny; if(vr<100&&r<AR+4&&rt-f.lastT>.5){ if(vr>0){ f.vx-=vr*nx*1.6; f.vy-=vr*ny*1.6; } f.x=nx*Math.min(r,wall+4); f.y=ny*Math.min(r,wall+4); } /* 口袋前緣：慢慢滑過去不會掉，被撞或衝太快才出場 */
+      if(pk){ const vr=f.vx*nx+f.vy*ny; if(vr<35&&r<AR+4&&rt-f.lastT>.5){ if(vr>0){ f.vx-=vr*nx*1.6; f.vy-=vr*ny*1.6; } f.x=nx*Math.min(r,wall+4); f.y=ny*Math.min(r,wall+4); } /* 口袋前緣：慢慢滑過去不會掉，被撞或衝太快才出場 */
         else if(r>AR+6){ finish(f,f.last>=0&&rt-f.lastX<1.5?'x':'over',pk); return; } } /* 被衝刺中的對手撞出去＝極限勝 */
-      else { const vr=f.vx*nx+f.vy*ny; if(vr>0){ f.vx-=vr*nx*1.75; f.vy-=vr*ny*1.75; } f.x=nx*wall; f.y=ny*wall; const touch=!f.wallT; f.wallT=(f.wallT||0)+h; if(f.wallT>.7&&f.dashT<=0){ f.wallT=0; f.vx-=nx*200; f.vy-=ny*200; } /* 貼著場邊太久會被彈回中間 */
+      else { const vr=f.vx*nx+f.vy*ny; if(vr>300*Math.sqrt(K.wgt)&&rt-f.lastT<.35){ finish(f,f.last>=0&&rt-f.lastX<1.5?'x':'over',null); return; } /* 被重擊：直接飛過護欄出場 */
+        if(vr>0){ f.vx-=vr*nx*1.75; f.vy-=vr*ny*1.75; } f.x=nx*wall; f.y=ny*wall; const touch=!f.wallT; f.wallT=(f.wallT||0)+h; if(f.wallT>.7&&f.dashT<=0){ f.wallT=0; f.vx-=nx*200; f.vy-=ny*200; } /* 貼著場邊太久會被彈回中間 */
         const vt=f.vx*(-ny*K.dir)+f.vy*(nx*K.dir);
         if(f.dashT<=0&&f.railCD<=0&&f.spin>25&&vt>70&&(touch?Math.random()<.42*K.dash:Math.random()<.02*K.dash*(1+vt/200))){ f.dashT=.34; f.railCD=1.6; addFx('dash',f.x,f.y); snd('boost'); }
         if(ST.lava) f.spin-=h*4; } }
-    f.spin-=h*(2.1+hyp(f.vx,f.vy)/260)/K.sta*ST.decay; if(f.spin<=0){ f.spin=0; finish(f,'spin'); } }
+    f.spin-=h*(2.1+hyp(f.vx,f.vy)/420)/K.sta*ST.decay; if(f.spin<=0){ f.spin=0; finish(f,'spin'); } }
   function collide(a,b){ const dx=b.x-a.x,dy=b.y-a.y,d=hyp(dx,dy); if(d>=RAD*2||d<.01) return; const nx=dx/d,ny=dy/d,ma=a.k.wgt,mb=b.k.wgt,ov=RAD*2-d;
     a.x-=nx*ov*mb/(ma+mb); a.y-=ny*ov*mb/(ma+mb); b.x+=nx*ov*ma/(ma+mb); b.y+=ny*ov*ma/(ma+mb);
     const vn=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny; if(vn>-10) return;
     const fa=a.spin/100,fb=b.spin/100,same=a.k.dir===b.k.dir,ex=(same?300:120)*(a.k.atk*fa+b.k.atk*fb)/2+(a.dashT>0||b.dashT>0?230:0);
     const j=-(1.55)*vn/(1/ma+1/mb),I=-vn+ex*.6;
-    const kb=(j+ex)*a.k.atk/b.k.def/mb*(1-.12*b.k.low),ka=(j+ex)*b.k.atk/a.k.def/ma*(1-.12*a.k.low);
+    const kb=1.85*(j+ex)*a.k.atk/b.k.def/mb*(1-.12*b.k.low),ka=1.85*(j+ex)*b.k.atk/a.k.def/ma*(1-.12*a.k.low);
     b.vx+=nx*kb; b.vy+=ny*kb; a.vx-=nx*ka; a.vy-=ny*ka;
-    b.spin-=I*.03*a.k.atk/b.k.def; a.spin-=I*.03*b.k.atk/a.k.def;
+    b.spin-=I*.017*a.k.atk/b.k.def; a.spin-=I*.017*b.k.atk/a.k.def;
     if(!same){ const m=(a.spin+b.spin)/2; a.spin+=(m-a.spin)*.12; b.spin+=(m-b.spin)*.12; }
     const thr=210;
-    if(I>thr){ b.bm+=(I-thr)*.26*a.k.atk/(b.k.def*b.k.res)*(.4+Math.random()); a.bm+=(I-thr)*.26*b.k.atk/(a.k.def*a.k.res)*(.4+Math.random()); }
+    if(I>thr){ b.bm+=(I-thr)*.27*a.k.atk/(b.k.def*b.k.res)*(.4+Math.random()); a.bm+=(I-thr)*.27*b.k.atk/(a.k.def*a.k.res)*(.4+Math.random()); }
     if(a.bm>=100&&b.bm>=100){ if(a.bm>b.bm) b.bm=99; else a.bm=99; } /* 同時爆裂只算一顆 */
     a.last=b.i; a.lastT=rt; b.last=a.i; b.lastT=rt; a.hs++; b.hs++;
     if(a.dashT>0||rt-a.dEnd<.4) b.lastX=rt; if(b.dashT>0||rt-b.dEnd<.4) a.lastX=rt;
@@ -437,7 +440,7 @@ function create(env,opts){
   if(net){
     if(client) net.onmsg=m=>{ if(m.s){ m.s.f.forEach((a,i)=>{ const f=T[i]; if(!f) return; f.x=a[0]; f.y=a[1]; f.vx=a[2]; f.vy=a[3]; f.spin=a[4]; f.bm=a[5]; if(f.st!==a[6]&&a[6]!=='on'){ f.ta=Math.random()*TAU; } f.st=a[6]; f.dashT=a[7]; f.cd=a[8]; f.ox=a[9]; f.oy=a[10]; f.out=a[11]; if(a[12]&&f.P.top!==a[12]&&TOP[a[12]]){ f.P=partsOf({top:a[12]}); f.k=statsOf(f.P); f.col=TOP[a[12]].c; } if(a[15]!=null){ f.lx=a[15]; f.ly=a[16]; } });
         Object.assign(score,m.s.sc); phase=m.s.ph; PT=m.s.pt; round=m.s.rd; rt=m.s.rt; windA=m.s.wa;
-        for(const e of m.s.ev){ if(e[0]==='s') env.sfx(e[1]); else if(e[0]==='b'){ ban={k:e[1],who:e[2],to:e[3]||null,t:0}; const v=T[e[2]]; if(v) focus={x:v.x,y:v.y,t:e[1]==='spin'?.9:1.4}; if(e[1]!=='spin'){ shake=.35; } } else if(e[0]==='v'){ refSay={txt:e[1],t:Math.max(1.3,e[1].length*.17)}; speak(e[1],e[2]); } else if(e[0]==='c'){ cheer=Math.max(cheer,e[1]*1.3); roarL(e[1],e[2]); } else spawn(e[0],e[1],e[2],e[3],e[4]); } }
+        for(const e of m.s.ev){ if(e[0]==='s') env.sfx(e[1]); else if(e[0]==='b'){ ban={k:e[1],who:e[2],to:e[3]||null,t:0}; const v=T[e[2]]; if(v) focus={x:v.x,y:v.y,who:v.i,t:e[1]==='spin'?.9:1.4}; if(e[1]!=='spin'){ shake=.35; } } else if(e[0]==='v'){ refSay={txt:e[1],t:Math.max(1.3,e[1].length*.17)}; speak(e[1],e[2]); } else if(e[0]==='c'){ cheer=Math.max(cheer,e[1]*1.3); roarL(e[1],e[2]); } else spawn(e[0],e[1],e[2],e[3],e[4]); } }
       if(m.end){ winKey=m.end; phase='over'; PT=2.6; } };
     else { net.onmsg=(m,from)=>{ if(m.deck&&T[from]&&phase==='deck'){ T[from].deck=fixDeck(m.deck.map(q=>({top:q&&q.top}))); rdy[from]=true; } if(m.i){ const b=inBuf[from]||(inBuf[from]={...NOIN,dn:0}); b.mx=m.i[0]; b.my=m.i[1]; if(m.i[2]>b.dn){ b.dash=true; b.dn=m.i[2]; } } };
       net.onleave=i=>{ const f=T[i]; if(f){ rdy[i]=true; f.remote=false; f.ai={sk:.6,t:0,mx:0,my:0}; R.names[i]+='（離開）'; } }; } }
@@ -486,7 +489,7 @@ function create(env,opts){
   function camStep(dt){ let tx=W/2,ty=H/2,tz=1; const on=T.filter(f=>f.st==='on');
     if(camOn&&(phase==='fight'||phase==='after'||phase==='launch')){
       if(phase==='launch'){ tz=1.08; ty=CY-10; }
-      else if(focus&&focus.t>0){ const p=scr(focus.x,focus.y); tx=p[0]; ty=p[1]-24; tz=1.8; }
+      else if(focus&&focus.t>0){ const v=T[focus.who],p=v&&v.st==='out'?topScreen(v):scr(focus.x,focus.y); tx=p[0]; ty=p[1]-24; tz=v&&v.fly?1.45:1.8; } /* 鏡頭跟著掉進洞／飛出去的陀螺 */
       else if(on.length){ let ax=0,ay=0; on.forEach(f=>{ const p=scr(f.x,f.y); ax+=p[0]; ay+=p[1]; }); ax/=on.length; ay/=on.length; let d=0; if(on.length>1){ const p=scr(on[0].x,on[0].y),q=scr(on[1].x,on[1].y); d=hyp(p[0]-q[0],(p[1]-q[1])/SQ); }
         tz=clamp(1.62-d/400,1.06,1.5); tx=W/2+(ax-W/2)*.8; ty=H/2+(ay-24-H/2)*.8; } }
     if(punch>0){ tz+=punch*.18; punch=Math.max(0,punch-dt*2); }
@@ -502,7 +505,9 @@ function create(env,opts){
   function topScreen(f){ let x=f.x,y=f.y,z=0; const L=LPOS[f.i]||LPOS[0];
     if(phase==='aim'){ x=L[0]; y=L[1]; z=LZ-26; }
     else if(phase==='launch'){ const u=clamp(1-PT/LD,0,1); x=L[0]+(f.lx-L[0])*u; y=L[1]+(f.ly-L[1])*u; z=(LZ-26)*(1-u)+70*Math.sin(Math.PI*u); }
-    else if(f.st==='out'){ const u=Math.min(1,f.out/.6),r=hyp(f.ox,f.oy)||1; x=f.ox+f.ox/r*40*u; y=f.oy+f.oy/r*40*u; z=-30*u*u; }
+    else if(f.st==='out'){ const r=hyp(f.ox,f.oy)||1;
+      if(f.fly){ const u=Math.min(1,f.out/.9); x=f.ox+f.ox/r*150*u; y=f.oy+f.oy/r*150*u; z=200*u-260*u*u; } /* 撞飛過護欄：往外高高飛出去 */
+      else { const u=Math.min(1,f.out/.8); x=f.ox+f.ox/r*34*Math.min(1,u*1.6); y=f.oy+f.oy/r*34*Math.min(1,u*1.6); z=-55*u*u; } } /* 掉進口袋：滑進洞裡往下沉 */
     return [sx(x),sz(x,y)-z,z,x,y]; }
   function view(k){ const z=1+(cam.z-1)*k,fx=W/2+(cam.x-W/2)*k,fy=H/2+(cam.y-H/2)*k; c.translate(W/2,H/2); c.scale(z,z); c.translate(-fx,-fy); }
   function refState(){ if(phase==='aim'){ const n=Math.ceil(PT-.6); return n<=3&&n>=1?['count',n]:['idle']; } if(phase==='launch'||(phase==='fight'&&rt<.8)) return ['go'];
@@ -539,7 +544,7 @@ function create(env,opts){
     const order=T.slice().sort((a,b)=>topScreen(a)[1]-topScreen(b)[1]);
     for(const f of order){ const [X,Y,z,wx,wy]=topScreen(f),frac=f.spin/100;
       if(f.st==='burst') continue;
-      if(f.st==='out'&&f.out>.6) continue;
+      if(f.st==='out'&&f.out>(f.fly?.9:.8)) continue;
       if(phase==='aim'||phase==='launch'){ const u=phase==='launch'?clamp(1-PT/LD,0,1):0,L=LPOS[f.i]||LPOS[0];
         if(u>0) softShadow(c,sx(wx),sz(wx,wy),26*u+8,.15+.35*u);
         drawTop(c,X,Y,S*TS,f.P,f.col,f.ang,phase==='launch'?1:0,{tilt:(1-u)*9,ta:f.i?2.4:.7,noShadow:true,still:phase==='aim'});
@@ -547,7 +552,7 @@ function create(env,opts){
         if(phase==='aim'&&f.human&&round===1&&!opts.preview) meArrow(c,sx(L[0]),sz(L[0],L[1])-LZ-46,local2?(f.i+1)+'P':'你',t);
         continue; }
       let tilt=0,ta=0; if(f.st==='on'&&f.spin<28){ tilt=(28-f.spin)/28*7; ta=t*(10-f.spin*.2); } if(f.st==='stop'){ tilt=12; ta=f.ta||.7; }
-      if(f.st==='out'){ c.globalAlpha=1-Math.min(1,f.out/.6); }
+      if(f.st==='out'){ c.globalAlpha=f.fly?1-Math.max(0,(f.out-.6)/.3):1-Math.max(0,(f.out-.35)/.45); tilt=f.fly?20:8+f.out*40; ta=f.out*14; }
       drawTop(c,X,Y,S*TS,f.P,f.col,f.ang,f.st==='on'?frac:0,{tilt,ta,still:f.st!=='on'});
       c.globalAlpha=1;
       if(f.dashT>0){ const dg=c.createRadialGradient(X,Y-10,0,X,Y-10,40); dg.addColorStop(0,'rgba(255,170,80,.45)'); dg.addColorStop(1,'rgba(255,120,40,0)'); c.fillStyle=dg; c.fillRect(X-40,Y-50,80,80); }

@@ -1,4 +1,4 @@
-// 果嶺推桿王：俯視角迷你高爾夫。10 座球場、每座 6 洞，草皮、沙坑、水池、斜坡、冰面、風車、移動閘門、地道。
+// 果嶺推桿王：俯視角迷你高爾夫。30 座球場、每座 6 洞，草皮、沙坑、水池、斜坡、冰面、風車、移動閘門、地道。
 // 畫面走寫實風（割草紋路、木頭／石頭圍欄、旗桿影子），推桿的是真人比例的球員。
 // 同一台 1～4 人輪流，也可以連線（最多 4 人）：擊球的人送出方向和力道，大家各自模擬，球停下後由擊球的人送出結果對齊。
 (function(){
@@ -82,6 +82,20 @@ const COURSES=[
   {par:4,m:['################','##.T..WW..WW..##','##....WW..WW..##','##..........=.##','##WW..WW..WW..##','##WW..WW..WW..##','##..=.........##','##....WW..WW.H##','##....WW..WW..##','################']},
   {par:4,m:['################','##.T..#.....#..#','##..A.#..B..#..#','##....#.....#..#','##....#..C..#.D#','##....#.....#..#','##....#.....#.H#','################','################','################']},
   {par:5,m:['################','##.T...O...=...#','##.....O.......#','##..IIIIIII....#','##########M#####','##.........>>..#','##..WWWW...>>..#','##.H.WWW.......#','##......SS.....#','################']}]}];
+// 第 11～30 座球場：拿前面同難度的球洞左右／上下翻轉重新組合（翻轉後斜坡方向跟著換），每洞組合不重複
+// id：存紀錄用（原本 10 座是 0～9，新的是 10～29），排序改變也不會讓紀錄錯位
+COURSES.forEach((c,i)=>c.id=i);
+(function(){ const flip=(m,tf)=>{ let r=m.slice(); while(r.length<GH) r.push('################');
+    if(tf.includes('x')) r=r.map(row=>[...row.padEnd(GW,'#')].reverse().map(ch=>ch==='>'?'<':ch==='<'?'>':ch).join(''));
+    if(tf.includes('y')) r=r.slice().reverse().map(row=>row.replace(/[\^v]/g,ch=>ch==='^'?'v':'^')); return r; };
+  const NEWC=[['晨曦公園','park',1],['金沙峽谷','desert',1],['燈塔碼頭','pier',1],['竹林禪院','zen',2],['櫻花公園','park',2],['仙人掌谷','desert',2],['極地小屋','snow',2],
+    ['玫瑰城堡','castle',3],['漁港長堤','pier',3],['枯山水','zen',3],['神廟秘境','jungle',3],['霓虹天台','roof',4],['雪松山莊','snow',4],['騎士莊園','castle',4],['岩漿峽谷','lava',4],
+    ['瀑布雨林','jungle',5],['月球基地','space',5],['摩天大樓','roof',5],['火山之心','lava',5],['銀河軌道','space',5]];
+  const base=COURSES.slice(0,10),used=new Set();
+  NEWC.forEach(([name,th,stars],j)=>{ const pool=[]; base.forEach((c,ci)=>{ if(c.stars>=stars-1&&c.stars<=stars) pool.push(ci); }); const holes=[];
+    for(let k=0;k<6;k++) for(let q=0;q<300;q++){ const ci=pool[(j+k+q)%pool.length],hi=(k+j*5+q)%6,tf=['x','y','xy'][(j+k+(q/pool.length|0))%3],key=ci+'.'+hi+'.'+tf; if(used.has(key)) continue; used.add(key); const h=base[ci].holes[hi]; holes.push({par:h.par,m:flip(h.m,tf)}); break; }
+    COURSES.push({name,th,stars,holes,id:10+j}); });
+  COURSES.sort((a,b)=>a.stars-b.stars||a.id-b.id); })();
 const TH={
   park:{out:'#3f7a34',out2:'#4a8a3c',g1:'#5fb04c',g2:'#56a444',rail:'wood',railC:'#8a5a32',deco:'tree',haz:'water',sand:'#e2cf96',sky:'#9ad0f0'},
   desert:{out:'#d8b878',out2:'#ccaa68',g1:'#7cbf58',g2:'#72b450',rail:'stone',railC:'#b08a5a',deco:'cactus',haz:'water',sand:'#ecd8a0'},
@@ -267,6 +281,7 @@ function create(env,opts){
   const ci=clamp(opts.stage|0,0,COURSES.length-1),CO=COURSES[ci],TT=TH[CO.th],net=opts.net,me=net?net.me:0,L0=opts.look||{};
   const np=net?net.count:Math.max(1,Math.min(4,+(opts.mode||1)||1));
   const {ctx:c,canvas}=env.canvas2d(W,H);
+  let aimHold=0;
   let G3=null; if(window.THREE&&window.__GOLF3D&&window.__H3D){ try{ G3=window.__GOLF3D(window.THREE,{W,H,CS,GW,GH,OX,OY,BR,HR,TT:TH[COURSES[clamp(opts.stage|0,0,COURSES.length-1)].th],hash,drawStatic,drawDynamic,millAng,gateY,ci:clamp(opts.stage|0,0,COURSES.length-1)}); }catch(e){ G3=null; } } /* 3D 畫面（載不到 three.js 就用原本的 2D） */
   const PL=[]; for(let i=0;i<np;i++){ const lk=net?((net.looks&&net.looks[i])||{}):i===0?L0:{}; PL.push({name:net?(net.names&&net.names[i])||'玩家'+(i+1):np===1?(opts.name||'你'):'玩家 '+(i+1),
     col:lk.ball||BALLC[i],L:{shirt:lk.shirt||['#ffffff','#e23b3b','#3d8bff','#2e9e4f'][i],pants:lk.pants||['#2f3a5a','#e8e0cc','#1e1e24','#5a4a3a'][i],cap:lk.cap||['#1e1e24','#ffffff','#e23b3b','#ffd23f'][i],skin:SKINS[+(lk.skin||[1,0,2,3][i])]||SKINS[1],hair:['#2a1a10','#6a4a2a','#1a1410','#c8a060'][i]},
@@ -317,7 +332,11 @@ function create(env,opts){
     if(phase==='wait'){ phT-=dt; if(phT<=0) nextTurn(); return; }
     if(phase==='card'){ cardT-=dt; if(cardT<=0||(!net&&env.hit('Space')&&cardT<2.4)){ if(hi+1<CO.holes.length) startHole(hi+1); else finish(); } return; }
     if(phase==='aim'&&local(cur)){ const K=env.keys,fine=K.ArrowUp||K.ArrowDown;
-      if(K.ArrowLeft||K.KeyA) ang-=dt*1.5; if(K.ArrowRight||K.KeyD) ang+=dt*1.5; if(K.ArrowUp||K.KeyW) ang-=dt*.25; if(K.ArrowDown||K.KeyS) ang+=dt*.25;
+      { const kx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0),ky=(K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0);
+        if(kx||ky){ aimHold+=dt; const sp=.3+Math.min(1,aimHold*.8)*1.2; /* 按一下轉一點（微調），按久了轉比較快 */
+          if(G3&&G3.view==='ball') ang+=kx*dt*sp; /* 站在球後面：← 往左轉、→ 往右轉 */
+          else ang+=(kx*-Math.sin(ang)+ky*Math.cos(ang))*dt*sp*1.15; } /* 俯瞰：箭頭往按的方向轉（畫面上的上下左右） */
+        else aimHold=0; }
       const held=K.Space||K.Enter;
       if(held&&!drag){ if(!charging){ charging=true; mt=0; } mt+=dt; pow=.5-Math.cos(mt*2.2)*.5; }
       else if(charging){ charging=false; fire(Math.max(.05,pow)); } }
@@ -333,9 +352,9 @@ function create(env,opts){
     let html='<table class="ls"><tr><th>名次</th><th>玩家</th>'+CO.holes.map((h,k)=>'<th>'+(k+1)+'</th>').join('')+'<th>總桿</th></tr><tr><td></td><td>標準桿</td>'+CO.holes.map(h=>'<td>'+h.par+'</td>').join('')+'<td>'+parT+'</td></tr>';
     rk.forEach((r,j)=>{ const d=r.tot-parT; html+='<tr><td>'+(j+1)+'</td><td>'+r.p.name+'</td>'+r.p.sc.map(v=>'<td>'+v+'</td>').join('')+'<td><b>'+r.tot+'</b>（'+(d>0?'+':'')+d+'）</td></tr>'; }); html+='</table>';
     const mine=PL[me],d=totals(mine)-parT;
-    if(np===1){ try{ const k='arcade.golf.c'+ci,old=localStorage.getItem(k); if(old==null||d<+old) localStorage.setItem(k,String(d)); }catch(e){} }
+    if(np===1){ try{ const k='arcade.golf.c'+COURSES[ci].id,old=localStorage.getItem(k); if(old==null||d<+old) localStorage.setItem(k,String(d)); }catch(e){} }
     const win=rk[0]&&rk[0].i===me,title=np===1?(d<=0?'漂亮！'+(d<0?'低於':'平')+'標準桿':'完成 '+CO.name):win?(net?'你拿下冠軍！':rk[0].p.name+' 獲勝！'):rk[0].p.name+' 獲勝';
-    let doneN=0; try{ for(let i=0;i<COURSES.length;i++) if(localStorage.getItem('arcade.golf.c'+i)!=null) doneN++; }catch(e){}
+    let doneN=0; try{ for(let i=0;i<COURSES.length;i++) if(localStorage.getItem('arcade.golf.c'+COURSES[i].id)!=null) doneN++; }catch(e){}
     env.sfx(np===1?(d<=0?'win':'item'):win?'win':'lose');
     setTimeout(()=>env.end({title,big:np===1?totals(mine)+' 桿（'+(d>0?'+':'')+d+'）':rk.map(r=>r.p.name+' '+r.tot).join('　'),html,text:'標準桿 '+parT+'。每洞最多打標準桿＋3 桿，打不進記標準桿＋4。',score:np===1&&!net?doneN||null:null,next:np===1&&!net&&ci<COURSES.length-1}),1200); }
   function draw(){
@@ -389,18 +408,18 @@ function thumb(ctx,w,h,t){ ctx.save(); ctx.scale(w/W,h/H); const o=parseHole(COU
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 64px '+TC; ctx.lineWidth=10; ctx.strokeStyle='#0b0a1c'; ctx.strokeText('果嶺推桿王',W/2,H/2); ctx.fillStyle='#9cff6a'; ctx.fillText('果嶺推桿王',W/2,H/2); ctx.restore(); }
 function preview(ctx,w,h,L,t){ ctx.save(); ctx.scale(w/W,h/H); const o=parseHole(COURSES[0].holes[0]); drawStatic(ctx,o,TH.park,0); L=L||{}; ctx.save(); ctx.translate(-560,-500); ctx.scale(2.4,2.4);
   drawGolfer(ctx,330,250,0,.3+Math.sin(t*2)*.3,{shirt:L.shirt||'#ffffff',pants:L.pants||'#2f3a5a',cap:L.cap||'#1e1e24',skin:SKINS[+(L.skin||1)]},t); drawGolfBall(ctx,330,250,L.ball||'#f4f4f4',0); ctx.restore(); ctx.restore(); }
-const getRec=i=>{ try{ const v=localStorage.getItem('arcade.golf.c'+i); return v==null?null:+v; }catch(e){ return null; } };
+const getRec=i=>{ try{ const v=localStorage.getItem('arcade.golf.c'+COURSES[i].id); return v==null?null:+v; }catch(e){ return null; } };
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).golf={
   coin:o=>{ const n=o.net?o.net.count:Math.max(1,Math.min(4,+(o.mode||1)||1)); return n===2?{verb:'先打第一洞',names:o.net?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:['玩家 1','玩家 2']}:null; },
   name:'果嶺推桿王',tag:'MINI GOLF',color:'#9cff6a',online:true,maxPlayers:4,
-  desc:'寫實風的迷你高爾夫：10 座主題球場、每座 6 洞，有沙坑、水池、斜坡、冰面、彈柱、風車、移動閘門和地道。調好方向、抓好力道，用最少桿數進洞。同一台 1～4 人輪流，也能連線最多 4 人。',
+  desc:'寫實風的迷你高爾夫：30 座主題球場、每座 6 洞，有沙坑、水池、斜坡、冰面、彈柱、風車、移動閘門和地道。調好方向、抓好力道，用最少桿數進洞。同一台 1～4 人輪流，也能連線最多 4 人。',
   goal:'每洞用最少的桿數把球推進洞。掉進水池（熔岩、太空）罰一桿回到原位；每洞最多打標準桿＋3 桿。6 洞打完總桿數最少的贏。',
   stages:COURSES.map(c=>c.name),stars:COURSES.map(c=>c.stars),stageLabel:'選擇球場',
   stageShow,
   stageGoal:si=>{ const C=COURSES[si],p=C.holes.reduce((a,h)=>a+h.par,0),hz=HAZN[TH[C.th].haz]||'掉進水裡'; return C.name+'（'+'★'.repeat(C.stars)+'）：6 洞、標準桿 '+p+'。用最少的桿數把球推進洞，'+hz+'會罰一桿。每洞最多打標準桿＋3 桿。'; },
   stageBest:i=>{ const v=getRec(i); return v==null?'':'最佳 '+(v>0?'+':'')+v; },
   modes:[{id:'1',label:'1 人'},{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}],
-  help:[['← →','轉動方向（↑ ↓ 微調）'],['空白鍵','按住蓄力、放開擊球'],['V','切換視角：俯瞰整洞／站在球後面'],['滑鼠拖曳','在畫面上往後拉，方向和力道跟著變，放開擊球']],
+  help:[['↑ ↓ ← →','瞄準：箭頭往按的方向轉（點一下微調，按住轉快）'],['空白鍵','按住蓄力、放開擊球'],['V','切換視角：俯瞰整洞／站在球後面'],['滑鼠拖曳','在畫面上往後拉，方向和力道跟著變，放開擊球']],
   touchHelp:[['手指拖曳','在畫面上往後拉，放開擊球'],['◀ ▶','轉動方向'],['擊球','按住蓄力、放開擊球']],
   touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'視角',c:'KeyV'},{l:'擊球',c:'Space',act:true}]},
   load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */

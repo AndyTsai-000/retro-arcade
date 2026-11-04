@@ -18,8 +18,9 @@ const mk=(name,spd,pow,tk,shot)=>({name,spd,pow,tk,shot});
 const HOME=[mk('鐵門',1,1,1,'fire'),mk('大山',.92,1.1,1.2,'sky'),mk('阿強',1,1,1.1,'snake'),mk('小虎',1.15,1,.9,'banana'),mk('阿烈',1.08,1.2,1,'fire')];
 const STAGES=[
   {name:'海風隊',col:'#3d8bff',lv:.16},{name:'沙漠隊',col:'#e0a030',lv:.32},{name:'冰原隊',col:'#7fd0e8',lv:.5},
-  {name:'叢林隊',col:'#3fae5a',lv:.68},{name:'鋼鐵隊',col:'#8a8fa8',lv:.85},{name:'冠軍隊',col:'#c56bff',lv:1}
-];
+  {name:'叢林隊',col:'#3fae5a',lv:.68},{name:'鋼鐵隊',col:'#8a8fa8',lv:.85},{name:'冠軍隊',col:'#c56bff',lv:1},
+  {name:'櫻花隊',col:'#ff7eb6',lv:.24},{name:'火山隊',col:'#ff5a1a',lv:.6},{name:'雷霆隊',col:'#ffd23f',lv:.78},{name:'忍者隊',col:'#4a4a6a',lv:.93}
+].sort((a,b)=>a.lv-b.lv); /* 10 隊，照實力排 */
 const FOE=['門神','阿盾','老牆','飛毛','射手'],FSHOT=['fire','sky','snake','banana','ghost'];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
@@ -380,7 +381,7 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).soccer={
   coin:o=>({verb:'先開球',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}),
   name:'鬥魂足球',tag:'SOCCER',color:'#5fd068',online:true,maxPlayers:2,
-  desc:'五對五的鬥魂足球，沒有犯規，可以鏟人搶球。助跑射門是必殺射門，集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
+  desc:'五對五的鬥魂足球，沒有犯規，可以鏟人搶球。助跑射門是必殺射門，集滿氣還能放超必殺。10 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'2 分鐘內進球多的贏，平手打延長賽。連按兩下 ← 或 → 助跑後射門，會踢出必殺射門；沒球時按「射」是鏟球。守門員會自己守。',
   // 開始畫面左邊：選哪一隊就顯示那一隊的五名球員
   stageShow:(ctx,w,h,si,t)=>{ const st=STAGES[si],col=st.col;
@@ -392,7 +393,7 @@ function thumb(ctx,w,h,t){
       ctx.save(); ctx.translate(x,y); ctx.scale(1.9,1.9); guy(ctx,0,0,run?0:Math.abs(Math.sin(t*3+i))*2,-1,col,i%4,run?1:0,t+i); ctx.restore();
       ctx.font='700 '+Math.round(h*.055)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(nm,x,y+h*.07); }); },
   options:[{key:'time',label:'比賽時間',def:'120',opts:[{id:'90',label:'1 分半'},{id:'120',label:'2 分鐘'},{id:'180',label:'3 分鐘'},{id:'300',label:'5 分鐘'}]}],
-  stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
+  stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>Math.max(1,Math.min(5,Math.ceil(s.lv*5-.01)))),
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動，連按兩下 ← → 助跑'],['J','射門；沒球時是鏟球'],['K','傳球；沒球時換人'],['L','跳'],['I','超必殺（氣力條滿、帶著球時）'],['W A S D F G H R','雙人左隊：移動、射、傳、跳、超必殺'],['↑ ↓ ← → , . / M','雙人右隊：移動、射、傳、跳、超必殺']],
   touchHelp:[['方向盤','移動，同方向點兩下助跑'],['射','射門，沒球時鏟球'],['傳','傳球，沒球時換人'],['跳','跳起來'],['必殺','氣力條滿、帶著球時放超必殺']],

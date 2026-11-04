@@ -26,7 +26,11 @@ const STAGES=[{name:'海風隊',col:'#3d8bff',lv:.12,names:['浪花','阿鯨','�
   {name:'冰原隊',col:'#7fd0e8',lv:.45,names:['雪球','冰柱','北極熊','企鵝','阿冰','極光','雪狐','冰山','白熊']},
   {name:'叢林隊',col:'#3fae5a',lv:.65,names:['猴王','巨猿','藤蔓','花豹','鸚鵡','大象','犀牛','阿虎','蟒蛇']},
   {name:'鋼鐵隊',col:'#8a8fa8',lv:.85,names:['鐵拳','鋼牙','螺絲','火車','鐵壁','齒輪','重錘','阿鋼','砲台']},
-  {name:'冠軍隊',col:'#c56bff',lv:1,names:['王牌','金手','神射','皇冠','巨砲','閃電','鐵人','奇蹟','傳說']}];
+  {name:'冠軍隊',col:'#c56bff',lv:1,names:['王牌','金手','神射','皇冠','巨砲','閃電','鐵人','奇蹟','傳說']},
+  {name:'櫻花隊',col:'#ff7eb6',lv:.2,names:['小櫻','花子','阿梅','春風','桃子','小雪','蝴蝶','阿蘭','彩虹']},
+  {name:'火山隊',col:'#ff5a1a',lv:.55,names:['岩漿','火山','灰燼','烈焰','熔岩','火龍','阿炎','火球','硫磺']},
+  {name:'雷霆隊',col:'#ffd23f',lv:.75,names:['雷公','閃光','電母','轟隆','雷神','阿電','疾雷','電光','霹靂']},
+  {name:'忍者隊',col:'#4a4a6a',lv:.93,names:['影丸','疾風','鐵扇','月影','飛鏢','隱者','阿忍','煙霧','劍心']}].sort((a,b)=>a.lv-b.lv); /* 10 隊，照實力排 */
 const HOMEN=['小虎','阿強','阿烈','大山','鐵門','阿明','小傑','阿凱','阿翔'],AWAYN=['飛毛','阿盾','射手','老牆','門神','阿風','小岩','阿浪','阿雷'];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rnd=()=>Math.random(),gauss=()=>(rnd()+rnd()+rnd()-1.5)/.87;
 const fence=th=>330+70*Math.cos(th*2); // 全壘打牆：邊線 330 呎、中外野 400 呎
@@ -689,7 +693,7 @@ const thumb=(ctx,w,h,t)=>{ ctx.save(); ctx.translate(0,-16); scene(ctx,w,h,{colo
     (st.names||AWAYN).slice(0,5).forEach((nm,i)=>{ const x=w*(.12+i*.19),y=h*(i%2?.88:.78),pn=ps[(i+Math.floor(t*.6))%ps.length];
       fig(ctx,x,y,.85,i<2?1:-1,pose(pn,t*1.2+i),col,pn==='run'?{helmet:1}:{glove:'F',ball:pn==='throw'?'B':null,up:pn==='catch'});
       ctx.font='700 '+Math.round(h*.055)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.fillText(nm,x,y+h*.07); }); },
-  stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
+  stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>Math.max(1,Math.min(5,Math.ceil(s.lv*5-.01)))),
   coin:o=>o.mode==='derby'&&!o.net?null:({verb:'先攻',names:o.net?(o.net.count>1?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:[STAGES[o.stage||0].name,o.net.names[0]||'你']):o.mode==='2p'?['1P 隊','2P 隊']:[STAGES[o.stage||0].name,'你的隊伍']}),
   variants:[{id:'3',label:'3 局'},{id:'5',label:'5 局'},{id:'7',label:'7 局'},{id:'9',label:'9 局'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true},{id:'derby',label:'全壘打大賽'}],

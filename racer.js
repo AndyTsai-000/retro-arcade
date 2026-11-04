@@ -977,7 +977,11 @@ function makeCreate(G){ return function create(env,opts){
 }; }
 
 /* ================= 四款遊戲的設定 ================= */
-const mkStages=(names,base)=>names.map((n,i)=>Object.assign({name:n[0],stars:Math.floor(i/3)+1,th:n[1]},base(Math.floor(i/3)+1,i),n[2]||{}));
+// 原本 15 關平均穿插在 50 關裡（第 1 關還是新手關），新關卡依序補空位
+const weave=names=>{ if(names.length!==50) return names; const o=names.slice(0,15),m=names.slice(15),out=Array(50),pos=o.map((_,i)=>Math.round(i*48/14)); pos.forEach((p,i)=>out[p]=o[i]); let k=0; for(let i=0;i<50;i++) if(!out[i]) out[i]=m[k++]; return out; };
+const mkStages=(names,base)=>weave(names).map((n,i)=>{ const d=1+4*i/Math.max(1,names.length-1); return Object.assign({name:n[0],stars:Math.min(5,Math.floor(i*5/names.length)+1),th:n[1]},base(d,i),n[2]||{}); }); /* d：難度 1～5，照關卡順序慢慢變難 */
+// 延伸關卡：沿用前面某一關的場景（b＝關卡編號），可再加修飾
+const ext=(list,more)=>list.concat(more.map(([n,b,x])=>{ const o=list[b]||list[0],y=Object.assign({},o[2]||{},x||{}); if(x&&x.mod&&o[2]&&o[2].mod) y.mod=o[2].mod+' '+x.mod; return [n,o[1],y]; }));
 // ---- 1. 飆風機車王 ----
 const MOTO_TH={
   city:{sky:['#5aa6e0','#d8ecf8'],far:'city',ground:['#aaa49c','#a39d95'],road:['#56565c','#535359'],rumble:['#d6d6d6','#c8c8c8'],edgeLine:'#ecece4',tracks:1,lanes:3,spr:[['building',8],['tree',2],['billboard',1]],edge:['lamp',8,1.22],dens:.7,near:1.95,spread:.5,fog:'#c8dcf0'},
@@ -996,7 +1000,11 @@ function motoTheme(S){ const T=Object.assign({},MOTO_TH[S.th]); const m=S.mod||'
 const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',tagH:1.65,useText:'氮氣加速！',chargeCol:'#3ddbd9',
   P:{max:12500,acc:5200,brake:12000,decel:2600,offMax:.5,steer:2.4,cent:.3,wall:1.55,boostMul:1.45,ww:320,skid:1},roll:.11,
   stages:mkStages([['晨光市區','city'],['海岸公路','coast'],['河濱大道','town'],['港口倉庫','port'],['山腳小鎮','town',{mod:'sunset'}],['黃昏海岸','coast',{mod:'sunset'}],
-    ['雨夜市區','city',{mod:'night rain'}],['蜿蜒山路','mountain'],['跨海大橋','bridge'],['霓虹夜街','neon'],['高山雲霧','mountain',{mod:'fog'}],['暴雨高速','city',{mod:'rain'}],['不夜城','neon',{mod:'rain'}],['天險峭壁','mountain',{mod:'sunset'}],['颱風夜','coast',{mod:'night rain'}]],
+    ['雨夜市區','city',{mod:'night rain'}],['蜿蜒山路','mountain'],['跨海大橋','bridge'],['霓虹夜街','neon'],['高山雲霧','mountain',{mod:'fog'}],['暴雨高速','city',{mod:'rain'}],['不夜城','neon',{mod:'rain'}],['天險峭壁','mountain',{mod:'sunset'}],['颱風夜','coast',{mod:'night rain'}],
+    ['清晨港口','port',{mod:'fog'}],['午後河濱','town'],['夕陽港灣','port',{mod:'sunset'}],['夜色海岸','coast',{mod:'night'}],['霧中小鎮','town',{mod:'fog'}],['雨天山路','mountain',{mod:'rain'}],['跨海夕照','bridge',{mod:'sunset'}],['霓虹雨街','neon',{mod:'rain'}],['港口夜班','port',{mod:'night'}],['城市晨霧','city',{mod:'fog'}],
+    ['濱海大道','coast'],['山城夜景','town',{mod:'night'}],['雲端山道','mountain',{mod:'fog'}],['大橋夜奔','bridge',{mod:'night'}],['商業大街','city'],['落日山脊','mountain',{mod:'sunset'}],['雨中港區','port',{mod:'rain'}],['霓虹高架','neon'],['海風公路','coast',{mod:'rain'}],['午夜市區','city',{mod:'night'}],
+    ['田園小鎮','town',{mod:'sunset'}],['迴旋山徑','mountain'],['暴雨大橋','bridge',{mod:'rain'}],['霓虹夜霧','neon',{mod:'fog'}],['貨櫃迷宮','port'],['夜雨山路','mountain',{mod:'night rain'}],['極速海岸','coast',{mod:'sunset'}],['城市暴雨','city',{mod:'night rain'}],['霧鎖大橋','bridge',{mod:'fog'}],['小鎮雨夜','town',{mod:'night rain'}],
+    ['斷崖海岸','coast',{mod:'fog'}],['霓虹終極賽','neon',{mod:'rain'}],['極限山道','mountain',{mod:'night'}],['港口風暴','port',{mod:'night rain'}],['機車王決賽','city',{mod:'sunset'}]],
     (st,i)=>({len:2600+st*450,curve:1.6+st*.9,hill:1200+st*700,ai:.66+st*.06,traffic:5+st*3,works:st>=2})),
   theme:motoTheme,
   traffic(C,r){ const out=[],S=C.S,n=Math.round(S.traffic*C.n/1000),cols=['#e8e8e8','#2f6fd0','#c0392b','#3a3a48','#ffd23f','#2e9e4f'];
@@ -1019,7 +1027,7 @@ const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',
     {key:'suit',label:'騎士服',type:'color',opts:['#2f3a5a','#5a2f3a','#2f5a3a','#e8e8e8','#ff9d3d','#3d8bff','#1e1e24']},
     {key:'deco',label:'配件',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'box',label:'後箱',grp:'車上'},{id:'side',label:'側箱',grp:'車上'},{id:'flag',label:'旗子',grp:'車上'},{id:'flame',label:'火焰彩繪',grp:'車身'},{id:'num',label:'賽車號碼',grp:'車身'},{id:'stripe',label:'安全帽條紋',grp:'車身'},{id:'glow',label:'霓虹底燈',grp:'燈光'},{id:'catears',label:'貓耳',grp:'帽飾'},{id:'horns',label:'惡魔角',grp:'帽飾'},{id:'mohawk',label:'莫西幹',grp:'帽飾'},{id:'duck',label:'小鴨',grp:'帽飾'}]},
     {key:'nitro',label:'加速特效',opts:[{id:'blue',label:'藍焰'},{id:'fire',label:'火焰'},{id:'green',label:'綠焰'},{id:'rainbow',label:'彩虹'}]}],
-  desc:'騎一般輕型機車、重型機車或越野機車，在市區、海岸、山路、霓虹夜街和雨天高速公路飆車（造型可選車款和後箱、側箱、彩繪、霓虹底燈等配件）。閃過車流、驚險超車集滿氮氣，撿氮氣瓶加速；雨天路滑、霧天看不遠。共 15 關，單人、雙人分割畫面或開房間連線。',
+  desc:'騎一般輕型機車、重型機車或越野機車，在市區、海岸、山路、霓虹夜街和雨天高速公路飆車（造型可選車款和後箱、側箱、彩繪、霓虹底燈等配件）。閃過車流、驚險超車集滿氮氣，撿氮氣瓶加速；雨天路滑、霧天看不遠。共 50 關，單人、雙人分割畫面或開房間連線。',
   goal:'從起點騎到終點，前 3 名過關。路上有一般車輛，撞到會摔車；2 星以上的關卡有車會換車道（先閃方向燈再切過來，星數越高越多）；從車旁邊驚險超車三次可以集到一瓶氮氣，路上也撿得到氮氣瓶（最多存 3 瓶）。',
   help:[['↑ ↓','油門、煞車'],['← →','轉向'],['↓ + ← →','高速時甩尾過彎，放開加速'],['X','用氮氣加速'],['W A S D Q','雙人 1P（左半畫面），Q 用氮氣'],['↑ ↓ ← → Enter','雙人 2P（右半畫面），Enter 用氮氣']],
   touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車；按著煞再轉向＝甩尾'],['氮氣','用氮氣加速']],
@@ -1038,7 +1046,11 @@ const SLED={id:'sled',name:'雪山大滑降',camH:1150,kmh:110,down:1,roll:.07,t
     ['木屋村莊','',{tx:{spr:[['cabin',4],['pine',4],['snowman',1]]}}],['冰湖滑道','',{ice:1,tx:{road:['#cfe6f8','#c2dcf2']}}],['黃昏雪嶺','',{mod:'sunset'}],
     ['森林迴旋','',{tx:{spr:[['pine',9]],dens:.8}}],['冰河峽谷','',{tx:{spr:[['cliff',3],['rock',3],['pine',2]]},ice:1}],['夜燈滑道','',{mod:'night'}],
     ['暴風雪坡','',{mod:'storm'}],['懸崖跳台','',{ramps:2,tx:{spr:[['cliff',4],['pine',3]]}}],['極光雪原','',{mod:'night aurora'}],
-    ['冰峰極速','',{ice:1,tx:{spr:[['cliff',3],['rock',3]]}}],['黑鑽險道','',{mod:'night',tx:{spr:[['pine',8],['rock',2]],dens:.8}}],['天梯大滑降','',{mod:'storm',ramps:2}]],
+    ['冰峰極速','',{ice:1,tx:{spr:[['cliff',3],['rock',3]]}}],['黑鑽險道','',{mod:'night',tx:{spr:[['pine',8],['rock',2]],dens:.8}}],['天梯大滑降','',{mod:'storm',ramps:2}],
+    ['晨光雪道','',{mod:'clear',tx:{spr:[['pine',5]]}}],['雪松林海','',{tx:{spr:[['pine',10]],dens:.85}}],['小木屋坡','',{tx:{spr:[['cabin',3],['pine',3]]}}],['雪人小徑','',{tx:{spr:[['snowman',5],['pine',2]]}}],['冰湖夕照','',{mod:'sunset',ice:1}],['岩石雪溝','',{tx:{spr:[['rock',5],['pine',2]]}}],['夜光雪橇道','',{mod:'night',tx:{spr:[['pine',5],['cabin',1]]}}],['風雪松林','',{mod:'storm',tx:{spr:[['pine',8]]}}],['跳台練習場','',{ramps:3}],['極光冰湖','',{mod:'night aurora',ice:1}],
+    ['峽谷急彎','',{tx:{spr:[['cliff',4],['rock',2]]}}],['黃昏松林','',{mod:'sunset',tx:{spr:[['pine',8]]}}],['雪屋聚落','',{tx:{spr:[['cabin',5],['snowman',2]]}}],['冰瀑滑道','',{ice:1,tx:{spr:[['cliff',3],['pine',3]]}}],['夜間跳台','',{mod:'night',ramps:2}],['暴雪峽谷','',{mod:'storm',tx:{spr:[['cliff',3],['rock',3]]}}],['雪原奔馳','',{mod:'clear',tx:{spr:[['snowman',1],['pine',2]],dens:.3}}],['冰晶森林','',{ice:1,tx:{spr:[['pine',9]],dens:.8}}],['極光跳台','',{mod:'night aurora',ramps:2}],['夕陽懸崖','',{mod:'sunset',ramps:2,tx:{spr:[['cliff',4]]}}],
+    ['暗夜松林','',{mod:'night',tx:{spr:[['pine',9]],dens:.85}}],['冰原迴旋','',{ice:1}],['暴風跳台','',{mod:'storm',ramps:3}],['高山木屋','',{tx:{spr:[['cabin',3],['cliff',2],['pine',3]]}}],['黑冰險坡','',{mod:'night',ice:1}],['雪崩峽谷','',{mod:'storm',tx:{spr:[['rock',6],['cliff',2]]}}],['極光冰河','',{mod:'night aurora',ice:1,tx:{spr:[['cliff',3]]}}],['巨岩雪道','',{tx:{spr:[['rock',7]]}}],['夜燈冰道','',{mod:'night',ice:1,tx:{spr:[['pine',4],['cabin',1]]}}],['冰峰跳台','',{ramps:3,ice:1}],
+    ['暴雪黑鑽','',{mod:'storm',tx:{spr:[['pine',8],['rock',3]],dens:.85}}],['極光險道','',{mod:'night aurora',ramps:2,tx:{spr:[['pine',8]]}}],['天險冰崖','',{ice:1,ramps:2,tx:{spr:[['cliff',5]]}}],['風暴之巔','',{mod:'storm',ice:1,ramps:2}],['雪山王者賽','',{mod:'sunset',ramps:2,tx:{spr:[['cliff',3],['pine',4]]}}]],
     (st,i)=>({len:2400+st*400,curve:1.4+st*.8,hill:600+st*300,slope:.05+st*.012,ai:.68+st*.055,trees:.004+st*.003,gates:1,ramps:1})),
   theme:sledTheme,
   place(C,r){ const S=C.S; let gc=0;
@@ -1055,7 +1067,7 @@ const SLED={id:'sled',name:'雪山大滑降',camH:1150,kmh:110,down:1,roll:.07,t
   botLook:i=>({sled:['#c8803a','#e23b3b','#3d8bff','#5fd068','#c56bff','#ffd23f'][i%6],coat:COLORS[(i+2)%6],scarf:COLORS[(i+4)%6],hat:COLORS[(i+1)%6]}),
   looks:[{key:'sled',label:'雪橇顏色',type:'color',opts:['#c8803a','#e23b3b','#3d8bff','#5fd068','#c56bff','#ffd23f']},{key:'coat',label:'外套',type:'color',opts:['#3d8bff','#ff4d4d','#5fd068','#ff9d3d','#c56bff','#2f3a5a']},
     {key:'scarf',label:'圍巾',type:'color',opts:['#ff4d4d','#ffd23f','#3ddbd9','#ff7eb6','#ffffff']},{key:'hat',label:'毛帽',type:'color',opts:['#ffd23f','#ff4d4d','#3d8bff','#5fd068','#ff7eb6','#ffffff']}],
-  desc:'坐雪橇從雪山一路往下衝！下坡越陡越快，穿過紅藍旗門存衝刺，閃開樹和石頭，冰面會打滑，跳台能飛起來。夜燈、暴風雪、極光等 15 條雪道，單人、雙人或連線。',
+  desc:'坐雪橇從雪山一路往下衝！下坡越陡越快，穿過紅藍旗門存衝刺，閃開樹和石頭，冰面會打滑，跳台能飛起來。夜燈、暴風雪、極光等 50 條雪道，單人、雙人或連線。',
   goal:'從山頂滑到山腳，前 3 名過關。下坡會自己加速，按 ↑ 壓低身體更快，↓ 煞車。穿過旗門可以存一次衝刺（最多 3 次），按 X 使用。撞到樹或石頭會翻滾減速。',
   help:[['← →','左右轉'],['↑','壓低身體加速'],['↓','煞車'],['X','衝刺（穿過旗門存的）'],['W A S D Q','雙人 1P（左半畫面）'],['↑ ↓ ← → Enter','雙人 2P（右半畫面）']],
   touchHelp:[['◀ ▶','左右轉'],['壓低','壓低身體加速'],['煞','煞車'],['衝刺','用衝刺']],
@@ -1075,7 +1087,11 @@ const JET={id:'jet',name:'浪尖快艇賽',camH:820,kmh:120,roll:.08,engine:'squ
     ['港灣航道','',{tx:{spr:[['container',3],['crane',2],['boat',3]],dens:.35}}],['紅樹林','',{mod:'green',tx:{spr:[['mangrove',6]],dens:.55,near:1.4}}],['夕陽海峽','',{mod:'sunset'}],
     ['瀑布峽谷','',{mod:'green',tx:{spr:[['waterfall',2],['cliff',4],['pine',2]],dens:.4}}],['海盜灣','',{tx:{spr:[['boat',4],['island',2],['rock',2]]}}],['燈塔外海','',{tx:{spr:[['lighthouse',1],['rock',4]]}}],
     ['浪濤海峽','',{tx:{spr:[['rock',4],['island',1]]}}],['冰山海域','',{mod:'ice',tx:{spr:[['iceberg',6],['rock',1]]}}],['雨夜港口','',{mod:'night rain',tx:{spr:[['container',3],['crane',2],['lighthouse',.5]],dens:.35}}],
-    ['颱風巨浪','',{mod:'rain'}],['漩渦海峽','',{tx:{spr:[['rock',5],['cliff',1]]}}],['海龍迷宮','',{mod:'night',tx:{spr:[['temple',3],['rock',3]],dens:.3}}]],
+    ['颱風巨浪','',{mod:'rain'}],['漩渦海峽','',{tx:{spr:[['rock',5],['cliff',1]]}}],['海龍迷宮','',{mod:'night',tx:{spr:[['temple',3],['rock',3]],dens:.3}}],
+    ['藍色潟湖','',{tx:{spr:[['island',3]]}}],['小島航線','',{tx:{spr:[['island',5],['rock',1]]}}],['河口三角洲','',{mod:'green',tx:{spr:[['mangrove',3],['bush',3]]}}],['夕陽碼頭','',{mod:'sunset',tx:{spr:[['boat',3],['container',1]]}}],['熱帶雨林河','',{mod:'green',tx:{spr:[['tree',6],['waterfall',1]]}}],['燈塔夕照','',{mod:'sunset',tx:{spr:[['lighthouse',1],['rock',3]]}}],['夜光海灣','',{mod:'night',tx:{spr:[['island',3],['boat',1]]}}],['礁石迷陣','',{tx:{spr:[['rock',6]]}}],['冰河峽灣','',{mod:'ice',tx:{spr:[['iceberg',4],['cliff',2]]}}],['雨中河道','',{mod:'green rain',tx:{spr:[['tree',5],['house',1]]}}],
+    ['海上市集','',{tx:{spr:[['boat',5],['house',1]]}}],['峭壁海岸','',{tx:{spr:[['cliff',4],['rock',2]]}}],['夜航港口','',{mod:'night',tx:{spr:[['container',3],['crane',2]]}}],['暴雨海灣','',{mod:'rain',tx:{spr:[['island',3],['rock',2]]}}],['神殿遺跡','',{tx:{spr:[['temple',3],['rock',2]]}}],['冰山夕照','',{mod:'sunset ice',tx:{spr:[['iceberg',5]]}}],['瀑布夜航','',{mod:'green night',tx:{spr:[['waterfall',2],['cliff',3]]}}],['紅樹林雨季','',{mod:'green rain',tx:{spr:[['mangrove',6]]}}],['海盜夜襲','',{mod:'night',tx:{spr:[['boat',4],['rock',2]]}}],['巨浪海峽','',{mod:'rain',tx:{spr:[['rock',5]]}}],
+    ['珊瑚夕照','',{mod:'sunset',tx:{road:['#5ac8e8','#52c0e0']}}],['峽灣急流','',{mod:'green',tx:{spr:[['cliff',5],['pine',3]]}}],['冰雨海域','',{mod:'ice rain',tx:{spr:[['iceberg',5]]}}],['港灣風暴','',{mod:'night rain',tx:{spr:[['container',3],['lighthouse',.5]]}}],['神殿夜航','',{mod:'night',tx:{spr:[['temple',4]]}}],['孤島燈塔','',{tx:{spr:[['lighthouse',1],['island',3]]}}],['颱風夜海','',{mod:'night rain',tx:{spr:[['rock',4]]}}],['冰山迷宮','',{mod:'ice',tx:{spr:[['iceberg',8]],dens:.3}}],['夕陽漩渦','',{mod:'sunset',tx:{spr:[['rock',5],['cliff',1]]}}],['暗夜峽灣','',{mod:'night',tx:{spr:[['cliff',5]]}}],
+    ['風暴燈塔','',{mod:'rain',tx:{spr:[['lighthouse',1],['rock',5]]}}],['極地冰海','',{mod:'ice night',tx:{spr:[['iceberg',6]]}}],['海龍神殿','',{mod:'night rain',tx:{spr:[['temple',4],['rock',2]]}}],['熱帶群島','',{tx:{spr:[['island',6],['boat',1]]}}],['快艇王決賽','',{mod:'sunset',tx:{spr:[['boat',4],['island',2]]}}]],
     (st,i)=>({len:2500+st*450,curve:1.5+st*.85,hill:300+st*150,wave:40+st*45,ai:.66+st*.06,rocks:.003+st*.002,rings:.006,ramps:.0015+st*.0004})),
   theme:jetTheme,
   place(C,r){ const S=C.S; for(let i=C.start+50;i<C.finish-20;i++){ const s=C.segs[i];
@@ -1095,7 +1111,7 @@ const JET={id:'jet',name:'浪尖快艇賽',camH:820,kmh:120,roll:.08,engine:'squ
     {key:'helm',label:'安全帽顏色',type:'color',opts:['#ffffff','#1e1e24','#ff4d4d','#3ddbd9','#ffd23f','#ff7eb6']},
     {key:'deco',label:'配件',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'flag',label:'旗子',grp:'船上'},{id:'wing',label:'尾翼',grp:'船上'},{id:'light',label:'警示燈',grp:'船上'},{id:'shark',label:'鯊魚嘴彩繪',grp:'船身'},{id:'flame',label:'火焰彩繪',grp:'船身'},{id:'num',label:'賽艇號碼',grp:'船身'},{id:'stripe',label:'賽車條紋',grp:'船身'},{id:'glow',label:'霓虹水底燈',grp:'燈光'},{id:'catears',label:'貓耳',grp:'帽飾'},{id:'horns',label:'惡魔角',grp:'帽飾'},{id:'mohawk',label:'莫西幹',grp:'帽飾'},{id:'duck',label:'小鴨',grp:'帽飾'}]},
     {key:'nitro',label:'加速特效',opts:[{id:'blue',label:'藍焰'},{id:'fire',label:'火焰'},{id:'green',label:'綠焰'},{id:'rainbow',label:'彩虹'}]}],
-  desc:'騎坐式、站立式水上摩托車或競速快艇（造型可選船型和鯊魚嘴彩繪、尾翼、霓虹水底燈等配件），在海灣、河道、紅樹林、冰山海域和颱風巨浪裡競速。水面會甩尾滑行，浪頭跳台能飛起來，穿過加速圈存渦輪，閃開礁石和漂流木。共 15 關，單人、雙人或連線。',
+  desc:'騎坐式、站立式水上摩托車或競速快艇（造型可選船型和鯊魚嘴彩繪、尾翼、霓虹水底燈等配件），在海灣、河道、紅樹林、冰山海域和颱風巨浪裡競速。水面會甩尾滑行，浪頭跳台能飛起來，穿過加速圈存渦輪，閃開礁石和漂流木。共 50 關，單人、雙人或連線。',
   goal:'沿著浮標水道衝到終點，前 3 名過關。水上轉彎會滑，要提早轉；穿過橘色加速圈可以存一次渦輪（最多 3 次），按 X 使用；從浪頭跳台飛起落地會小加速。撞到礁石、漂流木會翻船減速。',
   help:[['↑ ↓','油門、煞車'],['← →','轉向（會滑行）'],['X','渦輪加速'],['W A S D Q','雙人 1P（左半畫面）'],['↑ ↓ ← → Enter','雙人 2P（右半畫面）']],
   touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車'],['渦輪','渦輪加速']],
@@ -1105,7 +1121,7 @@ const RUN_BASE={sky:['#7ac8ff','#e8f8ff'],far:'hills',farCol:'#6aae5a',farCol2:'
 function runTheme(S){ const T=Object.assign({},RUN_BASE,S.tx||{}); const m=S.mod||''; if(m.includes('night')){ T.night=1; T.sky=['#120c30','#3a2a6a']; T.fog='#2a2050'; T.ground=T.ground.map(x=>shade(x,.5)); T.road=T.road.map(x=>shade(x,.6)); } return T; }
 const RUN={id:'run',name:'萌寵障礙賽跑',camH:720,kmh:40,roll:.025,run:1,tagH:1.25,useText:'衝刺！',chargeCol:'#ff8a1a',speedUnit:'KM/H',
   P:{max:8600,acc:7000,brake:0,decel:0,offMax:.6,steer:3,cent:.2,wall:1.12,boostMul:1.4,ww:300,jumpV:1700,grav:4600,slide:1,jumpLead:14},
-  stages:mkStages([['草地運動會',''],['森林步道','',{tx:{spr:[['tree',6],['pine',3],['bush',2]],road:['#a8784a','#a07044']}}],['花園小徑','',{tx:{spr:[['bush',6],['tree',2],['balloon',1]],road:['#d8c8a8','#d0c0a0']}}],
+  stages:mkStages(ext([['草地運動會',''],['森林步道','',{tx:{spr:[['tree',6],['pine',3],['bush',2]],road:['#a8784a','#a07044']}}],['花園小徑','',{tx:{spr:[['bush',6],['tree',2],['balloon',1]],road:['#d8c8a8','#d0c0a0']}}],
     ['沙灘跑道','',{tx:{spr:[['palm',5],['rock',1],['crowd',1]],ground:['#f0dc9c','#e8d48c'],road:['#e8c88a','#e0c080'],far:'sea',farCol:'#3a9ad8',pitCol:'#3a9ad8'}}],
     ['蘑菇森林','',{tx:{spr:[['mushroom',6],['tree',2]],ground:['#5aa83a','#52a034']}}],['糖果樂園','',{tx:{spr:[['candy',6],['balloon',2]],ground:['#ffc6e0','#ffb8d8'],road:['#ff8ac0','#f882b8'],sky:['#ffc8e8','#fff0f8'],far:'hills',farCol:'#ffa8d0',farCol2:'#ffd0e4',pitCol:'#8a5a3a'}}],
     ['雪地樂園','',{tx:{spr:[['pine',5],['snowman',3]],ground:['#f4f8ff','#e8f0fa'],road:['#9ac8e8','#92c0e0'],snowy:1,far:'snowmtn',farCol:'#a8c8e0',farCol2:'#d0e4f2',snowfall:1,pitCol:'#7ab8e8'}}],
@@ -1113,7 +1129,10 @@ const RUN={id:'run',name:'萌寵障礙賽跑',camH:720,kmh:40,roll:.025,run:1,ta
     ['古堡庭園','',{tx:{spr:[['castle',2],['hedge',4],['bush',2]],road:['#a8a090','#a09888']}}],['叢林探險','',{tx:{spr:[['tree',5],['palm',3],['bush',3]],ground:['#3f8a3a','#388034'],road:['#8a6a42','#82623c'],far:'mountain',farCol:'#3f6a3a',farCol2:'#5f8a5a'}}],
     ['熔岩小島','',{tx:{spr:[['volcano',1],['rock',4],['palm',1]],ground:['#4a3a32','#42332c'],road:['#6a4a3a','#624434'],sky:['#5a2a2a','#c86a3a'],far:'mountain',farCol:'#3a2a2a',farCol2:'#5a3a32',pitCol:'#ff6a1a'}}],
     ['天空步道','',{tx:{spr:[['cloud',6]],ground:['#ffffff','#eef6ff'],road:['#c8a0f0','#c098e8'],far:'none',pitCol:'#9ad0ff'}}],['彩虹橋','',{mod:'night',tx:{spr:[['cloud',3]],road:['#ff6ac8','#6ac8ff'],far:'none',pitCol:'#3a2a6a'}}],
-    ['夢幻迷宮','',{tx:{spr:[['hedge',8],['balloon',1]],ground:['#4f8a3a','#478234'],road:['#c8b890','#c0b088']}}]],
+    ['夢幻迷宮','',{tx:{spr:[['hedge',8],['balloon',1]],ground:['#4f8a3a','#478234'],road:['#c8b890','#c0b088']}}]],[['操場接力',0],['松果步道',1],['玫瑰花園',2],['海浪沙灘',3],['小精靈蘑菇',4],['棒棒糖山丘',5],['雪人村',6],['熊貓竹林',7],['旋轉木馬',8],['夜間運動會',0,{mod:'night'}],
+    ['螢火蟲森林',1,{mod:'night'}],['城堡花園',9],['猴子叢林',10],['火山步道',11],['雲朵跳跳',12],['月光沙灘',3,{mod:'night'}],['夜光蘑菇',4,{mod:'night'}],['巧克力工廠',5],['冰雪城堡',6],['夜遊樂園',8,{mod:'night'}],
+    ['迷霧竹林',7,{mod:'night'}],['騎士庭園',9],['神秘叢林',10,{mod:'night'}],['岩漿河谷',11],['雲端城堡',12],['星空彩虹',13],['花園迷宮',14],['森林大冒險',1],['糖果夜市',5,{mod:'night'}],['雪夜奔跑',6,{mod:'night'}],
+    ['熔岩之夜',11,{mod:'night'}],['天空階梯',12],['午夜迷宮',14,{mod:'night'}],['彩虹大道',13],['萌寵冠軍賽',8]]),
     (st,i)=>({len:1900+st*350,curve:1+st*.6,hill:500+st*350,ai:.66+st*.06,hurdles:.012+st*.004,low:st>=2,pits:st>=2,mud:st>=1,springs:st>=3})),
   theme:runTheme,
   place(C,r){ const S=C.S; let last=0;
@@ -1134,7 +1153,7 @@ const RUN={id:'run',name:'萌寵障礙賽跑',camH:720,kmh:40,roll:.025,run:1,ta
   botLook:i=>({animal:['dog','bunny','bear','panda','fox','penguin','frog','cat'][i%8],cloth:COLORS[(i+1)%6],hat:['none','band','cap','none','flower','crown'][i%6]}),
   looks:[{key:'animal',label:'動物',opts:Object.keys(ANIMALS).map(k=>({id:k,label:ANIMALS[k].name}))},{key:'cloth',label:'背心顏色',type:'color',opts:['#ff4d4d','#3d8bff','#ffd23f','#5fd068','#c56bff','#ff9d3d']},
     {key:'hat',label:'頭飾',opts:[{id:'none',label:'不戴'},{id:'band',label:'頭帶'},{id:'cap',label:'棒球帽'},{id:'crown',label:'皇冠'},{id:'flower',label:'小花'}]}],
-  desc:'可愛的貓咪、小狗、兔子、熊貓、企鵝…大家一起跑障礙賽！跳過欄架和木頭、滑過低樹枝、別掉進水坑，吃紅蘿蔔存衝刺，踩彈簧飛高高。15 條跑道：草地、糖果、雪地、古堡、熔岩、彩虹橋…',
+  desc:'可愛的貓咪、小狗、兔子、熊貓、企鵝…大家一起跑障礙賽！跳過欄架和木頭、滑過低樹枝、別掉進水坑，吃紅蘿蔔存衝刺，踩彈簧飛高高。50 條跑道：草地、糖果、雪地、古堡、熔岩、彩虹橋…',
   goal:'自動往前跑，前 3 名過關。看到欄架、木頭、水坑按 ↑ 或空白鍵跳過；看到低低的樹枝按 ↓ 滑過去；踩到泥巴會變慢。吃紅蘿蔔可以存一次衝刺（最多 3 次），按 X 使用。',
   help:[['← →','左右移動'],['↑ 或 空白鍵','跳'],['↓','滑行（鑽過低樹枝）'],['X','衝刺（吃紅蘿蔔存的）'],['W S A D Q','雙人 1P：W 跳、S 滑、Q 衝刺'],['↑ ↓ ← → Enter','雙人 2P：↑ 跳、↓ 滑、Enter 衝刺']],
   touchHelp:[['◀ ▶','左右移動'],['跳','跳過欄架、水坑'],['滑','滑過低樹枝'],['衝刺','用衝刺']],

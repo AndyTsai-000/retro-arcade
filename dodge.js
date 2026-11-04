@@ -25,8 +25,12 @@ const STAGES=[
   {name:'冰原隊',col:'#7fd0e8',lv:.52,team:[mk('雪怪',60,1.1,.9,.5,'drop','pierce'),mk('企鵝',46,1,1.1,.5,'curve','wave'),mk('冰柱',48,1.05,1,.5,'fast','accel')]},
   {name:'叢林隊',col:'#3fae5a',lv:.68,team:[mk('金剛',66,1.25,.9,.55,'pierce','drop'),mk('豹子',48,1.05,1.25,.6,'fast','curve'),mk('鸚鵡',46,1,1.1,.6,'split','wave')]},
   {name:'鋼鐵隊',col:'#8a8fa8',lv:.86,team:[mk('鐵壁',74,1.3,.85,.7,'drop','pierce'),mk('齒輪',54,1.15,1.05,.65,'accel','split'),mk('螺絲',52,1.1,1.1,.65,'curve','fast')]},
-  {name:'冠軍隊',col:'#c56bff',lv:1,team:[mk('霸王',78,1.4,1,.78,'split','drop'),mk('閃電',56,1.2,1.3,.75,'fast','curve'),mk('鐵拳',64,1.3,1,.72,'pierce','accel')]}
-];
+  {name:'冠軍隊',col:'#c56bff',lv:1,team:[mk('霸王',78,1.4,1,.78,'split','drop'),mk('閃電',56,1.2,1.3,.75,'fast','curve'),mk('鐵拳',64,1.3,1,.72,'pierce','accel')]},
+  {name:'櫻花隊',col:'#ff7eb6',lv:.28,team:[mk('花子',42,.85,1.05,.35,'curve','wave'),mk('小櫻',38,.82,1.1,.33,'fast','curve'),mk('阿梅',40,.85,1,.35,'wave','accel')]},
+  {name:'火山隊',col:'#ff5a1a',lv:.6,team:[mk('岩漿',62,1.15,.9,.52,'pierce','drop'),mk('火山',50,1.05,1.05,.55,'accel','fast'),mk('灰燼',48,1,1.1,.55,'curve','split')]},
+  {name:'雷霆隊',col:'#ffd23f',lv:.78,team:[mk('雷公',70,1.25,1,.62,'fast','pierce'),mk('閃光',52,1.1,1.3,.65,'accel','curve'),mk('電母',54,1.15,1.1,.62,'split','wave')]},
+  {name:'忍者隊',col:'#4a4a6a',lv:.93,team:[mk('影丸',58,1.25,1.35,.74,'curve','split'),mk('疾風',56,1.2,1.4,.72,'fast','accel'),mk('鐵扇',66,1.35,1.05,.72,'drop','pierce')]}
+].sort((a,b)=>a.lv-b.lv); /* 10 隊，照實力排 */
 const r1=v=>Math.round(v*10)/10;
 
 // 人物：紅白機熱血系的二頭身畫法——大頭、粗眉、怒目、背心短褲球鞋，整個人描黑邊。
@@ -476,7 +480,7 @@ window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).dodge={
   coin:o=>({verb:'先拿球',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}),
   name:'鬥魂躲避球',tag:'DODGE BALL',color:'#ff9d3d',online:true,maxPlayers:2,
-  desc:'三對三躲避球，丟球打倒對方內野。助跑丟、跳起來丟會變成必殺球，共 7 種；集滿氣還能放超必殺。6 支隊伍，可單人、兩人同一台，或開房間連線。',
+  desc:'三對三躲避球，丟球打倒對方內野。助跑丟、跳起來丟會變成必殺球，共 7 種；集滿氣還能放超必殺。10 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'丟球打對方內野的人扣體力，三個人都倒下就贏了。連按兩下 ← 或 → 助跑後丟、或跳起來丟，會丟出必殺球。打中人或接到球會累積氣力，集滿後拿球按「必殺」放出接不住的超必殺。球飛過來時按「丟」可以接住。',
   // 開始畫面左邊：選哪一隊就顯示那一隊的三名內野
   stageShow:(ctx,w,h,si,t)=>{ const st=STAGES[si],col=st.col;
@@ -488,7 +492,7 @@ window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
       ctx.save(); ctx.translate(x,y); ctx.scale(2.4,2.4); drawGuy(ctx,0,0,Math.abs(Math.sin(t*3+i))*3,-1,col,i%4,pose,t+i); ctx.restore();
       ctx.font='700 '+Math.round(h*.065)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(m.name,x,y+h*.08); }); },
   options:[{key:'hp',label:'體力',def:'normal',opts:[{id:'short',label:'少（快速一場）'},{id:'normal',label:'一般'},{id:'long',label:'多（打久一點）'}]}],
-  stages:STAGES.map(s=>s.name),stars:[1,2,3,3,4,5],
+  stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>Math.max(1,Math.min(5,Math.ceil(s.lv*5-.01)))),
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動，連按兩下 ← → 助跑'],['J','丟球；沒球時是接球'],['K','傳球；沒球時按住是蹲下'],['L','跳'],['I','超必殺（氣力條滿、拿著球時）'],['W A S D F G H R','雙人左隊：移動、丟、傳、跳、超必殺'],['↑ ↓ ← → , . / M','雙人右隊：移動、丟、傳、跳、超必殺']],
   touchHelp:[['方向盤','移動，同方向點兩下助跑'],['丟','丟球，沒球時接球'],['傳','傳球，沒球時蹲下'],['跳','跳起來'],['必殺','氣力條滿、拿著球時放超必殺']],
