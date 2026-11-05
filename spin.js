@@ -544,7 +544,7 @@ function create(env,opts){
     else if(phase==='over'){ PT-=dt; if(PT<=0&&!ended){ ended=true; finishGame(); } }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/20; net.send({s:{f:T.map(pk),sc:score,ph:phase,pt:R1(PT),rd:round,fo:fouls,rt:R1(rt),wa:R1(windA),ev,bl:BUL.map(b=>[b.own,R1(b.x),R1(b.y),R1(b.spin)])}}); ev=[]; } } }
   // 衝刺時軌道磨出火花、地上留下擦痕；觀眾情緒、裁判對話框
-  function visStep(dt){ for(const f of T) if(f.hint>0) f.hint-=dt; if(cheer>0) cheer=Math.max(0,cheer-dt*.35); if(refSay){ refSay.t-=dt; if(refSay.t<=0) refSay=null; }
+  function visStep(dt){ for(const f of T){ if(f.hint>0) f.hint-=dt; if(f.hint2>0) f.hint2-=dt; } if(cheer>0) cheer=Math.max(0,cheer-dt*.35); if(refSay){ refSay.t-=dt; if(refSay.t<=0) refSay=null; }
     if(phase==='fight'||phase==='after') for(const f of T) if(f.st==='on'&&hyp(f.vx,f.vy)>330){ f.ghT=(f.ghT||0)-dt; if(f.ghT<=0){ f.ghT=.03; fx.push({k:'gh',x:f.x,y:f.y,l:.16,L:.16,c:f.col}); } }
     for(const f of T) if(f.st==='on'&&f.dashT>0&&(phase==='fight'||phase==='after')){ const r=hyp(f.x,f.y)||1,nx=f.x/r,ny=f.y/r,wx=f.x+nx*RAD*.9,wy=f.y+ny*RAD*.9,tx=-ny*f.k.dir,ty=nx*f.k.dir;
       for(let i=0;i<3;i++){ const q=(Math.random()-.5)*.8,s=120+Math.random()*240; fx.push({k:'sp',x:wx,y:wy,z:3,vx:(-tx+nx*.5+q)*s,vy:(-ty+ny*.5-q)*s,vz:40+Math.random()*100,l:.12+Math.random()*.25,c:Math.random()<.5?'#fff3c0':'#ffb040'}); }
@@ -583,7 +583,9 @@ function create(env,opts){
   // 拖曳軌道：按住軌道上的握把，往外拖到底或放開就發射
   const TRK=i=>{ const sd=i?-1:1; return {sd,x0:i?650:150,y:412,len:230}; };
   const canDrag=i=>{ const f=T[i]; return f&&f.human&&f.local&&f.sh==null&&phase==='launch'&&!Object.values(drags).some(d=>d.i===i); };
-  function onPDown(e){ if(phase!=='launch') return; const [x,y]=cvXY(e);
+  function onPDown(e){ const [x,y]=cvXY(e);
+    if(phase==='aim'){ for(const f of T){ if(!f.human||!f.local||(!local2&&f.i!==me)) continue; const tr=TRK(f.i); if(hyp(x-tr.x0,y-tr.y)<44){ f.hint2=1.2; e.preventDefault(); } } return; } /* 還沒喊 GO SHOOT：鎖住 */
+    if(phase!=='launch') return;
     for(let i=0;i<T.length;i++){ if(!canDrag(i)||(!local2&&i!==me)) continue; const tr=TRK(i),kx=tr.x0+tr.sd*(T[i].pull||0)*tr.len; if(hyp(x-kx,y-tr.y)>44) continue;
       drags[e.pointerId]={i,off:x-kx,pts:[[performance.now(),(T[i].pull||0)*tr.len]]}; T[i].grab=true; try{ canvas.setPointerCapture(e.pointerId); }catch(er){} e.preventDefault(); return; } }
   function onPMove(e){ const d=drags[e.pointerId]; if(!d) return; const [x]=cvXY(e),f=T[d.i],tr=TRK(d.i); if(f.sh!=null) return;
@@ -663,10 +665,11 @@ function create(env,opts){
     for(const e of fx) if(e.k==='flash'){ c.fillStyle='rgba(255,250,230,'+(e.l/e.L*.35)+')'; c.fillRect(0,0,W,H); }
     if(slow>0){ c.fillStyle='rgba(0,0,0,'+Math.min(.18,slow*.25)+')'; c.fillRect(0,0,W,22); c.fillRect(0,H-22,W,22); }
     hud(); }
-  function drawTrack(f){ const tr=TRK(f.i),pu=f.pull||0,x1=tr.x0+tr.sd*tr.len,kx=tr.x0+tr.sd*pu*tr.len,y=tr.y,col=f.lc||PCOL[f.i]; /* 拖曳軌道＋握把 */
+  function drawTrack(f,lock){ const tr=TRK(f.i),pu=lock?0:f.pull||0,x1=tr.x0+tr.sd*tr.len,kx=tr.x0+tr.sd*pu*tr.len,y=tr.y,col=lock?'#8a909c':f.lc||PCOL[f.i]; /* 拖曳軌道＋握把（喊 GO SHOOT 前鎖住、灰色） */
     c.save(); c.lineCap='round'; c.strokeStyle='rgba(0,0,0,.55)'; c.lineWidth=20; c.beginPath(); c.moveTo(tr.x0,y); c.lineTo(x1,y); c.stroke(); c.strokeStyle='rgba(255,255,255,.18)'; c.lineWidth=14; c.stroke();
-    const g=c.createLinearGradient(tr.x0,0,x1,0); g.addColorStop(0,'#3ed16a'); g.addColorStop(.6,'#ffd23f'); g.addColorStop(1,'#ff5a3a'); c.strokeStyle=g; c.lineWidth=10; c.beginPath(); c.moveTo(tr.x0,y); c.lineTo(kx,y); c.stroke();
-    c.fillStyle='rgba(255,255,255,'+(.35+.35*Math.sin(t*8))+')'; for(let q=0;q<4;q++){ const cx=tr.x0+tr.sd*(tr.len*(.3+q*.18)),u=((t*1.6+q*.25)%1); if(cx*tr.sd<kx*tr.sd+18) continue; c.globalAlpha=1-u*.5; c.beginPath(); c.moveTo(cx-tr.sd*5,y-6); c.lineTo(cx+tr.sd*3,y); c.lineTo(cx-tr.sd*5,y+6); c.fill(); } c.globalAlpha=1; /* 箭頭 */
+    if(lock){ const s2=f.hint2>0?'還不能拖！等裁判喊 GO SHOOT':'🔒 裁判喊 GO SHOOT 後才能拖'; c.font='900 14px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const mx=tr.x0+tr.sd*tr.len/2; c.strokeText(s2,mx,y-26); c.fillStyle=f.hint2>0?'#ff6a6a':'#fff'; c.fillText(s2,mx,y-26); }
+    else { const g=c.createLinearGradient(tr.x0,0,x1,0); g.addColorStop(0,'#3ed16a'); g.addColorStop(.6,'#ffd23f'); g.addColorStop(1,'#ff5a3a'); c.strokeStyle=g; c.lineWidth=10; c.beginPath(); c.moveTo(tr.x0,y); c.lineTo(kx,y); c.stroke();
+    c.fillStyle='rgba(255,255,255,'+(.35+.35*Math.sin(t*8))+')'; for(let q=0;q<4;q++){ const cx=tr.x0+tr.sd*(tr.len*(.3+q*.18)),u=((t*1.6+q*.25)%1); if(cx*tr.sd<kx*tr.sd+18) continue; c.globalAlpha=1-u*.5; c.beginPath(); c.moveTo(cx-tr.sd*5,y-6); c.lineTo(cx+tr.sd*3,y); c.lineTo(cx-tr.sd*5,y+6); c.fill(); } c.globalAlpha=1; } /* 箭頭 */
     c.fillStyle='#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.strokeText('發射',x1,y-20); c.fillText('發射',x1,y-20);
     const r=f.grab?20:17+Math.sin(t*6)*1.5,kg=c.createRadialGradient(kx-5,y-6,2,kx,y,r); kg.addColorStop(0,shade(col,.55)); kg.addColorStop(1,shade(col,-.35)); c.fillStyle='rgba(0,0,0,.4)'; c.beginPath(); c.arc(kx+2,y+3,r,0,TAU); c.fill(); c.fillStyle=kg; c.beginPath(); c.arc(kx,y,r,0,TAU); c.fill();
     c.strokeStyle='#fff'; c.lineWidth=2.5; c.stroke(); c.strokeStyle='rgba(0,0,0,.4)'; c.lineWidth=2; for(const o of [-5,0,5]){ c.beginPath(); c.moveTo(kx+o,y-7); c.lineTo(kx+o,y+7); c.stroke(); } c.restore(); }
@@ -692,9 +695,10 @@ function create(env,opts){
         const cx=x0+pw/2-sd*110,cy=y0+96,K2=2; c.translate(cx,cy); c.scale(K2,K2); const jt=ye>0&&ye<1?(Math.random()-.5)*1.5:0;
         drawTop(c,jt,26,S*TS,f.P,f.col,f.ang,Math.max(.3,ye),{tilt:0,noShadow:true}); drawLauncher(jt,0,PCOL[i],sd,ye,f.sh==null&&!f.pull,true,f.lc,f.ls); c.restore();
         if(f.sh==null&&f.human&&(local2||f.i===me)){ const bl=.75+.25*Math.sin(t*16),tx=x0+pw/2+sd*70,ty=y0+70; c.save(); c.translate(tx,ty); c.scale(bl,bl); c.font='900 28px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#0b0a1c'; const left=Math.max(0,SHOOT_MAX-shootT),s2=f.hint>0?'拉遠一點再放開！':(sd>0?'按住握把往右拖 →':'← 按住握把往左拖'); c.strokeText(s2,0,0); c.fillStyle=f.hint>0?'#ff8a5a':'#ffd23f'; c.fillText(s2,0,0); c.restore();
-          c.font='900 15px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const s3=(local2?'或按 '+shootKey(f)+'　':'')+'剩 '+left.toFixed(1)+' 秒，超時犯規'; c.strokeText(s3,tx,ty+30); c.fillStyle=left<1.2?'#ff6a6a':'#fff'; c.fillText(s3,tx,ty+30); drawTrack(f); }
+          c.font='900 15px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const s3=(local2?'或按 '+shootKey(f)+'　':'')+'剩 '+left.toFixed(1)+' 秒，超時犯規'; c.strokeText(s3,tx,ty+30); c.fillStyle=left<1.2?'#ff6a6a':'#fff'; c.fillText(s3,tx,ty+30); }
         else if(f.sh!=null&&f.human&&fu<.2){ c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=5; c.strokeStyle='#0b0a1c'; const sv=f.shv||0,s2=sv>=97?'完美發射！轉速 '+sv:'轉速 '+sv; c.strokeText(s2,x0+pw/2+sd*70,y0+70); c.fillStyle=sv>=97?'#3ed16a':'#fff'; c.fillText(s2,x0+pw/2+sd*70,y0+70); }
         c.strokeStyle=PCOL[i]; c.lineWidth=4; c.stroke(); c.font='900 15px '+TC; c.textAlign=i?'right':'left'; c.textBaseline='top'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const nm=R.names[i]+'　'+TOP[f.P.top].n; c.strokeText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.fillStyle='#fff'; c.fillText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.restore(); } }
+    if(phase==='aim'||phase==='launch') for(const f of T) if(f.human&&f.local&&(local2||f.i===me)&&(phase==='aim'||f.sh==null)) drawTrack(f,phase==='aim');
     if(phase==='launch'||(phase==='fight'&&rt<.7)){ const u=phase==='launch'?shootT/LD:1; c.save(); c.translate(W/2,CY-60); const sc=1+Math.max(0,.4-u)*.8; c.scale(sc,sc); c.translate(-W/2,-(CY-60)); big('GO SHOOT！',CY-60,'#ffd23f',58); c.restore(); }
     if(ban&&ban.t<2.2&&(ban.k==='foul'||phase!=='aim'&&phase!=='launch')){ const F=FIN[ban.k],u=Math.min(1,ban.t*5),sc=1+(1-u)*.8; c.save(); c.translate(W/2,CY-118); c.scale(sc,sc); c.globalAlpha=Math.min(1,(2.2-ban.t)*3);
       c.font='900 40px '+TC; c.lineWidth=8; c.strokeStyle='#0b0a1c'; c.strokeText(F.n+'！',0,0); c.fillStyle=F.col; c.fillText(F.n+'！',0,0);
