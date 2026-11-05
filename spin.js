@@ -378,7 +378,7 @@ function create(env,opts){
   function land(f){ const L=LPOS[f.i]||LPOS[0],dx=f.lx-L[0],dy=f.ly-L[1],d=hyp(dx,dy)||1,r=hyp(f.lx,f.ly)||1,K=f.k; f.x=f.lx; f.y=f.ly;
     const v0=K.cruise*.6+20; f.vx=-f.ly/r*K.dir*v0*.6-f.lx/r*v0*.3; f.vy=f.lx/r*K.dir*v0*.6-f.ly/r*v0*.3; addFx('land',f.x,f.y); } /* 落地後往中間衝、帶一點旋轉方向的偏移（花瓣路線） */
   function setupRound(){ round++; rt=0; phase='aim'; PT=opts.preview?1.2:5.6; lastBeep=9; deb=[]; focus=null; if(!client) T.forEach(setP);
-    T.forEach(f=>{ f.spin=f.ai?clamp(86+f.ai.sk*14+Math.random()*4,80,100):100; f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; f.split=false; f.sh=null; f.lp=0; f.landed=false; f.aiR=(f.human?9:.22+(f.ai?(1-f.ai.sk)*.45:.2)+Math.random()*.18); }); BUL=[];
+    T.forEach(f=>{ f.spin=f.ai?clamp(86+f.ai.sk*14+Math.random()*4,80,100):100; f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; f.split=false; f.sh=null; f.lp=0; f.landed=false; f.pull=0; f.grab=false; f.aiR=(f.human?9:.22+(f.ai?(1-f.ai.sk)*.45:.2)+Math.random()*.18); }); BUL=[];
     prepAim(); if(round>1) voice('第 '+round+' 回合，選好落點！'); }
   setupRound(); if(!R.pv&&R.humans) phase='deck';
   // 一對一：每人帶 3 顆，開賽前組 3 顆陀螺、排出場順序（刀刃、棘輪、底座都不能重複）
@@ -575,23 +575,30 @@ function create(env,opts){
       else { const u=Math.min(1,f.out/.8); x=f.ox+f.ox/r*34*Math.min(1,u*1.6); y=f.oy+f.oy/r*34*Math.min(1,u*1.6); z=-55*u*u; } } /* 掉進口袋：滑進洞裡往下沉 */
     return [sx(x),sz(x,y)-z,z,x,y]; }
   let shootT=0,shotN=0,shotV=0; const SHOOT_MAX=4,fouls=[0,0];
-  const spinOfV=v=>Math.round(72+28*clamp((v-400)/1600,0,1)); /* 拖曳越快轉速越高：每秒 400 → 72、2000 以上 → 100 */
+  const spinOfV=v=>Math.round(72+28*clamp((v-300)/1200,0,1)); /* 拖曳越快轉速越高：軌道上每秒 300 → 72、1500 以上 → 100 */
   function shoot(f,v){ f.sh=shootT; f.lp=0; f.pull=0; snd('boost'); if(f.human){ const sp=v!=null?spinOfV(v):Math.round(clamp(100-(shootT-.35)*14,72,100)); f.spin=Math.min(f.spin,sp); f.shv=sp; voice(sp>=97?'完美發射！':sp>=85?'好球！':'發射！',1); } }
   // 滑鼠／手指拖曳拉繩：放開時看最後一段的拉動速度
   const drags={};
   function cvXY(e){ const r=canvas.getBoundingClientRect(),k=Math.min(r.width/W,r.height/H); return [(e.clientX-r.left-(r.width-W*k)/2)/k,(e.clientY-r.top-(r.height-H*k)/2)/k]; }
-  function dragWho(x){ const i=local2?(x<W/2?0:1):me; const f=T[i]; return f&&f.human&&f.local&&f.sh==null&&phase==='launch'&&!Object.values(drags).some(d=>d.i===i)?i:-1; }
-  function onPDown(e){ if(phase!=='launch') return; const [x,y]=cvXY(e),i=dragWho(x); if(i<0) return; drags[e.pointerId]={i,x0:x,y0:y,pts:[[performance.now(),x,y]]}; try{ canvas.setPointerCapture(e.pointerId); }catch(er){} e.preventDefault(); }
-  function onPMove(e){ const d=drags[e.pointerId]; if(!d) return; const [x,y]=cvXY(e),f=T[d.i]; d.pts.push([performance.now(),x,y]); if(d.pts.length>40) d.pts.shift(); if(f.sh==null) f.pull=clamp(hyp(x-d.x0,y-d.y0)/220,0,1); }
-  function onPUp(e){ const d=drags[e.pointerId]; if(!d) return; delete drags[e.pointerId]; const f=T[d.i]; if(phase!=='launch'||f.sh!=null){ f.pull=0; return; } const P=d.pts,L=P[P.length-1],dist=hyp(L[1]-d.x0,L[2]-d.y0);
-    if(dist<60){ f.pull=0; f.hint=1.2; return; } /* 拉太短不算 */
-    let q=P.length-1; while(q>0&&L[0]-P[q-1][0]<120) q--; const A=P[q],dt=Math.max(.016,(L[0]-A[0])/1000),v=Math.max(hyp(L[1]-A[1],L[2]-A[2])/dt,dist/Math.max(.05,(L[0]-P[0][0])/1000));
+  // 拖曳軌道：按住軌道上的握把，往外拖到底或放開就發射
+  const TRK=i=>{ const sd=i?-1:1; return {sd,x0:i?650:150,y:412,len:230}; };
+  const canDrag=i=>{ const f=T[i]; return f&&f.human&&f.local&&f.sh==null&&phase==='launch'&&!Object.values(drags).some(d=>d.i===i); };
+  function onPDown(e){ if(phase!=='launch') return; const [x,y]=cvXY(e);
+    for(let i=0;i<T.length;i++){ if(!canDrag(i)||(!local2&&i!==me)) continue; const tr=TRK(i),kx=tr.x0+tr.sd*(T[i].pull||0)*tr.len; if(hyp(x-kx,y-tr.y)>44) continue;
+      drags[e.pointerId]={i,off:x-kx,pts:[[performance.now(),(T[i].pull||0)*tr.len]]}; T[i].grab=true; try{ canvas.setPointerCapture(e.pointerId); }catch(er){} e.preventDefault(); return; } }
+  function onPMove(e){ const d=drags[e.pointerId]; if(!d) return; const [x]=cvXY(e),f=T[d.i],tr=TRK(d.i); if(f.sh!=null) return;
+    f.pull=clamp((x-d.off-tr.x0)*tr.sd/tr.len,0,1); d.pts.push([performance.now(),f.pull*tr.len]); if(d.pts.length>40) d.pts.shift();
+    if(f.pull>=1){ delete drags[e.pointerId]; release(d,f); } } /* 拉到底直接發射 */
+  function onPUp(e){ const d=drags[e.pointerId]; if(!d) return; delete drags[e.pointerId]; const f=T[d.i]; f.grab=false; if(phase!=='launch'||f.sh!=null){ f.pull=0; return; }
+    if(f.pull<.35){ f.pull=0; f.hint=1.2; return; } /* 拉太短不算，握把彈回去 */
+    release(d,f); }
+  function release(d,f){ f.grab=false; const P=d.pts,Lp=P[P.length-1]; let q=P.length-1; while(q>0&&Lp[0]-P[q-1][0]<120) q--; const A=P[q],dt=Math.max(.016,(Lp[0]-A[0])/1000),v=Math.max((Lp[1]-A[1])/dt,(Lp[1]-P[0][1])/Math.max(.05,(Lp[0]-P[0][0])/1000));
     if(client){ shotN++; shotV=Math.round(v); f.pull=0; f.sh=0; f.shv=spinOfV(v); } else shoot(f,v); }
   if(canvas&&canvas.addEventListener){ canvas.addEventListener('pointerdown',onPDown); canvas.addEventListener('pointermove',onPMove); canvas.addEventListener('pointerup',onPUp); canvas.addEventListener('pointercancel',onPUp); }
   // 喊完 GO SHOOT 超過時間還沒發射＝犯規；同一人犯規 2 次，對方得 1 分，之後重新發射
   function foul(list){ for(const f of list){ fouls[f.i]++; const opp=T.find(q=>teamKey(q)!==teamKey(f)),ok=opp&&fouls[f.i]>=2?teamKey(opp):null; if(ok){ fouls[f.i]=0; score[ok]+=1; }
       ban={k:'foul',who:f.i,to:ok,t:0}; if(host&&net) ev.push(['b','foul',f.i,ok||'']); }
-    snd('lose'); roar(.5,1.2); const f=list[0],ok=ban.to; round--; setupRound(); ban={k:'foul',who:f.i,to:ok,t:0}; PT=4.4;
+    for(const k in drags) delete drags[k]; snd('lose'); roar(.5,1.2); const f=list[0],ok=ban.to; round--; setupRound(); ban={k:'foul',who:f.i,to:ok,t:0}; PT=4.4;
     voice(R.names[f.i]+' 犯規！'+(ok?keyName(ok)+' 得 1 分，比數 '+score[keys[0]]+' 比 '+score[keys[1]]:'再犯規對方得 1 分，重新發射'),1);
     const top=Object.keys(score).filter(k=>score[k]>=TARGET); if(top.length){ winKey=top[0]; phase='over'; PT=3.2; snd('win'); voice('比賽結束！'+keyName(winKey)+' 獲勝！'); roar(1,3); if(net) net.send({end:winKey}); } }
   function lu(f){ const u0=phase==='launch'&&f&&f.sh!=null?clamp(f.lp/LD,0,1):0; return [clamp(u0/PF,0,1),clamp((u0-PF)/(1-PF),0,1)]; } /* [拉線進度, 飛行進度] */
@@ -656,6 +663,13 @@ function create(env,opts){
     for(const e of fx) if(e.k==='flash'){ c.fillStyle='rgba(255,250,230,'+(e.l/e.L*.35)+')'; c.fillRect(0,0,W,H); }
     if(slow>0){ c.fillStyle='rgba(0,0,0,'+Math.min(.18,slow*.25)+')'; c.fillRect(0,0,W,22); c.fillRect(0,H-22,W,22); }
     hud(); }
+  function drawTrack(f){ const tr=TRK(f.i),pu=f.pull||0,x1=tr.x0+tr.sd*tr.len,kx=tr.x0+tr.sd*pu*tr.len,y=tr.y,col=f.lc||PCOL[f.i]; /* 拖曳軌道＋握把 */
+    c.save(); c.lineCap='round'; c.strokeStyle='rgba(0,0,0,.55)'; c.lineWidth=20; c.beginPath(); c.moveTo(tr.x0,y); c.lineTo(x1,y); c.stroke(); c.strokeStyle='rgba(255,255,255,.18)'; c.lineWidth=14; c.stroke();
+    const g=c.createLinearGradient(tr.x0,0,x1,0); g.addColorStop(0,'#3ed16a'); g.addColorStop(.6,'#ffd23f'); g.addColorStop(1,'#ff5a3a'); c.strokeStyle=g; c.lineWidth=10; c.beginPath(); c.moveTo(tr.x0,y); c.lineTo(kx,y); c.stroke();
+    c.fillStyle='rgba(255,255,255,'+(.35+.35*Math.sin(t*8))+')'; for(let q=0;q<4;q++){ const cx=tr.x0+tr.sd*(tr.len*(.3+q*.18)),u=((t*1.6+q*.25)%1); if(cx*tr.sd<kx*tr.sd+18) continue; c.globalAlpha=1-u*.5; c.beginPath(); c.moveTo(cx-tr.sd*5,y-6); c.lineTo(cx+tr.sd*3,y); c.lineTo(cx-tr.sd*5,y+6); c.fill(); } c.globalAlpha=1; /* 箭頭 */
+    c.fillStyle='#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.strokeStyle='#0b0a1c'; c.lineWidth=3; c.strokeText('發射',x1,y-20); c.fillText('發射',x1,y-20);
+    const r=f.grab?20:17+Math.sin(t*6)*1.5,kg=c.createRadialGradient(kx-5,y-6,2,kx,y,r); kg.addColorStop(0,shade(col,.55)); kg.addColorStop(1,shade(col,-.35)); c.fillStyle='rgba(0,0,0,.4)'; c.beginPath(); c.arc(kx+2,y+3,r,0,TAU); c.fill(); c.fillStyle=kg; c.beginPath(); c.arc(kx,y,r,0,TAU); c.fill();
+    c.strokeStyle='#fff'; c.lineWidth=2.5; c.stroke(); c.strokeStyle='rgba(0,0,0,.4)'; c.lineWidth=2; for(const o of [-5,0,5]){ c.beginPath(); c.moveTo(kx+o,y-7); c.lineTo(kx+o,y+7); c.stroke(); } c.restore(); }
   function hud(){ const n=keys.length,cw=Math.min(190,(W-20)/n-8);
     keys.forEach((k,j)=>{ const x=10+j*(cw+8),mem=T.filter(f=>teamKey(f)===k),col=k[0]==='t'?R.TEAMS[+k.slice(1)].col:mem[0].col;
       c.fillStyle='rgba(11,10,28,.78)'; rr(c,x,8,cw,50,10); c.fill(); c.fillStyle=col; rr(c,x,8,6,50,3); c.fill();
@@ -669,7 +683,7 @@ function create(env,opts){
     const big=(s,y,col,fs)=>{ c.font='900 '+fs+'px '+TC; c.lineWidth=9; c.strokeStyle='#0b0a1c'; c.strokeText(s,W/2,y); c.fillStyle=col; c.fillText(s,W/2,y); };
     if(phase==='aim'){ const n=Math.ceil(PT-.6); if(n>=1&&n<=3) big(String(n),CY-60,'#fff',72);
       c.font='900 15px '+TC; c.lineWidth=5; c.strokeStyle='#0b0a1c'; const vs='第 '+round+' 回合　'+TOP[T[0].P.top].n+'　對　'+TOP[T[1].P.top].n; c.strokeText(vs,W/2,H-46); c.fillStyle='#ffd23f'; c.fillText(vs,W/2,H-46);
-      if(R.humans){ const hs=(env.touch?'用方向盤':local2?'1P 用 WASD、2P 用方向鍵':'用方向鍵')+'移動落點，GO SHOOT 後'+(env.touch?'手指':'滑鼠')+'拖曳拉繩發射，越快轉速越高'; c.font='700 13px '+TC; c.strokeText(hs,W/2,H-22); c.fillStyle='#fff'; c.fillText(hs,W/2,H-22); } }
+      if(R.humans){ const hs=(env.touch?'用方向盤':local2?'1P 用 WASD、2P 用方向鍵':'用方向鍵')+'移動落點，GO SHOOT 後按住軌道上的握把往外拖，越快轉速越高'; c.font='700 13px '+TC; c.strokeText(hs,W/2,H-22); c.fillStyle='#fff'; c.fillText(hs,W/2,H-22); } }
     if(phase==='launch'){ const inA=clamp(shootT/.22,0,1); /* 發射特寫：兩位選手握住拉繩，按下發射鍵一口氣拉出 */
       for(let i=0;i<2;i++){ const f=T[i],[pl,fu]=lu(f),ye=f.sh==null?(f.pull||0)*.6:yank(pl),outA=1-clamp(fu/.25,0,1); if(outA<=0) continue; const sd=i?-1:1,sl=(1-inA)*(1-inA)*420*-sd,x0=i?W/2+4:0,y0=262,pw=W/2-4,ph=212;
         c.save(); c.globalAlpha=outA; c.translate(sl,0); c.beginPath(); c.moveTo(x0+(i?24:0),y0); c.lineTo(x0+pw,y0); c.lineTo(x0+pw-(i?0:24),y0+ph); c.lineTo(x0,y0+ph); c.closePath(); c.save(); c.clip();
@@ -677,8 +691,8 @@ function create(env,opts){
         c.strokeStyle='rgba(255,255,255,'+(.1+.25*ye)+')'; c.lineWidth=2; for(let q=0;q<14;q++){ const yy=y0+((q*37+t*900*(ye>0?1:.15))%ph),xx=x0+(q*61)%pw; c.beginPath(); c.moveTo(xx,yy); c.lineTo(xx+sd*90,yy+8); c.stroke(); } /* 速度線 */
         const cx=x0+pw/2-sd*110,cy=y0+96,K2=2; c.translate(cx,cy); c.scale(K2,K2); const jt=ye>0&&ye<1?(Math.random()-.5)*1.5:0;
         drawTop(c,jt,26,S*TS,f.P,f.col,f.ang,Math.max(.3,ye),{tilt:0,noShadow:true}); drawLauncher(jt,0,PCOL[i],sd,ye,f.sh==null&&!f.pull,true,f.lc,f.ls); c.restore();
-        if(f.sh==null&&f.human&&(local2||f.i===me)){ const bl=.75+.25*Math.sin(t*16),tx=x0+pw/2+sd*70,ty=y0+70; c.save(); c.translate(tx,ty); c.scale(bl,bl); c.font='900 34px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#0b0a1c'; const left=Math.max(0,SHOOT_MAX-shootT),s2=f.hint>0?'拉長一點！':(sd>0?'拖曳拉繩 →':'← 拖曳拉繩'); c.strokeText(s2,0,0); c.fillStyle=f.hint>0?'#ff8a5a':'#ffd23f'; c.fillText(s2,0,0); c.restore();
-          c.font='900 15px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const s3=(local2?'或按 '+shootKey(f)+'　':'')+'剩 '+left.toFixed(1)+' 秒，超時犯規'; c.strokeText(s3,tx,ty+30); c.fillStyle=left<1.2?'#ff6a6a':'#fff'; c.fillText(s3,tx,ty+30); }
+        if(f.sh==null&&f.human&&(local2||f.i===me)){ const bl=.75+.25*Math.sin(t*16),tx=x0+pw/2+sd*70,ty=y0+70; c.save(); c.translate(tx,ty); c.scale(bl,bl); c.font='900 28px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#0b0a1c'; const left=Math.max(0,SHOOT_MAX-shootT),s2=f.hint>0?'拉遠一點再放開！':(sd>0?'按住握把往右拖 →':'← 按住握把往左拖'); c.strokeText(s2,0,0); c.fillStyle=f.hint>0?'#ff8a5a':'#ffd23f'; c.fillText(s2,0,0); c.restore();
+          c.font='900 15px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const s3=(local2?'或按 '+shootKey(f)+'　':'')+'剩 '+left.toFixed(1)+' 秒，超時犯規'; c.strokeText(s3,tx,ty+30); c.fillStyle=left<1.2?'#ff6a6a':'#fff'; c.fillText(s3,tx,ty+30); drawTrack(f); }
         else if(f.sh!=null&&f.human&&fu<.2){ c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=5; c.strokeStyle='#0b0a1c'; const sv=f.shv||0,s2=sv>=97?'完美發射！轉速 '+sv:'轉速 '+sv; c.strokeText(s2,x0+pw/2+sd*70,y0+70); c.fillStyle=sv>=97?'#3ed16a':'#fff'; c.fillText(s2,x0+pw/2+sd*70,y0+70); }
         c.strokeStyle=PCOL[i]; c.lineWidth=4; c.stroke(); c.font='900 15px '+TC; c.textAlign=i?'right':'left'; c.textBaseline='top'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const nm=R.names[i]+'　'+TOP[f.P.top].n; c.strokeText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.fillStyle='#fff'; c.fillText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.restore(); } }
     if(phase==='launch'||(phase==='fight'&&rt<.7)){ const u=phase==='launch'?shootT/LD:1; c.save(); c.translate(W/2,CY-60); const sc=1+Math.max(0,.4-u)*.8; c.scale(sc,sc); c.translate(-W/2,-(CY-60)); big('GO SHOOT！',CY-60,'#ffd23f',58); c.restore(); }
@@ -688,7 +702,7 @@ function create(env,opts){
     if(refSay&&phase!=='over') bubble(refSay.txt);
     if(phase==='over'&&winKey){ c.fillStyle='rgba(11,10,28,.35)'; c.fillRect(0,0,W,H); for(let i=0;i<50;i++){ c.fillStyle=PCOL[i%4]; c.fillRect((i*97+t*50*(i%3+1))%W,(i*53+t*140*(1+i%4))%H,6,9); }
       const s=keyName(winKey)+' 獲勝！'; c.font='900 44px '+TC; c.lineWidth=9; c.strokeStyle='#0b0a1c'; c.strokeText(s,W/2,CY-30); c.fillStyle='#ffd23f'; c.fillText(s,W/2,CY-30); } }
-  return {update,draw,destroy(){ if(canvas&&canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointerdown',onPDown); canvas.removeEventListener('pointermove',onPMove); canvas.removeEventListener('pointerup',onPUp); canvas.removeEventListener('pointercancel',onPUp); } },_dbg:{T,fouls,shoot,onPDown,onPMove,onPUp,get shootT(){return shootT;},get wallHits(){return wallHits;},get ed(){return ed;},confirmDeck,cyc,get score(){return score;},get phase(){return phase;},get round(){return round;},finish,setPT(v){PT=v;},get cam(){return cam;}}};
+  return {update,draw,destroy(){ if(canvas&&canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointerdown',onPDown); canvas.removeEventListener('pointermove',onPMove); canvas.removeEventListener('pointerup',onPUp); canvas.removeEventListener('pointercancel',onPUp); } },_dbg:{T,TRK,fouls,shoot,onPDown,onPMove,onPUp,get shootT(){return shootT;},get wallHits(){return wallHits;},get ed(){return ed;},confirmDeck,cyc,get score(){return score;},get phase(){return phase;},get round(){return round;},finish,setPT(v){PT=v;},get cam(){return cam;}}};
 }
 function drawLauncherC(c,X,Y,col,sd,pl,ready,cut,lc,ls){ lc=lc||col; ls=ls||'cord'; c.save(); c.translate(X,Y); c.scale(sd,1);
   const e=1-Math.pow(1-(pl||0),3),tr=ready?(Math.random()-.5)*1.6:0,hx=40+e*(cut?78:50)+tr,hy=-8+e*(cut?26:16)+tr,CE=[24,-8]; /* 拉線：握把從發射器側邊一口氣往外拉 */
@@ -730,8 +744,8 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   stageGoal:si=>{ const s=STAGES[si],h={ice:'冰面很滑，陀螺停不下來。',desert:'沙地摩擦大，轉速掉得快。',twin:'前面是紅色極限區域，後左右是黃色擊飛區域。',lava:'碰到滾燙的軌道會掉轉速，但衝刺更猛。',space:'低重力，碗面拉回中間的力比較小。',storm:'暴風會把陀螺往一個方向吹，每隔幾秒換方向。',arena:'兩側的場外口袋特別寬。',final:'冠軍等級的對手。'}[s.th]||'';
     return s.name+'：先拿 4 分的贏。'+h; },
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  help:[['↑ ↓ ← →','開賽前移動落點'],['滑鼠拖曳','裁判喊 GO SHOOT 後拖曳拉繩發射，拉得越快轉速越高；4 秒內沒發射算犯規，犯規 2 次對方得 1 分'],['發射之後','陀螺自己轉、自己撞，不用操作'],['V','切換特寫鏡頭／看全場'],['雙人','1P 用 WASD、拖曳左半邊或按 F 發射；2P 用方向鍵、拖曳右半邊或按 Enter 發射']],
-  touchHelp:[['方向盤','開賽前移動落點'],['手指拖曳','裁判喊 GO SHOOT 後拖曳拉繩發射，越快轉速越高；超時犯規'],['鏡頭','切換特寫鏡頭／看全場']],
+  help:[['↑ ↓ ← →','開賽前移動落點'],['滑鼠拖曳','裁判喊 GO SHOOT 後，按住下方軌道上的握把往外拖，拖到底或放開就發射；拖得越快轉速越高。4 秒內沒發射算犯規，犯規 2 次對方得 1 分'],['發射之後','陀螺自己轉、自己撞，不用操作'],['V','切換特寫鏡頭／看全場'],['雙人','1P 用 WASD、拖曳左半邊或按 F 發射；2P 用方向鍵、拖曳右半邊或按 Enter 發射']],
+  touchHelp:[['方向盤','開賽前移動落點'],['手指拖曳','裁判喊 GO SHOOT 後按住軌道上的握把往外拖，越快轉速越高；超時犯規'],['鏡頭','切換特寫鏡頭／看全場']],
   touch:{left:'dpad',right:[{l:'鏡頭',c:'KeyV'}]},
   looks:[{key:'top',label:'陀螺（點一下看類型和特色）',opts:TOPS.map(q=>({id:q.id,label:q.code+' '+q.n+'（'+q.type+'）'}))},
     {key:'lc',label:'發射器顏色',type:'color',opts:['#e23b3b','#3d8bff','#ffd23f','#3ed16a','#b98cff','#ff7a3d','#2a2d36','#f4f4f4']},
