@@ -253,9 +253,9 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=226; // 每次改版加一
+window.ARCADE_V=227; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
-  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
 <script>
 (function(){
@@ -323,98 +323,98 @@ const SFX={
 };
 /* ---------- 背景音樂：每款遊戲兩首（選單／遊戲中），用程式即時合成的 8-bit 小曲 ----------
    選單曲只在點進遊戲後的開始、設定、造型、連線畫面播；遊戲曲在玩的時候播（音量較小，讓音效聽得清楚）；大廳、暫停、結算畫面不播。 */
-const SONGS={
-  stairs:{menu:{bpm:100,root:57,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'square',bass:'sparse',pad:'arp',drum:'light'},
-          game:{bpm:152,root:57,sc:'minor',prog:'0:m 10:M 8:M 7:M',lead:'square',bass:'root8',pad:'none',drum:'rock',dense:1}},
-  kart:{menu:{bpm:116,root:62,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'square',bass:'pump',pad:'arp',drum:'four'},
-        game:{bpm:164,root:62,sc:'major',prog:'0:M 10:M 5:M 7:M',lead:'sawtooth',bass:'root8',pad:'none',drum:'rock',dense:1}},
-  bomb:{menu:{bpm:108,root:60,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'triangle',bass:'pump',pad:'skank',drum:'light'},
-        game:{bpm:140,root:60,sc:'major',prog:'0:M 5:M 7:M 5:M',lead:'square',bass:'pump',pad:'skank',drum:'four',dense:1}},
-  volley:{menu:{bpm:96,root:65,sc:'major',prog:'0:M 5:M 7:M 5:M',lead:'triangle',bass:'sparse',pad:'skank',drum:'light',swing:1},
-          game:{bpm:124,root:65,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'triangle',bass:'pump',pad:'skank',drum:'four',swing:1,dense:1}},
-  dodge:{menu:{bpm:110,root:64,sc:'minor',prog:'0:m 8:M 10:M 0:m',lead:'square',bass:'sparse',pad:'arp',drum:'light'},
-         game:{bpm:150,root:64,sc:'minor',prog:'0:m 3:M 10:M 8:M',lead:'sawtooth',bass:'root8',pad:'none',drum:'rock',dense:1}},
-  soccer:{menu:{bpm:104,root:67,sc:'major',prog:'0:M 5:M 0:M 7:M',lead:'square',bass:'pump',pad:'pad',drum:'march'},
-          game:{bpm:136,root:67,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'square',bass:'root8',pad:'arp',drum:'rock',dense:1}},
-  bowl:{menu:{bpm:92,root:58,sc:'major',prog:'0:M7 9:m7 2:m7 7:7',lead:'triangle',bass:'walk',pad:'pad',drum:'swing',swing:1},
-        game:{bpm:116,root:58,sc:'major',prog:'0:M7 5:M7 2:m7 7:7',lead:'square',bass:'walk',pad:'none',drum:'swing',swing:1,dense:1}},
-  baseball:{menu:{bpm:100,root:60,sc:'major',prog:'0:M 5:M 7:M 0:M',lead:'organ',bass:'pump',pad:'pad',drum:'light'},
-            game:{bpm:128,root:60,sc:'major',prog:'0:M 9:m 2:m 7:M',lead:'organ',bass:'pump',pad:'arp',drum:'four',dense:1}},
-  purple:{menu:{bpm:96,root:52,sc:'minor',prog:'0:m 8:M 10:M 7:M',lead:'sawtooth',bass:'sparse',pad:'pad',drum:'light'},
-          game:{bpm:158,root:52,sc:'minor',prog:'0:m 0:m 8:M 10:M',lead:'sawtooth',bass:'root8',pad:'arp',drum:'rock',dense:1}},
-  rummy:{menu:{bpm:88,root:65,sc:'major',prog:'0:M7 9:m7 2:m7 7:7',lead:'triangle',bass:'walk',pad:'pad',drum:'swing',swing:1},
-         game:{bpm:100,root:63,sc:'major',prog:'2:m7 7:7 0:M7 9:m7',lead:'triangle',bass:'walk',pad:'pad',drum:'swing',swing:1}},
-  mahjong:{menu:{bpm:84,root:62,sc:'penta',prog:'0:M 9:m 7:M 0:M',lead:'pluck',bass:'sparse',pad:'arp',drum:'none'},
-           game:{bpm:104,root:62,sc:'penta',prog:'0:M 7:M 9:m 4:m',lead:'pluck',bass:'sparse',pad:'arp',drum:'taiko'}},
-  meow:{menu:{bpm:90,root:72,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'box',bass:'sparse',pad:'none',drum:'none'},
-        game:{bpm:96,root:67,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'box',bass:'sparse',pad:'arp',drum:'light'}},
-  poker:{menu:{bpm:86,root:62,sc:'major',prog:'2:m7 7:7 0:M7 0:M7',lead:'triangle',bass:'walk',pad:'pad',drum:'swing',swing:1},
-         game:{bpm:104,root:60,sc:'minor',prog:'0:m7 5:m7 10:M7 3:M7',lead:'triangle',bass:'walk',pad:'pad',drum:'swing',swing:1}},
-  deliver:{menu:{bpm:112,root:59,sc:'major',prog:'0:M 4:m 9:m 7:M',lead:'pluck',bass:'pump',pad:'skank',drum:'light',swing:1},
-           game:{bpm:146,root:59,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'square',bass:'root8',pad:'arp',drum:'four',dense:1}},
-  chess:{menu:{bpm:92,root:63,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'box',bass:'sparse',pad:'pad',drum:'none'},
-         game:{bpm:132,root:63,sc:'minor',prog:'0:m 5:m 8:M 10:M',lead:'pluck',bass:'root8',pad:'arp',drum:'march',dense:1}},
-  dice:{menu:{bpm:96,root:64,sc:'penta',prog:'0:M 9:m 7:M 0:M',lead:'pluck',bass:'pump',pad:'arp',drum:'taiko'},
-        game:{bpm:118,root:64,sc:'penta',prog:'0:M 7:M 9:m 7:M',lead:'square',bass:'pump',pad:'skank',drum:'taiko',dense:1}},
-  qi:{menu:{bpm:76,root:57,sc:'penta',prog:'0:m 5:m 7:M 0:m',lead:'pluck',bass:'sparse',pad:'pad',drum:'none'},
-      game:{bpm:90,root:55,sc:'penta',prog:'0:M 9:m 2:m 7:M',lead:'triangle',bass:'sparse',pad:'arp',drum:'none'}},
-  moto:{menu:{bpm:110,root:52,sc:'minor',prog:'0:m 10:M 8:M 10:M',lead:'sawtooth',bass:'pump',pad:'pad',drum:'light'},
-        game:{bpm:170,root:52,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'sawtooth',bass:'root8',pad:'none',drum:'rock',dense:1}},
-  sled:{menu:{bpm:96,root:69,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'box',bass:'sparse',pad:'arp',drum:'light'},
-        game:{bpm:150,root:67,sc:'major',prog:'0:M 4:m 5:M 7:M',lead:'triangle',bass:'pump',pad:'arp',drum:'four',dense:1}},
-  jet:{menu:{bpm:104,root:62,sc:'major',prog:'0:M7 5:M7 2:m7 7:7',lead:'pluck',bass:'walk',pad:'skank',drum:'light',swing:1},
-       game:{bpm:144,root:62,sc:'major',prog:'0:M 7:M 5:M 7:M',lead:'square',bass:'pump',pad:'skank',drum:'four',swing:1,dense:1}},
-  run:{menu:{bpm:116,root:65,sc:'penta',prog:'0:M 5:M 9:m 7:M',lead:'box',bass:'pump',pad:'none',drum:'light'},
-       game:{bpm:158,root:65,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'square',bass:'pump',pad:'arp',drum:'march',dense:1}},
-  isle:{menu:{bpm:112,root:57,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'square',bass:'pump',pad:'arp',drum:'light'},
-        game:{bpm:164,root:57,sc:'minor',prog:'0:m 8:M 10:M 7:M',lead:'sawtooth',bass:'root8',pad:'arp',drum:'rock',dense:1}},
-  pillow:{menu:{bpm:88,root:70,sc:'major',prog:'0:M7 9:m7 5:M7 7:7',lead:'box',bass:'sparse',pad:'pad',drum:'none'},
-          game:{bpm:138,root:69,sc:'major',prog:'0:M 5:M 7:M 9:m',lead:'triangle',bass:'pump',pad:'skank',drum:'four',swing:1,dense:1}},
-  bball:{menu:{bpm:94,root:55,sc:'minor',prog:'0:m7 5:m7 10:7 3:M7',lead:'square',bass:'walk',pad:'skank',drum:'light',swing:1},
-         game:{bpm:150,root:55,sc:'minor',prog:'0:m 3:M 10:M 5:m',lead:'sawtooth',bass:'root8',pad:'skank',drum:'rock',dense:1}},
-  golf:{menu:{bpm:80,root:67,sc:'major',prog:'0:M7 4:m7 5:M7 2:m7',lead:'pluck',bass:'sparse',pad:'pad',drum:'none'},
-        game:{bpm:100,root:67,sc:'major',prog:'0:M 2:m 5:M 7:M',lead:'triangle',bass:'walk',pad:'pad',drum:'light',swing:1}},
-  pool:{menu:{bpm:78,root:58,sc:'minor',prog:'0:m7 5:7 10:M7 3:M7',lead:'box',bass:'walk',pad:'pad',drum:'light',swing:1},
-        game:{bpm:96,root:58,sc:'minor',prog:'0:m7 8:M7 5:m7 7:7',lead:'pluck',bass:'walk',pad:'skank',drum:'light',swing:1}},
-  blocks:{menu:{bpm:112,root:64,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'pluck',bass:'pump',pad:'arp',drum:'light'},
-        game:{bpm:146,root:62,sc:'minor',prog:'0:m 8:M 10:M 7:M',lead:'square',bass:'root8',pad:'arp',drum:'four',dense:1}},
-  drum:{menu:{bpm:104,root:62,sc:'penta',prog:'0:M 5:M 7:M 0:M',lead:'pluck',bass:'sparse',pad:'pad',drum:'taiko'},
+const SONGS={ /* 每款依遊戲風格配器：lead 主旋律音色、bass 低音、pad 和弦、drum 鼓組（v227 重新配曲） */
+  kart:{menu:{bpm:120,root:62,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'marimba',bass:'octave',pad:'stab',drum:'disco'},
+        game:{bpm:168,root:62,sc:'major',prog:'0:M 10:M 5:M 7:M',lead:'super',bass:'octave',pad:'gate',drum:'edm',dense:1}},
+  chess:{menu:{bpm:90,root:62,sc:'dorian',prog:'0:m 10:M 5:M 0:m',lead:'flute',bass:'sparse',pad:'strings',drum:'light'},
+         game:{bpm:128,root:62,sc:'minor',prog:'0:m 8:M 10:M 7:M',lead:'brass',bass:'gallop',pad:'strings',drum:'march',dense:1}},
+  bomb:{menu:{bpm:108,root:60,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'marimba',bass:'pump',pad:'skank',drum:'reggae'},
+        game:{bpm:150,root:60,sc:'major',prog:'0:M 5:M 7:M 5:M',lead:'chip',bass:'octave',pad:'skank',drum:'disco',dense:1}},
+  royale:{menu:{bpm:80,root:57,sc:'harm',prog:'0:m 8:M 5:m 7:M',lead:'brass',bass:'drone',pad:'strings',drum:'heart'},
+          game:{bpm:128,root:57,sc:'minor',prog:'0:m 3:M 8:M 10:M',lead:'super',bass:'synth',pad:'strings',drum:'trap',dense:1}},
+  spin:{menu:{bpm:128,root:59,sc:'minor',prog:'0:m 8:M 10:M 3:M',lead:'gtr',bass:'octave',pad:'stab',drum:'edm'},
+        game:{bpm:174,root:61,sc:'minor',prog:'0:m 10:M 8:M 10:M',lead:'gtr',bass:'octave',pad:'strings',drum:'metal',dense:1}},
+  deliver:{menu:{bpm:108,root:59,sc:'dorian',prog:'0:m7 5:7 0:m7 5:7',lead:'piano',bass:'synth',pad:'stab',drum:'disco',swing:1},
+           game:{bpm:140,root:59,sc:'mixo',prog:'0:M 10:M 5:M 0:M',lead:'super',bass:'octave',pad:'stab',drum:'disco',dense:1}},
+  space:{menu:{bpm:96,root:62,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'super',bass:'synth',pad:'strings',drum:'light'},
+         game:{bpm:150,root:62,sc:'minor',prog:'0:m 10:M 8:M 7:M',lead:'acid',bass:'octave',pad:'gate',drum:'edm',dense:1}},
+  chase:{menu:{bpm:86,root:52,sc:'harm',prog:'0:m 8:M 5:m 7:M',lead:'piano',bass:'808',pad:'strings',drum:'trap'},
+         game:{bpm:140,root:52,sc:'minor',prog:'0:m 10:M 8:M 7:m',lead:'super',bass:'808',pad:'stab',drum:'trap',dense:1}},
+  meow:{menu:{bpm:84,root:72,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'bell',bass:'sparse',pad:'harp',drum:'none'},
+        game:{bpm:88,root:67,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'marimba',bass:'sparse',pad:'pad',drum:'none'}},
+  bball:{menu:{bpm:90,root:55,sc:'dorian',prog:'0:m7 5:7 10:M7 3:M7',lead:'piano',bass:'808',pad:'stab',drum:'trap'},
+         game:{bpm:98,root:55,sc:'minor',prog:'0:m 3:M 10:M 5:m',lead:'whistle',bass:'808',pad:'stab',drum:'trap',dense:1}},
+  dodge:{menu:{bpm:116,root:64,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'gtr',bass:'root8',pad:'brassy',drum:'rock'},
+         game:{bpm:152,root:64,sc:'minor',prog:'0:m 3:M 10:M 8:M',lead:'gtr',bass:'gallop',pad:'stab',drum:'metal',dense:1}},
+  soccer:{menu:{bpm:104,root:67,sc:'major',prog:'0:M 5:M 0:M 7:M',lead:'brass',bass:'pump',pad:'brassy',drum:'march'},
+          game:{bpm:132,root:67,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'brass',bass:'octave',pad:'strings',drum:'edm',dense:1}},
+  baseball:{menu:{bpm:104,root:60,sc:'major',prog:'0:M 5:M 7:M 0:M',lead:'organ',bass:'walk',pad:'organ',drum:'light',swing:1},
+            game:{bpm:128,root:60,sc:'major',prog:'0:M 9:m 2:m 7:M',lead:'organ',bass:'pump',pad:'organ',drum:'four',dense:1}},
+  rich:{menu:{bpm:108,root:62,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'marimba',bass:'walk',pad:'skank',drum:'bossa'},
+        game:{bpm:120,root:64,sc:'major',prog:'0:M 9:m 2:m 7:M',lead:'whistle',bass:'pump',pad:'skank',drum:'four',dense:1}},
+  purple:{menu:{bpm:96,root:52,sc:'harm',prog:'0:m 8:M 10:M 7:M',lead:'gtr',bass:'drone',pad:'strings',drum:'heart'},
+          game:{bpm:160,root:52,sc:'minor',prog:'0:m 0:m 8:M 10:M',lead:'gtr',bass:'gallop',pad:'stab',drum:'metal',dense:1}},
+  jelly:{menu:{bpm:112,root:67,sc:'major',prog:'0:M 5:M 2:m 7:M',lead:'bell',bass:'pump',pad:'harp',drum:'light',swing:1},
+         game:{bpm:148,root:67,sc:'major',prog:'0:M 9:m 2:m 7:M',lead:'chip',bass:'octave',pad:'skank',drum:'disco',dense:1}},
+  tower:{menu:{bpm:100,root:60,sc:'major',prog:'0:M 4:m 5:M 7:M',lead:'flute',bass:'pump',pad:'strings',drum:'march'},
+         game:{bpm:124,root:60,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'brass',bass:'gallop',pad:'strings',drum:'march',dense:1}},
+  bowl:{menu:{bpm:92,root:58,sc:'major',prog:'0:M7 9:m7 2:m7 7:7',lead:'piano',bass:'walk',pad:'pad',drum:'swing',swing:1},
+        game:{bpm:118,root:58,sc:'mixo',prog:'0:M 10:M 5:M 0:M',lead:'organ',bass:'octave',pad:'stab',drum:'disco',dense:1}},
+  poker:{menu:{bpm:86,root:62,sc:'major',prog:'2:m7 7:7 0:M7 0:M7',lead:'piano',bass:'walk',pad:'pad',drum:'swing',swing:1},
+         game:{bpm:100,root:60,sc:'dorian',prog:'0:m7 5:7 10:M7 3:M7',lead:'piano',bass:'walk',pad:'pad',drum:'swing',swing:1}},
+  dice:{menu:{bpm:100,root:64,sc:'penta',prog:'0:M 9:m 7:M 0:M',lead:'zheng',bass:'pump',pad:'skank',drum:'gong'},
+        game:{bpm:126,root:64,sc:'penta',prog:'0:M 7:M 9:m 7:M',lead:'brass',bass:'pump',pad:'skank',drum:'gong',dense:1}},
+  qi:{menu:{bpm:70,root:57,sc:'penta',prog:'0:m 5:m 7:M 0:m',lead:'zheng',bass:'drone',pad:'pad',drum:'none'},
+      game:{bpm:80,root:55,sc:'penta',prog:'0:M 9:m 2:m 7:M',lead:'flute',bass:'sparse',pad:'harp',drum:'none'}},
+  mahjong:{menu:{bpm:84,root:62,sc:'penta',prog:'0:M 9:m 7:M 0:M',lead:'erhu',bass:'sparse',pad:'harp',drum:'none'},
+           game:{bpm:110,root:62,sc:'penta',prog:'0:M 7:M 9:m 4:m',lead:'zheng',bass:'pump',pad:'skank',drum:'gong'}},
+  rummy:{menu:{bpm:88,root:65,sc:'major',prog:'0:M7 9:m7 2:m7 7:7',lead:'piano',bass:'walk',pad:'pad',drum:'bossa'},
+         game:{bpm:100,root:63,sc:'dorian',prog:'0:m7 5:7 0:m7 10:M7',lead:'flute',bass:'walk',pad:'pad',drum:'bossa'}},
+  drum:{menu:{bpm:104,root:62,sc:'penta',prog:'0:M 5:M 7:M 0:M',lead:'flute',bass:'sparse',pad:'pad',drum:'taiko'},
         game:{bpm:132,root:62,sc:'penta',prog:'0:M 9:m 5:M 7:M',lead:'square',bass:'pump',pad:'arp',drum:'taiko',dense:1}},
-  dance:{menu:{bpm:118,root:65,sc:'minor',prog:'0:m 10:M 8:M 10:M',lead:'sawtooth',bass:'pump',pad:'arp',drum:'four'},
-        game:{bpm:128,root:65,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'square',bass:'root8',pad:'arp',drum:'four',dense:1}},
-  tower:{menu:{bpm:100,root:60,sc:'major',prog:'0:M 4:m 5:M 7:M',lead:'triangle',bass:'pump',pad:'pad',drum:'march'},
-        game:{bpm:124,root:57,sc:'minor',prog:'0:m 5:m 8:M 7:M',lead:'square',bass:'root8',pad:'arp',drum:'march',dense:1}},
-  space:{menu:{bpm:104,root:62,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'triangle',bass:'pump',pad:'pad',drum:'light'},
-        game:{bpm:152,root:62,sc:'minor',prog:'0:m 10:M 8:M 7:M',lead:'square',bass:'pump',pad:'skank',drum:'four',dense:1}},
-  royale:{menu:{bpm:88,root:57,sc:'minor',prog:'0:m 5:m 8:M 7:M',lead:'triangle',bass:'walk',pad:'pad',drum:'light'},
-        game:{bpm:124,root:57,sc:'minor',prog:'0:m 3:M 8:M 10:M',lead:'pluck',bass:'pump',pad:'pad',drum:'four'}},
-  draw:{menu:{bpm:116,root:65,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'pluck',bass:'walk',pad:'skank',drum:'swing',swing:1},
-        game:{bpm:100,root:65,sc:'major',prog:'0:M 4:m 5:M 7:M',lead:'triangle',bass:'walk',pad:'pad',drum:'light',swing:1}},
-  wolf:{menu:{bpm:76,root:55,sc:'minor',prog:'0:m 8:M 5:m 7:M',lead:'triangle',bass:'walk',pad:'pad',drum:'light'},
-        game:{bpm:84,root:55,sc:'minor',prog:'0:m 1:M 8:M 7:m',lead:'pluck',bass:'walk',pad:'pad',drum:'light'}},
-  passbomb:{menu:{bpm:128,root:60,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'square',bass:'pump',pad:'skank',drum:'four'},
-        game:{bpm:160,root:60,sc:'minor',prog:'0:m 8:M 10:M 7:M',lead:'square',bass:'pump',pad:'skank',drum:'four',dense:1}},
-  bubble:{menu:{bpm:112,root:69,sc:'major',prog:'0:M 7:M 5:M 2:m',lead:'pluck',bass:'pump',pad:'skank',drum:'light',swing:1},
-        game:{bpm:132,root:69,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'triangle',bass:'walk',pad:'arp',drum:'light'}},
-  claw:{menu:{bpm:96,root:64,sc:'major',prog:'0:M 9:m 4:m 7:M',lead:'square',bass:'walk',pad:'skank',drum:'swing',swing:1},
-        game:{bpm:118,root:64,sc:'major',prog:'0:M 2:m 7:M 5:M',lead:'pluck',bass:'pump',pad:'arp',drum:'swing',swing:1}},
-  tank:{menu:{bpm:98,root:50,sc:'minor',prog:'0:m 7:m 3:M 5:m',lead:'square',bass:'root8',pad:'pad',drum:'march'},
-        game:{bpm:136,root:50,sc:'minor',prog:'0:m 3:M 10:M 5:m',lead:'square',bass:'root8',pad:'arp',drum:'march',dense:1}},
-  chase:{menu:{bpm:104,root:52,sc:'minor',prog:'0:m 5:m 8:M 7:M',lead:'sawtooth',bass:'walk',pad:'pad',drum:'four'},
-         game:{bpm:142,root:52,sc:'minor',prog:'0:m 10:M 8:M 7:m',lead:'square',bass:'root8',pad:'arp',drum:'rock',dense:1}},
-  night:{menu:{bpm:92,root:57,sc:'penta',prog:'0:M 5:M 9:m 7:M',lead:'organ',bass:'walk',pad:'arp',drum:'light'},
-         game:{bpm:112,root:60,sc:'penta',prog:'0:M 9:m 5:M 7:M',lead:'box',bass:'pump',pad:'skank',drum:'swing',swing:1}},
-  dash:{menu:{bpm:126,root:66,sc:'major',prog:'0:M 9:m 4:m 5:M',lead:'triangle',bass:'pump',pad:'skank',drum:'four'},
-        game:{bpm:164,root:66,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'square',bass:'pump',pad:'skank',drum:'four',dense:1}},
-  spin:{menu:{bpm:122,root:59,sc:'minor',prog:'0:m 8:M 10:M 3:M',lead:'sawtooth',bass:'pump',pad:'arp',drum:'four'},
-        game:{bpm:172,root:61,sc:'minor',prog:'0:m 10:M 8:M 10:M',lead:'square',bass:'root8',pad:'arp',drum:'rock',dense:1}},
-  jelly:{menu:{bpm:110,root:67,sc:'major',prog:'0:M 5:M 2:m 7:M',lead:'triangle',bass:'pump',pad:'skank',drum:'light',swing:1},
-        game:{bpm:150,root:67,sc:'major',prog:'0:M 9:m 2:m 7:M',lead:'square',bass:'pump',pad:'skank',drum:'four',dense:1}},
-  rich:{menu:{bpm:108,root:62,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'pluck',bass:'walk',pad:'pad',drum:'swing',swing:1},
-        game:{bpm:120,root:64,sc:'major',prog:'0:M 9:m 2:m 7:M',lead:'triangle',bass:'pump',pad:'skank',drum:'light',dense:1}}
+  dance:{menu:{bpm:124,root:65,sc:'minor',prog:'0:m 10:M 8:M 10:M',lead:'super',bass:'octave',pad:'gate',drum:'edm'},
+         game:{bpm:128,root:65,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'square',bass:'root8',pad:'arp',drum:'four',dense:1}},
+  passbomb:{menu:{bpm:120,root:60,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'marimba',bass:'pump',pad:'skank',drum:'tick'},
+            game:{bpm:160,root:60,sc:'harm',prog:'0:m 8:M 5:m 7:M',lead:'chip',bass:'gallop',pad:'stab',drum:'tick',dense:1}},
+  draw:{menu:{bpm:112,root:65,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'uke',bass:'walk',pad:'skank',drum:'bossa'},
+        game:{bpm:100,root:65,sc:'major',prog:'0:M 4:m 5:M 7:M',lead:'marimba',bass:'sparse',pad:'harp',drum:'light'}},
+  wolf:{menu:{bpm:70,root:55,sc:'harm',prog:'0:m 8:M 5:m 7:M',lead:'horror',bass:'drone',pad:'strings',drum:'heart'},
+        game:{bpm:78,root:55,sc:'harm',prog:'0:m 1:M 8:M 7:M',lead:'piano',bass:'drone',pad:'strings',drum:'heart'}},
+  stairs:{menu:{bpm:104,root:57,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'chip',bass:'pump',pad:'arp',drum:'light'},
+          game:{bpm:156,root:57,sc:'minor',prog:'0:m 10:M 8:M 7:M',lead:'chip',bass:'octave',pad:'arp',drum:'dnb',dense:1}},
+  blocks:{menu:{bpm:112,root:64,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'chip',bass:'pump',pad:'arp',drum:'light'},
+          game:{bpm:146,root:62,sc:'harm',prog:'0:m 8:M 5:m 7:M',lead:'chip',bass:'octave',pad:'arp',drum:'disco',dense:1}},
+  volley:{menu:{bpm:96,root:65,sc:'major',prog:'0:M 5:M 7:M 5:M',lead:'uke',bass:'reggae',pad:'skank',drum:'reggae'},
+          game:{bpm:126,root:65,sc:'mixo',prog:'0:M 10:M 5:M 7:M',lead:'marimba',bass:'octave',pad:'skank',drum:'bossa',dense:1}},
+  golf:{menu:{bpm:82,root:67,sc:'major',prog:'0:M7 4:m7 5:M7 2:m7',lead:'piano',bass:'walk',pad:'pad',drum:'bossa'},
+        game:{bpm:96,root:67,sc:'major',prog:'0:M7 2:m7 5:M7 7:7',lead:'flute',bass:'walk',pad:'pad',drum:'bossa'}},
+  pool:{menu:{bpm:78,root:58,sc:'dorian',prog:'0:m7 5:7 10:M7 3:M7',lead:'piano',bass:'walk',pad:'pad',drum:'swing',swing:1},
+        game:{bpm:92,root:58,sc:'dorian',prog:'0:m7 8:M7 5:m7 7:7',lead:'brass',bass:'walk',pad:'pad',drum:'swing',swing:1}},
+  moto:{menu:{bpm:112,root:52,sc:'minor',prog:'0:m 10:M 8:M 10:M',lead:'gtr',bass:'root8',pad:'stab',drum:'rock'},
+        game:{bpm:172,root:52,sc:'minor',prog:'0:m 8:M 3:M 10:M',lead:'gtr',bass:'gallop',pad:'stab',drum:'metal',dense:1}},
+  sled:{menu:{bpm:96,root:69,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'bell',bass:'sparse',pad:'strings',drum:'sleigh'},
+        game:{bpm:150,root:67,sc:'major',prog:'0:M 4:m 5:M 7:M',lead:'flute',bass:'pump',pad:'harp',drum:'sleigh',dense:1}},
+  jet:{menu:{bpm:104,root:62,sc:'mixo',prog:'0:M 10:M 5:M 0:M',lead:'marimba',bass:'reggae',pad:'skank',drum:'reggae'},
+       game:{bpm:150,root:62,sc:'mixo',prog:'0:M 7:M 5:M 10:M',lead:'gtr',bass:'octave',pad:'stab',drum:'disco',dense:1}},
+  run:{menu:{bpm:116,root:65,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'whistle',bass:'pump',pad:'skank',drum:'light'},
+       game:{bpm:160,root:65,sc:'major',prog:'0:M 9:m 5:M 7:M',lead:'chip',bass:'octave',pad:'skank',drum:'disco',dense:1}},
+  isle:{menu:{bpm:112,root:57,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'brass',bass:'pump',pad:'brassy',drum:'march'},
+        game:{bpm:164,root:57,sc:'minor',prog:'0:m 8:M 10:M 7:M',lead:'super',bass:'octave',pad:'stab',drum:'edm',dense:1}},
+  pillow:{menu:{bpm:92,root:70,sc:'major',prog:'0:M7 9:m7 5:M7 7:7',lead:'whistle',bass:'sparse',pad:'harp',drum:'none'},
+          game:{bpm:140,root:69,sc:'major',prog:'0:M 5:M 7:M 9:m',lead:'marimba',bass:'pump',pad:'skank',drum:'disco',swing:1,dense:1}},
+  tank:{menu:{bpm:92,root:50,sc:'minor',prog:'0:m 7:m 3:M 5:m',lead:'brass',bass:'gallop',pad:'strings',drum:'march'},
+        game:{bpm:136,root:50,sc:'harm',prog:'0:m 3:M 10:M 7:M',lead:'brass',bass:'gallop',pad:'brassy',drum:'march',dense:1}},
+  bubble:{menu:{bpm:110,root:69,sc:'major',prog:'0:M 7:M 5:M 2:m',lead:'bell',bass:'pump',pad:'harp',drum:'light',swing:1},
+          game:{bpm:128,root:69,sc:'major',prog:'0:M 5:M 9:m 7:M',lead:'marimba',bass:'walk',pad:'skank',drum:'bossa'}},
+  night:{menu:{bpm:96,root:57,sc:'penta',prog:'0:M 5:M 9:m 7:M',lead:'organ',bass:'walk',pad:'skank',drum:'light'},
+         game:{bpm:116,root:60,sc:'penta',prog:'0:M 9:m 5:M 7:M',lead:'organ',bass:'octave',pad:'skank',drum:'disco',swing:1}},
+  dash:{menu:{bpm:124,root:66,sc:'major',prog:'0:M 9:m 4:m 5:M',lead:'chip',bass:'pump',pad:'skank',drum:'four'},
+        game:{bpm:168,root:66,sc:'major',prog:'0:M 7:M 9:m 5:M',lead:'super',bass:'octave',pad:'gate',drum:'edm',dense:1}},
+  claw:{menu:{bpm:100,root:64,sc:'major',prog:'0:M 9:m 4:m 7:M',lead:'bell',bass:'walk',pad:'skank',drum:'swing',swing:1},
+        game:{bpm:116,root:64,sc:'major',prog:'0:M 2:m 7:M 5:M',lead:'chip',bass:'pump',pad:'arp',drum:'disco',swing:1}}
 };
 const Music=(()=>{
-  const SC={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],penta:[0,2,4,7,9]},Q={M:[0,4,7],m:[0,3,7],M7:[0,4,7,11],m7:[0,3,7,10],'7':[0,4,7,10]};
+  const SC={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],penta:[0,2,4,7,9],harm:[0,2,3,5,7,8,11],dorian:[0,2,3,5,7,9,10],blues:[0,3,5,6,7,10],mixo:[0,2,4,5,7,9,10],mpenta:[0,3,5,7,10]},Q={M:[0,4,7],m:[0,3,7],M7:[0,4,7,11],m7:[0,3,7,10],'7':[0,4,7,10]};
   const hz=m=>440*Math.pow(2,(m-69)/12);
   let bus=null,key=null,song=null,timer=null,nextT=0,step=0,nbuf=null;
   // 用遊戲名字當種子，每次產生的曲子都一樣
@@ -441,8 +441,30 @@ const Music=(()=>{
   function osc(type,f,t,d,v,b,att){ const o=AC.createOscillator(),g=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+(att||.008)); g.gain.exponentialRampToValueAtTime(.0005,t+d); o.connect(g); g.connect(b); o.start(t); o.stop(t+d+.05); return o; }
   function hit(t,d,v,hp,b){ const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain(); s.buffer=ensureNoise(); f.type='highpass'; f.frequency.value=hp; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0005,t+d); s.connect(f); f.connect(g); g.connect(b); s.start(t); s.stop(t+d+.02); }
   function kick(t,v,b,f0){ const o=AC.createOscillator(),g=AC.createGain(); o.frequency.setValueAtTime(f0||150,t); o.frequency.exponentialRampToValueAtTime(45,t+.12); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0005,t+.18); o.connect(g); g.connect(b); o.start(t); o.stop(t+.2); }
-  function lead(S,m,t,d,b){ const f=hz(m);
-    if(S.lead==='box'){ osc('triangle',f*2,t,Math.min(d,.5)+.25,.10,b); osc('sine',f*4,t,.18,.03,b); }
+  // 進階音色：濾波、顫音、多聲部
+  let pw=null; function pulse(){ if(pw) return pw; const n=32,re=new Float32Array(n),im=new Float32Array(n); for(let k=1;k<n;k++) im[k]=2/(k*Math.PI)*Math.sin(k*Math.PI*.25); return pw=AC.createPeriodicWave(re,im); }
+  function vox(type,f,t,d,v,b,o){ o=o||{}; const g=AC.createGain(),os=AC.createOscillator(); if(type==='pulse') os.setPeriodicWave(pulse()); else os.type=type; os.frequency.setValueAtTime(f,t); if(o.det) os.detune.value=o.det;
+    if(o.glide){ os.frequency.setValueAtTime(f*o.glide,t); os.frequency.exponentialRampToValueAtTime(f,t+.06); }
+    if(o.vib){ const l=AC.createOscillator(),lg=AC.createGain(); l.frequency.value=o.vib; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(f*(o.vd||.008),t+Math.min(d*.6,.35)); l.connect(lg); lg.connect(os.frequency); l.start(t); l.stop(t+d+.1); }
+    let node=os; if(o.lp){ const fl=AC.createBiquadFilter(); fl.type='lowpass'; fl.Q.value=o.q||1; fl.frequency.setValueAtTime(o.lp,t); if(o.lpEnd) fl.frequency.exponentialRampToValueAtTime(o.lpEnd,t+Math.max(.05,d*.8)); node.connect(fl); node=fl; }
+    if(o.dist){ const ws=AC.createWaveShaper(),cv=new Float32Array(256); for(let i=0;i<256;i++){ const x=i/128-1; cv[i]=Math.tanh(x*o.dist); } ws.curve=cv; node.connect(ws); node=ws; }
+    const at=o.att||.008; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+at); if(o.sus) g.gain.setValueAtTime(v*o.sus,t+Math.max(at,d-.04)); g.gain.exponentialRampToValueAtTime(.0005,t+d+(o.rel||0)); node.connect(g); g.connect(b); os.start(t); os.stop(t+d+(o.rel||0)+.08); }
+  function lead(S,m,t,d,b){ const f=hz(m),L=S.lead;
+    if(L==='erhu'){ vox('sawtooth',f,t,d+.08,.05,b,{att:.07,lp:1900,vib:5.5,vd:.012,glide:.97,sus:.8}); return; }
+    if(L==='zheng'){ vox('triangle',f,t,Math.min(.9,d+.35),.13,b,{att:.003,glide:1.02}); vox('sine',f*2,t,.22,.04,b,{att:.002}); vox('sine',f*3,t,.08,.02,b,{att:.002}); return; }
+    if(L==='piano'){ vox('triangle',f,t,Math.min(1.2,d+.5),.11,b,{att:.004}); vox('sine',f*2,t,.4,.035,b,{att:.003}); vox('sine',f*.5,t,Math.min(1,d+.3),.04,b,{att:.004}); return; }
+    if(L==='brass'){ vox('sawtooth',f,t,d+.05,.045,b,{att:.03,lp:600,lpEnd:2600,q:2,sus:.85}); vox('sawtooth',f,t,d+.05,.025,b,{att:.03,det:8,lp:1800}); return; }
+    if(L==='super'){ for(const dt of [-12,0,12]) vox('sawtooth',f,t,d+.04,.018,b,{det:dt,lp:3200,att:.01,sus:.8}); vox('sawtooth',f/2,t,d,.012,b,{lp:1400}); return; }
+    if(L==='bell'){ vox('sine',f*2,t,.9,.08,b,{att:.002}); vox('sine',f*2*2.76,t,.35,.025,b,{att:.002}); vox('sine',f*2*5.4,t,.12,.012,b,{att:.001}); return; }
+    if(L==='flute'){ vox('sine',f*2,t,d+.06,.09,b,{att:.06,vib:5,vd:.006,sus:.85}); vox('triangle',f*2,t,d,.02,b,{att:.08}); return; }
+    if(L==='chip'){ vox('pulse',f,t,d*.9,.06,b,{att:.003,sus:.7}); return; }
+    if(L==='acid'){ vox('sawtooth',f,t,d+.03,.05,b,{lp:500,lpEnd:3500,q:9,att:.004}); return; }
+    if(L==='gtr'){ vox('sawtooth',f,t,d+.1,.03,b,{dist:6,lp:2600,att:.004,sus:.8}); vox('sawtooth',f*1.498,t,d+.1,.016,b,{dist:6,lp:2200,att:.004}); return; }
+    if(L==='uke'){ vox('triangle',f*2,t,.35,.1,b,{att:.002}); vox('square',f*2,t,.06,.012,b,{att:.002,lp:2500}); return; }
+    if(L==='marimba'){ vox('sine',f,t,.45,.14,b,{att:.002}); vox('sine',f*4,t,.06,.04,b,{att:.001}); return; }
+    if(L==='whistle'){ vox('sine',f*4,t,d+.05,.06,b,{att:.03,vib:6,vd:.01,glide:.94}); return; }
+    if(L==='horror'){ vox('sine',f,t,d+.3,.07,b,{att:.15,vib:3,vd:.02,rel:.3}); vox('triangle',f*1.01,t,d+.3,.03,b,{att:.2}); return; }
+    if(L==='box'){ osc('triangle',f*2,t,Math.min(d,.5)+.25,.10,b); osc('sine',f*4,t,.18,.03,b); }
     else if(S.lead==='pluck') osc('triangle',f,t,Math.min(.45,d+.1),.13,b,.004);
     else if(S.lead==='organ'){ osc('sine',f,t,d,.07,b,.02); osc('sine',f*2,t,d,.04,b,.02); osc('square',f*4,t,d*.6,.008,b,.02); }
     else osc(S.lead,f,t,d,S.lead==='sawtooth'?.035:S.lead==='square'?.045:.10,b); }
@@ -455,11 +477,23 @@ const Music=(()=>{
     else if(bq==='pump'&&s%4===0) osc('triangle',hz(root+(s%8===4?7:0)),tt,sd*3,.17,b);
     else if(bq==='sparse'&&(s===0||s===8)) osc('triangle',hz(root+(s===8?7:0)),tt,sd*6,.15,b);
     else if(bq==='walk'&&s%4===0){ const w=[0,ch.q[1],7,ch.q[1]===3?10:9][s/4]; osc('triangle',hz(root+w),tt,sd*3.4,.17,b); }
+    else if(bq==='808'&&(s===0||s===7||s===10)) vox('sine',hz(root-12+(s===10?12:0)),tt,sd*(s===0?6:3),.32,b,{att:.004,glide:1.5});
+    else if(bq==='synth'&&s%4===2) vox('sawtooth',hz(root),tt,sd*1.6,.07,b,{lp:300,lpEnd:900,q:4});
+    else if(bq==='octave'&&s%2===0) vox('sawtooth',hz(root+(s%4===2?12:0)),tt,sd*1.4,.06,b,{lp:700,q:2});
+    else if(bq==='reggae'&&(s===8||s===10)) vox('sine',hz(root+(s===10?7:0)),tt,sd*2.5,.24,b,{att:.01});
+    else if(bq==='drone'&&s===0&&bar%2===0) vox('sawtooth',hz(root-12),t,sd*31,.05,b,{lp:300,att:.6,sus:.9});
+    else if(bq==='gallop'&&(s%4===0||s%4===2||s%4===3)) vox('square',hz(root),tt,sd*.8,.05,b,{lp:600});
     // 和弦
     const pd=S.pad,cn=ch.q.map(iv=>S.root+ch.o+iv);
     if(pd==='arp'&&s%2===0) osc('square',hz(cn[(s/2)%cn.length]+12),tt,sd*1.5,.012,b);
     else if(pd==='skank'&&s%8===4) cn.forEach(m=>osc('square',hz(m),tt,sd*1.4,.014,b));
     else if(pd==='pad'&&s===0) cn.forEach(m=>osc('triangle',hz(m),t,sd*15,.03,b,.12));
+    else if(pd==='strings'&&s===0) cn.forEach(m=>{ vox('sawtooth',hz(m),t,sd*15,.012,b,{att:sd*4,lp:1300,sus:.9,det:-7}); vox('sawtooth',hz(m),t,sd*15,.012,b,{att:sd*4,lp:1300,sus:.9,det:7}); });
+    else if(pd==='stab'&&s%4===2) cn.forEach(m=>vox('sawtooth',hz(m+12),tt,sd*.9,.014,b,{lp:2400}));
+    else if(pd==='gate'&&s%2===0) cn.forEach(m=>vox('sawtooth',hz(m+12),tt,sd*.8,.008,b,{lp:1800+Math.sin(i*.05)*900}));
+    else if(pd==='organ'&&s===0) cn.forEach(m=>{ vox('sine',hz(m),t,sd*15,.025,b,{att:.05,sus:.95}); vox('sine',hz(m+12),t,sd*15,.012,b,{att:.05,sus:.95}); });
+    else if(pd==='brassy'&&(s===0||s===6)) cn.forEach(m=>vox('sawtooth',hz(m),tt,sd*(s===0?3:1.5),.014,b,{att:.02,lp:900,lpEnd:2200}));
+    else if(pd==='harp'){ const k=cn.length,m=cn[s%k]+12*Math.floor((s%8)/k); if(s%2===0) vox('triangle',hz(m+12),tt,sd*3,.025,b,{att:.003}); }
     // 鼓
     const dr=S.drum;
     if(dr==='rock'){ if(s===0||s===8||s===10) kick(t,.5,b); if(s===4||s===12) hit(t,.14,.22,1200,b); if(s%2===0) hit(tt,.04,.07,7000,b); }
@@ -467,6 +501,17 @@ const Music=(()=>{
     else if(dr==='light'){ if(s===0) kick(t,.3,b); if(s%4===2) hit(tt,.03,.05,8000,b); }
     else if(dr==='swing'){ if(s===0||s===8) kick(t,.25,b); if(s%4===0||s%4===2&&s!==2&&s!==10) hit(tt,.06,.05,6000,b); if(s===4||s===12) hit(t,.12,.06,2500,b); }
     else if(dr==='march'){ if(s===0||s===8) kick(t,.4,b); if(s%2===0) hit(t,.06,s%4===0?.14:.07,2000,b); }
+    else if(dr==='edm'){ if(s%4===0) kick(t,.55,b); if(s===4||s===12){ hit(t,.14,.2,1100,b); hit(t+.012,.1,.12,1600,b); } if(s%4===2) hit(tt,.12,.09,8000,b); else if(s%2===1) hit(tt,.03,.03,9000,b); if(bar%4===3&&s>=12) hit(t,.05,.08,2000,b); }
+    else if(dr==='trap'){ if(s===0||s===7||s===10) kick(t,.5,b,120); if(s===8){ hit(t,.16,.22,1300,b); hit(t+.01,.08,.14,2600,b); } const roll=bar%2===1&&s>=12; if(s%2===0||roll) hit(tt,.025,roll?.05:.06,9000,b); }
+    else if(dr==='dnb'){ if(s===0||s===10) kick(t,.5,b); if(s===4||s===12) hit(t,.12,.2,1400,b); if(s===7||s===15) hit(t,.05,.07,1400,b); hit(tt,.02,.035,9000,b); }
+    else if(dr==='bossa'){ if(s===0||s===3||s===8||s===11) kick(t,.22,b,110); if([0,3,6,10,12].includes(s)) osc('square',1900,tt,.025,.025,b); if(s%2===0) hit(tt,.03,.035,7000,b); }
+    else if(dr==='gong'){ if(s===0||s===8) kick(t,.5,b,85); if(s===4||s===12) osc('square',1250,t,.05,.035,b); if(s%4===2) osc('square',900,t,.04,.02,b); if(s===0&&bar%4===0){ hit(t,1.4,.12,3000,b); vox('sine',hz(root+31),t,1.6,.03,b,{vib:4,vd:.02}); } }
+    else if(dr==='disco'){ if(s%4===0) kick(t,.45,b); if(s===4||s===12) hit(t,.12,.16,1500,b); if(s%4===2) hit(tt,.1,.1,7500,b); }
+    else if(dr==='reggae'){ if(s===8){ kick(t,.45,b); hit(t,.1,.14,1800,b); } if(s%4===2) hit(tt,.03,.05,8000,b); if(s===14) osc('square',1700,tt,.02,.02,b); }
+    else if(dr==='tick'){ if(s%4===0) osc('square',2600,t,.02,.04,b); if(s===0||s===8) kick(t,.4,b); if(s===4||s===12) hit(t,.08,.12,1600,b); if(s%2===1) hit(tt,.02,.03,9000,b); }
+    else if(dr==='sleigh'){ if(s===0||s===8) kick(t,.3,b); if(s%2===0) hit(tt,.06,.06,9500,b); if(s===4||s===12) hit(t,.1,.1,2200,b); }
+    else if(dr==='heart'){ if(s===0||s===3) kick(t,s?.25:.35,b,70); if(s===8&&bar%2) hit(t,.4,.03,4000,b); }
+    else if(dr==='metal'){ if(s%2===0||s===7||s===15) kick(t,.42,b); if(s===4||s===12) hit(t,.14,.24,1100,b); if(s%4===0) hit(t,.25,.05,5000,b); }
     else if(dr==='taiko'){ if(s===0||s===6||s===8) kick(t,.55,b,95); if(s%4===2) osc('square',1600,t,.04,.03,b); if(s===12) hit(t,.25,.12,600,b); }
   }
   function tick(){ if(!AC||!song) return; if(nextT<AC.currentTime) nextT=AC.currentTime+.05; while(nextT<AC.currentTime+.35){ play(step,nextT); nextT+=song.sd; step=(step+1)%song.len; } }
@@ -527,7 +572,7 @@ function buildHub(){
 }
 const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
 // 大廳封面：3D 遊戲用真實遊戲截圖（慢慢縮放平移、兩張交叉淡入），其他遊戲用自己畫的動態縮圖
-const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={},SHOT_IDS=['chess','bomb','deliver','meow','stairs','jelly','blocks','drum','dance','tower','purple','rummy','poker','rich','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow','royale','space','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase'],STAGE_SHOTS={deliver:1,bball:1,golf:1,pool:1,royale:1}; SHOT_IDS.forEach(k=>COVERS[k]=['shots/'+k+'.jpg']);
+const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={},SHOT_IDS=['chess','bomb','deliver','meow','stairs','jelly','blocks','drum','dance','tower','purple','rummy','poker','rich','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow','royale','space','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase'],STAGE_SHOTS={deliver:1,bball:1,golf:1,pool:1,royale:1}; SHOT_IDS.forEach(k=>COVERS[k]=['shots/'+k+'.jpg']);
 const SHOW_COVER={baseball:1,bowl:1};
 function stageCover(id,si){ const src=STAGE_SHOTS[id]?'shots/'+id+'_'+si+'.jpg':SHOW_COVER[id]?'shots/'+id+'.jpg':null; if(!src) return null; if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } const im=coverImg[src]; return im.complete&&im.naturalWidth?im:null; }
 function cover(id){ const list=COVERS[id]; if(!list) return null; return list.map(src=>{ if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } return coverImg[src]; }).filter(im=>im.complete&&im.naturalWidth); }
@@ -1277,6 +1322,6 @@ function frame(ts){
 }
 buildHub(); $('#ver').textContent=window.ARCADE_V||'';
 requestAnimationFrame(frame);
-window.__arcade={step(n){ for(let i=0;i<(n||1)&&inst&&state==='running';i++){ inst.update(STEP); for(const k in hits) delete hits[k]; } },open,start,back,get state(){return state;},get inst(){return inst;},keys,press,release,Net};
+window.__arcade={step(n){ for(let i=0;i<(n||1)&&inst&&state==='running';i++){ inst.update(STEP); for(const k in hits) delete hits[k]; } },open,start,back,get state(){return state;},get inst(){return inst;},keys,press,release,Net,mus:{Music,audio,SONGS}};
 })();
 </script>
