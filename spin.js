@@ -354,7 +354,7 @@ function create(env,opts){
   function land(f){ const L=LPOS[f.i]||LPOS[0],dx=f.lx-L[0],dy=f.ly-L[1],d=hyp(dx,dy)||1,r=hyp(f.lx,f.ly)||1,K=f.k; f.x=f.lx; f.y=f.ly;
     const v0=K.cruise*.6+20; f.vx=-f.ly/r*K.dir*v0*.6-f.lx/r*v0*.3; f.vy=f.lx/r*K.dir*v0*.6-f.ly/r*v0*.3; addFx('land',f.x,f.y); } /* 落地後往中間衝、帶一點旋轉方向的偏移（花瓣路線） */
   function setupRound(){ round++; rt=0; phase='aim'; PT=opts.preview?1.2:5.6; lastBeep=9; deb=[]; focus=null; if(!client) T.forEach(setP);
-    T.forEach(f=>{ f.spin=f.ai?clamp(86+f.ai.sk*14+Math.random()*4,80,100):100; f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; f.split=false; }); BUL=[];
+    T.forEach(f=>{ f.spin=f.ai?clamp(86+f.ai.sk*14+Math.random()*4,80,100):100; f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; f.split=false; f.sh=null; f.lp=0; f.landed=false; f.aiR=(f.human?9:.22+(f.ai?(1-f.ai.sk)*.45:.2)+Math.random()*.18); }); BUL=[];
     prepAim(); if(round>1) voice('第 '+round+' 回合，選好落點！'); }
   setupRound(); if(!R.pv&&R.humans) phase='deck';
   // 一對一：每人帶 3 顆，開賽前組 3 顆陀螺、排出場順序（刀刃、棘輪、底座都不能重複）
@@ -467,10 +467,10 @@ function create(env,opts){
     for(const f of [a,b]) if(f.bm>=100&&f.st==='on') finish(f,'burst');
     if(a.spin<=0&&a.st==='on'){ a.spin=0; finish(a,'spin'); } if(b.spin<=0&&b.st==='on'){ b.spin=0; finish(b,'spin'); } }
   // 連線
-  const pk=f=>[R1(f.x),R1(f.y),R1(f.vx),R1(f.vy),R1(f.spin),Math.round(f.bm),f.st,R1(f.dashT),R1(f.cd),R1(f.ox),R1(f.oy),R1(f.out),f.P.blade,f.P.ratchet,f.P.bit,R1(f.lx||0),R1(f.ly||0),f.split?1:0];
+  const pk=f=>[R1(f.x),R1(f.y),R1(f.vx),R1(f.vy),R1(f.spin),Math.round(f.bm),f.st,R1(f.dashT),R1(f.cd),R1(f.ox),R1(f.oy),R1(f.out),f.P.blade,f.P.ratchet,f.P.bit,R1(f.lx||0),R1(f.ly||0),f.split?1:0,f.sh==null?-1:R1(f.lp)];
   if(net){
-    if(client) net.onmsg=m=>{ if(m.s){ m.s.f.forEach((a,i)=>{ const f=T[i]; if(!f) return; f.x=a[0]; f.y=a[1]; f.vx=a[2]; f.vy=a[3]; f.spin=a[4]; f.bm=a[5]; if(f.st!==a[6]&&a[6]!=='on'){ f.ta=Math.random()*TAU; } f.st=a[6]; f.dashT=a[7]; f.cd=a[8]; f.ox=a[9]; f.oy=a[10]; f.out=a[11]; if(a[12]&&f.P.top!==a[12]&&TOP[a[12]]){ f.P=partsOf({top:a[12]}); f.k=statsOf(f.P); f.col=TOP[a[12]].c; } if(a[15]!=null){ f.lx=a[15]; f.ly=a[16]; } f.split=!!a[17]; }); BUL=(m.s.bl||[]).map(q=>({own:q[0],x:q[1],y:q[2],spin:q[3],ang:0,vx:0,vy:0}));
-        Object.assign(score,m.s.sc); phase=m.s.ph; PT=m.s.pt; round=m.s.rd; rt=m.s.rt; windA=m.s.wa;
+    if(client) net.onmsg=m=>{ if(m.s){ m.s.f.forEach((a,i)=>{ const f=T[i]; if(!f) return; f.x=a[0]; f.y=a[1]; f.vx=a[2]; f.vy=a[3]; f.spin=a[4]; f.bm=a[5]; if(f.st!==a[6]&&a[6]!=='on'){ f.ta=Math.random()*TAU; } f.st=a[6]; f.dashT=a[7]; f.cd=a[8]; f.ox=a[9]; f.oy=a[10]; f.out=a[11]; if(a[12]&&f.P.top!==a[12]&&TOP[a[12]]){ f.P=partsOf({top:a[12]}); f.k=statsOf(f.P); f.col=TOP[a[12]].c; } if(a[15]!=null){ f.lx=a[15]; f.ly=a[16]; } f.split=!!a[17]; if(a[18]!=null){ if(a[18]<0){ f.sh=null; f.lp=0; } else { if(f.sh==null) f.sh=0; f.lp=a[18]; } } }); BUL=(m.s.bl||[]).map(q=>({own:q[0],x:q[1],y:q[2],spin:q[3],ang:0,vx:0,vy:0}));
+        Object.assign(score,m.s.sc); if(m.s.ph==='launch'&&phase!=='launch') shootT=0; phase=m.s.ph; PT=m.s.pt; round=m.s.rd; rt=m.s.rt; windA=m.s.wa;
         for(const e of m.s.ev){ if(e[0]==='s') env.sfx(e[1]); else if(e[0]==='b'){ ban={k:e[1],who:e[2],to:e[3]||null,t:0}; const v=T[e[2]]; if(v) focus={x:v.x,y:v.y,who:v.i,t:e[1]==='spin'?.9:1.4}; if(e[1]!=='spin'){ shake=.35; } } else if(e[0]==='v'){ refSay={txt:e[1],t:Math.max(1.3,e[1].length*.17)}; speak(e[1],e[2]); } else if(e[0]==='c'){ cheer=Math.max(cheer,e[1]*1.3); roarL(e[1],e[2]); } else spawn(e[0],e[1],e[2],e[3],e[4]); } }
       if(m.end){ winKey=m.end; phase='over'; PT=2.6; } };
     else { net.onmsg=(m,from)=>{ if(m.deck&&T[from]&&phase==='deck'){ T[from].deck=fixDeck(m.deck.map(q=>({top:q&&q.top}))); rdy[from]=true; } if(m.i){ const b=inBuf[from]||(inBuf[from]={...NOIN,dn:0}); b.mx=m.i[0]; b.my=m.i[1]; if(m.i[2]>b.dn){ b.dash=true; b.dn=m.i[2]; } } };
@@ -492,15 +492,20 @@ function create(env,opts){
     if(env.hit('KeyV')) camOn=!camOn;
     visStep(dt); camStep(dt);
     if(client){ const q=lin[me]||NOIN; myIn=q; for(const f of T){ f.ang+=f.k.dir*(6+34*f.spin/100)*dt; if(f.st==='on'&&phase!=='aim'&&phase!=='launch'){ f.x+=f.vx*dt; f.y+=f.vy*dt; } } for(const b of BUL) b.ang+=30*dt;
-      sendT-=dt; if(sendT<=0){ sendT=1/20; net.send({i:[myIn.mx,myIn.my,0]}); } if(phase==='over'){ PT-=dt; if(PT<=0&&!ended){ ended=true; finishGame(); } } return; }
+      if(phase==='launch'){ shootT+=dt; for(const f of T) if(f.sh!=null) f.lp+=dt; if(myIn.dash&&T[me]&&T[me].sh==null) shotN++; }
+      sendT-=dt; if(sendT<=0){ sendT=1/20; net.send({i:[myIn.mx,myIn.my,shotN]}); } if(phase==='over'){ PT-=dt; if(PT<=0&&!ended){ ended=true; finishGame(); } } return; }
     const sdt=slow>0?dt*.3:dt; if(slow>0) slow-=dt;
     if(phase==='aim'){ PT-=dt; const n=Math.ceil(PT-.6); if(n<lastBeep&&n>=1&&n<=3){ lastBeep=n; snd('beep'); voice(String(n),1); }
       for(const f of T){ let mx=0,my=0;
         if(f.local){ const q=lin[f.i]||NOIN; mx=q.mx; my=q.my; } else if(f.remote){ const b=inBuf[f.i]; if(b){ mx=b.mx||0; my=b.my||0; } }
         else { const dx=f.tx-f.lx,dy=f.ty-f.ly,d=hyp(dx,dy); if(d>5){ mx=dx/d; my=dy/d; } }
         const m=hyp(mx,my); if(m>1){ mx/=m; my/=m; } f.lx+=mx*200*dt; f.ly+=my*200*dt; clampAim(f); }
-      if(PT<=.6&&lastBeep>0){ lastBeep=0; snd('go'); voice('Go Shoot！',1); roar(.7,1.6); snd('boost'); phase='launch'; PT=LD; } }
-    else if(phase==='launch'){ PT-=dt; const [pl]=lu(); for(const f of T) f.ang+=f.k.dir*(pl<1?10+80*yank(pl):40)*dt; /* 拉線時陀螺越轉越快 */ if(PT<=0){ T.forEach(land); phase='fight'; rt=0; shake=Math.max(shake,.12); snd('bump'); } }
+      if(PT<=.6&&lastBeep>0){ lastBeep=0; snd('go'); voice('Go Shoot！',1); roar(.7,1.6); phase='launch'; shootT=0; PT=LD; } }
+    else if(phase==='launch'){ shootT+=dt; /* 喊完 GO SHOOT 才能按發射鍵，反應越快轉速越高；3 秒沒按就自動發射 */
+      for(const f of T){ if(f.sh==null){ let go=false; if(f.local) go=!!(lin[f.i]||NOIN).dash; else if(f.remote){ const b=inBuf[f.i]; if(b&&b.dash){ go=true; b.dash=false; } } else go=shootT>=f.aiR; if(shootT>=SHOOT_MAX) go=true; if(go) shoot(f); }
+        else { f.lp+=dt; if(f.lp>=LD&&!f.landed){ f.landed=true; land(f); shake=Math.max(shake,.1); snd('bump'); } }
+        const [pl]=lu(f); f.ang+=f.k.dir*(f.sh==null?10:pl<1?10+80*yank(pl):40)*dt; } /* 拉線時陀螺越轉越快 */
+      if(T.every(f=>f.landed)){ phase='fight'; rt=0; } }
     else if(phase==='fight'||phase==='after'){ const steps=Math.max(1,Math.ceil(sdt/(1/120))),h=sdt/steps; rt+=sdt; windA+=sdt*Math.PI/6;
       for(let s=0;s<steps;s++){ for(let i=0;i<T.length;i++) if(T[i].st==='on') stepTop(T[i],NOIN,h);
         for(let i=0;i<T.length;i++) for(let k=i+1;k<T.length;k++) if(T[i].st==='on'&&T[k].st==='on') collide(T[i],T[k]);
@@ -536,12 +541,15 @@ function create(env,opts){
   // 畫面
   function topScreen(f){ let x=f.x,y=f.y,z=0; const L=LPOS[f.i]||LPOS[0];
     if(phase==='aim'){ x=L[0]; y=L[1]; z=LZ-26; }
-    else if(phase==='launch'){ const u=lu()[1]; x=L[0]+(f.lx-L[0])*u; y=L[1]+(f.ly-L[1])*u; z=(LZ-26)*(1-u)+70*Math.sin(Math.PI*u); }
+    else if(phase==='launch'){ const u=lu(f)[1]; x=L[0]+(f.lx-L[0])*u; y=L[1]+(f.ly-L[1])*u; z=(LZ-26)*(1-u)+70*Math.sin(Math.PI*u); }
     else if(f.st==='out'){ const r=hyp(f.ox,f.oy)||1;
       if(f.fly){ const u=Math.min(1,f.out/.9); x=f.ox+f.ox/r*150*u; y=f.oy+f.oy/r*150*u; z=200*u-260*u*u; } /* 撞飛過護欄：往外高高飛出去 */
       else { const u=Math.min(1,f.out/.8); x=f.ox+f.ox/r*34*Math.min(1,u*1.6); y=f.oy+f.oy/r*34*Math.min(1,u*1.6); z=-55*u*u; } } /* 掉進口袋：滑進洞裡往下沉 */
     return [sx(x),sz(x,y)-z,z,x,y]; }
-  function lu(){ const u0=phase==='launch'?clamp(1-PT/LD,0,1):0; return [clamp(u0/PF,0,1),clamp((u0-PF)/(1-PF),0,1)]; } /* [拉線進度, 飛行進度] */
+  let shootT=0,shotN=0; const SHOOT_MAX=3;
+  function shoot(f){ f.sh=shootT; f.lp=0; snd('boost'); if(f.human){ const r=shootT,sp=Math.round(clamp(100-(r-.35)*14,72,100)); f.spin=Math.min(f.spin,sp); voice(r<=.35?'完美發射！':r>=SHOOT_MAX?'太慢了，自動發射':'發射！',1); } }
+  function lu(f){ const u0=phase==='launch'&&f&&f.sh!=null?clamp(f.lp/LD,0,1):0; return [clamp(u0/PF,0,1),clamp((u0-PF)/(1-PF),0,1)]; } /* [拉線進度, 飛行進度] */
+  const shootKey=f=>env.touch?'發射鍵':local2?(f.i?'Enter':'F'):'空白鍵';
   const yank=pl=>clamp((pl-.3)/.7,0,1); /* 拉線前 30% 握住繩把，後面一口氣拉出 */
   function view(k){ const z=1+(cam.z-1)*k,fx=W/2+(cam.x-W/2)*k,fy=H/2+(cam.y-H/2)*k; c.translate(W/2,H/2); c.scale(z,z); c.translate(-fx,-fy); }
   function refState(){ if(phase==='aim'){ const n=Math.ceil(PT-.6); return n<=3&&n>=1?['count',n]:['idle']; } if(phase==='launch'||(phase==='fight'&&rt<.8)) return ['go'];
@@ -578,7 +586,7 @@ function create(env,opts){
     c.globalAlpha=1;
     // 選落點：落點標記＋拋物線
     if(phase==='aim'||phase==='launch') for(const f of T){ const [mx,my]=scr(f.lx,f.ly),col=PCOL[f.i],pu=1+Math.sin(t*6)*.08,mine=f.human&&(local2||f.i===me);
-      c.globalAlpha=phase==='launch'?clamp(PT/LD,0,1):1; c.strokeStyle=col; c.lineWidth=3; c.beginPath(); c.ellipse(mx,my,24*pu,24*SQ*pu,0,0,TAU); c.stroke(); c.fillStyle=col; c.globalAlpha*=.22; c.fill(); c.globalAlpha=phase==='launch'?clamp(PT/LD,0,1):1;
+      const la=phase==='launch'?1-clamp(f.lp/LD,0,1)*(f.sh!=null?1:0):1; c.globalAlpha=la; c.strokeStyle=col; c.lineWidth=3; c.beginPath(); c.ellipse(mx,my,24*pu,24*SQ*pu,0,0,TAU); c.stroke(); c.fillStyle=col; c.globalAlpha*=.22; c.fill(); c.globalAlpha=la;
       c.lineWidth=2; c.beginPath(); c.moveTo(mx-10,my); c.lineTo(mx+10,my); c.moveTo(mx,my-6); c.lineTo(mx,my+6); c.stroke();
       if(phase==='aim'){ const L=LPOS[f.i]||LPOS[0],X0=sx(L[0]),Y0=sz(L[0],L[1])-LZ+26; c.setLineDash([5,7]); c.lineWidth=2; c.globalAlpha=.55; c.beginPath(); c.moveTo(X0,Y0); c.quadraticCurveTo((X0+mx)/2,Math.min(Y0,my)-80,mx,my); c.stroke(); c.setLineDash([]); c.globalAlpha=1;
         const nm=mine&&!local2?'你的落點':R.names[f.i].slice(0,6)+' 的落點'; c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; const w2=c.measureText(nm).width+12; c.fillStyle=mine?'#ffd23f':'rgba(11,10,28,.75)'; rr(c,mx-w2/2,my+14,w2,15,7); c.fill(); c.fillStyle=mine?'#14122b':'#fff'; c.fillText(nm,mx,my+22); }
@@ -588,9 +596,9 @@ function create(env,opts){
     for(const f of order){ const [X,Y,z,wx,wy]=topScreen(f),frac=f.spin/100;
       if(f.st==='burst') continue;
       if(f.st==='out'&&f.out>(f.fly?.9:.8)) continue;
-      if(phase==='aim'||phase==='launch'){ const [pl,u]=lu(),L=LPOS[f.i]||LPOS[0],jit=phase==='launch'&&pl<1&&pl>.3?(Math.random()-.5)*2.4:0;
+      if(phase==='aim'||phase==='launch'){ const [pl,u]=lu(f),L=LPOS[f.i]||LPOS[0],jit=phase==='launch'&&pl<1&&pl>.3?(Math.random()-.5)*2.4:0;
         if(u>0) softShadow(c,sx(wx),sz(wx,wy),26*u+8,.15+.35*u);
-        drawTop(c,X+jit,Y,S*TS,f.P,f.col,f.ang,phase==='launch'?Math.max(.3,yank(pl)):0,{tilt:(1-u)*9,ta:f.i?2.4:.7,noShadow:true,still:phase==='aim'});
+        drawTop(c,X+jit,Y,S*TS,f.P,f.col,f.ang,phase==='launch'&&f.sh!=null?Math.max(.3,yank(pl)):0,{tilt:(1-u)*9,ta:f.i?2.4:.7,noShadow:true,still:phase==='aim'});
         if(u<1){ c.globalAlpha=1-u; drawLauncher(sx(L[0])+jit,sz(L[0],L[1])-LZ-u*30,PCOL[f.i],f.i?-1:1,phase==='launch'?yank(pl):0,false,false); c.globalAlpha=1; }
         if(phase==='aim'&&f.human&&round===1&&!opts.preview) meArrow(c,sx(L[0]),sz(L[0],L[1])-LZ-46,local2?(f.i+1)+'P':'你',t);
         continue; }
@@ -623,16 +631,18 @@ function create(env,opts){
     const big=(s,y,col,fs)=>{ c.font='900 '+fs+'px '+TC; c.lineWidth=9; c.strokeStyle='#0b0a1c'; c.strokeText(s,W/2,y); c.fillStyle=col; c.fillText(s,W/2,y); };
     if(phase==='aim'){ const n=Math.ceil(PT-.6); if(n>=1&&n<=3) big(String(n),CY-60,'#fff',72);
       c.font='900 15px '+TC; c.lineWidth=5; c.strokeStyle='#0b0a1c'; const vs='第 '+round+' 回合　'+TOP[T[0].P.top].n+'　對　'+TOP[T[1].P.top].n; c.strokeText(vs,W/2,H-46); c.fillStyle='#ffd23f'; c.fillText(vs,W/2,H-46);
-      if(R.humans){ const hs=(env.touch?'用方向盤':local2?'1P 用 WASD、2P 用方向鍵':'用方向鍵')+'移動落點，裁判喊 GO SHOOT 就發射'; c.font='700 13px '+TC; c.strokeText(hs,W/2,H-22); c.fillStyle='#fff'; c.fillText(hs,W/2,H-22); } }
-    if(phase==='launch'){ const [pl,fu]=lu(),ye=yank(pl),inA=clamp(pl/.22,0,1),outA=1-clamp(fu/.25,0,1); /* 發射特寫：兩位選手握住拉繩，GO SHOOT 一口氣拉出 */
-      if(outA>0) for(let i=0;i<2;i++){ const f=T[i],sd=i?-1:1,sl=(1-inA)*(1-inA)*420*-sd,x0=i?W/2+4:0,y0=262,pw=W/2-4,ph=212;
+      if(R.humans){ const hs=(env.touch?'用方向盤':local2?'1P 用 WASD、2P 用方向鍵':'用方向鍵')+'移動落點，裁判喊 GO SHOOT 就按'+shootKey(T[local2?0:me])+(local2?'／Enter':'')+'發射'; c.font='700 13px '+TC; c.strokeText(hs,W/2,H-22); c.fillStyle='#fff'; c.fillText(hs,W/2,H-22); } }
+    if(phase==='launch'){ const inA=clamp(shootT/.22,0,1); /* 發射特寫：兩位選手握住拉繩，按下發射鍵一口氣拉出 */
+      for(let i=0;i<2;i++){ const f=T[i],[pl,fu]=lu(f),ye=yank(pl),outA=1-clamp(fu/.25,0,1); if(outA<=0) continue; const sd=i?-1:1,sl=(1-inA)*(1-inA)*420*-sd,x0=i?W/2+4:0,y0=262,pw=W/2-4,ph=212;
         c.save(); c.globalAlpha=outA; c.translate(sl,0); c.beginPath(); c.moveTo(x0+(i?24:0),y0); c.lineTo(x0+pw,y0); c.lineTo(x0+pw-(i?0:24),y0+ph); c.lineTo(x0,y0+ph); c.closePath(); c.save(); c.clip();
         const bg=c.createLinearGradient(x0,y0,x0,y0+ph); bg.addColorStop(0,shade(PCOL[i],-.55)); bg.addColorStop(1,'#0b0a1c'); c.fillStyle=bg; c.fillRect(x0,y0,pw,ph);
         c.strokeStyle='rgba(255,255,255,'+(.1+.25*ye)+')'; c.lineWidth=2; for(let q=0;q<14;q++){ const yy=y0+((q*37+t*900*(ye>0?1:.15))%ph),xx=x0+(q*61)%pw; c.beginPath(); c.moveTo(xx,yy); c.lineTo(xx+sd*90,yy+8); c.stroke(); } /* 速度線 */
         const cx=x0+pw/2-sd*110,cy=y0+96,K2=2; c.translate(cx,cy); c.scale(K2,K2); const jt=ye>0&&ye<1?(Math.random()-.5)*1.5:0;
         drawTop(c,jt,26,S*TS,f.P,f.col,f.ang,Math.max(.3,ye),{tilt:0,noShadow:true}); drawLauncher(jt,0,PCOL[i],sd,ye,pl<.3,true); c.restore();
+        if(f.sh==null&&f.human&&(local2||f.i===me)){ const bl=.75+.25*Math.sin(t*16),tx=x0+pw/2+sd*70,ty=y0+70; c.save(); c.translate(tx,ty); c.scale(bl,bl); c.font='900 34px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#0b0a1c'; const s2='按 '+shootKey(f)+'！'; c.strokeText(s2,0,0); c.fillStyle='#ffd23f'; c.fillText(s2,0,0); c.restore(); }
+        else if(f.sh!=null&&f.human&&fu<.2){ c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=5; c.strokeStyle='#0b0a1c'; const s2=f.sh<=.35?'完美發射！':'反應 '+f.sh.toFixed(2)+' 秒'; c.strokeText(s2,x0+pw/2+sd*70,y0+70); c.fillStyle=f.sh<=.35?'#3ed16a':'#fff'; c.fillText(s2,x0+pw/2+sd*70,y0+70); }
         c.strokeStyle=PCOL[i]; c.lineWidth=4; c.stroke(); c.font='900 15px '+TC; c.textAlign=i?'right':'left'; c.textBaseline='top'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const nm=R.names[i]+'　'+TOP[f.P.top].n; c.strokeText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.fillStyle='#fff'; c.fillText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.restore(); } }
-    if(phase==='launch'||(phase==='fight'&&rt<.7)){ const u=phase==='launch'?1-PT/LD:1; c.save(); c.translate(W/2,CY-60); const sc=1+Math.max(0,.4-u)*.8; c.scale(sc,sc); c.translate(-W/2,-(CY-60)); big('GO SHOOT！',CY-60,'#ffd23f',58); c.restore(); }
+    if(phase==='launch'||(phase==='fight'&&rt<.7)){ const u=phase==='launch'?shootT/LD:1; c.save(); c.translate(W/2,CY-60); const sc=1+Math.max(0,.4-u)*.8; c.scale(sc,sc); c.translate(-W/2,-(CY-60)); big('GO SHOOT！',CY-60,'#ffd23f',58); c.restore(); }
     if(ban&&ban.t<2.2&&phase!=='aim'&&phase!=='launch'){ const F=FIN[ban.k],u=Math.min(1,ban.t*5),sc=1+(1-u)*.8; c.save(); c.translate(W/2,CY-118); c.scale(sc,sc); c.globalAlpha=Math.min(1,(2.2-ban.t)*3);
       c.font='900 40px '+TC; c.lineWidth=8; c.strokeStyle='#0b0a1c'; c.strokeText(F.n+'！',0,0); c.fillStyle=F.col; c.fillText(F.n+'！',0,0);
       c.font='900 18px '+TC; const s2=ban.to?keyName(ban.to)+' +'+F.p+' 分':R.names[ban.who]+' 出局'; c.lineWidth=5; c.strokeText(s2,0,34); c.fillStyle='#fff'; c.fillText(s2,0,34); c.restore(); }
@@ -658,15 +668,15 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   const st=[['攻擊',K.atk/1.5],['防禦',K.def/1.6],['持久',K.sta/1.7],['衝刺',K.dash/1.7]];
   ctx.font='700 '+Math.round(h*.045)+'px '+TC; st.forEach(([n,v],i)=>{ const y=h*(.66+i*.085); ctx.fillStyle='#fff'; ctx.fillText(n,x0,y); ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(x0+h*.12,y-h*.016,bw-h*.12,h*.032); ctx.fillStyle=['#ff4d4d','#3d8bff','#3ed16a','#ff9d3d'][i]; ctx.fillRect(x0+h*.12,y-h*.016,(bw-h*.12)*clamp(v,.1,1),h*.032); }); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).spin={name:'陀螺旋風戰',tag:'SPIN STORM',color:'#ff7a3d',online:true,maxPlayers:2,
-  desc:'20 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就發射，之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，旋轉勝利、擊飛勝利、爆裂勝利、極限勝利，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
+  desc:'20 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就按鍵發射（越快按轉速越高），之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，旋轉勝利、擊飛勝利、爆裂勝利、極限勝利，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
   goal:'選好落點發射，比對手轉得久＝旋轉勝利 1 分、撞進黃色擊飛區域或飛出場外＝擊飛勝利 2 分、撞到解體＝爆裂勝利 2 分、撞進紅色極限區域＝極限勝利 3 分。先拿 4 分的贏。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:si=>{ const s=STAGES[si],h={ice:'冰面很滑，陀螺停不下來。',desert:'沙地摩擦大，轉速掉得快。',twin:'前面是紅色極限區域，後左右是黃色擊飛區域。',lava:'碰到滾燙的軌道會掉轉速，但衝刺更猛。',space:'低重力，碗面拉回中間的力比較小。',storm:'暴風會把陀螺往一個方向吹，每隔幾秒換方向。',arena:'兩側的場外口袋特別寬。',final:'冠軍等級的對手。'}[s.th]||'';
     return s.name+'：先拿 4 分的贏。'+h; },
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  help:[['↑ ↓ ← →','開賽前移動落點，裁判喊 GO SHOOT 就自動發射'],['發射之後','陀螺自己轉、自己撞，不用操作'],['V','切換特寫鏡頭／看全場'],['雙人','1P 用 WASD，2P 用方向鍵']],
-  touchHelp:[['方向盤','開賽前移動落點'],['鏡頭','切換特寫鏡頭／看全場']],
-  touch:{left:'dpad',right:[{l:'鏡頭',c:'KeyV'}]},
+  help:[['↑ ↓ ← →','開賽前移動落點'],['空白鍵','裁判喊 GO SHOOT 就按下發射，越快按轉速越高'],['發射之後','陀螺自己轉、自己撞，不用操作'],['V','切換特寫鏡頭／看全場'],['雙人','1P 用 WASD＋F 發射，2P 用方向鍵＋Enter 發射']],
+  touchHelp:[['方向盤','開賽前移動落點'],['發射','裁判喊 GO SHOOT 就按'],['鏡頭','切換特寫鏡頭／看全場']],
+  touch:{left:'dpad',right:[{l:'發射',c:'Space'},{l:'鏡頭',c:'KeyV'}]},
   looks:[{key:'top',label:'陀螺（點一下看類型和特色）',opts:TOPS.map(q=>({id:q.id,label:q.code+' '+q.n+'（'+q.type+'）'}))}],
   preview,
   hubBest:()=>{ const n=STAGES.filter(s=>hasWin(s.name)).length; return n?'贏過 <b>'+n+' / '+STAGES.length+'</b> 座競技場':'尚無紀錄'; },
