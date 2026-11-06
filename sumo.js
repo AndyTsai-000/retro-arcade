@@ -99,7 +99,7 @@ function create(env,opts){
   let wt=false,phase='intro',PT=pv?.6:2.2,t=0,bout=1,fx=[],shake=0,slow=0,ban=null,winner=-1,ended=false,ev=[],sendT=0,refPoint=null,cheer=0;
   const rin={dx:0,push:false,dodge:false};
   const sfx=n=>{ if(pv) return; env.sfx(n); if(host) ev.push(n); };
-  const say=(txt,col)=>{ ban={txt,col:col||'#ffd23f',t:0}; if(host) ev.push('b:'+txt+'|'+(col||'')); };
+  const say=(txt,col,sub,d)=>{ ban={txt,col:col||'#ffd23f',t:0,sub:sub||'',d:d||1.6}; if(host) ev.push('b:'+txt+'|'+(col||'')+'|'+(sub||'')+'|'+(d||1.6)); };
   function reset(){ for(const p of P){ p.x=p.n?470:330; p.vx=0; p.act='idle'; p.at=0; p.cd=0; p.dcd=0; p.stam=1; p.last=''; p.lastT=-9; p.ext=0; } phase='intro'; PT=pv?.6:1.8; refPoint=null; winner=-1;
     for(let i=0;i<18;i++) fx.push({k:'salt',x:(i%2?470:330)+(Math.random()-.5)*20,y:GY-150,vx:(Math.random()-.5)*120,vy:-120-Math.random()*80,g:500,l:1.1,L:1.1}); }
   reset();
@@ -117,7 +117,7 @@ function create(env,opts){
     if(o.act==='stumble'&&gap<CD+60) push=true;
     return {dx:p.stam<.12&&gap<CD+6&&edge>140?-dir*.3:dir,push,dodge}; }
   function finish(loser,kind){ if(phase!=='bout') return; winner=1-loser; P[winner].win++; phase='result'; PT=pv?1:2.4; slow=pv?0:.7; shake=.4; refPoint=winner===0?-1:1; cheer=1;
-    const KM={thrust:'突出！',dodge:'閃身摔！',push:'推出！',hold:'寄切！'}; say(KM[kind]||'推出！',kind==='dodge'?'#7ae8ff':'#ffd23f'); sfx('boom');
+    const KM={thrust:'突出！',dodge:'閃身摔！',push:'推出！',hold:'寄切！'}; const who=two||net?names[winner]:winner===0?'你':names[1]; say(KM[kind]||'推出！',kind==='dodge'?'#7ae8ff':'#ffd23f',who+' 勝！　'+P[0].win+' : '+P[1].win,2.3); /* 每一番都說是誰贏 */ sfx('boom');
     const L=P[loser]; for(let i=0;i<20;i++) fx.push({k:'dust',x:L.x,y:GY,vx:(Math.random()-.5)*260,vy:-Math.random()*120,g:200,r:10+Math.random()*12,l:.8,L:.8});
     fx.push({k:'ring',x:L.x,y:GY,r:180,c:'#fff3c0',l:.5,L:.5});
     if(!pv&&!client) for(let i=0;i<(P[winner].win>=2?16:6);i++) fx.push({k:'cush',x:80+Math.random()*640,y:150+Math.random()*60,vx:(Math.random()-.5)*160,vy:-200-Math.random()*120,g:600,r:Math.random()*3,c:['#c8202a','#3a8a4a','#d8a040','#6a2a8a'][i%4],l:3,L:3}); }
@@ -129,7 +129,7 @@ function create(env,opts){
   function snap(){ const m={s:[P.map(p=>[r1(p.x),r1(p.vx),p.act,r1(p.at),r1(p.stam),p.win,r1(p.ext)]),phase,r1(PT),bout,refPoint],e:ev}; ev=[]; return m; }
   if(net){
     if(client) net.onmsg=m=>{ if(m.s){ const s=m.s; s[0].forEach((a,i)=>{ const p=P[i]; p.tx=a[0]; p.vx=a[1]; p.act=a[2]; p.at=a[3]; p.stam=a[4]; p.win=a[5]; p.ext=a[6]; }); phase=s[1]; PT=s[2]; bout=s[3]; refPoint=s[4];
-        for(const e of m.e){ if(e.startsWith('b:')){ const [tx,cl]=e.slice(2).split('|'); ban={txt:tx,col:cl||'#ffd23f',t:0}; } else env.sfx(e); } }
+        for(const e of m.e){ if(e.startsWith('b:')){ const [tx,cl,sb,dd]=e.slice(2).split('|'); ban={txt:tx,col:cl||'#ffd23f',t:0,sub:sb||'',d:+dd||1.6}; } else env.sfx(e); } }
       else if(m.end){ P[0].win=m.end[0]; P[1].win=m.end[1]; conclude(); } };
     else { net.onmsg=(m,from)=>{ if(from===1&&m.i){ rin.dx=m.i[0]; if(m.i[1]) rin.push=true; if(m.i[2]) rin.dodge=true; } };
       net.onleave=i=>{ if(i===1&&!ended){ P[0].win=Math.max(2,P[1].win+1); net.send({end:[P[0].win,P[1].win]}); conclude(); } }; }
@@ -185,6 +185,9 @@ function create(env,opts){
       if(p.act==='dodge'){ c.globalAlpha=.3; rikishi(c,p.x+p.face*12,GY,p.face,p.col,pose,t,{sc:p.big,noShadow:true,seed:p.n}); c.globalAlpha=1; }
       rikishi(c,p.x+dxo,GY+dz,mir?p.face:p.face,p.col,pose,t,{sc:p.big*(dz?1.05:1),lean:lean*(mir?-1:1)*(mir?-1:1),ext:p.ext,sweat:p.stam<.3,seed:p.n*3}); }
     fxDraw(c,fx);
+    if(phase==='result'&&refPoint!=null){ const wi=refPoint<0?0:1,p=P[wi],yy=GY-232+Math.sin(t*6)*4,lb='勝　'+(two||net?names[wi]:wi===0?'你':names[1]); c.save(); if(mir){ c.translate(p.x,0); c.scale(-1,1); c.translate(-p.x,0); }
+      c.font='900 20px '+TC; const tw=c.measureText(lb).width+30; c.fillStyle='#c8202a'; c.strokeStyle='#14122b'; c.lineWidth=3; c.beginPath(); c.moveTo(p.x-tw/2,yy-18); c.lineTo(p.x+tw/2,yy-18); c.lineTo(p.x+tw/2-8,yy); c.lineTo(p.x+tw/2,yy+18); c.lineTo(p.x-tw/2,yy+18); c.lineTo(p.x-tw/2+8,yy); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(lb,p.x,yy+1); c.restore(); } /* 贏的力士頭上掛「勝」 */
     if(phase==='intro'&&bout===1&&!pv){ const mine=two?[0,1]:[me]; for(const i of mine){ const p=P[i],yy=GY-205+Math.sin(t*8)*6; c.fillStyle='#ffd23f'; c.strokeStyle='#14122b'; c.lineWidth=3; c.beginPath(); c.moveTo(p.x-14,yy-16); c.lineTo(p.x+14,yy-16); c.lineTo(p.x,yy); c.closePath(); c.fill(); c.stroke();
         c.save(); if(mir){ c.translate(p.x,0); c.scale(-1,1); c.translate(-p.x,0); } c.font='900 16px '+TC; c.textAlign='center'; c.lineWidth=4; const lb=two?(i?'2P':'1P'):'你'; c.strokeText(lb,p.x,yy-24); c.fillStyle='#ffd23f'; c.fillText(lb,p.x,yy-24); c.restore(); } }
     c.restore(); hud(mir); }
@@ -196,7 +199,8 @@ function create(env,opts){
       c.font='700 10px '+TC; c.fillStyle='#cbb'; c.textAlign=al?'right':'left'; c.fillText('體力',al?x+236:x+14,58); };
     card(P[L],10,false); card(P[Rr],W-260,true);
     c.textAlign='center'; c.font='900 14px '+TC; c.fillStyle='#ffd23f'; c.fillText('第 '+bout+' 番　先贏 2 番',W/2,22); if(!two&&!net&&!pv){ c.font='700 12px '+TC; c.fillStyle='#ddd'; c.fillText('對手：'+ST.opp,W/2,42); }
-    if(ban&&ban.t<1.6){ const u=Math.min(1,ban.t*6),sc=1+(1-u)*.8; c.save(); c.translate(W/2,150); c.scale(sc,sc); c.globalAlpha=Math.min(1,(1.6-ban.t)*3); c.font='900 52px '+TC; c.lineWidth=9; c.strokeStyle='#14122b'; c.strokeText(ban.txt,0,0); c.fillStyle=ban.col; c.fillText(ban.txt,0,0); c.restore(); c.globalAlpha=1; } }
+    if(ban&&ban.t<ban.d){ const u=Math.min(1,ban.t*6),sc=1+(1-u)*.8; c.save(); c.translate(W/2,150); c.scale(sc,sc); c.globalAlpha=Math.min(1,(ban.d-ban.t)*3);
+      if(ban.sub){ c.font='900 30px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(ban.sub,0,52); c.fillStyle='#fff'; c.fillText(ban.sub,0,52); } c.font='900 52px '+TC; c.lineWidth=9; c.strokeStyle='#14122b'; c.strokeText(ban.txt,0,0); c.fillStyle=ban.col; c.fillText(ban.txt,0,0); c.restore(); c.globalAlpha=1; } }
   return {update,draw,destroy(){},_dbg:{P,get phase(){return phase;},get bout(){return bout;},step,finish}};
 }
 function stageShow(ctx,w,h,si,t){ const S=STAGES[si]; ctx.save(); ctx.scale(w/W,h/H); ctx.drawImage(bgCanvas(),0,0,W,H); gyoji(ctx,400,GY-18,t,null);
