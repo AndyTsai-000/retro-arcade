@@ -607,7 +607,7 @@ function create(env,opts){
   // 喊完 GO SHOOT 超過時間還沒發射＝犯規；同一人犯規 2 次，對方得 1 分，之後重新發射
   function foul(list){ for(const f of list){ fouls[f.i]++; const opp=T.find(q=>teamKey(q)!==teamKey(f)),ok=opp&&fouls[f.i]>=2?teamKey(opp):null; if(ok){ fouls[f.i]=0; score[ok]+=1; }
       ban={k:'foul',who:f.i,to:ok,t:0}; if(host&&net) ev.push(['b','foul',f.i,ok||'']); }
-    for(const k in drags) delete drags[k]; snd('lose'); roar(.5,1.2); const f=list[0],ok=ban.to; round--; setupRound(); ban={k:'foul',who:f.i,to:ok,t:0}; PT=4.4;
+    for(const k in drags) delete drags[k]; snd('lose'); roar(.5,1.2); const f=list[0],ok=ban.to; round--; setupRound(); ban={k:'foul',who:f.i,to:ok,t:0}; PT=ok?7.2:6.6; /* 先讓裁判把失誤講完，再重新喊 3、2、1，GO SHOOT */
     voice(R.names[f.i]+' 發射失敗！'+(ok?'失誤兩次，'+keyName(ok)+' 得 1 分，比數 '+score[keys[0]]+' 比 '+score[keys[1]]:'記失誤一次，重新發射'),1);
     const top=Object.keys(score).filter(k=>score[k]>=TARGET); if(top.length){ winKey=top[0]; phase='over'; PT=3.2; snd('win'); voice('比賽結束！'+keyName(winKey)+' 獲勝！'); roar(1,3); if(net) net.send({end:winKey}); } }
   function lu(f){ const u0=phase==='launch'&&f&&f.sh!=null?clamp(f.lp/LD,0,1):0; return [clamp(u0/PF,0,1),clamp((u0-PF)/(1-PF),0,1)]; } /* [拉線進度, 飛行進度] */
