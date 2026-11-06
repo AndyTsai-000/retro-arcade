@@ -160,6 +160,25 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .sgSplit .lkL{position:static}
 .sgSplit .lklist .chips{justify-content:flex-start;padding:6px 0}
 .sgSplit .lklist .help{margin:6px 0}
+/* 手機直放：預覽畫面＋開始按鈕固定在上面，只有下面的關卡列表捲動；開始畫面不顯示操作按鈕 */
+@media (max-width:720px) and (orientation:portrait){
+  body.touch:not(.playing) #pad{display:none}
+  .sgSplit .lkL{position:sticky;top:-16px;z-index:3;margin:-4px -6px 0;padding:8px 6px 8px;box-shadow:0 10px 12px -10px rgba(0,0,0,.75)}
+  .sgSplit .lkL .lk{max-height:34vh;width:auto;max-width:100%;margin:0 auto}
+  .sgSplit .lkL>p.hint{display:none}
+  .sgSplit .lkL .row{gap:8px}.sgSplit .lkL .turn{margin:0;font-size:13px}
+  .sgSplit .lkL .lk{order:-3}.sgSplit .lkL .sgInfo{order:-2}.sgSplit .lkL>.row{order:-1} /* 開始按鈕緊接在預覽下面，說明文字放後面 */
+}
+/* 手機橫放：預覽縮小，開始按鈕不用捲就看得到 */
+@media (orientation:landscape) and (max-height:540px){
+  .sgSplit .lkL{position:sticky;top:-16px;max-height:calc(100vh - 120px);overflow-y:auto;scrollbar-width:thin}
+  .sgSplit .lkL>*{flex-shrink:0}
+  .sgSplit .lkL>.row{gap:6px}.sgSplit .lkL>.row .btn{padding:5px 11px;font-size:14px}
+  .sgSplit .lkL .lk{order:-3}.sgSplit .lkL .sgInfo{order:-2}.sgSplit .lkL>.row{order:-1} /* 開始按鈕緊接在預覽下面，說明文字放後面 */
+  .sgSplit .lkL .lk{max-height:calc(100vh - 250px);width:auto;max-width:100%;min-height:0;margin:0 auto}
+  .sgSplit .lkL>p.hint{display:none}
+  .sgSplit .lklist{max-height:calc(100vh - 120px)}
+}
 .sndRow{display:grid;grid-template-columns:5.5em 1fr 2.5em;align-items:center;gap:10px;margin:12px 0;text-align:left}
 .sndRow input{width:100%;accent-color:var(--y,#ffd23f)}.sndRow b{text-align:right}
 .sndMute{justify-content:center;margin:6px 0 10px}.sndTip{color:var(--dim);font-size:13px}
@@ -182,6 +201,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 .tb.on{background:var(--yellow);color:#14122b;transform:translateY(3px);box-shadow:0 1px 0 #0b0a1c}
 .tb.act{background:var(--pink);color:#14122b}
 .tb.big{width:100px;height:100px;font-size:28px}
+.side.g6{display:grid;grid-template-columns:repeat(3,auto);gap:8px}.side.g6 .tb{width:58px;height:58px;font-size:14px}
 .dpad{width:138px;height:138px;border-radius:50%;background:var(--panel2);border:3px solid #0b0a1c;box-shadow:0 4px 0 #0b0a1c;position:relative;touch-action:none}
 .dpad i{position:absolute;width:0;height:0;border:11px solid transparent;opacity:.55}
 .dpad i.u{left:50%;top:12px;margin-left:-11px;border-bottom-color:var(--text);border-top-width:0}
@@ -189,7 +209,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 .dpad i.l{top:50%;left:12px;margin-top:-11px;border-right-color:var(--text);border-left-width:0}
 .dpad i.r{top:50%;right:12px;margin-top:-11px;border-left-color:var(--text);border-right-width:0}
 .dpad[data-d="u"] i.u,.dpad[data-d="d"] i.d,.dpad[data-d="l"] i.l,.dpad[data-d="r"] i.r{opacity:1;filter:drop-shadow(0 0 6px var(--yellow))}
-@media (max-width:440px){.bar h2{display:none}#barName{display:none}body .bar{gap:4px;padding-inline:6px;flex-wrap:wrap;justify-content:center}body .bar .btn{padding:4px 6px;font-size:12px}.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side.g4{display:grid;grid-template-columns:repeat(2,auto);gap:8px}.side.g4 .tb{width:56px;height:56px;font-size:14px}.tb.big{width:86px;height:86px;font-size:26px}#padL:has(.tb.big)~#padR .tb{width:52px;height:52px;font-size:13px}}
+@media (max-width:440px){.bar h2{display:none}#barName{display:none}body .bar{gap:4px;padding-inline:6px;flex-wrap:nowrap;justify-content:center}body .bar .btn{padding:4px 6px;font-size:12px;white-space:nowrap}.bar .lg{display:none}.tb{width:60px;height:60px;font-size:15px}.side{gap:8px}.dpad{width:128px;height:128px}.side.g4{display:grid;grid-template-columns:repeat(2,auto);gap:8px}.side.g4 .tb{width:56px;height:56px;font-size:14px}.tb.big{width:86px;height:86px;font-size:26px}#padL:has(.tb.big)~#padR .tb{width:52px;height:52px;font-size:13px}}
 /* ---------- 手機版 ---------- */
 @media (max-width:640px){
   #hub{padding-block:18px 28px;gap:18px}
@@ -241,7 +261,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
     <button class="btn" id="bFull" hidden>全螢幕</button>
     <button class="btn" id="bHelp"><span class="lg">遊戲</span>操作</button>
     <button class="btn" id="bPause">暫停</button>
-    <button class="btn" id="bMute">聲音設定</button>
+    <button class="btn" id="bMute">聲音<span class="lg">設定</span></button>
   </div>
   <div id="wrap">
     <div id="stage"></div>
@@ -253,7 +273,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=234; // 每次改版加一
+window.ARCADE_V=235; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -620,7 +640,7 @@ function buildPad(spec){
     });
   };
   fill(L,spec.left); fill(R,spec.right);
-  [L,R].forEach(b=>b.classList.toggle('g4',b.children.length===4)); // 四顆鍵在直向手機排成兩排
+  [L,R].forEach(b=>{ b.classList.toggle('g4',b.children.length===4); b.classList.toggle('g6',b.children.length>=5); }); // 四顆鍵在直向手機排成兩排；五顆以上排成三欄兩排，才不會超出螢幕
 }
 function makeDpad(){
   const d=el('div','dpad','<i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i>');

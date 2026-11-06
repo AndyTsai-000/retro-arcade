@@ -330,8 +330,8 @@ const thumb=(ctx,w,h,t)=>scene(ctx,w,h,{ball:'#ff5d4f',lane:'#d9a45c',bg:'alley'
   options:[{key:'cpu',label:'電腦對手',def:'0',opts:[{id:'0',label:'不要'},{id:'1',label:'1 位'},{id:'2',label:'2 位'},{id:'3',label:'3 位'}]}],
   modes:[{id:'1',label:'1 人'},{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'}],
   help:[['← →','選球種（直球、曲球、飛碟球），確認後改成選站位'],['Space','確認球種；選站位時按住蓄力、放開丟球（按住滑鼠左鍵也可以）'],['↑','回去重選球種']],
-  touchHelp:[['◀ ▶','選球種，確認後改成選站位'],['投球','確認球種；選站位時按住蓄力、放開丟球（按住畫面也可以）']],
-  touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'投球',c:'Space',act:true}]},
+  touchHelp:[['◀ ▶','選球種，確認後改成選站位'],['投球','確認球種；選站位時按住蓄力、放開丟球（按住畫面也可以）'],['重選','選站位時回去重選球種']],
+  touch:{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'重選',c:'ArrowUp'},{l:'投球',c:'Space',act:true}]},
   load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   looks:[{key:'ball',label:'球的顏色',type:'color',opts:['#ff5d4f','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#4f9dff','#b98cff','#ff7eb6']},
     {key:'lane',label:'球道顏色',type:'color',opts:['#d9a45c','#e8c890','#b9783a','#9ad0e8','#c8a0e0','#9fd68a']},
