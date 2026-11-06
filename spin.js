@@ -42,6 +42,12 @@ const TOPS=[
   TP_('bulletgriffon','UX-19','子彈獅鷲','平衡',1,'3-85','H',{k:'hook',n:5,d:.2,h:1.4},'#d0262c','#20b894',SILV,'分離式子彈單位：激烈碰撞時內層子彈靠彈簧彈開，子彈衝去追撞對手，本體繼續旋轉維持持久。',{split:1}),
   TP_('pegasusblast','CX-07','天馬爆擊','攻擊',1,'1-60','A',{k:'wing',n:3,d:.3,h:2.4},'#f4f6fa','#3d8bff',SILV,'來自最新可拆解的 CX（客製）系統，具備高度爆發力。')];
 const TOP={}; TOPS.forEach(q=>TOP[q.id]=q);
+/* 每顆陀螺的能力值（0～100）：攻擊、防禦、持久、衝刺、爆裂耐性。參考玩家資料站整理的數值與實戰評價 */
+const AB={dransword:[55,25,20,40,40],hellsscythe:[35,30,35,25,45],wizardarrow:[15,30,55,10,45],knightshield:[20,55,25,10,70],knightlance:[20,60,20,10,60],
+  leonclaw:[40,30,30,30,40],rhinohorn:[25,55,20,15,60],phoenixwing:[60,30,10,45,50],unicornsting:[40,25,35,35,45],weisstiger:[35,30,35,30,45],
+  cobaltdragoon:[50,20,30,35,35],crimsongaruda:[20,30,50,15,50],tricerapress:[25,60,15,15,65],samuraicalibur:[65,20,15,40,35],dranbuster:[70,20,10,50,35],
+  wizardrod:[10,35,60,10,55],impactdrake:[45,35,25,35,45],sharkedge:[60,20,20,45,40],meteordragoon:[45,25,35,35,40],bulletgriffon:[35,35,35,25,45],pegasusblast:[65,20,15,50,35]};
+TOPS.forEach(q=>{ if(!AB[q.id]) AB[q.id]=[40,30,30,30,45]; });
 const PK=(a,w,k)=>({a,w,k});
 const STAGES=[
   {name:'新手練習場',stars:1,th:'gym',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.24,'x'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
@@ -79,7 +85,8 @@ function fixDeck(d){ d=d.map(q=>partsOf(q)); for(let i=0;i<d.length;i++){ const 
 function myDeck(L){ let d=null; try{ d=JSON.parse(localStorage.getItem('arcade.spin.deck2')||'null'); }catch(e){} if(!Array.isArray(d)||d.length!==3) d=[{top:partsOf(L).top},{top:'knightshield'},{top:'wizardrod'}]; return fixDeck(d); }
 function botDeck(si,i){ const d=[]; for(let k=0;k<3;k++) d.push({top:OPP[(si*2+i+k*7)%OPP.length]}); return fixDeck(d); }
 function statsOf(p){ const T0=TOP[p.top],Ty=TYPES[T0.type],B=BITS[BITK[T0.bit]],Rr=ratOf(T0.rat),x=T0.x;
-  return {atk:Ty.atk*Rr.atk*(x.atk||1),def:Ty.def+B.def,wgt:Ty.wgt*(x.wgt||1),sta:Ty.sta*B.sta*(x.sta||1),mv:B.mv,dash:B.dash,wander:B.wander,cruise:B.cruise,curv:B.curv,seek:B.seek,res:Rr.res,low:Rr.low,dir:T0.dir}; }
+  const [a,d,st,ds,br]=AB[T0.id]; /* 能力值換算成物理係數：數值越高越強 */
+  return {atk:(.6+a/100)*Rr.atk,def:.7+d/100*1.1+B.def,wgt:Ty.wgt*(x.wgt||1),sta:(.62+st/100*1.3)*B.sta,mv:B.mv,dash:B.dash*(.75+ds/100*.6),wander:B.wander,cruise:B.cruise*(.85+ds/100*.35),curv:B.curv,seek:B.seek,res:.62+br/100*.75+(Rr.res-.97)*.5,low:Rr.low,dir:T0.dir,ab:AB[T0.id]}; }
 // 刀刃外形：極座標 r(θ)，回傳 0～1
 function bladeR(sh,a){ const u=((a*sh.n/TAU)%1+1)%1,d=sh.d||.2,h=sh.h||2;
   if(sh.k==='hook') return 1-d+d*Math.pow(u,h);
@@ -739,8 +746,8 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   ctx.font='700 '+fs+'px '+TC; ctx.fillStyle='#9ac8ff'; ctx.fillText(B.code+'　'+B.rat+' '+BITN[B.bit]+(B.dir<0?'　左旋':''),x0,h*.2);
   ctx.fillStyle=['#ff6a5a','#5aa8ff','#5fd068','#ffd23f','#c8a0ff'][Object.keys(TYPES).indexOf(B.type)]; ctx.font='900 '+fs+'px '+TC; ctx.fillText('類型：'+B.type+(B.type==='左旋'?'特化型':'型'),x0,h*.3);
   ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='700 '+Math.round(h*.048)+'px '+TC; wrapText(ctx,'特色：'+B.feat,x0,h*.4,bw,h*.07,3);
-  const st=[['攻擊',K.atk/1.5],['防禦',K.def/1.6],['持久',K.sta/1.7],['衝刺',K.dash/1.7]];
-  ctx.font='700 '+Math.round(h*.045)+'px '+TC; st.forEach(([n,v],i)=>{ const y=h*(.66+i*.085); ctx.fillStyle='#fff'; ctx.fillText(n,x0,y); ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(x0+h*.12,y-h*.016,bw-h*.12,h*.032); ctx.fillStyle=['#ff4d4d','#3d8bff','#3ed16a','#ff9d3d'][i]; ctx.fillRect(x0+h*.12,y-h*.016,(bw-h*.12)*clamp(v,.1,1),h*.032); }); }
+  const ab=AB[B.id],st=[['攻擊',ab[0]],['防禦',ab[1]],['持久',ab[2]],['衝刺',ab[3]],['爆裂耐性',ab[4]]];
+  ctx.font='700 '+Math.round(h*.042)+'px '+TC; st.forEach(([n,v0],i)=>{ const v=v0/80,y=h*(.6+i*.078); ctx.textAlign='right'; ctx.fillStyle='#fff'; ctx.fillText(String(v0),x0+bw,y); ctx.textAlign='left'; /* 數字 */ ctx.fillStyle='#fff'; ctx.fillText(n,x0,y); const bx=x0+h*.2,bl=bw-h*.2-h*.09; ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(bx,y-h*.016,bl,h*.032); ctx.fillStyle=['#ff4d4d','#3d8bff','#3ed16a','#ff9d3d','#c8a0ff'][i]; ctx.fillRect(bx,y-h*.016,bl*clamp(v,.06,1),h*.032); }); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).spin={name:'陀螺旋風戰',tag:'SPIN STORM',color:'#ff7a3d',online:true,maxPlayers:2,
   desc:'20 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就用滑鼠或手指拖曳拉繩發射（拉越快轉速越高，超時犯規），之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，旋轉勝利、擊飛勝利、爆裂勝利、極限勝利，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
   goal:'選好落點發射，比對手轉得久＝旋轉勝利 1 分、撞進黃色擊飛區域或飛出場外＝擊飛勝利 2 分、撞到解體＝爆裂勝利 2 分、撞進紅色極限區域＝極限勝利 3 分。先拿 4 分的贏。',

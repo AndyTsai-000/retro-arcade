@@ -253,7 +253,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=233; // 每次改版加一
+window.ARCADE_V=234; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -793,8 +793,17 @@ async function lookCard(){ closeStage();
 }
 let instGen=0; // 每開一局加一：舊局延遲呼叫的「結束」不能把新開的遊戲結束掉
 function killInst(){ instGen++; closeStage(); if(inst){ try{inst.destroy();}catch(e){} inst=null; } stage.innerHTML=''; }
+// 手機：進入遊戲後鎖住雙指縮放（直向、橫向都一樣）；iOS 不理 user-scalable=no，要擋手勢事件
+const VPM=document.querySelector('meta[name=viewport]'),VP0=VPM?VPM.content:'';
+let zoomLock=false;
+function lockZoom(on){ zoomLock=on; if(VPM) VPM.content=on?'width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no':VP0; }
+{ const stop=e=>{ if(zoomLock&&e.cancelable) e.preventDefault(); };
+  ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,stop,{passive:false}));
+  document.addEventListener('touchmove',e=>{ if(e.touches&&e.touches.length>1) stop(e); },{passive:false});
+  document.addEventListener('wheel',e=>{ if(e.ctrlKey) stop(e); },{passive:false}); }
 function open(id){
   if(!myName){ nameModal(); return; }
+  lockZoom(true);
   audio(); SFX.click();
   cur=G[id]; cur.id=id; loadOpts(cur); stageSel=0; if(cur.stageLocked&&cur.stages){ while(stageSel<cur.stages.length-1&&!cur.stageLocked(stageSel+1)) stageSel++; } /* 有鎖關卡的遊戲：預設選最新解鎖的那一關 */ variantSel=cur.variants?(cur.variants.find(v=>v.def)||cur.variants[0]).id:null; // def:true 的選項是預設
   $('#hub').hidden=true; $('#play').hidden=false; $('#gName').textContent=cur.name;
@@ -990,6 +999,7 @@ function toGameLobby(){
   SFX.click(); startCard(); scrollTo(0,0);
 }
 function back(fromPop){
+  lockZoom(false);
   const safe=f=>{ try{ f(); }catch(e){ console.error(e); } };
   if(fromPop!==true&&history.state&&history.state.arc){ popSkip++; history.back(); } // 按畫面上的按鈕回大廳：把瀏覽器紀錄也退一格
   safe(leaveNet); safe(killInst); safe(closeLook);
