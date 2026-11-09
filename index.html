@@ -275,20 +275,20 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=247; // 每次改版加一
+window.ARCADE_V=248; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
-  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
 <script>
 (function(){
 'use strict';
 // 在 LINE、Facebook、Instagram 等 App 的內建瀏覽器裡直接就能玩，不強制跳到外部瀏覽器
 const G=window.ARCADE_GAMES||{};
-const ORDER=['kart','chess','bomb','royale','spin','deliver','space','chase','ace','sumo','sky','boxing','meow','bball','dodge','soccer','baseball','rich','purple','jelly','tower','bowl','poker','dice','qi','mahjong','rummy','drum','dance','passbomb','draw','wolf','stairs','blocks','volley','golf','pool','moto','sled','jet','run','isle','tank','bubble','night','pillow','dash','claw'].filter(k=>G[k]);
+const ORDER=['kart','chess','bomb','royale','spin','deliver','space','chase','classic','ace','sumo','sky','boxing','meow','bball','dodge','soccer','baseball','rich','purple','jelly','tower','bowl','poker','dice','qi','mahjong','rummy','drum','dance','passbomb','draw','wolf','stairs','blocks','volley','golf','pool','moto','sled','jet','run','isle','tank','bubble','night','pillow','dash','claw'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 // 大廳分類（每款遊戲屬於一個類別）
 const CATS=[['act','動作闖關'],['race','競速'],['ball','球類運動'],['fight','格鬥'],['board','益智桌遊'],['puzzle','益智消除'],['rhythm','節奏音樂'],['strategy','策略經營'],['shoot','射擊'],['party','派對']];
-const CAT_OF={chase:'race',ace:'shoot',night:'party',stairs:'act',bomb:'act',kart:'race',volley:'ball',dodge:'ball',soccer:'ball',bowl:'ball',baseball:'ball',purple:'fight',rummy:'board',mahjong:'board',meow:'board',poker:'board',dice:'board',deliver:'act',chess:'board',qi:'board',moto:'race',sled:'race',jet:'race',run:'race',isle:'fight',pillow:'fight',bball:'ball',golf:'ball',pool:'ball',blocks:'puzzle',drum:'rhythm',dance:'rhythm',tower:'strategy',jelly:'act',rich:'board',space:'shoot',royale:'shoot',draw:'party',wolf:'party',passbomb:'party',bubble:'puzzle',claw:'act',tank:'shoot',dash:'act',spin:'fight',sumo:'fight',sky:'shoot',boxing:'fight'};
+const CAT_OF={classic:'puzzle',chase:'race',ace:'shoot',night:'party',stairs:'act',bomb:'act',kart:'race',volley:'ball',dodge:'ball',soccer:'ball',bowl:'ball',baseball:'ball',purple:'fight',rummy:'board',mahjong:'board',meow:'board',poker:'board',dice:'board',deliver:'act',chess:'board',qi:'board',moto:'race',sled:'race',jet:'race',run:'race',isle:'fight',pillow:'fight',bball:'ball',golf:'ball',pool:'ball',blocks:'puzzle',drum:'rhythm',dance:'rhythm',tower:'strategy',jelly:'act',rich:'board',space:'shoot',royale:'shoot',draw:'party',wolf:'party',passbomb:'party',bubble:'puzzle',claw:'act',tank:'shoot',dash:'act',spin:'fight',sumo:'fight',sky:'shoot',boxing:'fight'};
 const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;};
 const isTouch=matchMedia('(pointer:coarse)').matches;
 if(isTouch) document.body.classList.add('touch');
@@ -358,6 +358,7 @@ const SONGS={ /* 每款依遊戲風格配器：lead 主旋律音色、bass 低�
         game:{bpm:132,root:62,sc:'penta',prog:'0:m 3:M 10:M 7:m',lead:'zheng',bass:'gallop',pad:'stab',drum:'taiko',dense:1}},
   sky:{menu:{bpm:104,root:65,sc:'mixo',prog:'0:M 10:M 5:M 0:M',lead:'brass',bass:'walk',pad:'arp',drum:'march'}, /* 空戰：銅管進行曲轉快節奏 */
        game:{bpm:160,root:64,sc:'mixo',prog:'0:M 10:M 3:M 5:M',lead:'super',bass:'octave',pad:'arp',drum:'dnb',dense:1}},
+  classic:{menu:{bpm:100,root:60,sc:'major',prog:'0:M 5:M 7:M 0:M',lead:'square',bass:'walk',pad:'arp',drum:'pop'}}, /* 經典小遊戲：8-bit 輕快（遊戲中不放，讓各遊戲自己的音效） */
   ace:{menu:{bpm:92,root:62,sc:'dorian',prog:'0:m 8:M 10:M 0:m',lead:'brass',bass:'octave',pad:'strings',drum:'march'}, /* 3D 空戰：壯闊銅管、弦樂 */
        game:{bpm:150,root:62,sc:'dorian',prog:'0:m 8:M 10:M 7:m',lead:'super',bass:'octave',pad:'arp',drum:'dnb',dense:1}},
   boxing:{menu:{bpm:96,root:57,sc:'dorian',prog:'0:m7 5:7 0:m7 10:M',lead:'organ',bass:'walk',pad:'brassy',drum:'swing'}, /* 拳擊：放克銅管、搖滾鼓 */
@@ -602,7 +603,7 @@ function buildHub(){
 }
 const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
 // 大廳封面：3D 遊戲用真實遊戲截圖（慢慢縮放平移、兩張交叉淡入），其他遊戲用自己畫的動態縮圖
-const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={},SHOT_IDS=['chess','bomb','deliver','meow','stairs','jelly','blocks','drum','dance','tower','purple','rummy','poker','rich','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow','royale','space','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace'],STAGE_SHOTS={deliver:1,bball:1,golf:1,pool:1,royale:1}; SHOT_IDS.forEach(k=>COVERS[k]=['shots/'+k+'.jpg']);
+const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={},SHOT_IDS=['chess','bomb','deliver','meow','stairs','jelly','blocks','drum','dance','tower','purple','rummy','poker','rich','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow','royale','space','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic'],STAGE_SHOTS={classic:1,deliver:1,bball:1,golf:1,pool:1,royale:1}; SHOT_IDS.forEach(k=>COVERS[k]=['shots/'+k+'.jpg']);
 const SHOW_COVER={baseball:1,bowl:1};
 function stageCover(id,si){ const src=STAGE_SHOTS[id]?'shots/'+id+'_'+si+'.jpg':SHOW_COVER[id]?'shots/'+id+'.jpg':null; if(!src) return null; if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } const im=coverImg[src]; return im.complete&&im.naturalWidth?im:null; }
 function cover(id){ const list=COVERS[id]; if(!list) return null; return list.map(src=>{ if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } return coverImg[src]; }).filter(im=>im.complete&&im.naturalWidth); }

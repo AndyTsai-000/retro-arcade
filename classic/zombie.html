@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>打殭屍</title>
+
+<style>
+  html,body{margin:0;height:100%;background:#141a14;color:#dfe8d8;font-family:"Microsoft JhengHei",sans-serif;overflow:hidden;user-select:none}
+  body{display:flex;flex-direction:column;align-items:center}
+  #hud{display:flex;gap:18px;align-items:center;padding:8px 12px;font-size:14px;white-space:nowrap}
+  #hud b{color:#ffd84a;font-size:20px;font-variant-numeric:tabular-nums;margin-left:4px}
+  #hud a{color:#a8d890;text-decoration:none}
+  #hud a:hover{text-decoration:underline}
+  canvas{display:block;border-radius:8px;box-shadow:0 0 24px #000a;touch-action:none}
+  #tip{font-size:12px;opacity:.6;padding:5px;text-align:center}
+</style>
+</head>
+<body>
+  <div id="hud">
+    
+    <span>分數<b id="score">0</b></span>
+    <span>第<b id="wave">0</b> 波</span>
+    <span>最高<b id="best">0</b></span>
+  </div>
+  <canvas id="cv"></canvas>
+  <div id="tip">點卡片再點草地種下（或按 1–4）　｜　滑鼠碰到陽光就會收集　｜　鏟子可挖掉植物　｜　空白鍵暫停</div>
+
+<script>
+const W = 800, H = 560, COLS = 9, ROWS = 5, CW = 80, CH = 92, GX = 70, GY = 92;
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const PLANTS = {
+  sun:   { name: '向日葵', cost: 50,  cd: 5,  hp: 6 },    // 定時產生陽光
+  shoot: { name: '射手',   cost: 100, cd: 5,  hp: 6 },    // 同一排有殭屍就射擊
+  wall:  { name: '石牆',   cost: 50,  cd: 20, hp: 60 },   // 擋路
+  bomb:  { name: '炸彈',   cost: 150, cd: 30, hp: 999 },  // 一秒後炸掉周圍九格
+};
+const CARDS = ['sun', 'shoot', 'wall', 'bomb'];
+const KINDS = {
+  normal: { hp: 10, sp: 17, bite: 1, pts: 10, s: 1,    coat: '#6b5a4a' },
+  cone:   { hp: 24, sp: 17, bite: 1, pts: 20, s: 1,    coat: '#6b5a4a' },
+  fast:   { hp: 8,  sp: 36, bite: 1, pts: 15, s: 0.88, coat: '#9a3d3d' },
+  big:    { hp: 60, sp: 12, bite: 3, pts: 50, s: 1.3,  coat: '#3d3d5c' },
+};
+const SUN = 25, CARD_X = 104, CARD_W = 74, CARD_GAP = 82;
+
+let grid, zs, peas, suns, mowers, fx, cds, sunPts, sel, hover, skyT, time;
+let wave, toSpawn, spawnT, restT, waveMsg, score, state;  // state: ready / play / pause / over
+let best = +localStorage.getItem('zombie-td-best') || 0;
+
+const px = c => GX + c * CW + CW / 2, py = r => GY + r * CH + CH / 2;
+function hud() {
+  $('score').textContent = score;
+  $('wave').textContent = wave;
+  $('best').textContent = best;
+}
+function reset() {
+  grid = new Array(ROWS * COLS).fill(null);
+  zs = []; peas = []; suns = []; fx = [];
+  mowers = []; for (let r = 0; r < ROWS; r++) mowers.push({ x: GX - 36, on: false });
+  cds = { sun: 0, shoot: 0, wall: 0, bomb: 0 };
+  sunPts = 150; sel = null; hover = null; skyT = 5; time = 0;
+  wave = 0; toSpawn = 0; spawnT = 0; restT = 20; waveMsg = 0; score = 0; state = 'ready';
+  hud();
+}
+function nextWave() { wave++; toSpawn = 2 + Math.floor(wave * 1.5); spawnT = 0; waveMsg = 2; hud(); }
+function spawnZ() {
+  const roll = Math.random();
+  const kind = wave >= 6 && roll < Math.min(0.25, 0.08 + (wave - 6) * 0.02) ? 'big'
+    : wave >= 4 && roll < 0.32 ? 'fast' : wave >= 2 && roll < 0.6 ? 'cone' : 'normal';
+  const k = KINDS[kind], hp = Math.round(k.hp * (wave > 8 ? 1 + (wave - 8) * 0.1 : 1));
+  zs.push({ kind, r: (Math.random() * ROWS) | 0, x: W + 30, hp, max: hp, sp: k.sp, bite: k.bite, pts: k.pts, eatT: 0, eating: false, hit: 0, walk: Math.random() * 3 });
+}
+function hurt(z, n) {
+  z.hp -= n; z.hit = 0.08;
+  if (z.hp <= 0 && !z.dead) { z.dead = true; score += z.pts; fx.push({ kind: 'die', x: z.x, y: py(z.r), t: 0.35 }); hud(); }
+}
+function plant(kind, r, c) {
+  const k = PLANTS[kind], i = r * COLS + c;
+  if (grid[i] || sunPts < k.cost || cds[kind] > 0) return false;
+  sunPts -= k.cost; cds[kind] = k.cd;
+  grid[i] = { kind, r, c, x: px(c), y: py(r), hp: k.hp, t: kind === 'sun' ? 6 : kind === 'bomb' ? 0.9 : 0.4, hit: 0 };
+  return true;
+}
+function collect(s) { sunPts += SUN; s.t = 0; fx.push({ kind: 'sun', x: s.x, y: s.y, t: 0.3 }); }
+
+function update(dt) {
+  if (state !== 'play') return;
+  time += dt; waveMsg -= dt;
+  for (const k of CARDS) cds[k] = Math.max(0, cds[k] - dt);
+  for (const f of fx) f.t -= dt;
+  fx = fx.filter(f => f.t > 0);
+
+  // 陽光：天上定時掉，落地後放一陣子會消失
+  skyT -= dt;
+  if (skyT <= 0) {
+    suns.push({ x: GX + 40 + Math.random() * (COLS * CW - 80), y: GY - 30, ty: GY + 40 + Math.random() * (ROWS * CH - 80), t: 12 });
+    skyT = 9;
+  }
+  for (const s of suns) { if (s.y < s.ty) s.y = Math.min(s.ty, s.y + 70 * dt); else s.t -= dt; }
+  suns = suns.filter(s => s.t > 0);
+
+  // 植物
+  for (let i = 0; i < grid.length; i++) {
+    const p = grid[i];
+    if (!p) continue;
+    p.hit -= dt; p.t -= dt;
+    if (p.hp <= 0) { grid[i] = null; continue; }
+    if (p.t > 0) continue;
+    if (p.kind === 'sun') {
+      suns.push({ x: p.x + Math.random() * 30 - 15, y: p.y - 24, ty: p.y + 16, t: 12 });
+      p.t = 18;
+    } else if (p.kind === 'shoot') {
+      if (zs.some(z => z.r === p.r && z.x > p.x - 10 && z.x < W + 10)) { peas.push({ r: p.r, x: p.x + 26, y: p.y - 10 }); p.t = 1.4; }
+    } else if (p.kind === 'bomb') {
+      for (const z of zs) if (Math.abs(z.r - p.r) <= 1 && Math.abs(z.x - p.x) < CW * 1.5) hurt(z, 90);
+      fx.push({ kind: 'boom', x: p.x, y: p.y, t: 0.45 });
+      grid[i] = null;
+    }
+  }
+
+  // 子彈
+  for (const b of peas) {
+    b.x += 340 * dt;
+    let hit = null;
+    for (const z of zs) if (z.r === b.r && !z.dead && b.x > z.x - 16 && b.x < z.x + 22 && (!hit || z.x < hit.x)) hit = z;
+    if (hit) { hurt(hit, 1); b.x = 1e9; }
+  }
+  peas = peas.filter(b => b.x < W + 20);
+
+  // 殭屍：前面有植物就停下來吃，沒有就往左走
+  for (const z of zs) {
+    z.hit -= dt;
+    let food = null;
+    for (let c = 0; c < COLS; c++) {
+      const p = grid[z.r * COLS + c];
+      if (p && p.kind !== 'bomb' && z.x - p.x > -20 && z.x - p.x < 44) food = p;
+    }
+    z.eating = !!food;
+    if (food) {
+      z.eatT -= dt;
+      if (z.eatT <= 0) { food.hp -= z.bite; food.hit = 0.1; z.eatT = 0.5; }
+    } else { z.x -= z.sp * dt; z.walk += dt; }
+    if (z.x < GX - 8) {
+      const m = mowers[z.r];
+      if (m) m.on = true;
+      else if (z.x < 6) return lose();
+    }
+  }
+
+  // 除草機：每排一台，殭屍走到底會自動衝出去清掉整排，只能用一次
+  for (let r = 0; r < ROWS; r++) {
+    const m = mowers[r];
+    if (!m || !m.on) continue;
+    m.x += 520 * dt;
+    for (const z of zs) if (z.r === r && Math.abs(z.x - m.x) < 34) hurt(z, 9999);
+    if (m.x > W + 60) mowers[r] = null;
+  }
+  zs = zs.filter(z => !z.dead);
+
+  // 出怪與下一波
+  if (toSpawn > 0) {
+    spawnT -= dt;
+    if (spawnT <= 0) { spawnZ(); toSpawn--; spawnT = Math.max(1.5, 7 - wave * 0.45) * (0.6 + Math.random() * 0.8); }
+  } else if (!zs.length) {
+    restT -= dt;
+    if (restT <= 0) { nextWave(); restT = 6; }
+  }
+}
+function lose() {
+  state = 'over'; sel = null;
+  if (score > best) { best = score; localStorage.setItem('zombie-td-best', best); }
+  hud();
+}
+
+// ---------- 操作 ----------
+function start() {
+  if (state === 'over') reset();
+  if (state === 'ready' || state === 'pause') state = 'play';
+}
+function pick(k) { sel = sel === k ? null : k; }
+function cellAt(x, y) {
+  const c = Math.floor((x - GX) / CW), r = Math.floor((y - GY) / CH);
+  return c >= 0 && c < COLS && r >= 0 && r < ROWS ? { r, c } : null;
+}
+function pos(e) { return { x: e.offsetX / cv.clientWidth * W, y: e.offsetY / cv.clientHeight * H }; }
+function click(x, y) {
+  if (state !== 'play') return start();
+  if (y < GY - 8) {
+    const i = Math.floor((x - CARD_X) / CARD_GAP);
+    if (x >= CARD_X && i <= CARDS.length && x - CARD_X - i * CARD_GAP < CARD_W) pick(i < CARDS.length ? CARDS[i] : 'shovel');
+    return;
+  }
+  for (const s of suns) if (Math.hypot(s.x - x, s.y - y) < 34) return collect(s);
+  const cell = cellAt(x, y);
+  if (!cell || !sel) return;
+  if (sel === 'shovel') { grid[cell.r * COLS + cell.c] = null; sel = null; }
+  else if (plant(sel, cell.r, cell.c)) sel = null;
+}
+cv.addEventListener('pointermove', e => {
+  const m = pos(e);
+  hover = cellAt(m.x, m.y);
+  if (state === 'play') for (const s of suns) if (Math.hypot(s.x - m.x, s.y - m.y) < 34) collect(s);
+});
+cv.addEventListener('pointerleave', () => { hover = null; });
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (e.button === 2) { sel = null; return; }
+  const m = pos(e);
+  hover = cellAt(m.x, m.y);
+  click(m.x, m.y);
+});
+cv.addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (e.repeat) return;
+    if (state === 'play') state = 'pause'; else start();
+  } else if (e.code === 'Escape') sel = null;
+  else if (state === 'play' && /^(Digit|Numpad)[1-5]$/.test(e.code)) pick(CARDS[e.code.slice(-1) - 1] || 'shovel');
+});
+addEventListener('blur', () => { if (state === 'play') state = 'pause'; });
+
+// ---------- 畫面 ----------
+function circle(x, y, r, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+function line(x1, y1, x2, y2, w, col) {
+  ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+function text(s, x, y, size, col, align) {
+  ctx.font = `bold ${size}px "Microsoft JhengHei",sans-serif`;
+  ctx.textAlign = align || 'center';
+  ctx.fillStyle = col;
+  ctx.fillText(s, x, y);
+}
+function sunIcon(x, y, r) {
+  ctx.strokeStyle = '#ffb81c'; ctx.lineWidth = r * 0.22; ctx.lineCap = 'round';
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4 + time * 0.8;
+    ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * 1.15, y + Math.sin(a) * r * 1.15); ctx.lineTo(x + Math.cos(a) * r * 1.5, y + Math.sin(a) * r * 1.5); ctx.stroke();
+  }
+  circle(x, y, r, '#ffe14a');
+  circle(x, y, r * 0.62, '#fff3a0');
+}
+function drawPlant(kind, x, y, s, p) {
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(s, s);
+  const flash = p && p.hit > 0;
+  if (kind === 'sun' || kind === 'shoot') {
+    line(0, 34, 0, 2, 6, '#3f8f2f');
+    ctx.fillStyle = '#4fae3a';
+    ctx.beginPath(); ctx.ellipse(-12, 30, 13, 6, -0.3, 0, 7); ctx.ellipse(12, 30, 13, 6, 0.3, 0, 7); ctx.fill();
+  }
+  if (kind === 'sun') {
+    ctx.fillStyle = flash ? '#fff' : '#ffc928';
+    for (let i = 0; i < 10; i++) {
+      const a = i * Math.PI / 5;
+      ctx.beginPath(); ctx.ellipse(Math.cos(a) * 19, -8 + Math.sin(a) * 19, 10, 6, a, 0, 7); ctx.fill();
+    }
+    circle(0, -8, 15, flash ? '#fff' : '#8a5a2a');
+    circle(-5, -11, 2.2, '#2a1a0a'); circle(5, -11, 2.2, '#2a1a0a');
+    ctx.strokeStyle = '#2a1a0a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -7, 6, 0.3, Math.PI - 0.3); ctx.stroke();
+  } else if (kind === 'shoot') {
+    const col = flash ? '#fff' : '#5fc040';
+    ctx.fillStyle = col; ctx.fillRect(6, -18, 24, 16);
+    ctx.fillStyle = '#2f6f20'; ctx.beginPath(); ctx.ellipse(30, -10, 5, 9, 0, 0, 7); ctx.fill();
+    circle(-2, -10, 18, col);
+    ctx.strokeStyle = '#2f6f20'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(-2, -10, 18, 0, 7); ctx.stroke();
+    circle(4, -15, 5, '#fff'); circle(5.5, -15, 2.4, '#111');
+  } else if (kind === 'wall') {
+    ctx.fillStyle = flash ? '#fff' : '#9a9488';
+    ctx.beginPath(); ctx.roundRect(-26, -30, 52, 66, 10); ctx.fill();
+    ctx.strokeStyle = '#5c574e'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-26, -8); ctx.lineTo(26, -8); ctx.moveTo(-26, 14); ctx.lineTo(26, 14);
+    ctx.moveTo(-4, -30); ctx.lineTo(-4, -8); ctx.moveTo(8, -8); ctx.lineTo(8, 14); ctx.moveTo(-8, 14); ctx.lineTo(-8, 36); ctx.stroke();
+    const left = p ? p.hp / PLANTS.wall.hp : 1;
+    ctx.strokeStyle = '#2c2924'; ctx.lineWidth = 2.5;
+    if (left < 0.66) { ctx.beginPath(); ctx.moveTo(16, -30); ctx.lineTo(8, -14); ctx.lineTo(16, -2); ctx.lineTo(6, 10); ctx.stroke(); }
+    if (left < 0.33) { ctx.beginPath(); ctx.moveTo(-22, 0); ctx.lineTo(-10, 8); ctx.lineTo(-16, 22); ctx.lineTo(-4, 36); ctx.stroke(); }
+  } else if (kind === 'bomb') {
+    const k = p ? 1 + (0.9 - p.t) * 0.35 : 1;
+    ctx.scale(k, k);
+    line(8, -16, 16, -30, 3, '#5c4a2a');
+    circle(17, -32, 4 + (p ? Math.sin(time * 40) * 2 : 0), '#ffb81c');
+    circle(0, 4, 23, p && Math.floor(p.t * 12) % 2 ? '#fff' : '#d8362c');
+    ctx.strokeStyle = '#6a1410'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 4, 23, 0, 7); ctx.stroke();
+    circle(-8, -4, 5, '#ffffff66');
+  }
+  ctx.restore();
+}
+function drawZombie(z) {
+  const k = KINDS[z.kind], skin = z.hit > 0 ? '#fff' : '#a3bd8c', coat = z.hit > 0 ? '#fff' : k.coat;
+  ctx.save();
+  ctx.translate(z.x, py(z.r) + 38); ctx.scale(k.s, k.s);
+  const sw = z.eating ? 0 : Math.sin(z.walk * (z.kind === 'fast' ? 11 : 6)) * 7;
+  line(-3, -26, -3 + sw, 0, 7, '#3a4660'); line(5, -26, 5 - sw, 0, 7, '#2e384e');
+  ctx.fillStyle = coat; ctx.beginPath(); ctx.roundRect(-13, -58, 26, 36, 5); ctx.fill();
+  ctx.strokeStyle = '#0006'; ctx.lineWidth = 1.5; ctx.stroke();
+  const arm = z.eating ? Math.sin(time * 14) * 5 : 0;
+  line(-6, -50, -28, -44 + arm, 6, skin); line(-4, -42, -26, -38 - arm, 6, skin);
+  circle(-2, -70, 14, skin);
+  ctx.strokeStyle = '#4a5e3c'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(-2, -70, 14, 0, 7); ctx.stroke();
+  circle(-8, -73, 4.5, '#fff'); circle(-9.5, -73, 2, '#c01818');
+  ctx.fillStyle = '#3a1a1a'; ctx.fillRect(-13, -65, 9, z.eating && Math.floor(time * 8) % 2 ? 6 : 3);
+  if (z.kind === 'cone' && z.hp > z.max * 0.42) {
+    ctx.fillStyle = '#f08a24'; ctx.beginPath(); ctx.moveTo(-17, -80); ctx.lineTo(13, -80); ctx.lineTo(-2, -108); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(-11, -92, 18, 4);
+  }
+  ctx.restore();
+}
+function drawCard(i) {
+  const kind = CARDS[i], x = CARD_X + i * CARD_GAP, y = 8, h = 70;
+  const k = PLANTS[kind], ok = !kind || (sunPts >= k.cost && cds[kind] <= 0);
+  ctx.fillStyle = '#efe2b8'; ctx.beginPath(); ctx.roundRect(x, y, CARD_W, h, 6); ctx.fill();
+  if (kind) {
+    drawPlant(kind, x + CARD_W / 2, y + 28, 0.55);
+    text(k.cost, x + CARD_W / 2, y + h - 6, 14, '#3a2a10');
+  } else {  // 鏟子
+    line(x + 24, y + 48, x + 44, y + 22, 5, '#8a5a2a');
+    ctx.fillStyle = '#9aa4ae'; ctx.beginPath(); ctx.moveTo(x + 40, y + 28); ctx.lineTo(x + 54, y + 20); ctx.lineTo(x + 58, y + 8); ctx.lineTo(x + 46, y + 12); ctx.lineTo(x + 38, y + 26); ctx.fill();
+    text('鏟子', x + CARD_W / 2, y + h - 6, 13, '#3a2a10');
+  }
+  text(i + 1, x + 5, y + 14, 11, '#0007', 'left');
+  if (!ok) { ctx.fillStyle = '#0007'; ctx.beginPath(); ctx.roundRect(x, y, CARD_W, h, 6); ctx.fill(); }
+  if (kind && cds[kind] > 0) { ctx.fillStyle = '#000a'; ctx.fillRect(x, y, CARD_W, h * cds[kind] / k.cd); }
+  if (sel === (kind || 'shovel')) { ctx.strokeStyle = '#ffe14a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(x, y, CARD_W, h, 6); ctx.stroke(); }
+}
+function draw() {
+  const k = cv.width / W;
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = '#5a4630'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#8a8a82'; ctx.fillRect(0, GY, GX, ROWS * CH);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    ctx.fillStyle = (r + c) % 2 ? '#4f9a36' : '#5aaa3e';
+    ctx.fillRect(GX + c * CW, GY + r * CH, CW, CH);
+  }
+  ctx.fillStyle = '#3d7a2a'; ctx.fillRect(GX + COLS * CW, GY, W, ROWS * CH);
+
+  // 上方：陽光數量與卡片
+  ctx.fillStyle = '#3a2c1c'; ctx.beginPath(); ctx.roundRect(8, 8, 88, 70, 6); ctx.fill();
+  sunIcon(52, 34, 14);
+  text(sunPts, 52, 72, 16, '#ffe14a');
+  for (let i = 0; i <= CARDS.length; i++) drawCard(i);
+  if (state !== 'ready' && wave === 0) text(`殭屍 ${Math.ceil(restT)} 秒後出現`, W - 16, 50, 18, '#ffe9b0', 'right');
+  else if (wave > 0) text(toSpawn > 0 ? `第 ${wave} 波進攻中` : zs.length ? `第 ${wave} 波　剩 ${zs.length} 隻` : '準備下一波…', W - 16, 50, 18, '#ffe9b0', 'right');
+
+  // 游標所在的格子
+  if (state === 'play' && hover && sel) {
+    const p = grid[hover.r * COLS + hover.c], x = GX + hover.c * CW, y = GY + hover.r * CH;
+    if (sel === 'shovel') { if (p) { ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = 4; ctx.strokeRect(x + 3, y + 3, CW - 6, CH - 6); } }
+    else if (!p) { ctx.globalAlpha = 0.5; drawPlant(sel, px(hover.c), py(hover.r), 1); ctx.globalAlpha = 1; }
+  }
+
+  for (const m of mowers) {
+    if (!m) continue;
+    const y = py(mowers.indexOf(m)) + 22;
+    ctx.fillStyle = '#d8362c'; ctx.beginPath(); ctx.roundRect(m.x - 22, y - 18, 44, 22, 5); ctx.fill();
+    ctx.fillStyle = '#7a1a14'; ctx.fillRect(m.x + 12, y - 12, 10, 12);
+    line(m.x - 20, y - 16, m.x - 30, y - 34, 3, '#444');
+    circle(m.x - 12, y + 6, 7, '#222'); circle(m.x + 12, y + 6, 7, '#222');
+  }
+  for (const p of grid) if (p) drawPlant(p.kind, p.x, p.y, 1, p);
+  for (let r = 0; r < ROWS; r++) for (const z of zs) if (z.r === r) drawZombie(z);
+  for (const b of peas) { circle(b.x, b.y, 7, '#8fe04a'); circle(b.x - 2, b.y - 2, 2.5, '#d8ffb0'); }
+  for (const s of suns) {
+    if (s.t < 3 && Math.floor(s.t * 6) % 2) continue;  // 快消失時閃爍
+    sunIcon(s.x, s.y, 15);
+  }
+  for (const f of fx) {
+    if (f.kind === 'boom') { const a = f.t / 0.45; circle(f.x, f.y, CW * 1.5 * (1.1 - a * 0.6), `rgba(255,${120 + a * 120 | 0},40,${a * 0.8})`); }
+    else if (f.kind === 'die') circle(f.x, f.y, 26 * (1.3 - f.t / 0.35), `rgba(120,150,100,${f.t / 0.35 * 0.7})`);
+    else text('+' + SUN, f.x, f.y - (0.3 - f.t) * 60, 16, '#fff3a0');
+  }
+
+  if (state === 'ready') {
+    ctx.fillStyle = '#000a'; ctx.fillRect(0, 0, W, H);
+    text('打殭屍', W / 2, 230, 44, '#b5e08a');
+    text('種植物守住草地，別讓殭屍走到最左邊', W / 2, 275, 17, '#fff');
+    text('點一下或按空白鍵開始', W / 2, 315, 17, '#c8d8c0');
+  } else if (state === 'pause') {
+    ctx.fillStyle = '#0008'; ctx.fillRect(0, 0, W, H);
+    text('暫停', W / 2, 260, 40, '#fff');
+    text('點一下或按空白鍵繼續', W / 2, 300, 16, '#c8d8c0');
+  } else if (state === 'over') {
+    ctx.fillStyle = '#000a'; ctx.fillRect(0, 0, W, H);
+    text('殭屍闖進來了', W / 2, 230, 44, '#ff6b6b');
+    text(`撐到第 ${wave} 波　分數 ${score}`, W / 2, 280, 20, '#fff');
+    text('點一下或按空白鍵再玩一次', W / 2, 320, 15, '#c8d8c0');
+  } else if (waveMsg > 0) text(`第 ${wave} 波`, W / 2, 300, 40, '#ffffffcc');
+}
+
+function fit() {
+  const avail = innerHeight - $('hud').offsetHeight - $('tip').offsetHeight - 12;
+  const w = Math.max(320, Math.min(innerWidth - 16, avail * W / H));
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = w + 'px';
+  cv.style.height = w * H / W + 'px';
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(w * H / W * dpr);
+}
+addEventListener('resize', fit);
+
+let last = 0;
+function frame(ts) {
+  const dt = Math.min(0.033, (ts - last) / 1000 || 0);
+  last = ts;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+reset();
+fit();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

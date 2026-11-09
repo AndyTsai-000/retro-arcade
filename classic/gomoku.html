@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>五子棋</title>
+
+<style>
+  html,body{margin:0;height:100%;background:#3b2a1a;color:#f3e6cf;font-family:"Microsoft JhengHei",sans-serif;overflow:hidden;user-select:none}
+  body{display:flex;flex-direction:column;align-items:center}
+  #hud{display:flex;gap:12px;align-items:center;padding:8px 12px;font-size:14px;white-space:nowrap}
+  #hud a{color:#f3d9a0;text-decoration:none}
+  #hud a:hover{text-decoration:underline}
+  #hud button{font:inherit;padding:3px 12px;background:#e8cf9a;color:#3b2a1a;border:1px solid #8a6a3a;border-radius:6px;cursor:pointer}
+  #hud button:hover{background:#f5e2b8}
+  #status{font-size:17px;font-weight:bold;min-width:130px;text-align:center}
+  canvas{display:block;border-radius:8px;box-shadow:0 4px 24px #0008;cursor:pointer}
+</style>
+</head>
+<body>
+  <div id="hud">
+    
+    <span id="status"></span>
+    <button id="undo">悔棋</button>
+    <button id="restart">重新開始</button>
+  </div>
+  <canvas id="cv"></canvas>
+
+<script>
+const N = 15, W = 600, CELL = 38, M = (W - CELL * (N - 1)) / 2;
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+
+// 1 = 黑、2 = 白；winner 3 = 和局
+let board, turn, hist, winner, winLine, hover = -1;
+
+function reset() {
+  board = new Array(N * N).fill(0);
+  turn = 1; hist = []; winner = 0; winLine = null;
+  refresh();
+}
+
+// 回傳通過 i 的五連（或更長）格子，沒有就回傳 null
+function checkWin(i) {
+  const x = i % N, y = (i / N) | 0, who = board[i];
+  for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
+    const cells = [i];
+    for (const dir of [1, -1]) {
+      for (let k = 1; ; k++) {
+        const nx = x + dx * k * dir, ny = y + dy * k * dir;
+        if (nx < 0 || ny < 0 || nx >= N || ny >= N || board[ny * N + nx] !== who) break;
+        cells.push(ny * N + nx);
+      }
+    }
+    if (cells.length >= 5) return cells;
+  }
+  return null;
+}
+
+function place(i) {
+  if (winner || board[i]) return;
+  board[i] = turn;
+  hist.push(i);
+  winLine = checkWin(i);
+  if (winLine) winner = turn;
+  else if (hist.length === N * N) winner = 3;
+  else turn = 3 - turn;
+  refresh();
+}
+
+function undo() {
+  if (!hist.length) return;
+  board[hist.pop()] = 0;
+  if (!winner) turn = 3 - turn;  // 分出勝負的那一步沒有換手
+  winner = 0; winLine = null;
+  refresh();
+}
+
+function refresh() {
+  const name = ['', '⚫ 黑子', '⚪ 白子'];
+  $('status').textContent = winner === 3 ? '和局' : winner ? name[winner] + '獲勝！' : '輪到 ' + name[turn];
+  $('status').style.color = winner ? '#ffd84a' : '';
+  draw();
+}
+
+function stone(x, y, who, alpha) {
+  const g = ctx.createRadialGradient(x - 5, y - 5, 2, x, y, 17);
+  if (who === 1) { g.addColorStop(0, '#666'); g.addColorStop(1, '#0a0a0a'); }
+  else { g.addColorStop(0, '#fff'); g.addColorStop(1, '#cfcfcf'); }
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, 17, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function draw() {
+  const k = cv.width / W;
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = '#dcb35c';
+  ctx.fillRect(0, 0, W, W);
+  ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1;
+  for (let i = 0; i < N; i++) {
+    const p = M + i * CELL, a = M, b = M + CELL * (N - 1);
+    ctx.beginPath(); ctx.moveTo(a, p); ctx.lineTo(b, p); ctx.moveTo(p, a); ctx.lineTo(p, b); ctx.stroke();
+  }
+  ctx.fillStyle = '#5a3a1a';
+  for (const [x, y] of [[3, 3], [11, 3], [7, 7], [3, 11], [11, 11]]) {
+    ctx.beginPath(); ctx.arc(M + x * CELL, M + y * CELL, 4, 0, 7); ctx.fill();
+  }
+
+  ctx.shadowColor = '#0006'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+  board.forEach((who, i) => { if (who) stone(M + (i % N) * CELL, M + ((i / N) | 0) * CELL, who, 1); });
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  if (hover >= 0 && !winner && !board[hover]) stone(M + (hover % N) * CELL, M + ((hover / N) | 0) * CELL, turn, 0.4);
+  if (hist.length) {
+    const i = hist[hist.length - 1];
+    ctx.fillStyle = '#e0382c';
+    ctx.beginPath(); ctx.arc(M + (i % N) * CELL, M + ((i / N) | 0) * CELL, 4, 0, 7); ctx.fill();
+  }
+  if (winLine) {
+    ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 3;
+    for (const i of winLine) { ctx.beginPath(); ctx.arc(M + (i % N) * CELL, M + ((i / N) | 0) * CELL, 18, 0, 7); ctx.stroke(); }
+  }
+}
+
+function fit() {
+  const s = Math.max(280, Math.min(innerHeight - $('hud').offsetHeight - 12, innerWidth - 16));
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = cv.style.height = s + 'px';
+  cv.width = cv.height = Math.round(s * dpr);
+  draw();
+}
+addEventListener('resize', fit);
+
+function cellAt(e) {
+  const x = Math.round((e.offsetX / cv.clientWidth * W - M) / CELL);
+  const y = Math.round((e.offsetY / cv.clientHeight * W - M) / CELL);
+  return x >= 0 && y >= 0 && x < N && y < N ? y * N + x : -1;
+}
+cv.addEventListener('click', e => { const i = cellAt(e); if (i >= 0) place(i); });
+cv.addEventListener('mousemove', e => { const i = cellAt(e); if (i !== hover) { hover = i; draw(); } });
+cv.addEventListener('mouseleave', () => { hover = -1; draw(); });
+$('undo').addEventListener('click', undo);
+$('restart').addEventListener('click', reset);
+
+reset();
+fit();
+</script>
+</body>
+</html>

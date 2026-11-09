@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>數字拼圖</title>
+
+<style>
+  html,body{margin:0;height:100%;background:#008080;color:#fff;font-family:"Microsoft JhengHei",sans-serif;overflow:hidden;user-select:none}
+  body{display:flex;flex-direction:column;align-items:center}
+  #hud{display:flex;gap:16px;align-items:center;padding:10px 12px;font-size:14px;white-space:nowrap}
+  #hud b{color:#ffe14a;font-size:20px;font-variant-numeric:tabular-nums;margin-left:4px}
+  #hud a{color:#fff;text-decoration:none}
+  #hud a:hover{text-decoration:underline}
+  #new{font:inherit;padding:4px 12px;background:#c0c0c0;color:#000;border:2px solid;border-color:#fff #404040 #404040 #fff;cursor:pointer}
+  #new:active{border-color:#404040 #fff #fff #404040}
+  #mid{flex:1;display:flex;align-items:center;justify-content:center}
+  #board{position:relative;background:#c0c0c0;border:4px solid;border-color:#808080 #fff #fff #808080;box-shadow:0 0 0 4px #c0c0c0,4px 4px 0 4px #0005}
+  .tile{position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;box-sizing:border-box;
+    background:#d8d8d8;color:#000080;font-weight:bold;font-family:Arial,sans-serif;cursor:pointer;
+    border:4px solid;border-color:#fff #606060 #606060 #fff;transition:transform .11s ease-out}
+  .tile.ok{background:#bfe3bf;color:#0a5a0a}
+  #board.done .tile{background:#ffe88a;color:#7a4a00;cursor:default}
+  #msg{position:absolute;left:0;right:0;bottom:-46px;text-align:center;font-size:20px;font-weight:bold;text-shadow:2px 2px 0 #004c4c}
+  #tip{font-size:12px;opacity:.8;padding:8px}
+</style>
+</head>
+<body>
+  <div id="hud">
+    
+    <span>步數<b id="moves">0</b></span>
+    <span>時間<b id="time">0:00</b></span>
+    <span>最少步數<b id="best">－</b></span>
+    <button id="new">重新洗牌</button>
+  </div>
+  <div id="mid"><div id="board"><div id="msg"></div></div></div>
+  <div id="tip">點空格旁邊（或同一排）的方塊來滑動　｜　也可以用方向鍵　｜　排成 1 到 15、空格在右下角就完成</div>
+
+<script>
+const N = 4;
+const $ = id => document.getElementById(id);
+const board = $('board'), els = [];
+let tiles, moves, sec, timer, done, size;
+let best = +localStorage.getItem('puzzle15-best') || 0;
+
+for (let n = 1; n < N * N; n++) {
+  const el = document.createElement('div');
+  el.className = 'tile';
+  el.textContent = n;
+  el.addEventListener('pointerdown', () => click(tiles.indexOf(n)));
+  board.appendChild(el);
+  els[n] = el;
+}
+
+const solved = () => tiles.every((n, i) => n === (i + 1) % (N * N));
+function hud() {
+  $('moves').textContent = moves;
+  $('time').textContent = ((sec / 60) | 0) + ':' + String(sec % 60).padStart(2, '0');
+  $('best').textContent = best || '－';
+}
+function render() {
+  tiles.forEach((n, i) => {
+    if (!n) return;
+    els[n].style.transform = `translate(${(i % N) * size}px,${((i / N) | 0) * size}px)`;
+    els[n].classList.toggle('ok', n === i + 1);
+  });
+  board.classList.toggle('done', done);
+  $('msg').textContent = done ? `完成！共 ${moves} 步` : '';
+}
+
+// 把第 i 格往空格的方向推；同一排或同一列隔著幾塊也可以一次推過去
+function push(i) {
+  const b = tiles.indexOf(0), bx = b % N, by = (b / N) | 0, x = i % N, y = (i / N) | 0;
+  if (i === b || (x !== bx && y !== by)) return 0;
+  const step = x === bx ? (y < by ? -N : N) : (x < bx ? -1 : 1);
+  let n = 0;
+  for (let p = b; p !== i; p += step, n++) tiles[p] = tiles[p + step];
+  tiles[i] = 0;
+  return n;
+}
+function click(i) {
+  if (done) return;
+  const n = push(i);
+  if (!n) return;
+  moves += n;
+  if (!timer) timer = setInterval(() => { sec++; hud(); }, 1000);
+  if (solved()) {
+    done = true;
+    clearInterval(timer); timer = 0;
+    if (!best || moves < best) { best = moves; localStorage.setItem('puzzle15-best', best); }
+  }
+  hud(); render();
+}
+// 方向鍵：把空格旁邊的方塊往箭頭方向推
+function key(dx, dy) {
+  const b = tiles.indexOf(0), x = b % N - dx, y = ((b / N) | 0) - dy;
+  if (x >= 0 && x < N && y >= 0 && y < N) click(y * N + x);
+}
+// 從排好的樣子隨機推很多下來洗牌，這樣一定解得開
+function shuffle() {
+  clearInterval(timer); timer = 0;
+  tiles = []; for (let i = 0; i < N * N; i++) tiles.push((i + 1) % (N * N));
+  let prev = -1;
+  for (let k = 0; k < 400 || solved(); k++) {
+    const b = tiles.indexOf(0), opts = [];
+    if (b % N > 0) opts.push(b - 1);
+    if (b % N < N - 1) opts.push(b + 1);
+    if (b >= N) opts.push(b - N);
+    if (b < N * (N - 1)) opts.push(b + N);
+    const pick = opts.filter(i => i !== prev);
+    prev = b;
+    push(pick[(Math.random() * pick.length) | 0]);
+  }
+  moves = 0; sec = 0; done = false;
+  hud(); render();
+}
+
+addEventListener('keydown', e => {
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] }[e.code];
+  if (d) { e.preventDefault(); key(d[0], d[1]); }
+  else if (e.code === 'F2') { e.preventDefault(); shuffle(); }
+});
+$('new').addEventListener('click', shuffle);
+
+function fit() {
+  size = Math.floor(Math.max(60, Math.min(innerWidth - 60, innerHeight - 200, 520) / N));
+  board.style.width = board.style.height = size * N + 'px';
+  for (let n = 1; n < N * N; n++) {
+    els[n].style.width = els[n].style.height = size + 'px';
+    els[n].style.fontSize = size * 0.42 + 'px';
+  }
+  if (tiles) render();
+}
+addEventListener('resize', fit);
+
+fit();
+shuffle();
+</script>
+</body>
+</html>

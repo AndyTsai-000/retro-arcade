@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>貪食蛇</title>
+
+<style>
+  html,body{margin:0;height:100%;background:#0b140c;color:#d6f5d0;font-family:"Microsoft JhengHei",sans-serif;overflow:hidden;user-select:none}
+  body{display:flex;flex-direction:column;align-items:center}
+  #hud{display:flex;gap:18px;align-items:center;padding:8px 12px;font-size:14px;white-space:nowrap}
+  #hud b{color:#ffd84a;font-size:20px;font-variant-numeric:tabular-nums;margin-left:4px}
+  #hud a{color:#9fe08a;text-decoration:none}
+  #hud a:hover{text-decoration:underline}
+  canvas{display:block;border-radius:8px;border:2px solid #3f7a3a;touch-action:none}
+  #tip{font-size:12px;opacity:.6;padding:5px}
+</style>
+</head>
+<body>
+  <div id="hud">
+    
+    <span>分數<b id="score">0</b></span>
+    <span>最高<b id="best">0</b></span>
+  </div>
+  <canvas id="cv"></canvas>
+  <div id="tip">方向鍵或 WASD 移動（手機用手指滑動）　｜　空白鍵暫停</div>
+
+<script>
+const N = 24, S = 20, W = N * S;
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+
+let snake, dir, queue, food, score, state, acc = 0;  // state: ready / play / pause / over
+let best = +localStorage.getItem('snake-best') || 0;
+
+function hud() { $('score').textContent = score; $('best').textContent = best; }
+function placeFood() {
+  do food = { x: (Math.random() * N) | 0, y: (Math.random() * N) | 0 };
+  while (snake.some(s => s.x === food.x && s.y === food.y));
+}
+function reset() {
+  snake = [{ x: 12, y: 12 }, { x: 11, y: 12 }, { x: 10, y: 12 }];
+  dir = { x: 1, y: 0 }; queue = []; score = 0; state = 'ready'; acc = 0;
+  placeFood();
+  hud();
+}
+function die() {
+  state = 'over';
+  if (score > best) { best = score; localStorage.setItem('snake-best', best); }
+  hud();
+}
+function tick() {
+  if (queue.length) dir = queue.shift();
+  const h = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+  // 尾巴這一步會移走，所以不算撞到
+  if (h.x < 0 || h.y < 0 || h.x >= N || h.y >= N || snake.slice(0, -1).some(s => s.x === h.x && s.y === h.y)) return die();
+  snake.unshift(h);
+  if (h.x === food.x && h.y === food.y) {
+    score += 10;
+    if (snake.length === N * N) return die();
+    placeFood();
+    hud();
+  } else snake.pop();
+}
+// 最多預存兩個轉向，快速連按才不會漏掉，也不能直接回頭
+function turn(x, y) {
+  if (state === 'over') return;
+  const last = queue.length ? queue[queue.length - 1] : dir;
+  if (last.x === -x && last.y === -y) return;
+  if (state === 'ready') state = 'play';
+  if ((last.x !== x || last.y !== y) && queue.length < 2) queue.push({ x, y });
+}
+const interval = () => Math.max(0.06, 0.14 - score * 0.0004);
+
+const KEYS = {
+  ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1],
+  ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0],
+};
+addEventListener('keydown', e => {
+  if (KEYS[e.code]) { e.preventDefault(); if (state !== 'pause') turn(...KEYS[e.code]); }
+  else if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (state === 'over') reset();
+    else if (state === 'play') state = 'pause';
+    else if (state === 'pause') state = 'play';
+  }
+});
+cv.addEventListener('pointerdown', () => { if (state === 'over') reset(); });
+// 手機：在畫面上往上下左右滑動就轉向
+let sw=null;
+document.addEventListener('pointerdown', e => { sw={x:e.clientX,y:e.clientY}; });
+document.addEventListener('pointermove', e => { if(!sw) return; const dx=e.clientX-sw.x, dy=e.clientY-sw.y; if(Math.max(Math.abs(dx),Math.abs(dy))<24) return;
+  if (state !== 'pause' && state !== 'over') Math.abs(dx)>Math.abs(dy) ? turn(Math.sign(dx),0) : turn(0,Math.sign(dy)); sw={x:e.clientX,y:e.clientY}; });
+document.addEventListener('pointerup', () => { sw=null; });
+document.body.style.touchAction='none';
+addEventListener('blur', () => { if (state === 'play') state = 'pause'; });
+
+function text(s, y, size, col) {
+  ctx.font = `bold ${size}px "Microsoft JhengHei",sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = col;
+  ctx.fillText(s, W / 2, y);
+}
+function draw() {
+  const k = cv.width / W;
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = '#10200f';
+  ctx.fillRect(0, 0, W, W);
+  ctx.fillStyle = '#152a14';
+  for (let y = 0; y < N; y++) for (let x = y % 2; x < N; x += 2) ctx.fillRect(x * S, y * S, S, S);
+
+  ctx.fillStyle = '#ff5a4d';
+  ctx.beginPath(); ctx.arc(food.x * S + S / 2, food.y * S + S / 2, S * 0.38, 0, 7); ctx.fill();
+  ctx.fillStyle = '#6ad04a';
+  ctx.fillRect(food.x * S + S / 2 - 1, food.y * S + 1, 3, 5);
+
+  snake.forEach((s, i) => {
+    ctx.fillStyle = i ? (i % 2 ? '#4fbf3f' : '#45ad37') : '#8ef06a';
+    ctx.beginPath(); ctx.roundRect(s.x * S + 1, s.y * S + 1, S - 2, S - 2, 5); ctx.fill();
+  });
+  const h = snake[0];
+  ctx.fillStyle = '#10200f';
+  for (const e of [-1, 1]) {
+    ctx.beginPath();
+    ctx.arc(h.x * S + S / 2 + dir.x * 4 + dir.y * e * 4, h.y * S + S / 2 + dir.y * 4 + dir.x * e * 4, 2.2, 0, 7);
+    ctx.fill();
+  }
+
+  if (state !== 'play') {
+    ctx.fillStyle = '#0009';
+    ctx.fillRect(0, 0, W, W);
+    if (state === 'ready') text('按方向鍵開始', 250, 22, '#d6f5d0');
+    else if (state === 'pause') text('暫停中，按空白鍵繼續', 250, 22, '#d6f5d0');
+    else {
+      text('遊戲結束', 225, 36, '#ff6b6b');
+      text('分數 ' + score, 265, 20, '#fff');
+      text('按空白鍵再玩一次', 300, 15, '#b8d8b0');
+    }
+  }
+}
+
+function fit() {
+  const s = Math.max(240, Math.min(innerHeight - $('hud').offsetHeight - $('tip').offsetHeight - 14, innerWidth - 20));
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = cv.style.height = s + 'px';
+  cv.width = cv.height = Math.round(s * dpr);
+}
+addEventListener('resize', fit);
+
+let last = 0;
+function frame(ts) {
+  const dt = Math.min(0.1, (ts - last) / 1000 || 0);
+  last = ts;
+  if (state === 'play') {
+    acc += dt;
+    while (acc >= interval() && state === 'play') { acc -= interval(); tick(); }
+  }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+fit();
+reset();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

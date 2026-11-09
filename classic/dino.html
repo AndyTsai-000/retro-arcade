@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>恐龍跳躍</title>
+
+<style>
+  html,body{margin:0;height:100%;background:#f7f7f7;color:#535353;font-family:"Microsoft JhengHei",sans-serif;overflow:hidden;user-select:none}
+  body{display:flex;flex-direction:column;align-items:center}
+  #hud{display:flex;gap:18px;align-items:center;padding:8px 12px;font-size:14px;white-space:nowrap}
+  #hud b{font:bold 20px Consolas,"Courier New",monospace;margin-left:6px}
+  #hud a{color:#535353;text-decoration:none}
+  #hud a:hover{text-decoration:underline}
+  #mid{flex:1;display:flex;align-items:center}
+  canvas{display:block;touch-action:none}
+  #tip{font-size:12px;opacity:.7;padding:8px}
+</style>
+</head>
+<body>
+  <div id="hud">
+    
+    <span>分數<b id="score">00000</b></span>
+    <span>最高<b id="best">00000</b></span>
+  </div>
+  <div id="mid"><canvas id="cv"></canvas></div>
+  <div id="tip">空白鍵或 ↑ 跳躍　｜　↓ 蹲下　｜　也可以點一下畫面跳</div>
+
+<script>
+const W = 800, H = 260, GROUND = 220, DX = 50, PX = 2;
+const G = 2800, JUMP = 860, INK = '#535353';
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+
+// ---------- 點陣圖 ----------
+const BODY = [
+  '          ########',
+  '         ##########',
+  '         ## #######',
+  '         ##########',
+  '         ##########',
+  '         ##########',
+  '         #####',
+  '         ########',
+  '#       #####',
+  '#      ######',
+  '##    #########',
+  '###  ######## #',
+  '#############',
+  '#############',
+  ' ###########',
+  '  #########',
+  '   ########',
+  '    ######',
+];
+const LEGS = [
+  ['     ### ##', '     ##   #', '     #    #', '     ##   ##'],  // 站立
+  ['     ### ##', '      ##  #', '          #', '          ##'],  // 跑 1
+  ['     ### ##', '     ##   ##', '     #', '     ##'],          // 跑 2
+];
+const DUCK = [
+  [
+    '#                  ########',
+    '###   ########### ##########',
+    '##################### #######',
+    ' ############################',
+    '  ###########################',
+    '   ################ #####',
+    '    ##############  ########',
+    '     ############',
+    '     ### ##',
+    '     ##   ##',
+    '     #',
+    '     ##',
+  ],
+  [
+    '#                  ########',
+    '###   ########### ##########',
+    '##################### #######',
+    ' ############################',
+    '  ###########################',
+    '   ################ #####',
+    '    ##############  ########',
+    '     ############',
+    '     ### ##',
+    '      ##  #',
+    '          #',
+    '          ##',
+  ],
+];
+const BIRD = [
+  [
+    '        #',
+    '        ##',
+    '   ##   ###',
+    '  ###   ####',
+    ' ####   #####',
+    '#############',
+    '     ##############',
+    '      #############',
+    '       ##########',
+    '        ########',
+  ],
+  [
+    '',
+    '',
+    '   ##',
+    '  ###',
+    ' ####',
+    '#############',
+    '     ##############',
+    '      #############',
+    '       ##########',
+    '        ########',
+    '        ####',
+    '        ###',
+    '        ##',
+  ],
+];
+function sprite(rows, x, y) {
+  rows.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) {
+      if (row[i] !== '#') continue;
+      let n = 1;
+      while (row[i + n] === '#') n++;
+      ctx.fillRect(x + i * PX, y + j * PX, n * PX, PX + 0.6);  // 多畫一點，縮放後列與列之間才不會出現細縫
+      i += n;
+    }
+  });
+}
+
+// ---------- 狀態 ----------
+let d, obs, speed, dist, gap, anim, overT, state;  // state: ready / play / over
+let best = +localStorage.getItem('dino-best') || 0;
+const clouds = [{ x: 150, y: 50 }, { x: 430, y: 80 }, { x: 700, y: 40 }];
+const specks = [];
+for (let i = 0; i < 40; i++) specks.push([(i * 173) % W, GROUND + 2 + (i * 7) % 12, 2 + (i % 3) * 2]);
+
+const score = () => (dist / 14) | 0;
+const pad = n => String(n).padStart(5, '0');
+function hud() { $('score').textContent = pad(score()); $('best').textContent = pad(best); }
+function reset() {
+  d = { y: 0, vy: 0, air: false, duck: false };
+  obs = []; speed = 380; dist = 0; gap = 500; anim = 0; overT = 0;
+  state = 'ready';
+  hud();
+}
+function jump() {
+  if (state === 'over') { if (overT > 0.5) { reset(); state = 'play'; } return; }
+  if (state === 'ready') state = 'play';
+  if (!d.air) { d.air = true; d.vy = JUMP; }
+}
+
+function spawn() {
+  let o;
+  if (score() > 250 && Math.random() < 0.25) {
+    // 鳥有三種高度：低的要跳、中的要蹲、高的不用理
+    o = { kind: 'b', x: W + 10, y: GROUND - [34, 58, 104][(Math.random() * 3) | 0], w: 44, h: 28 };
+  } else {
+    const big = Math.random() < 0.45, n = 1 + ((Math.random() * (score() > 150 ? 3 : 2)) | 0), cw = big ? 24 : 17;
+    o = { kind: 'c', x: W + 10, n, cw, w: n * cw, h: big ? 50 : 35 };
+  }
+  obs.push(o);
+  gap = o.w + speed * (0.75 + Math.random() * 0.85);
+}
+
+function dinoBox() {
+  return d.duck && !d.air
+    ? { x: DX + 2, y: GROUND - 22, w: 52, h: 22 }
+    : { x: DX + 8, y: GROUND - 40 - d.y, w: 26, h: 40 };
+}
+function obsBox(o) {
+  return o.kind === 'b'
+    ? { x: o.x + 4, y: o.y + 6, w: o.w - 8, h: 16 }
+    : { x: o.x + 3, y: GROUND - o.h + 4, w: o.w - 6, h: o.h - 4 };
+}
+const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+function update(dt) {
+  if (state === 'over') overT += dt;
+  if (state !== 'play') return;
+  speed = Math.min(820, speed + 7 * dt);
+  dist += speed * dt;
+  anim += dt;
+  if (d.air) {
+    d.vy -= G * (d.duck ? 2.5 : 1) * dt;  // 空中按蹲會加速落地
+    d.y += d.vy * dt;
+    if (d.y <= 0) { d.y = 0; d.vy = 0; d.air = false; }
+  }
+  gap -= speed * dt;
+  if (gap <= 0) spawn();
+  for (const o of obs) o.x -= speed * dt * (o.kind === 'b' ? 1.15 : 1);
+  obs = obs.filter(o => o.x + o.w > -10);
+  for (const c of clouds) { c.x -= speed * 0.12 * dt; if (c.x < -60) c.x = W + 20; }
+
+  const me = dinoBox();
+  if (obs.some(o => overlap(me, obsBox(o)))) {
+    state = 'over'; overT = 0;
+    if (score() > best) { best = score(); localStorage.setItem('dino-best', best); }
+  }
+  hud();
+}
+
+addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { e.preventDefault(); if (!e.repeat) jump(); }
+  else if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); d.duck = true; }
+});
+addEventListener('keyup', e => { if (e.code === 'ArrowDown' || e.code === 'KeyS') d.duck = false; });
+cv.addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
+
+// ---------- 畫面 ----------
+function cactus(o) {
+  for (let i = 0; i < o.n; i++) {
+    const x = o.x + i * o.cw, w = o.cw - 2, h = o.h - (i % 2 ? 6 : 0), tw = Math.round(w * 0.36), arm = Math.round(tw * 0.7);
+    const tx = x + (w - tw) / 2;
+    ctx.fillRect(tx, GROUND - h, tw, h);
+    ctx.fillRect(x, GROUND - h * 0.7, arm, h * 0.33);
+    ctx.fillRect(x, GROUND - h * 0.44, (w - tw) / 2, arm);
+    ctx.fillRect(x + w - arm, GROUND - h * 0.86, arm, h * 0.38);
+    ctx.fillRect(tx + tw, GROUND - h * 0.55, (w - tw) / 2, arm);
+  }
+}
+function text(s, y, size) {
+  ctx.font = `bold ${size}px "Microsoft JhengHei",sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(s, W / 2, y);
+}
+function draw() {
+  const k = cv.width / W;
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = '#f7f7f7';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#d6d6d6';
+  for (const c of clouds) {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 10, 0, 7); ctx.arc(c.x + 14, c.y - 6, 13, 0, 7); ctx.arc(c.x + 30, c.y, 10, 0, 7);
+    ctx.fill();
+    ctx.fillRect(c.x, c.y, 30, 10);
+  }
+
+  ctx.fillStyle = INK;
+  ctx.fillRect(0, GROUND - 5, W, 1.5);
+  for (const [x, y, w] of specks) ctx.fillRect(((x - dist) % W + W) % W, y, w, 1.5);
+
+  for (const o of obs) {
+    if (o.kind === 'c') cactus(o);
+    else { const f = Math.floor(anim * 5) % 2; sprite(BIRD[f], o.x, o.y); }
+  }
+
+  const run = state === 'play' && !d.air ? 1 + Math.floor(anim * 10) % 2 : 0;
+  if (d.duck && !d.air) sprite(DUCK[run ? run - 1 : 0], DX, GROUND - 24);
+  else {
+    const top = GROUND - 44 - d.y;
+    sprite(BODY, DX, top);
+    sprite(LEGS[run], DX, top + BODY.length * PX);
+  }
+
+  if (state === 'ready') text('按空白鍵開始', 110, 20);
+  else if (state === 'over') {
+    text('遊 戲 結 束', 95, 26);
+    text('按空白鍵再玩一次', 125, 14);
+  }
+}
+
+function fit() {
+  const w = Math.max(320, Math.min(innerWidth - 20, (innerHeight - 110) * W / H, 1100));
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = w + 'px';
+  cv.style.height = w * H / W + 'px';
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(w * H / W * dpr);
+}
+addEventListener('resize', fit);
+
+let last = 0;
+function frame(ts) {
+  const dt = Math.min(0.033, (ts - last) / 1000 || 0);
+  last = ts;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+fit();
+reset();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
