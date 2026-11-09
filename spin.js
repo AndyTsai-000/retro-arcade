@@ -15,8 +15,8 @@ const TYPES={攻擊:{atk:1.35,def:.85,sta:.88,wgt:1,emb:'tri'},防禦:{atk:.85,d
   平衡:{atk:1.1,def:1.1,sta:1.08,wgt:1.1,emb:'star'},左旋:{atk:1.15,def:1,sta:1.06,wgt:1,emb:'bolt'}};
 const BITS={flat:{mv:1.35,sta:.82,dash:1.25,wander:1,def:0,cruise:270,curv:.35,seek:3.2},taper:{mv:1,sta:1,dash:1,wander:.6,def:.08,cruise:170,curv:.25,seek:2.2},ball:{mv:.8,sta:1.22,dash:.8,wander:.3,def:.05,cruise:110,curv:.2,seek:.9},
   needle:{mv:.6,sta:1.12,dash:.55,wander:0,def:.2,cruise:60,curv:.1,seek:.5},rush:{mv:1.15,sta:.95,dash:1.65,wander:.7,def:0,cruise:300,curv:.45,seek:3.5}};
-const BITK={F:'flat',T:'taper',B:'ball',N:'needle',HN:'needle',P:'taper',S:'needle',GF:'rush',GP:'rush',U:'taper',C:'flat',TP:'ball',BS:'needle',M:'flat',A:'flat',DB:'ball',LF:'flat',LR:'rush',R:'rush',H:'taper'};
-const BITN={F:'平頭',T:'錐形',B:'球頭',N:'針頭',HN:'高針頭',P:'尖頭',S:'尖釘',GF:'齒輪平頭',GP:'齒輪尖頭',U:'聯合',C:'旋風',TP:'轉換點',BS:'彈性尖釘',M:'融合',A:'加速',DB:'圓盤球頭',LF:'低平頭',LR:'低衝刺',R:'衝刺',H:'H 軸'};
+const BITK={O:'ball',HT:'taper',GB:'ball',GN:'needle',D:'needle',FB:'ball',Q:'flat',F:'flat',T:'taper',B:'ball',N:'needle',HN:'needle',P:'taper',S:'needle',GF:'rush',GP:'rush',U:'taper',C:'flat',TP:'ball',BS:'needle',M:'flat',A:'flat',DB:'ball',LF:'flat',LR:'rush',R:'rush',H:'taper'};
+const BITN={O:'球形',HT:'高錐',GB:'齒輪球',GN:'齒輪針',D:'點狀',FB:'自由球',Q:'震擊',F:'平頭',T:'錐形',B:'球頭',N:'針頭',HN:'高針頭',P:'尖頭',S:'尖釘',GF:'齒輪平頭',GP:'齒輪尖頭',U:'聯合',C:'旋風',TP:'轉換點',BS:'彈性尖釘',M:'融合',A:'加速',DB:'圓盤球頭',LF:'低平頭',LR:'低衝刺',R:'衝刺',H:'H 軸'};
 const TP_=(id,code,n,type,dir,rat,bit,sh,c,a,m,feat,x)=>({id,code,n,type,dir,rat,bit,sh,c,a,m,feat,x:x||{}});
 const SILV='#c8ccd6',GOLD='#d8b04a',DARK='#4a4a56';
 const TOPS=[
@@ -30,25 +30,37 @@ const TOPS=[
   TP_('phoenixwing','BX-23','鳳凰飛翼','攻擊',1,'9-60','GF',{k:'wing',n:3,d:.36,h:1.6},'#d8341c','#ffb02a',GOLD,'重量級三翼攻擊型，齒輪平頭衝刺快、撞擊猛。',{wgt:1.2}),
   TP_('unicornsting','BX-26','獨角刺心','平衡',1,'5-60','GP',{k:'spike',n:5,d:.2,h:1.5},'#f2f2f8','#b98cff',SILV,'尖刺外緣配齒輪尖頭，衝刺完還能回到中央。'),
   TP_('weisstiger','BX-33','皓戰猛虎','平衡',1,'3-60','U',{k:'claw',n:3,d:.26},'#f4f4f8','#2a2a30',SILV,'白虎三爪，聯合底座兼顧移動與持久。'),
-  TP_('cobaltdragoon','BX-34','蒼穹龍騎士','左旋',-1,'2-60','C',{k:'rhook',n:4,d:.32,h:2.4},'#1f4fd0','#ffd23f',SILV,'左旋轉攻擊型，撞上右旋陀螺時能吸走對方轉速。'),
-  TP_('crimsongaruda','BX-38','赫燃天鳳','持久',1,'4-70','TP',{k:'wing',n:4,d:.15,h:2},'#e0402a','#ffd23f',GOLD,'寬大雙翼抓穩平衡，轉換點底座兼顧持久與反擊。'),
+  TP_('cobaltdragoon','BX-34','蒼穹龍騎士','攻擊',-1,'2-60','C',{k:'rhook',n:4,d:.32,h:2.4},'#1f4fd0','#ffd23f',SILV,'左旋轉攻擊型，撞上右旋陀螺時能吸走對方轉速。'),
+  TP_('crimsongaruda','BX-38','赫燃天鳳','平衡',1,'4-70','TP',{k:'wing',n:4,d:.15,h:2},'#e0402a','#ffd23f',GOLD,'寬大雙翼抓穩平衡，轉換點底座兼顧持久與反擊。'),
   TP_('tricerapress','BX-44','三角強襲','防禦',1,'M-85','BS',{k:'spike',n:3,d:.14,h:1},'#5a7a3a','#c8b48a',SILV,'三角龍頭盾防禦力高，彈性尖釘化解衝擊。'),
-  TP_('samuraicalibur','BX-45','武士魂斬','攻擊',1,'6-70','M',{k:'hook',n:2,d:.4,h:3},'#e8e8f0','#c8242a',SILV,'雙刀武士刃，一刀就能把對手砍出場。'),
+  TP_('samuraicalibur','BX-45','武士魂斬','平衡',1,'6-70','M',{k:'hook',n:2,d:.4,h:3},'#e8e8f0','#c8242a',SILV,'雙刀武士刃，一刀就能把對手砍出場。'),
   TP_('dranbuster','UX-01','蒼龍爆刃','攻擊',1,'1-60','A',{k:'hook',n:3,d:.42,h:1.4},'#1a5ae0','#ff7a3d',DARK,'超大刀刃的重攻擊型，加速底座衝刺力驚人。',{atk:1.08}),
   TP_('wizardrod','UX-03','魔導神杖','持久',1,'5-70','DB',{k:'round',n:4},'#3a4ab8','#d8b84a',GOLD,'目前賽場上（T0）極具代表性的超強持久型陀螺，表現極為穩定。',{sta:1.1}),
-  TP_('impactdrake','UX-11','衝擊龍神','平衡',1,'9-60','LR',{k:'hook',n:3,d:.26,h:2},'#7a3ad8','#ffd23f',SILV,'新手入坑推薦組合包常客，均衡好上手。'),
+  TP_('impactdrake','UX-11','衝擊龍神','攻擊',1,'9-60','LR',{k:'hook',n:3,d:.26,h:2},'#7a3ad8','#ffd23f',SILV,'新手入坑推薦組合包常客，均衡好上手。'),
   TP_('sharkedge','UX-15','鮫鯊狂鱗','攻擊',1,'3-60','LF',{k:'hook',n:4,d:.3,h:2},'#2aa8c8','#f0f0f0',SILV,'具備強大下砍與彈飛對手的攻擊力，是攻擊手的熱門選擇。'),
-  TP_('meteordragoon','UX-17','隕星龍騎士','左旋',-1,'3-70','R',{k:'rhook',n:3,d:.34,h:2.2},'#3a2a8a','#ff4d4d',SILV,'支援左旋轉向，深受老玩家與特殊戰術喜愛。'),
+  TP_('meteordragoon','UX-17','隕星龍騎士','攻擊',-1,'3-70','R',{k:'rhook',n:3,d:.34,h:2.2},'#3a2a8a','#ff4d4d',SILV,'支援左旋轉向，深受老玩家與特殊戰術喜愛。'),
   TP_('bulletgriffon','UX-19','子彈獅鷲','平衡',1,'3-85','H',{k:'hook',n:5,d:.2,h:1.4},'#d0262c','#20b894',SILV,'分離式子彈單位：激烈碰撞時內層子彈靠彈簧彈開，子彈衝去追撞對手，本體繼續旋轉維持持久。',{split:1}),
-  TP_('pegasusblast','CX-07','天馬爆擊','攻擊',1,'1-60','A',{k:'wing',n:3,d:.3,h:2.4},'#f4f6fa','#3d8bff',SILV,'來自最新可拆解的 CX（客製）系統，具備高度爆發力。')];
+  TP_('pegasusblast','CX-07','天馬爆擊','攻擊',1,'1-60','A',{k:'wing',n:3,d:.3,h:2.4},'#f4f6fa','#3d8bff',SILV,'來自最新可拆解的 CX（客製）系統，具備高度爆發力。'),
+  TP_('vipertail','BX-16','王蛇鞭尾','持久',1,'5-80','O',{k:'wing',n:3,d:.18,h:1.6},'#6a3ab8','#e8e8f0',SILV,'三條蛇尾般的刀刃減少撞擊損耗，球形軸心穩穩繞著場中央轉。'),
+  TP_('drandagger','BX-20','蒼龍利刃','攻擊',1,'4-60','R',{k:'hook',n:6,d:.22,h:2},'#d02a2a','#ffd23f',SILV,'六片短刃連續快攻，衝刺軸心沿著軌道一路砍。'),
+  TP_('hellschain','BX-21','惡魔鎖鏈','平衡',1,'5-60','HT',{k:'hook',n:5,d:.25,h:1.8},'#8a1a2a','#c8c8d0',SILV,'鎖鏈狀刀刃攻守兼備，高錐軸心能衝能守。'),
+  TP_('wyverngale','BX-24','飛龍旋翼','持久',1,'5-80','GB',{k:'wing',n:4,d:.18,h:2},'#3ab88a','#e8e8f0',SILV,'飛龍翅膀造型的持久型，齒輪球軸心有時會衝刺閃避。'),
+  TP_('sphinxcowl','BX-27','魔獸護甲','防禦',1,'9-80','GN',{k:'spike',n:3,d:.2,h:1.2},'#d8b04a','#2a2a30',GOLD,'獅身人面的厚重護甲，齒輪針軸心站得穩又能稍微移動。'),
+  TP_('blackshell','BX-35','玄冥戰甲','防禦',1,'4-60','D',{k:'round',n:8},'#2a2a30','#8a96a8',DARK,'龜殼般的圓形外甲把攻擊滑開，防禦力是 BX 系列頂尖。'),
+  TP_('leoncrest','UX-06','雄獅巔峰','防禦',1,'7-60','GN',{k:'claw',n:6,d:.16},'#e8a020','#f4f4f8',GOLD,'獅鬃般的六角外圈，防禦力 70，正面衝撞也推不動。'),
+  TP_('silverwolf','UX-08','霜輝銀狼','持久',1,'3-80','FB',{k:'wing',n:6,d:.12,h:1.4},'#c8ccd6','#7a5ab8',SILV,'持久力 70 的頂尖持久型，自由球軸心能自己轉正、轉很久。'),
+  TP_('tyrannobeat','BX-31','暴龍霸擊','攻擊',1,'4-70','Q',{k:'spike',n:4,d:.32,h:2.2},'#c84a2a','#2a2a30',SILV,'暴龍利齒的重攻擊型，震擊軸心橫衝直撞、攻擊力 65。')];
 const TOP={}; TOPS.forEach(q=>TOP[q.id]=q);
 const spinOfR=r=>clamp(40+(r-6000)/10000*60,40,100); /* 6,000 RPM→40、10,000→64、13,000→82、16,000 以上→100 */
 const rpmTier=r=>r>=16000?{n:'極限',c:'#ff6bd6',say:'極限發射！'}:r>=14000?{n:'專業',c:'#3ed16a',say:'漂亮！專業級發射！'}:r>=10000?{n:'一般',c:'#9ae0ff',say:'發射！'}:{n:'初階',c:'#ffb02a',say:'力道不足……'};
 /* 每顆陀螺的能力值（0～100）：攻擊、防禦、持久、衝刺、爆裂耐性。參考玩家資料站整理的數值與實戰評價 */
-const AB={dransword:[55,25,20,40,40],hellsscythe:[35,30,35,25,45],wizardarrow:[15,30,55,10,45],knightshield:[20,55,25,10,70],knightlance:[20,60,20,10,60],
-  leonclaw:[40,30,30,30,40],rhinohorn:[25,55,20,15,60],phoenixwing:[60,30,10,45,50],unicornsting:[40,25,35,35,45],weisstiger:[35,30,35,30,45],
-  cobaltdragoon:[50,20,30,35,35],crimsongaruda:[20,30,50,15,50],tricerapress:[25,60,15,15,65],samuraicalibur:[65,20,15,40,35],dranbuster:[70,20,10,50,35],
-  wizardrod:[10,35,60,10,55],impactdrake:[45,35,25,35,45],sharkedge:[60,20,20,45,40],meteordragoon:[45,25,35,35,40],bulletgriffon:[35,35,35,25,45],pegasusblast:[65,20,15,50,35]};
+const AB={ /* 官方 App 數值（資料來源：beyblade.phstudy.org）：[攻擊,防禦,持久]＝機體，[衝刺,耐久]＝原廠軸心；惡魔紅鐮、魔導幻箭用 2.0 版數值 */
+  dransword:[60,30,25,35,80],hellsscythe:[33,38,39,25,80],wizardarrow:[17,33,60,10,30],knightshield:[25,60,30,10,30],knightlance:[25,60,15,10,30],
+  leonclaw:[40,40,20,25,80],rhinohorn:[20,50,30,10,30],phoenixwing:[65,30,20,40,80],unicornsting:[35,35,30,30,80],weisstiger:[45,30,25,20,80],
+  cobaltdragoon:[65,20,30,45,80],crimsongaruda:[45,25,30,15,80],tricerapress:[20,65,15,5,30],samuraicalibur:[40,30,30,20,80],dranbuster:[75,25,15,40,80],
+  wizardrod:[20,30,65,10,30],impactdrake:[75,25,10,35,80],sharkedge:[70,15,15,40,80],meteordragoon:[75,15,35,30,80],bulletgriffon:[45,45,40,15,80],pegasusblast:[75,20,20,40,80],
+  vipertail:[30,20,50,10,30],drandagger:[50,25,25,30,80],hellschain:[35,40,25,25,80],wyverngale:[10,40,50,30,30],sphinxcowl:[35,55,10,30,30],
+  blackshell:[10,65,25,10,30],leoncrest:[15,70,15,30,30],silverwolf:[20,35,70,5,30],tyrannobeat:[65,30,5,25,80]};
 TOPS.forEach(q=>{ if(!AB[q.id]) AB[q.id]=[40,30,30,30,45]; });
 const PK=(a,w,k)=>({a,w,k});
 const STAGES=[
@@ -75,7 +87,7 @@ const TH={gym:{bg:['#1d2a44','#0e1526'],fl:['#f2f5f9','#a8b2c4'],rim:'#2a3550',a
   final:{bg:['#2a1a08','#0a0602'],fl:['#fff4d8','#c8a860'],rim:'#4a3410',acc:'#ffd23f'}};
 const FIN={foul:{n:'發射失敗',p:1,col:'#ff5a5a'},spin:{n:'旋轉勝利',p:1,col:'#9ae0ff'},over:{n:'擊飛勝利',p:2,col:'#ffd23f'},burst:{n:'爆裂勝利',p:2,col:'#ff7a3d'},x:{n:'極限勝利',p:3,col:'#ff3d5a'}};
 // 電腦對手：前面的關卡出入門機體，後面越來越強
-const OPP=['dransword','knightshield','wizardarrow','hellsscythe','leonclaw','rhinohorn','unicornsting','weisstiger','cobaltdragoon','phoenixwing','crimsongaruda','tricerapress','samuraicalibur','knightlance','sharkedge','impactdrake','meteordragoon','dranbuster','pegasusblast','bulletgriffon','wizardrod'];
+const OPP=['dransword','knightshield','wizardarrow','hellsscythe','leonclaw','rhinohorn','unicornsting','weisstiger','cobaltdragoon','phoenixwing','crimsongaruda','tricerapress','samuraicalibur','knightlance','sharkedge','impactdrake','meteordragoon','dranbuster','pegasusblast','bulletgriffon','wizardrod','vipertail','drandagger','hellschain','wyverngale','sphinxcowl','blackshell','leoncrest','silverwolf','tyrannobeat'];
 const BOTN=['旋風小子','鐵壁','流星','閃電','颶風','黑曜','赤焰','白狼','銀河','雷神'];
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function shade(hex,k){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&255,b=n&255; const f=v=>clamp(Math.round(k>0?v+(255-v)*k:v*(1+k)),0,255); return 'rgb('+f(r)+','+f(g)+','+f(b)+')'; }
@@ -88,7 +100,7 @@ function myDeck(L){ let d=null; try{ d=JSON.parse(localStorage.getItem('arcade.s
 function botDeck(si,i){ const d=[]; for(let k=0;k<3;k++) d.push({top:OPP[(si*2+i+k*7)%OPP.length]}); return fixDeck(d); }
 function statsOf(p){ const T0=TOP[p.top],Ty=TYPES[T0.type],B=BITS[BITK[T0.bit]],Rr=ratOf(T0.rat),x=T0.x;
   const [a,d,st,ds,br]=AB[T0.id]; /* 能力值換算成物理係數：數值越高越強 */
-  return {atk:(.6+a/100)*Rr.atk,def:.7+d/100*1.1+B.def,wgt:Ty.wgt*(x.wgt||1),sta:(.62+st/100*1.3)*B.sta,mv:B.mv,dash:B.dash*(.75+ds/100*.6),wander:B.wander,cruise:B.cruise*(.85+ds/100*.35),curv:B.curv,seek:B.seek,res:.62+br/100*.75+(Rr.res-.97)*.5,low:Rr.low,dir:T0.dir,ab:AB[T0.id]}; }
+  return {atk:(.5+a/100*1.1)*Rr.atk,def:.75+d/100*.8+B.def,wgt:Ty.wgt*(x.wgt||1),sta:(.7+st/100*1.0)*B.sta,mv:B.mv,dash:B.dash*(.8+ds/100*.9),wander:B.wander,cruise:B.cruise*(.85+ds/100*.35),curv:B.curv,seek:B.seek,res:.7+br/100*.5+(Rr.res-.97)*.5,low:Rr.low,dir:T0.dir,ab:AB[T0.id]}; }
 // 刀刃外形：極座標 r(θ)，回傳 0～1
 function bladeR(sh,a){ const u=((a*sh.n/TAU)%1+1)%1,d=sh.d||.2,h=sh.h||2;
   if(sh.k==='hook') return 1-d+d*Math.pow(u,h);
@@ -199,7 +211,7 @@ function themeBg(c,th,t){ const T=TH[th],g=c.createLinearGradient(0,0,0,H); g.ad
   if(th==='storm'){ c.strokeStyle='rgba(220,240,255,.35)'; c.lineWidth=2; for(let i=0;i<24;i++){ const x=(i*83+t*300)%(W+200)-100,y=(i*41)%H; c.beginPath(); c.moveTo(x,y); c.lineTo(x+60,y+6); c.stroke(); } }
   if(th==='twin'){ c.strokeStyle='rgba(62,209,106,.15)'; c.lineWidth=1; for(let i=0;i<W;i+=40){ c.beginPath(); c.moveTo(i,0); c.lineTo(i,H); c.stroke(); } for(let j=0;j<H;j+=40){ c.beginPath(); c.moveTo(0,j); c.lineTo(W,j); c.stroke(); } } }
 const inPk=(st,a,extra)=>{ for(const p of st.pk){ let d=Math.abs(((a-p.a)%TAU+TAU*1.5)%TAU-Math.PI); if(d<p.w+(extra||0)) return p; } return null; };
-let ATT=60,POCKV=430,BMK=.04,LUNGE=9,KBK=1.22; const OCT_R=AR+60,OCT_Y=16,OCT_H=90,WALL_H=46;
+let ATT=60,POCKV=430,BMK=.04,LUNGE=9,KBK=1.3; const OCT_R=AR+60,OCT_Y=16,OCT_H=90,WALL_H=46;
 const octP=(k,r,dy)=>{ const a=k*Math.PI/4+Math.PI/8; return [sx(Math.cos(a)*r),sy(Math.sin(a)*r)+dy]; };
 function acryl(c,k,al,back){ const [x0,y0]=octP(k,OCT_R-4,OCT_Y),[x1,y1]=octP(k+1,OCT_R-4,OCT_Y),H2=WALL_H; /* 透明壓克力護罩一片 */
   c.save(); c.beginPath(); c.moveTo(x0,y0); c.lineTo(x1,y1); c.lineTo(x1,y1-H2); c.lineTo(x0,y0-H2); c.closePath();
@@ -422,7 +434,9 @@ function create(env,opts){
       c.fillStyle='#fff'; c.font='900 16px '+TC; c.fillText(B.n,X+CW/2,SELY+1);
       c.fillStyle='#9ac8ff'; c.font='700 12px '+TC; c.fillText(B.code+'　'+B.rat+' '+BITN[B.bit],X+CW/2,SELY+30);
       c.fillStyle=TYPES[B.type]?['#ff6a5a','#5aa8ff','#5fd068','#ffd23f','#c8a0ff'][Object.keys(TYPES).indexOf(B.type)]:'#fff'; c.font='900 13px '+TC; c.fillText(B.type+(B.type==='左旋'?'特化型':'型'),X+CW/2,SELY+52);
-      c.fillStyle='rgba(255,255,255,.8)'; c.font='700 12px '+TC; wrapText(c,B.feat,X+CW/2,SELY+76,CW-24,17,4);
+      { const ab=AB[B.id],L=['攻','防','持','衝','耐'],CL=['#ff6a5a','#5aa8ff','#5fd068','#ff9d3d','#c8a0ff']; /* 官方能力值 */
+        for(let q=0;q<5;q++){ const cx=X+CW/2+(q-2)*40; c.fillStyle='rgba(255,255,255,.08)'; rr(c,cx-18,SELY+66,36,30,6); c.fill(); c.fillStyle=CL[q]; c.font='900 11px '+TC; c.fillText(L[q],cx,SELY+74); c.fillStyle='#fff'; c.font='900 13px '+TC; c.fillText(ab[q],cx,SELY+88); } }
+      c.fillStyle='rgba(255,255,255,.8)'; c.font='700 12px '+TC; wrapText(c,B.feat,X+CW/2,SELY+110,CW-24,17,3);
       if(i<2){ c.fillStyle='#3d8bff'; rr(c,X+CW+1,CY0+96,22,60,8); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('⇄',X+CW+12,CY0+126); } }
     c.fillStyle=cur===3?'#ffd23f':'#3ed16a'; rr(c,BTN[0],BTN[1],BTN[2],BTN[3],12); c.fill(); c.fillStyle='#14122b'; c.font='900 18px '+TC; c.fillText(local2&&ed===0?'確定，換 2P':'確定出場',W/2,BTN[1]+24);
     if(waiting){ c.fillStyle='rgba(8,8,20,.7)'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='900 24px '+TC; c.fillText('等對手組好陀螺…',W/2,H/2); } }
@@ -490,7 +504,7 @@ function create(env,opts){
     const kb=KBK*(j+ex)*a.k.atk*pw(a)/b.k.def/mb*(1-.12*b.k.low)*stab(b),ka=KBK*(j+ex)*b.k.atk*pw(b)/a.k.def/ma*(1-.12*a.k.low)*stab(a);
     b.vx+=nx*kb; b.vy+=ny*kb; a.vx-=nx*ka; a.vy-=ny*ka;
     for(const [f,k] of [[a,ka],[b,kb]]) if(k>200){ const r=hyp(f.x,f.y)||1; f.vx+=f.x/r*k*.1; f.vy+=f.y/r*k*.1; if(k>200) f.kT=Math.min(.55,.2+k/1400); } /* 被撞的一方往外飛、一路滑到場邊 */
-    b.spin-=I*.010*a.k.atk/b.k.def; a.spin-=I*.010*b.k.atk/a.k.def;
+    b.spin-=I*.010*a.k.atk/b.k.def/Math.sqrt(b.k.sta); a.spin-=I*.010*b.k.atk/a.k.def/Math.sqrt(a.k.sta); /* 持久力高的被撞時轉速掉得少 */
     if(!same){ const m=(a.spin+b.spin)/2; a.spin+=(m-a.spin)*.12; b.spin+=(m-b.spin)*.12; }
     if(I>110&&rt>.8){ splitTop(a,b); splitTop(b,a); }
     const thr=210;
@@ -766,10 +780,10 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   ctx.font='700 '+fs+'px '+TC; ctx.fillStyle='#9ac8ff'; ctx.fillText(B.code+'　'+B.rat+' '+BITN[B.bit]+(B.dir<0?'　左旋':''),x0,h*.2);
   ctx.fillStyle=['#ff6a5a','#5aa8ff','#5fd068','#ffd23f','#c8a0ff'][Object.keys(TYPES).indexOf(B.type)]; ctx.font='900 '+fs+'px '+TC; ctx.fillText('類型：'+B.type+(B.type==='左旋'?'特化型':'型'),x0,h*.3);
   ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='700 '+Math.round(h*.048)+'px '+TC; wrapText(ctx,'特色：'+B.feat,x0,h*.4,bw,h*.07,3);
-  const ab=AB[B.id],st=[['攻擊',ab[0]],['防禦',ab[1]],['持久',ab[2]],['衝刺',ab[3]],['爆裂耐性',ab[4]]];
-  ctx.font='700 '+Math.round(h*.042)+'px '+TC; st.forEach(([n,v0],i)=>{ const v=v0/80,y=h*(.6+i*.078); ctx.textAlign='right'; ctx.fillStyle='#fff'; ctx.fillText(String(v0),x0+bw,y); ctx.textAlign='left'; /* 數字 */ ctx.fillStyle='#fff'; ctx.fillText(n,x0,y); const bx=x0+h*.2,bl=bw-h*.2-h*.09; ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(bx,y-h*.016,bl,h*.032); ctx.fillStyle=['#ff4d4d','#3d8bff','#3ed16a','#ff9d3d','#c8a0ff'][i]; ctx.fillRect(bx,y-h*.016,bl*clamp(v,.06,1),h*.032); }); }
+  const ab=AB[B.id],st=[['攻擊',ab[0]],['防禦',ab[1]],['持久',ab[2]],['衝刺',ab[3]],['耐久',ab[4]]];
+  ctx.font='700 '+Math.round(h*.042)+'px '+TC; st.forEach(([n,v0],i)=>{ const v=v0/(i===3?50:i===4?100:85),y=h*(.6+i*.078); ctx.textAlign='right'; ctx.fillStyle='#fff'; ctx.fillText(String(v0),x0+bw,y); ctx.textAlign='left'; /* 數字 */ ctx.fillStyle='#fff'; ctx.fillText(n,x0,y); const bx=x0+h*.2,bl=bw-h*.2-h*.09; ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(bx,y-h*.016,bl,h*.032); ctx.fillStyle=['#ff4d4d','#3d8bff','#3ed16a','#ff9d3d','#c8a0ff'][i]; ctx.fillRect(bx,y-h*.016,bl*clamp(v,.06,1),h*.032); }); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).spin={name:'陀螺旋風戰',tag:'SPIN STORM',color:'#ff7a3d',online:true,maxPlayers:2,
-  desc:'20 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就用滑鼠或手指拖曳拉繩發射（拉越快轉速越高，晚 1 秒就算發射失敗），之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，旋轉勝利、擊飛勝利、爆裂勝利、極限勝利，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
+  desc:'30 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就用滑鼠或手指拖曳拉繩發射（拉越快轉速越高，晚 1 秒就算發射失敗），之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，旋轉勝利、擊飛勝利、爆裂勝利、極限勝利，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
   goal:'選好落點發射，比對手轉得久＝旋轉勝利 1 分、撞進黃色擊飛區域或飛出場外＝擊飛勝利 2 分、撞到解體＝爆裂勝利 2 分、撞進紅色極限區域＝極限勝利 3 分。先拿 4 分的贏。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:si=>{ const s=STAGES[si],h={ice:'冰面很滑，陀螺停不下來。',desert:'沙地摩擦大，轉速掉得快。',twin:'前面是紅色極限區域，後左右是黃色擊飛區域。',lava:'碰到滾燙的軌道會掉轉速，但衝刺更猛。',space:'低重力，碗面拉回中間的力比較小。',storm:'暴風會把陀螺往一個方向吹，每隔幾秒換方向。',arena:'兩側的場外口袋特別寬。',final:'冠軍等級的對手。'}[s.th]||'';
