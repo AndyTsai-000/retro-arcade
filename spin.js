@@ -42,6 +42,8 @@ const TOPS=[
   TP_('bulletgriffon','UX-19','子彈獅鷲','平衡',1,'3-85','H',{k:'hook',n:5,d:.2,h:1.4},'#d0262c','#20b894',SILV,'分離式子彈單位：激烈碰撞時內層子彈靠彈簧彈開，子彈衝去追撞對手，本體繼續旋轉維持持久。',{split:1}),
   TP_('pegasusblast','CX-07','天馬爆擊','攻擊',1,'1-60','A',{k:'wing',n:3,d:.3,h:2.4},'#f4f6fa','#3d8bff',SILV,'來自最新可拆解的 CX（客製）系統，具備高度爆發力。')];
 const TOP={}; TOPS.forEach(q=>TOP[q.id]=q);
+const spinOfR=r=>clamp(40+(r-6000)/10000*60,40,100); /* 6,000 RPM→40、10,000→64、13,000→82、16,000 以上→100 */
+const rpmTier=r=>r>=16000?{n:'極限',c:'#ff6bd6',say:'極限發射！'}:r>=14000?{n:'專業',c:'#3ed16a',say:'漂亮！專業級發射！'}:r>=10000?{n:'一般',c:'#9ae0ff',say:'發射！'}:{n:'初階',c:'#ffb02a',say:'力道不足……'};
 /* 每顆陀螺的能力值（0～100）：攻擊、防禦、持久、衝刺、爆裂耐性。參考玩家資料站整理的數值與實戰評價 */
 const AB={dransword:[55,25,20,40,40],hellsscythe:[35,30,35,25,45],wizardarrow:[15,30,55,10,45],knightshield:[20,55,25,10,70],knightlance:[20,60,20,10,60],
   leonclaw:[40,30,30,30,40],rhinohorn:[25,55,20,15,60],phoenixwing:[60,30,10,45,50],unicornsting:[40,25,35,35,45],weisstiger:[35,30,35,30,45],
@@ -60,7 +62,7 @@ const STAGES=[
   {name:'星空低重力',stars:4,th:'space',slope:.5,fric:.8,decay:.9,pk:[PK(Math.PI/2,.26,'x'),PK(0,.22,'over'),PK(Math.PI,.22,'over')]},
   {name:'暴風競技場',stars:5,th:'storm',slope:1,fric:1,decay:1,wind:1,pk:[PK(Math.PI/2,.26,'x'),PK(0,.2,'over'),PK(Math.PI,.2,'over')]},
   {name:'冠軍決賽場',stars:5,th:'final',slope:1,fric:1,decay:1,pk:[PK(Math.PI/2,.24,'x'),PK(0,.19,'over'),PK(Math.PI,.19,'over')]}];
-STAGES.forEach(s=>s.pk.forEach(p=>p.w*=1.3)); /* 場外口袋開口加寬，比較容易被撞進洞裡 */
+STAGES.forEach(s=>s.pk.forEach(p=>p.w*=p.k==='x'?.9:1.55)); /* v243：紅色極限區域（3 分）變窄、黃色擊飛區域（2 分）變寬，比賽不會太快結束 */
 const TH={gym:{bg:['#1d2a44','#0e1526'],fl:['#f2f5f9','#a8b2c4'],rim:'#2a3550',acc:'#3d8bff',rail:'#5cf03c'},
   street:{bg:['#2a2230','#121018'],fl:['#d8d0c4','#8a8070'],rim:'#3a3038',acc:'#ff7a3d'},
   arena:{bg:['#1a1240','#08061a'],fl:['#dfe6ff','#8a94c8'],rim:'#2a2060',acc:'#b98cff'},
@@ -385,7 +387,7 @@ function create(env,opts){
   function land(f){ const L=LPOS[f.i]||LPOS[0],dx=f.lx-L[0],dy=f.ly-L[1],d=hyp(dx,dy)||1,r=hyp(f.lx,f.ly)||1,K=f.k; f.x=f.lx; f.y=f.ly;
     const v0=K.cruise*.6+20; f.vx=-f.ly/r*K.dir*v0*.6-f.lx/r*v0*.3; f.vy=f.lx/r*K.dir*v0*.6-f.ly/r*v0*.3; addFx('land',f.x,f.y); } /* 落地後往中間衝、帶一點旋轉方向的偏移（花瓣路線） */
   function setupRound(){ round++; rt=0; phase='aim'; PT=opts.preview?1.2:5.6; lastBeep=9; deb=[]; focus=null; if(!client) T.forEach(setP);
-    T.forEach(f=>{ f.spin=f.ai?clamp(86+f.ai.sk*14+Math.random()*4,80,100):100; f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; f.split=false; f.sh=null; f.lp=0; f.landed=false; f.pull=0; f.grab=false; f.aiR=(f.human?9:.22+(f.ai?(1-f.ai.sk)*.45:.2)+Math.random()*.18); }); BUL=[];
+    T.forEach(f=>{ setRPM(f,f.ai?Math.round((9000+f.ai.sk*6000+Math.random()*1200)/10)*10:15000); f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; f.split=false; f.sh=null; f.lp=0; f.landed=false; f.pull=0; f.grab=false; f.aiR=(f.human?9:.22+(f.ai?(1-f.ai.sk)*.45:.2)+Math.random()*.18); }); BUL=[];
     prepAim(); if(round>1) voice('第 '+round+' 回合，選好落點！'); }
   setupRound(); if(!R.pv&&R.humans) phase='deck';
   // 一對一：每人帶 3 顆，開賽前組 3 顆陀螺、排出場順序（刀刃、棘輪、底座都不能重複）
@@ -461,7 +463,7 @@ function create(env,opts){
         const vt=f.vx*(-ny*K.dir)+f.vy*(nx*K.dir);
         if(f.dashT<=0&&f.railCD<=0&&f.spin>25&&vt>70&&(touch?Math.random()<.42*K.dash:Math.random()<.02*K.dash*(1+vt/200))){ f.dashT=.34; f.railCD=1.6; addFx('dash',f.x,f.y); snd('boost'); }
         if(ST.lava) f.spin-=h*4; } }
-    f.spin-=h*(2.1+hyp(f.vx,f.vy)/420)/K.sta*ST.decay; if(f.spin<=0){ f.spin=0; finish(f,'spin'); } }
+    f.spin-=h*(2.25+hyp(f.vx,f.vy)/420)/K.sta*ST.decay*(1-.15*(f.over||0)); if(f.spin<=0){ f.spin=0; finish(f,'spin'); } }
   // 子彈獅鷲：激烈碰撞時內層子彈彈開，變成追撞對手的子彈單位，本體繼續旋轉
   function splitTop(f,o){ if(f.split||!TOP[f.P.top].x.split||f.st!=='on') return; f.split=true; f.k=Object.assign({},f.k,{wgt:f.k.wgt*.8,atk:f.k.atk*.9,sta:f.k.sta*1.1});
     const dx=o.x-f.x,dy=o.y-f.y,d=hyp(dx,dy)||1,px=-dy/d*K_SIDE(f),py=dx/d*K_SIDE(f);
@@ -484,10 +486,11 @@ function create(env,opts){
     const vn=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny; if(vn>-10) return;
     const fa=a.spin/100,fb=b.spin/100,same=a.k.dir===b.k.dir,ex=(same?300:120)*(a.k.atk*fa+b.k.atk*fb)/2+(a.dashT>0||b.dashT>0?230:0);
     const j=-(1.55)*vn/(1/ma+1/mb),I=-vn+ex*.6;
-    const kb=KBK*(j+ex)*a.k.atk/b.k.def/mb*(1-.12*b.k.low),ka=KBK*(j+ex)*b.k.atk/a.k.def/ma*(1-.12*a.k.low);
+    const stab=f=>1.25-.25*f.spin/100,pw=f=>1+.08*(f.over||0); /* 轉速越低越站不穩、越容易被擊飛；極限轉速撞擊力更強 */
+    const kb=KBK*(j+ex)*a.k.atk*pw(a)/b.k.def/mb*(1-.12*b.k.low)*stab(b),ka=KBK*(j+ex)*b.k.atk*pw(b)/a.k.def/ma*(1-.12*a.k.low)*stab(a);
     b.vx+=nx*kb; b.vy+=ny*kb; a.vx-=nx*ka; a.vy-=ny*ka;
     for(const [f,k] of [[a,ka],[b,kb]]) if(k>200){ const r=hyp(f.x,f.y)||1; f.vx+=f.x/r*k*.1; f.vy+=f.y/r*k*.1; if(k>200) f.kT=Math.min(.55,.2+k/1400); } /* 被撞的一方往外飛、一路滑到場邊 */
-    b.spin-=I*.012*a.k.atk/b.k.def; a.spin-=I*.012*b.k.atk/a.k.def;
+    b.spin-=I*.013*a.k.atk/b.k.def; a.spin-=I*.013*b.k.atk/a.k.def;
     if(!same){ const m=(a.spin+b.spin)/2; a.spin+=(m-a.spin)*.12; b.spin+=(m-b.spin)*.12; }
     if(I>110&&rt>.8){ splitTop(a,b); splitTop(b,a); }
     const thr=210;
@@ -582,8 +585,11 @@ function create(env,opts){
       else { const u=Math.min(1,f.out/.8); x=f.ox+f.ox/r*34*Math.min(1,u*1.6); y=f.oy+f.oy/r*34*Math.min(1,u*1.6); z=-55*u*u; } } /* 掉進口袋：滑進洞裡往下沉 */
     return [sx(x),sz(x,y)-z,z,x,y]; }
   let shootT=0,shotN=0,shotV=0; const SHOOT_MAX=1,fouls=[0,0]; /* 喊 GO SHOOT 後 1 秒內要發射，晚了就是發射失敗 */
-  const spinOfV=v=>Math.round(72+28*clamp((v-300)/1200,0,1)); /* 拖曳越快轉速越高：軌道上每秒 300 → 72、1500 以上 → 100 */
-  function shoot(f,v){ f.sh=shootT; f.lp=0; f.pull=0; snd('boost'); if(f.human){ const sp=v!=null?spinOfV(v):Math.round(clamp(100-(shootT-.35)*14,72,100)); f.spin=Math.min(f.spin,sp); f.shv=sp; voice(sp>=97?'完美發射！':sp>=85?'好球！':'發射！',1); } }
+  // 發射轉速（RPM）：10,000 以下初階、10,000～13,999 一般、14,000～15,999 專業、16,000 以上極限（要握把式發射器才拉得到，最高約 18,000）
+  const rpmOfV=(v,ls)=>{ const u=Math.pow(clamp((v-250)/1450,0,1),.85); let r=6000+12000*u+(Math.random()-.5)*500; return Math.round(clamp(r,5500,ls==='grip'?18000:15900)/10)*10; };
+  const spinOfV=(v,ls)=>spinOfR(rpmOfV(v,ls));
+  function shoot(f,v){ f.sh=shootT; f.lp=0; f.pull=0; snd('boost'); if(f.human){ const r=v!=null?rpmOfV(v,f.ls):Math.round(clamp(15500-(shootT-.2)*9000,9000,15500)/10)*10; setRPM(f,r); voice(rpmTier(r).say,1); } }
+  function setRPM(f,r){ f.rpm=r; f.spin=spinOfR(r); f.over=clamp((r-16000)/2000,0,1); f.shv=r; } /* 超過 16,000 RPM 額外更持久、更有力 */
   // 滑鼠／手指拖曳拉繩：放開時看最後一段的拉動速度
   const drags={};
   function cvXY(e){ const r=canvas.getBoundingClientRect(),k=Math.min(r.width/W,r.height/H); return [(e.clientX-r.left-(r.width-W*k)/2)/k,(e.clientY-r.top-(r.height-H*k)/2)/k]; }
@@ -602,7 +608,7 @@ function create(env,opts){
     if(f.pull<.35){ f.pull=0; f.hint=1.2; return; } /* 拉太短不算，握把彈回去 */
     release(d,f); }
   function release(d,f){ f.grab=false; const P=d.pts,Lp=P[P.length-1]; let q=P.length-1; while(q>0&&Lp[0]-P[q-1][0]<120) q--; const A=P[q],dt=Math.max(.016,(Lp[0]-A[0])/1000),v=Math.max((Lp[1]-A[1])/dt,(Lp[1]-P[0][1])/Math.max(.05,(Lp[0]-P[0][0])/1000));
-    if(client){ shotN++; shotV=Math.round(v); f.pull=0; f.sh=0; f.shv=spinOfV(v); } else shoot(f,v); }
+    if(client){ shotN++; shotV=Math.round(v); f.pull=0; f.sh=0; f.shv=rpmOfV(v,f.ls); } else shoot(f,v); }
   if(canvas&&canvas.addEventListener){ canvas.addEventListener('pointerdown',onPDown); canvas.addEventListener('pointermove',onPMove); canvas.addEventListener('pointerup',onPUp); canvas.addEventListener('pointercancel',onPUp); }
   // 喊完 GO SHOOT 超過時間還沒發射＝犯規；同一人犯規 2 次，對方得 1 分，之後重新發射
   function foul(list){ for(const f of list){ fouls[f.i]++; const opp=T.find(q=>teamKey(q)!==teamKey(f)),ok=opp&&fouls[f.i]>=2?teamKey(opp):null; if(ok){ fouls[f.i]=0; score[ok]+=1; }
@@ -703,7 +709,7 @@ function create(env,opts){
         drawTop(c,jt,26,S*TS,f.P,f.col,f.ang,Math.max(.3,ye),{tilt:0,noShadow:true}); drawLauncher(jt,0,PCOL[i],sd,ye,f.sh==null&&!f.pull,true,f.lc,f.ls); c.restore();
         if(f.sh==null&&f.human&&(local2||f.i===me)){ const bl=.75+.25*Math.sin(t*16),tx=x0+pw/2+sd*70,ty=y0+70; c.save(); c.translate(tx,ty); c.scale(bl,bl); c.font='900 28px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#0b0a1c'; const left=Math.max(0,SHOOT_MAX-shootT),s2=f.hint>0?'拉遠一點再放開！':(sd>0?'按住握把往右拖 →':'← 按住握把往左拖'); c.strokeText(s2,0,0); c.fillStyle=f.hint>0?'#ff8a5a':'#ffd23f'; c.fillText(s2,0,0); c.restore();
           c.font='900 15px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const s3=(local2?'或按 '+shootKey(f)+'　':'')+'快！剩 '+left.toFixed(1)+' 秒，晚了算失誤'; c.strokeText(s3,tx,ty+30); c.fillStyle=left<1.2?'#ff6a6a':'#fff'; c.fillText(s3,tx,ty+30); }
-        else if(f.sh!=null&&f.human&&fu<.2){ c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=5; c.strokeStyle='#0b0a1c'; const sv=f.shv||0,s2=sv>=97?'完美發射！轉速 '+sv:'轉速 '+sv; c.strokeText(s2,x0+pw/2+sd*70,y0+70); c.fillStyle=sv>=97?'#3ed16a':'#fff'; c.fillText(s2,x0+pw/2+sd*70,y0+70); }
+        else if(f.sh!=null&&f.human&&fu<.2){ c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=5; c.strokeStyle='#0b0a1c'; const sv=f.shv||0,tr=rpmTier(sv),s2=sv.toLocaleString('en-US')+' RPM　'+tr.n; c.strokeText(s2,x0+pw/2+sd*70,y0+70); c.fillStyle=tr.c; c.fillText(s2,x0+pw/2+sd*70,y0+70); }
         c.strokeStyle=PCOL[i]; c.lineWidth=4; c.stroke(); c.font='900 15px '+TC; c.textAlign=i?'right':'left'; c.textBaseline='top'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const nm=R.names[i]+'　'+TOP[f.P.top].n; c.strokeText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.fillStyle='#fff'; c.fillText(nm,i?x0+pw-12:x0+12,y0+ph-26); c.restore(); } }
     if(phase==='aim'||phase==='launch') for(const f of T) if(f.human&&f.local&&(local2||f.i===me)&&(phase==='aim'||f.sh==null)) drawTrack(f,phase==='aim');
     if(phase==='launch'||(phase==='fight'&&rt<.7)){ const u=phase==='launch'?shootT/LD:1; c.save(); c.translate(W/2,CY-60); const sc=1+Math.max(0,.4-u)*.8; c.scale(sc,sc); c.translate(-W/2,-(CY-60)); big('GO SHOOT！',CY-60,'#ffd23f',58); c.restore(); }
@@ -755,7 +761,7 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   stageGoal:si=>{ const s=STAGES[si],h={ice:'冰面很滑，陀螺停不下來。',desert:'沙地摩擦大，轉速掉得快。',twin:'前面是紅色極限區域，後左右是黃色擊飛區域。',lava:'碰到滾燙的軌道會掉轉速，但衝刺更猛。',space:'低重力，碗面拉回中間的力比較小。',storm:'暴風會把陀螺往一個方向吹，每隔幾秒換方向。',arena:'兩側的場外口袋特別寬。',final:'冠軍等級的對手。'}[s.th]||'';
     return s.name+'：先拿 4 分的贏。'+h; },
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  help:[['↑ ↓ ← →','開賽前移動落點'],['滑鼠拖曳','裁判喊 GO SHOOT 後，按住下方軌道上的握把往外拖，拖到底或放開就發射；拖得越快轉速越高。喊完 1 秒內沒發射就算發射失敗、記失誤一次，失誤 2 次對方得 1 分'],['發射之後','陀螺自己轉、自己撞，不用操作'],['V','切換特寫鏡頭／看全場'],['雙人','1P 用 WASD、拖曳左半邊或按 F 發射；2P 用方向鍵、拖曳右半邊或按 Enter 發射']],
+  help:[['↑ ↓ ← →','開賽前移動落點'],['滑鼠拖曳','裁判喊 GO SHOOT 後，按住下方軌道上的握把往外拖，拖到底或放開就發射；拖得越快轉速越高（14,000 RPM 以上專業，16,000 以上極限要用握把式發射器）。喊完 1 秒內沒發射就算發射失敗、記失誤一次，失誤 2 次對方得 1 分'],['發射之後','陀螺自己轉、自己撞，不用操作'],['V','切換特寫鏡頭／看全場'],['雙人','1P 用 WASD、拖曳左半邊或按 F 發射；2P 用方向鍵、拖曳右半邊或按 Enter 發射']],
   touchHelp:[['方向盤','開賽前移動落點'],['手指拖曳','裁判喊 GO SHOOT 後按住軌道上的握把往外拖，越快轉速越高；晚 1 秒算失誤'],['鏡頭','切換特寫鏡頭／看全場']],
   touch:{left:'dpad',right:[{l:'鏡頭',c:'KeyV'}]},
   looks:[{key:'top',label:'陀螺（點一下看類型和特色）',opts:TOPS.map(q=>({id:q.id,label:q.code+' '+q.n+'（'+q.type+'）'}))},

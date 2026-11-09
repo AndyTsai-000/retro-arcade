@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#14122b">
 <meta property="og:title" content="跨界遊戲區">
 <meta property="og:description" content="樓梯大逃亡、卡丁車、水球炸翻天、躲避球、足球、棒球、保齡球…打開就能玩，還能開房間連線。">
@@ -26,6 +26,7 @@
 }
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
+html.zlock,body.zlock{touch-action:pan-x pan-y} /* 遊戲中：可以捲動，不能雙指縮放、點兩下放大 */
 body{overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%;background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;
   background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px)}
 button,input{font:inherit;color:inherit}
@@ -273,7 +274,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=242; // 每次改版加一
+window.ARCADE_V=243; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -820,17 +821,20 @@ async function lookCard(){ closeStage();
 }
 let instGen=0; // 每開一局加一：舊局延遲呼叫的「結束」不能把新開的遊戲結束掉
 function killInst(){ instGen++; closeStage(); if(inst){ try{inst.destroy();}catch(e){} inst=null; } stage.innerHTML=''; }
-// 手機：進入遊戲後鎖住雙指縮放（直向、橫向都一樣）；iOS 不理 user-scalable=no，要擋手勢事件
+// 手機縮放：大廳、選關卡、造型、設定畫面可以放大縮小；開始玩之後（含暫停、結算）先縮回原本大小再鎖住，直向橫向都一樣
+// iOS 不理 user-scalable=no，所以還要擋手勢事件、雙指、點兩下放大；frame() 依遊戲狀態自動切換
 const VPM=document.querySelector('meta[name=viewport]'),VP0=VPM?VPM.content:'';
 let zoomLock=false;
-function lockZoom(on){ zoomLock=on; if(VPM) VPM.content=on?'width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no':VP0; }
+function lockZoom(on){ zoomLock=on; document.documentElement.classList.toggle('zlock',on); document.body.classList.toggle('zlock',on);
+  if(VPM) VPM.content=on?'width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no':VP0; }
+const ZLOCK_STATES={running:1,coin:1,paused:1,over:1,loading:1};
 { const stop=e=>{ if(zoomLock&&e.cancelable) e.preventDefault(); };
-  ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,stop,{passive:false}));
+  ['gesturestart','gesturechange','gestureend','dblclick'].forEach(t=>document.addEventListener(t,stop,{passive:false}));
+  document.addEventListener('touchstart',e=>{ if(e.touches&&e.touches.length>1) stop(e); },{passive:false});
   document.addEventListener('touchmove',e=>{ if(e.touches&&e.touches.length>1) stop(e); },{passive:false});
   document.addEventListener('wheel',e=>{ if(e.ctrlKey) stop(e); },{passive:false}); }
 function open(id){
   if(!myName){ nameModal(); return; }
-  lockZoom(true);
   audio(); SFX.click();
   cur=G[id]; cur.id=id; loadOpts(cur); stageSel=0; if(cur.stageLocked&&cur.stages){ while(stageSel<cur.stages.length-1&&!cur.stageLocked(stageSel+1)) stageSel++; } /* 有鎖關卡的遊戲：預設選最新解鎖的那一關 */ variantSel=cur.variants?(cur.variants.find(v=>v.def)||cur.variants[0]).id:null; // def:true 的選項是預設
   $('#hub').hidden=true; $('#play').hidden=false; $('#gName').textContent=cur.name;
@@ -1345,6 +1349,7 @@ if(!myName) nameModal();
 const STEP=1/120; let hubTick=0,pauseTick=0;
 function frame(ts){
   requestAnimationFrame(frame);
+  { const zl=!!ZLOCK_STATES[state]; if(zl!==zoomLock) lockZoom(zl); } /* 遊戲中鎖住縮放，回到選單才解開 */
   const dt=Math.min(.05,(ts-last)/1000||0); last=ts;
   if(state==='hub'){ if(!(hubTick=(hubTick+1)%2)) drawThumbs(ts/1000); return; } /* 封面動得慢，隔一格畫就夠 */
   if(lookPrev&&state==='ready'){ try{ if(lookPrev.v) lookPrev.v.draw(); else if(lookPrev.ctx) lookPrev.g.preview(lookPrev.ctx,360,200,lookPrev.look,ts/1000); }catch(e){} }
