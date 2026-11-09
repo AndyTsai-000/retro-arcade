@@ -183,6 +183,7 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .sndRow{display:grid;grid-template-columns:5.5em 1fr 2.5em;align-items:center;gap:10px;margin:12px 0;text-align:left}
 .sndRow input{width:100%;accent-color:var(--y,#ffd23f)}.sndRow b{text-align:right}
 .sndMute{justify-content:center;margin:6px 0 10px}.sndTip{color:var(--dim);font-size:13px}
+.lksel{flex:1;min-width:0;max-width:280px;padding:8px 12px;border-radius:10px;border:2px solid var(--yellow);background:#14122b;color:#fff;font:900 15px "Noto Sans TC",sans-serif;cursor:pointer}
 .lktext{flex:1;min-width:0;max-width:220px;padding:8px 12px;border-radius:10px;border:2px solid #3a3570;background:#14122b;color:#fff;font:700 15px "Noto Sans TC",sans-serif}
 .sgGoal{text-align:left;margin:6px 0 4px;color:var(--dim);font-size:14px;line-height:1.6}
 .stars{color:var(--yellow);letter-spacing:.05em}.chip.sel .stars{color:#7a3d00}
@@ -274,7 +275,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=245; // 每次改版加一
+window.ARCADE_V=246; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -716,7 +717,7 @@ function normLook(g,o){
   for(const L of g.looks){ if(L.type==='text'){ r[L.key]=String(o[L.key]==null?(L.def||''):o[L.key]).replace(/[<>&"']/g,'').slice(0,L.max||8); continue; }
     if(L.type==='photo'){ const v=o[L.key]; r[L.key]=typeof v==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(v)&&v.length<240000?v:''; continue; }
     if(L.type==='multi'){ const got={}; for(const id of String(o[L.key]||'').split(',')){ const op=L.opts.find(x=>x.id===id); if(op&&!got[op.grp]) got[op.grp]=id; } r[L.key]=L.opts.filter(x=>got[x.grp]===x.id).map(x=>x.id).join(','); continue; }
-    const ids=L.opts.map(x=>x.id||x); r[L.key]=ids.includes(o[L.key])?o[L.key]:ids[0]; }
+    const ids=L.opts.map(x=>x.id||x); r[L.key]=ids.includes(o[L.key])?o[L.key]:L.def!=null&&ids.includes(L.def)?L.def:ids[0]; } /* def：這個選項的預設值 */
   return r;
 }
 function lookOf(g){ let o=null; try{o=JSON.parse(load('arcade.look.'+g.id)||'null');}catch(e){} return normLook(g,o); }
@@ -776,6 +777,9 @@ function bindPhoto(g,look){
     photoToFace(file,(v,found)=>{ if(!v){ if(m) m.textContent='這個檔案讀不出來，換一張照片試試。'; return; } phNote=found?'已自動把整顆頭剪下來換到角色身上。':'照片裡沒有找到臉，先用照片中間的部分；可以換一張正面、清楚的照片。'; apply(v); }); });
   on('phDel',()=>apply(''));
 }
+// 下拉選單型的造型選項；uniq 相同的幾格不能選到同一個（例如陀螺的三顆出場陀螺）
+function selectRow(g,L,look){ const others=L.uniq?g.looks.filter(x=>x.uniq===L.uniq&&x.key!==L.key).map(x=>look[x.key]):[];
+  return '<div class="lkrow"><span>'+L.label+'</span><select class="lksel" data-sk="'+L.key+'" aria-label="'+L.label+'">'+L.opts.filter(o=>o.id===look[L.key]||!others.includes(o.id)).map(o=>'<option value="'+o.id+'"'+(o.id===look[L.key]?' selected':'')+'>'+o.label+'</option>').join('')+'</select></div>'; }
 // 造型的每一類：按標題的箭頭可以收起來，收起來時只顯示目前選的
 let lkFold={};
 function foldRow(id,label,chips,def){
@@ -795,7 +799,7 @@ async function lookCard(){ closeStage();
   if(use3d&&g.load){ showCard('<h3>我的造型</h3><p>載入 3D 預覽中…</p>'); try{ await g.load(); }catch(e){ use3d=false; } if(cur!==g||state!=='ready') return; }
   closeLook();
   showCard('<h3>我的造型</h3><div class="lkSplit"><div class="lkL">'+(use3d?'<div id="lkBox" class="lk"></div><p class="hint">按住拖曳可以旋轉，滾輪可以拉近拉遠</p>':'<canvas id="lkCv" width="720" height="400" class="lk"></canvas>')+
-    '</div><div class="lklist">'+g.looks.map(L=>L.type==='text'?'<div class="lkrow"><span>'+L.label+'</span><input class="lktext" data-tk="'+L.key+'" maxlength="'+(L.max||8)+'" value="'+(look[L.key]||'')+'" placeholder="'+(L.def||'')+'"></div>':L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):foldRow(L.key,L.label,L.opts.map(o=>L.type==='color'
+    '</div><div class="lklist">'+g.looks.map(L=>L.type==='select'?selectRow(g,L,look):L.type==='text'?'<div class="lkrow"><span>'+L.label+'</span><input class="lktext" data-tk="'+L.key+'" maxlength="'+(L.max||8)+'" value="'+(look[L.key]||'')+'" placeholder="'+(L.def||'')+'"></div>':L.type==='photo'?photoRow(L,look):L.type==='multi'?multiRow(L,look):foldRow(L.key,L.label,L.opts.map(o=>L.type==='color'
       ?'<button class="sw'+(look[L.key]===o?' sel':'')+'" data-k="'+L.key+'" data-o="'+o+'" style="background:'+(o==='auto'?'conic-gradient(#ff5d4f,#ffd23f,#5fd068,#4f9dff,#c56bff,#ff5d4f)':o)+'" aria-label="'+(o==='auto'?'自動（照玩家順序）':'顏色 '+o)+'" title="'+(o==='auto'?'自動（照玩家順序）':'')+'"></button>'
       :'<button class="chip'+(look[L.key]===o.id?' sel':'')+'" data-k="'+L.key+'" data-o="'+o.id+'">'+o.label+'</button>').join(''))).join('')+'</div></div>'+
     '<p>選好就會自動記住，下次打開還在。</p><div class="row"><button class="btn main" id="lkOk">完成</button></div>');
@@ -816,6 +820,7 @@ async function lookCard(){ closeStage();
     card.querySelectorAll('[data-k="'+b.dataset.k+'"]').forEach(x=>x.classList.toggle('sel',x===b)); sums();
     if(lookPrev&&lookPrev.v) lookPrev.v.set(look);
   }));
+  card.querySelectorAll('[data-sk]').forEach(sl=>sl.addEventListener('change',()=>{ look[sl.dataset.sk]=sl.value; save('arcade.look.'+g.id,JSON.stringify(look)); SFX.click(); lookCard(); }));
   bindPhoto(g,look);
   on('lkOk',startCard);
 }

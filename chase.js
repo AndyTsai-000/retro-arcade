@@ -287,8 +287,8 @@ function drawBld(c,bd,cx,cy,night,glow){ const k=bd.ht*KL,X=x=>x+(x-cx)*k,Y=y=>y
 
 /* ---------- 關卡 ---------- */
 const TN={run:'限時快遞',taxi:'計程車載客',catch:'追捕嫌犯',park:'停車挑戰',amb:'救護車出勤',escape:'護送證人',race:'地下賽車',tail:'跟蹤任務',repo:'偷車任務',lose:'甩掉警察',story:'主線任務'};
-const CHAP=['第一章 新人上路','第二章 臥底車行','第三章 風聲走漏','第四章 反擊','第五章 收網'];
-/* 50 關：[章, 種類, 名稱, 城區, 時段(0白天 1黃昏 2陰雨 3夜晚), 天氣, 參數, 開場對話] */
+const CHAP=['第一章 新人上路','第二章 臥底車行','第三章 風聲走漏','第四章 反擊','第五章 收網','第六章 港都新傳說'];
+/* 60 關：[章, 種類, 名稱, 城區, 時段(0白天 1黃昏 2陰雨 3夜晚), 天氣, 參數, 開場對話] */
 const SD=[
  [0,'run','第一天上班',0,0,'clear',{veh:'van',n:3},[['disp','阿傑，歡迎來到港都快遞！第一天上班，先送三件包裹熟悉一下路。'],['me','好！交給我吧！']]],
  [0,'park','駕訓班補考',0,0,'clear',{lot:1},[['coach','阿傑，你路考停車那關沒過，今天補考！停進黃色格子就好。']]],
@@ -339,7 +339,17 @@ const SD=[
  [4,'park','極限路邊停車',6,3,'rain',{curb:1,tight:1},[['coach','職業駕照最後一關：下雨天的極限路邊停車！']]],
  [4,'catch','鯊哥的逃亡',2,3,'clear',{boss:2},[['chief','鯊哥開車逃了！這是最後機會，一定要抓到他！'],['boss','想抓我？下輩子吧！']]],
  [4,'race','全城終極賽',1,3,'clear',{n:9,riv:4},[['biao','我出獄前，最後跟你比一場正正當當的。']]],
- [4,'story','新的開始',0,1,'clear',{steps:[{k:'go',to:'hosp',need:'any',txt:'去醫院接小芳出院',r:70},{k:'talk',who:'fang',to:'here',lines:[['fang','阿傑！謝謝你。'],['me','走吧，我們去吃好料的！']]},{k:'board',who:'fang'},{k:'go',to:'lm',need:'car',txt:'載小芳去吃飯',r:70},{k:'drop'},{k:'talk',who:'chief',to:'here',lines:[['chief','阿傑，黑鯊幫全部落網了，你哥可以安息了。'],['chief','警局缺一個會開車的好手……有沒有興趣？'],['me','我考慮看看！（笑）']]}]},[['me','事情終於結束了……']]]];
+ [4,'story','新的開始',0,1,'clear',{steps:[{k:'go',to:'hosp',need:'any',txt:'去醫院接小芳出院',r:70},{k:'talk',who:'fang',to:'here',lines:[['fang','阿傑！謝謝你。'],['me','走吧，我們去吃好料的！']]},{k:'board',who:'fang'},{k:'go',to:'lm',need:'car',txt:'載小芳去吃飯',r:70},{k:'drop'},{k:'talk',who:'chief',to:'here',lines:[['chief','阿傑，黑鯊幫全部落網了，你哥可以安息了。'],['chief','警局缺一個會開車的好手……有沒有興趣？'],['me','我考慮看看！（笑）']]}]},[['me','事情終於結束了……']]],
+ [5,'run','王牌帶新人',0,0,'clear',{veh:'van',n:4},[['disp','阿傑，你現在是港都快遞的王牌了！帶新人跑一趟，四件包裹。']]],
+ [5,'race','園區合法賽車',5,1,'clear',{n:8,riv:3},[['biao','我出獄了！這次在賽道上正正當當比一場。']]],
+ [5,'tail','跟蹤殘黨老大',4,3,'fog',{veh:'suv',col:'#2a2a30'},[['chief','黑鯊幫殘黨的老大回到港口了，跟著他的黑色休旅車，找出新據點。']]],
+ [5,'amb','颱風夜救援',3,2,'storm',{n:2},[['doc','颱風夜有兩名傷患困在路上，拜託你快去！']]],
+ [5,'taxi','夜市載客王',6,3,'clear',{n:4},[['taxi','夜市散場人潮多，今晚幫我載四組客人！']]],
+ [5,'repo','追回客人的車',1,1,'clear',{stars:2},[['k','最後幫我一次，客人的車被偷了，找到後開回車行。'],['me','好，這次是正當的！']]],
+ [5,'park','山城窄巷停車',7,0,'clear',{curb:1,tight:1},[['coach','山城老街的巷子很窄，挑戰最難的路邊停車！']]],
+ [5,'escape','證人再護送',2,1,'rain',{},[['wit','又有人要找我麻煩…阿傑，拜託再載我一程！']]],
+ [5,'lose','深夜測車風波',1,3,'clear',{stars:3},[['scan','有車輛深夜高速行駛，各單位注意！'],['me','我只是在測新車啊…先甩掉再說！']]],
+ [5,'catch','幕後黑手',4,3,'clear',{boss:2},[['chief','黑鯊幫真正的幕後老大要逃到碼頭了，撞停他的車！'],['boss','你以為抓到鯊哥就結束了？']]]];
 const NST=SD.length,STAGES=SD.map((q,s)=>({ch:q[0],type:q[1],n:q[2],di:q[3],th:q[4],wx:q[5],o:q[6],intro:q[7],tier:q[0],d:s/(SD.length-1)}));
 const lKey='arcade.chase.s.',getR=i=>{ try{ const v=localStorage.getItem(lKey+i); return v==null?null:+v; }catch(e){ return null; } },setR=(i,v)=>{ try{ const o=getR(i); if(o==null||v>o) localStorage.setItem(lKey+i,String(v)); }catch(e){} };
 const CH={me:{n:'阿傑',skin:'#e0b48e',hair:'#1a1410',shirt:'#2a4a7a'},biao:{n:'阿彪',skin:'#c99a74',hair:'#111',shirt:'#1e1e22'},k:{n:'車行 老K',skin:'#d8a882',hair:'#8a8a8a',shirt:'#6a4a2a'},fang:{n:'小芳',skin:'#f3cfb0',hair:'#3a2418',shirt:'#e88aa8',fem:1},boss:{n:'鯊哥',skin:'#d8a47c',hair:'#111',shirt:'#3a2a4a'},scan:{n:'警用無線電',skin:'#deb08a',hair:'#1c1c1c',shirt:'#1f2f4d',cap:'#1f2f4d',set:1},news:{n:'記者 林小姐',skin:'#f0c8a2',hair:'#2a1a12',shirt:'#c8402e',fem:1},disp:{n:'調度員 小美',skin:'#f3cfb0',hair:'#2a1a12',shirt:'#3d6fb3',fem:1,set:1},chief:{n:'林組長',skin:'#deb08a',hair:'#1c1c1c',shirt:'#1f2f4d',cap:'#1f2f4d'},doc:{n:'急診 陳醫師',skin:'#f0c8a2',hair:'#3a2a1c',shirt:'#f4f4f4',fem:1},coach:{n:'駕訓班 王教練',skin:'#d8a47c',hair:'#666',shirt:'#c0392b'},taxi:{n:'車隊台 阿雄',skin:'#e0b48e',hair:'#222',shirt:'#e8c21c',set:1},wit:{n:'證人 張先生',skin:'#e8bd98',hair:'#333',shirt:'#6b6b6b'}};
@@ -396,6 +406,7 @@ function create(env,opts){
     if(thr>0){ if(vf<-5){ vf+=Math.min(-vf,900*dt); brake=true; } else if(vf<vmax) vf+=v.acc*(boost?1.6:1)*Math.max(.15,1-vf/vmax)*dt; else vf-=Math.min(vf-vmax,500*dt); }
     else if(thr<0){ if(vf>5){ vf-=Math.min(vf,880*dt); brake=true; } else if(vf>-v.vmax*.3) vf-=v.acc*.55*dt; }
     else { const dec=(150+Math.abs(vf)*.35)*dt; vf=Math.abs(vf)<=dec?0:vf-Math.sign(vf)*dec; }
+    v.sti=(v.sti||0)+((steer||0)-(v.sti||0))*Math.min(1,dt*(steer?6.5:9)); steer=Math.abs(v.sti)<.03?0:v.sti; /* 方向盤有輸入時慢慢打到底、放開慢慢回正，比較順 */
     const sp=Math.abs(vf),two=v.ty==='scooter'||v.ty==='bike',rate=sp<4?0:Math.min(1,sp/70)*(sp<220?(two?3:2.6):Math.max(1.4,2.6-(sp-220)/320));
     if(steer) v.a+=steer*rate*dt*Math.sign(vf); else if(sp>60){ const q=Math.round(v.a/(PI/2))*(PI/2),d=wrapA(q-v.a),hk=onH(v.y),vk=onV(v.x); if(Math.abs(d)<.16&&!(hk>=0&&vk>=0)) v.a+=clamp(d,-.9*dt,.9*dt); } /* 沒轉方向盤時，車頭慢慢對正道路 */
     v.lean=lerp(v.lean||0,two?clamp(-steer*Math.min(1,sp/150)*.45,-.45,.45):0,Math.min(1,dt*6));
@@ -489,7 +500,8 @@ function create(env,opts){
     if(spec.startsWith('mrt:')){ const e=Wd.mrt[(+spec.slice(4))%Wd.mrt.length]; return {x:e.x,y:e.y-16,a:0,n:'捷運'+e.n,mrt:e}; }
     if(spec==='temple'){ const bs=Wd.B.filter(b=>b.type==='temple').sort((p,q)=>Math.hypot(p.x0-from.x,p.y0-from.y)-Math.hypot(q.x0-from.x,q.y0-from.y)),b=bs[0]||Wd.B[44]; return Object.assign(curbPt(b,2),{n:(b.name||'廟')+'口'}); }
     const cand=Wd.LM.filter(l=>!l.mrt); for(let k=0;k<40;k++){ const q=pick(R,cand),dm=Math.abs(q.x-from.x)+Math.abs(q.y-from.y); if(dm>700&&dm<2200) return {x:q.x,y:q.y,a:q.a,n:q.n}; } return roadPt(from,800,1700); }
-  const putPlayers=(ty,col)=>{ PL.forEach((p,i)=>{ const ca=Math.cos(startPt.a),sa=Math.sin(startPt.a),x=startPt.x-ca*i*70,y=startPt.y-sa*i*70; const v=mkVeh(ty,x,y,startPt.a,ty==='sedan'||ty==='suv'||ty==='hatch'||ty==='sports'?p.col:null,'player'); v.drv=i; p.car=v; p.cam.x=x; p.cam.y=y; }); };
+  const MYCAR={sedan:1,hatch:1,suv:1,sports:1},myCar=opts.look&&MYCAR[opts.look.car]?opts.look.car:null;
+  const putPlayers=(ty,col)=>{ PL.forEach((p,i)=>{ if(i===0&&myCar&&(ty==='sedan'||ty==='hatch'||ty==='suv')) ty=myCar; /* 一般車的任務開自己選的車款 */ const ca=Math.cos(startPt.a),sa=Math.sin(startPt.a),x=startPt.x-ca*i*70,y=startPt.y-sa*i*70; const v=mkVeh(ty,x,y,startPt.a,ty==='sedan'||ty==='suv'||ty==='hatch'||ty==='sports'?p.col:null,'player'); v.drv=i; p.car=v; p.cam.x=x; p.cam.y=y; }); };
   const anyP=fn=>PL.some(p=>{ const o=me(p); return o&&fn(p,o); });
   const stopAt=(o,pt,r)=>{ const v=o.ty?o:null; return Math.hypot(o.x-pt.x,o.y-pt.y)<(r||52)&&(!v||vspeed(v)<70); };
   const timeFor=(a,b)=>(Math.abs(a.x-b.x)+Math.abs(a.y-b.y))/(105+95*dd)+14-6*dd;
@@ -621,7 +633,7 @@ function create(env,opts){
       M.total=M.time; hint0(); }
     if(ty==='catch'||ty==='amb'||ty==='escape') M.noWanted=1;
   }
-  function hint0(){ if(VIEW==='3d'){ PL.forEach(p=>{ const k=local2?(p.i===0?['↑','↓','←','→']:['W','S','A','D']):['↑','↓','←','→']; hint(p,'dir3',(local2?(p.i+1)+'P：':'')+(p.foot?'↑ 往前走、← → 轉身；走到車旁邊按 '+KN[Math.min(p.i,KN.length-1)].f+' 上車':'↑ 油門、↓ 煞車／倒車、← → 轉方向盤；按 V 可以換視角'),k); }); return; }
+  function hint0(){ if(VIEW==='3d'){ PL.forEach(p=>{ const k=local2?(p.i===0?['↑','↓','←','→']:['W','S','A','D']):['↑','↓','←','→']; hint(p,'dir3',(local2?(p.i+1)+'P：':'')+(p.foot?'↑ 往前走、← → 轉身；走到車旁邊按 '+KN[Math.min(p.i,KN.length-1)].f+' 上車':'↑ 油門、↓ 煞車／倒車、← → 轉方向盤；按 '+KN[Math.min(p.i,KN.length-1)].f+' 上下車、V 換視角'),k); }); return; }
     PL.forEach(p=>hint(p,'dir',local2?(p.i===0?'1P 用方向鍵開車：按哪個方向，車就往畫面上那個方向開':'2P 用 WASD 開車：按哪個方向，車就往畫面上那個方向開'):'按方向鍵，車子就往畫面上那個方向開；按反方向會煞車、迴轉',local2?[]:['↑','↓','←','→'])); }
   function fleeAI(v,dt){ if(v.dead){ drive(v,null,0,false,dt,6); return; } const near=PL.map(me).sort((a,b)=>Math.hypot(a.x-v.x,a.y-v.y)-Math.hypot(b.x-v.x,b.y-v.y))[0];
     if(!v.goal||Math.hypot(v.goal[0]*P-v.x,v.goal[1]*P-v.y)<55){ let gx=Math.round(v.x/P),gy=Math.round(v.y/P); if(!v.goal){ const ca=Math.cos(v.a),sa=Math.sin(v.a); gx=clamp(Math.round(v.x/P+ca*.6),0,NB); gy=clamp(Math.round(v.y/P+sa*.6),0,NB); v.goal=[gx,gy]; v.prevG=null; }
@@ -656,7 +668,7 @@ function create(env,opts){
     if(best.role==='chaser') M.chasers&&M.chasers.splice(M.chasers.indexOf(best),1);
     best.lk=Object.assign({},best.lk||{},{shirt:p.foot.lk.shirt,skin:p.foot.lk.skin,hair:p.foot.lk.hair});
     best.role='player'; best.drv=p.i; best.hitT=0; best.haz=false; best.siren=ST.type==='catch'||ST.type==='amb'?best.ty==='police'||best.ty==='amb':false; p.car=best; p.foot=null; sfx('click'); toast(p,'坐上'+VT[best.ty].n+'了！'); if(VT[best.ty].vmax>460) hint(p,'fast','這台是跑車，速度很快，轉彎小心！'); if(M.onBoard) M.onBoard(p,best); }
-  function footLook(p){ return {skin:'#e0b48e',hair:'#1a1410',shirt:p.i===0?'#2a4a7a':'#7a2a2a',pants:'#1e1e22'}; }
+  function footLook(p){ const L=p.i===0&&opts.look||{},hs=L.hs||'short'; return {skin:L.skin||'#e0b48e',hair:L.hairc||'#1a1410',shirt:L.shirt||(p.i===0?'#2a4a7a':'#7a2a2a'),pants:L.pants||'#1e1e22',hs,cap:hs==='cap'?(L.capc||'#c8202a'):null,me:1}; } /* 主角照我的造型 */
   function nearBlocks(x,y){ const i=Math.floor(x/P),j=Math.floor(y/P),o=[]; for(let a=i-1;a<=i+1;a++) for(let b=j-1;b<=j+1;b++){ const q=Wd.blk(a,b); if(q) o.push(q); } return o; }
   /* ---- 天氣 ---- */
   function weatherStep(dt){ if(WX.shower>0&&cd<=0){ WX.shower-=dt; if(WX.shower<=0){ WX.tgt=.75; radio('disp','氣象局發布大雨特報，路面濕滑，開車小心！'); } }
@@ -757,8 +769,10 @@ function create(env,opts){
           const hk=onH(v.y),vk=onV(v.x); if(hk>=0&&vk>=0&&!p.inI){ const hmv=Math.abs(Math.cos(v.a))>.7; if(lightOf(vk,hk,hmv,t)==='r'&&vspeed(v)>60&&t-p.lastRed>3){ p.lastRed=t; if(hash(vk,hk,11)<.25){ tix++; flash=.25; M.time-=2; toast(p,'闖紅燈被拍到了！罰單 +1（-2 秒）'); } else hint(p,'red','紅燈要停喔！有些路口有照相機會開罰單'); for(const q of PD) if(Math.hypot(q.x-v.x,q.y-v.y)<160&&R()<.5){ say(q,pick(R,['紅燈啦！','闖紅燈喔！','很危險耶！'])); break; } } } p.inI=hk>=0&&vk>=0; }
         if(running&&!v.siren&&!M.noWanted){ const kmh=vspeed(v)*KMH,cop=nearCop(v.x,v.y,280); if(cop&&kmh>78&&t-p.spdCop>5&&WT.lv<1){ p.spdCop=t; crime(p,1,'在警察面前超速'); /* 已經在被追的時候超速不再加星 */ say(cop,'前面的車，慢下來！靠邊停！'); }
           const hk=onH(v.y),vk=onV(v.x),inI=hk>=0&&vk>=0; if(inI&&!p.inI2&&vspeed(v)>60){ const hmv=Math.abs(Math.cos(v.a))>.7; if(lightOf(vk,hk,hmv,t)==='r'){ const c2=nearCop(v.x,v.y,650); if(c2){ if(WT.lv<1) crime(p,1,'闖紅燈被警察看到'); say(c2,'闖紅燈！停車！'); } /* 逃跑中闖紅燈只加一點點 */ else crime(p,.25,'闖紅燈'); } } p.inI2=inI; }
-      } else if(p.foot){ const f=p.foot; let sp=0; if(running&&tank&&(I.dx||I.dy)){ f.a+=I.dx*3.2*dt; if(I.dy){ const run=I.n&&p.stam>.05&&I.dy<0,dir=I.dy<0?1:-1; sp=(run?150:95)*(dir>0?1:.55); if(run) p.stam=Math.max(0,p.stam-dt/4); f.vx=Math.cos(f.a)*sp*dir; f.vy=Math.sin(f.a)*sp*dir; f.ph+=dt*sp*.22; f.run=run; } else { f.vx=f.vy=0; f.ph+=dt*3; } }
-        else if(running&&(I.dx||I.dy)){ const run=I.n&&p.stam>.05; sp=run?150:95; if(run) p.stam=Math.max(0,p.stam-dt/4); const l=Math.hypot(I.dx,I.dy); f.a=Math.atan2(I.dy,I.dx); f.vx=I.dx/l*sp; f.vy=I.dy/l*sp; f.ph+=dt*sp*.22; f.run=run; } else { f.vx=f.vy=0; } if(!(I.n&&sp)) p.stam=Math.min(1,p.stam+dt/6); f.x+=f.vx*dt; f.y+=f.vy*dt; const pp=staticPush(f.x,f.y,5); if(pp){ f.x+=pp[0]; f.y+=pp[1]; }
+      } else if(p.foot){ const f=p.foot; let sp=0; let tvx=0,tvy=0; f.tr=(f.tr||0)+(((running&&tank)?I.dx:0)-(f.tr||0))*Math.min(1,dt*10); /* 轉身、起步、停下都平滑 */
+        if(running&&tank&&(I.dx||I.dy||Math.abs(f.tr)>.02)){ f.a+=f.tr*3.0*dt; if(I.dy){ const run=I.n&&p.stam>.05&&I.dy<0,dir=I.dy<0?1:-1; sp=(run?150:95)*(dir>0?1:.55); if(run) p.stam=Math.max(0,p.stam-dt/4); tvx=Math.cos(f.a)*sp*dir; tvy=Math.sin(f.a)*sp*dir; f.run=run; } }
+        else if(running&&(I.dx||I.dy)){ const run=I.n&&p.stam>.05; sp=run?150:95; if(run) p.stam=Math.max(0,p.stam-dt/4); const l=Math.hypot(I.dx,I.dy),ta=Math.atan2(I.dy,I.dx),da=Math.atan2(Math.sin(ta-f.a),Math.cos(ta-f.a)); f.a+=da*Math.min(1,dt*12); tvx=I.dx/l*sp; tvy=I.dy/l*sp; f.run=run; }
+        { const k=Math.min(1,dt*((tvx||tvy)?9:12)); f.vx+=(tvx-f.vx)*k; f.vy+=(tvy-f.vy)*k; const cur=Math.hypot(f.vx,f.vy); f.ph+=dt*(cur>3?cur*.22:3); } if(!(I.n&&sp)) p.stam=Math.min(1,p.stam+dt/6); f.x+=f.vx*dt; f.y+=f.vy*dt; const pp=staticPush(f.x,f.y,5); if(pp){ f.x+=pp[0]; f.y+=pp[1]; }
         for(const v of V){ const d=Math.hypot(v.x-f.x,v.y-f.y); if(d<v.L*.45+6){ const a=Math.atan2(f.y-v.y,f.x-v.x); f.x=v.x+Math.cos(a)*(v.L*.45+6); f.y=v.y+Math.sin(a)*(v.L*.45+6); } if(d<54&&v.drv<0&&v.role!=='wreck') hint(p,'board','按 '+KN[Math.min(p.i,KN.length-1)].f+' 上車；停著的車、路上的車都能搶來開',[KN[Math.min(p.i,KN.length-1)].f]); } footHints(p); }
       const o=me(p),z0=local2?.86:1.1,sp=o.ty?vspeed(o):0,tz=p.foot?z0*1.2:z0*(1-Math.min(.28,sp/1600)); p.cam.z+=(tz-p.cam.z)*Math.min(1,dt*1.6); const lx=o.ty?clamp(o.vx*.42,-170,170):0,ly=o.ty?clamp(o.vy*.42,-110,110):0; p.cam.x+=(o.x+lx-p.cam.x)*Math.min(1,dt*3.2); p.cam.y+=(o.y+ly-p.cam.y)*Math.min(1,dt*3.2); }
     /* 引擎聲 */
@@ -981,10 +995,36 @@ function stageShow(ctx,w,h,si,t){ const ST=STAGES[si],Wd=getWorld(ST.di),TH=THEM
   const bl=[]; for(const b of Wd.B) if(Math.abs((b.x0+b.x1)/2-cx)<hw+300&&Math.abs((b.y0+b.y1)/2-cy)<hh+300){ for(const tr of b.trees) ctx.drawImage(canopy(tr.v),tr.x-tr.r*1.25,tr.y-tr.r*1.25,tr.r*2.5,tr.r*2.5); for(const bd of b.blds) bl.push(bd); }
   bl.sort((a,b)=>Math.hypot((b.x0+b.x1)/2-cx,(b.y0+b.y1)/2-cy)-Math.hypot((a.x0+a.x1)/2-cx,(a.y0+a.y1)/2-cy)); for(const bd of bl) drawBld(ctx,bd,cx,cy,TH.dark,false);
   ctx.restore(); if(TH.dark){ ctx.fillStyle='rgba(6,10,26,'+TH.dark*.75+')'; ctx.fillRect(0,0,w,h); } if(TH.tint){ ctx.fillStyle=TH.tint; ctx.fillRect(0,0,w,h); } }
-function preview(ctx,w,h,L,t){ ctx.fillStyle='#3d4046'; ctx.fillRect(0,0,w,h); const s=Math.min(w,h)/60; ctx.save(); ctx.translate(w/2,h/2); ctx.scale(s,s); ctx.rotate(-PI/2+Math.sin(t)*.2); ctx.drawImage(carSpr('sedan',(L&&L.color)||'#c8202a'),-28,-15,56,30); ctx.restore(); }
+function figure(c,x,y,h,L,t){ /* 寫實比例的正面人物：約 7.5 頭身 */ L=L||{}; const u=h/7.5,sk=L.skin||'#e0b48e',sh=L.shirt||'#2a4a7a',pa=L.pants||'#1e1e22',hc=L.hairc||'#1a1410',hs=L.hs||'short',br=Math.sin(t*2)*u*.03;
+  const shade=(hex,k)=>{ const n=parseInt(hex.slice(1),16),f=v=>Math.max(0,Math.min(255,Math.round(v*(1+k)))); return 'rgb('+f(n>>16)+','+f(n>>8&255)+','+f(n&255)+')'; };
+  c.save(); c.translate(x,y); c.lineJoin='round'; c.lineCap='round';
+  c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(0,0,u*1.4,u*.22,0,0,Math.PI*2); c.fill();
+  const leg=s0=>{ const g=c.createLinearGradient(s0*u*.1,0,s0*u*.75,0); g.addColorStop(0,shade(pa,.15)); g.addColorStop(1,shade(pa,-.25)); c.fillStyle=g; c.beginPath(); c.moveTo(s0*u*.06,-u*3.85); c.lineTo(s0*u*.72,-u*3.85); c.lineTo(s0*u*.6,-u*.3); c.lineTo(s0*u*.18,-u*.3); c.closePath(); c.fill();
+    c.fillStyle='#1a1a20'; c.beginPath(); c.ellipse(s0*u*.42,-u*.16,u*.36,u*.18,0,0,Math.PI*2); c.fill(); c.fillStyle='#e8e8e8'; c.fillRect(s0*u*.42-u*.3,-u*.12,u*.6,u*.06); };
+  leg(-1); leg(1);
+  const arm=s0=>{ c.fillStyle=shade(sh,-.1); c.beginPath(); c.moveTo(s0*u*.98,-u*5.75); c.quadraticCurveTo(s0*u*1.32,-u*5.5,s0*u*1.25,-u*4.6); c.lineTo(s0*u*.98,-u*4.55); c.closePath(); c.fill();
+    c.fillStyle=shade(sk,-.08); c.beginPath(); c.moveTo(s0*u*1.04,-u*4.6); c.lineTo(s0*u*1.24,-u*4.6); c.lineTo(s0*u*1.16,-u*3.55); c.lineTo(s0*u*.98,-u*3.55); c.closePath(); c.fill(); c.fillStyle=sk; c.beginPath(); c.ellipse(s0*u*1.08,-u*3.42,u*.16,u*.22,0,0,Math.PI*2); c.fill(); };
+  arm(-1); arm(1);
+  { const g=c.createLinearGradient(-u,0,u,0); g.addColorStop(0,shade(sh,-.2)); g.addColorStop(.45,shade(sh,.12)); g.addColorStop(1,shade(sh,-.25)); c.fillStyle=g; c.beginPath(); c.moveTo(-u*1.02,-u*5.8+br); c.quadraticCurveTo(0,-u*6.02+br,u*1.02,-u*5.8+br); c.lineTo(u*.82,-u*3.75); c.lineTo(-u*.82,-u*3.75); c.closePath(); c.fill();
+    c.strokeStyle='rgba(0,0,0,.18)'; c.lineWidth=u*.04; c.beginPath(); c.moveTo(0,-u*5.6); c.lineTo(0,-u*3.9); c.stroke(); c.fillStyle=shade(pa,-.35); c.fillRect(-u*.8,-u*3.92,u*1.6,u*.14); } /* 上衣、皮帶 */
+  c.fillStyle=shade(sk,-.12); c.fillRect(-u*.2,-u*6.2+br,u*.4,u*.42); /* 脖子 */
+  const hy=-u*6.72+br; c.fillStyle=sk; c.beginPath(); c.ellipse(0,hy,u*.44,u*.56,0,0,Math.PI*2); c.fill(); c.beginPath(); c.ellipse(-u*.45,hy+u*.05,u*.08,u*.14,0,0,Math.PI*2); c.ellipse(u*.45,hy+u*.05,u*.08,u*.14,0,0,Math.PI*2); c.fill();
+  c.fillStyle=hc; if(hs==='long'){ c.beginPath(); c.moveTo(-u*.5,hy-u*.1); c.quadraticCurveTo(-u*.62,hy+u*.7,-u*.42,hy+u*1.05); c.lineTo(-u*.3,hy+u*.2); c.closePath(); c.fill(); c.beginPath(); c.moveTo(u*.5,hy-u*.1); c.quadraticCurveTo(u*.62,hy+u*.7,u*.42,hy+u*1.05); c.lineTo(u*.3,hy+u*.2); c.closePath(); c.fill(); }
+  if(hs==='cap'){ c.fillStyle=L.capc||'#c8202a'; c.beginPath(); c.ellipse(0,hy-u*.22,u*.48,u*.38,0,Math.PI,0); c.fill(); c.fillRect(-u*.5,hy-u*.25,u*1.0,u*.1); c.fillStyle=shade(L.capc||'#c8202a',-.3); c.beginPath(); c.ellipse(0,hy-u*.18,u*.55,u*.1,0,0,Math.PI); c.fill(); }
+  else if(hs==='buzz'){ c.globalAlpha=.85; c.beginPath(); c.ellipse(0,hy-u*.12,u*.46,u*.46,0,Math.PI*1.05,Math.PI*1.95); c.fill(); c.globalAlpha=1; }
+  else { c.beginPath(); c.ellipse(0,hy-u*.16,u*.5,u*.46,0,Math.PI*1.02,Math.PI*1.98); c.quadraticCurveTo(u*.2,hy-u*.36,-u*.48,hy-u*.12); c.fill(); }
+  c.fillStyle='#fff'; c.beginPath(); c.ellipse(-u*.17,hy+u*.02,u*.08,u*.05,0,0,Math.PI*2); c.ellipse(u*.17,hy+u*.02,u*.08,u*.05,0,0,Math.PI*2); c.fill();
+  c.fillStyle='#2a1a10'; c.beginPath(); c.arc(-u*.17,hy+u*.02,u*.04,0,Math.PI*2); c.arc(u*.17,hy+u*.02,u*.04,0,Math.PI*2); c.fill();
+  c.strokeStyle=shade(hc,0); c.lineWidth=u*.05; c.beginPath(); c.moveTo(-u*.27,hy-u*.09); c.lineTo(-u*.08,hy-u*.1); c.moveTo(u*.08,hy-u*.1); c.lineTo(u*.27,hy-u*.09); c.stroke();
+  c.strokeStyle=shade(sk,-.3); c.lineWidth=u*.035; c.beginPath(); c.moveTo(0,hy+u*.05); c.lineTo(-u*.04,hy+u*.2); c.lineTo(u*.03,hy+u*.22); c.stroke(); c.beginPath(); c.moveTo(-u*.11,hy+u*.34); c.quadraticCurveTo(0,hy+u*.38,u*.11,hy+u*.34); c.stroke();
+  c.restore(); }
+function preview(ctx,w,h,L,t){ L=L||{}; const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#5a6070'); g.addColorStop(1,'#2a2e36'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#3d4046'; ctx.fillRect(0,h*.62,w,h*.38); ctx.fillStyle='rgba(255,255,255,.5)'; for(let x=10;x<w*.55;x+=34) ctx.fillRect(x,h*.8,18,3);
+  const ty=L.car&&VT[L.car]?L.car:'sedan',s=Math.min(w*.5,h)/62; ctx.save(); ctx.translate(w*.3,h*.55); ctx.scale(s,s); ctx.rotate(-.35+Math.sin(t*.8)*.15); ctx.drawImage(carSpr(ty,L.color||'#c8202a'),-28,-15,56,30); ctx.restore();
+  ctx.fillStyle='#fff'; ctx.font='900 '+Math.round(h*.08)+'px "Noto Sans TC","Microsoft JhengHei",sans-serif'; ctx.textAlign='center'; ctx.fillText(VT[ty].n,w*.3,h*.95);
+  figure(ctx,w*.76,h*.96,h*.86,L,t); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).chase={
   name:'城市飆風追緝',tag:'CITY RUSH',color:'#ff8a3a',
-  desc:'3D 台灣城市動作冒險：跟著主角阿傑臥底黑鯊幫，5 章 50 個任務——快遞、小黃、追捕、救護、停車、護送、地下賽車、跟蹤、偷車、甩掉警察。闖紅燈、撞人、搶車會被通緝，警車、路障、直升機都會來追！可以走路、騎機車、借公共單車、搭捷運，天氣還會變。',
+  desc:'3D 台灣城市動作冒險：跟著主角阿傑臥底黑鯊幫，6 章 60 個任務——快遞、小黃、追捕、救護、停車、護送、地下賽車、跟蹤、偷車、甩掉警察。闖紅燈、撞人、搶車會被通緝，警車、路障、直升機都會來追！可以走路、騎機車、借公共單車、搭捷運，天氣還會變。',
   goal:'在時間內完成任務。照地上的綠色箭頭和右上角地圖找路；被通緝時要離開警車視線，星星才會消失。',
   load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); },
   stages:STAGES.map(s=>TN[s.type]+'｜'+s.n),stars:STAGES.map(s=>1+s.tier),stageLabel:'選擇任務',
@@ -995,6 +1035,12 @@ function preview(ctx,w,h,L,t){ ctx.fillStyle='#3d4046'; ctx.fillRect(0,0,w,h); c
   help:[['↑ ↓ ← →','↑ 油門、↓ 煞車／倒車、← → 方向盤（走路：↑ 往前、← → 轉身）'],['空白鍵','氮氣加速（走路是跑步、腳踏車是用力踩）'],['F','上下車、搶車、騎路邊機車、借公共單車；在捷運站入口搭捷運'],['V','換視角：3D 追車／高空／俯視（後兩種往畫面方向開）'],['雙人','1P 方向鍵＋Enter＋右 Shift；2P WASD＋空白鍵＋E']],
   touchHelp:[['方向鍵','↑ 油門、↓ 煞車、← → 轉彎'],['加速','氮氣加速、跑步'],['上下車','下車、換車、搭捷運'],['視角','切換 3D／俯視']],
   touch:{left:'dpad',right:[{l:'加速',c:'Space',act:true},{l:'上下車',c:'KeyF'},{l:'視角',c:'KeyV'}]},
-  looks:[{key:'color',label:'車子顏色',type:'color',opts:['#c8202a','#1d4fa8','#f2f2ee','#1b1d22','#e8c21c','#2f7a4a','#ff7a1a','#8a5ab8']}],
+  looks:[{key:'car',label:'車款',opts:[{id:'sedan',label:'轎車'},{id:'hatch',label:'小車'},{id:'suv',label:'休旅車'},{id:'sports',label:'跑車'}]},
+    {key:'color',label:'車子顏色',type:'color',opts:['#c8202a','#1d4fa8','#f2f2ee','#1b1d22','#e8c21c','#2f7a4a','#ff7a1a','#8a5ab8']},
+    {key:'hs',label:'髮型',opts:[{id:'short',label:'短髮'},{id:'long',label:'長髮'},{id:'cap',label:'棒球帽'},{id:'buzz',label:'平頭'}]},
+    {key:'hairc',label:'髮色',type:'color',opts:['#1a1410','#3a2a1c','#6a4a2a','#a87a4a','#8a8a8a','#c8a060']},
+    {key:'shirt',label:'上衣',type:'color',opts:['#2a4a7a','#e8e8e4','#2a2a2e','#c8402e','#5a8a4a','#e8c85a','#8a5aa8','#f4a040']},
+    {key:'pants',label:'褲子',type:'color',opts:['#1e1e22','#2a3040','#3a4a6a','#5a4a3a','#8a8a80','#c8b890']},
+    {key:'skin',label:'膚色',type:'color',opts:['#f1c9a5','#e0b48e','#c99a74','#a5764f','#7a5236']}],
   best:{label:'最高分',fmt:v=>v+' 分',lower:false},create};
 })();

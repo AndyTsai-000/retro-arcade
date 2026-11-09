@@ -195,14 +195,46 @@ function make(T,o){
       const T0=VT[ty]; e.gl=[]; for(const s of [-1,1]){ const g=new T.Mesh(glowGeo,glowW); g.position.set(T0.L/2+1,9,s*(T0.W/2-3)); g.rotation.y=PI/2; g.scale.setScalar(16); e.add(g); e.gl.push(g); const g2=new T.Mesh(glowGeo,glowR); g2.position.set(-T0.L/2-1,10,s*(T0.W/2-3)); g2.rotation.y=-PI/2; g2.scale.setScalar(10); e.add(g2); e.gl.push(g2); } }
     scene.add(e); P2.list.push(e); return e; }
   /* ---------- 行人：InstancedMesh ---------- */
-  const MAXP=260,PG={torso:new T.CylinderGeometry(2.3,1.9,7,9),head:new T.SphereGeometry(1.6,10,8),hair:new T.SphereGeometry(1.72,10,6,0,TAU,0,PI*.55),leg:new T.CylinderGeometry(1.05,.8,9.4,7).translate(0,-4.7,0),arm:new T.CylinderGeometry(.62,.5,6.8,6).translate(0,-3.4,0),umb:new T.ConeGeometry(8,3.4,8,1,true).translate(0,1.7,0)};
-  const IMP={}; for(const k of ['torso','head','hair','legL','legR','armL','armR','umb']){ const g=k.startsWith('leg')?PG.leg:k.startsWith('arm')?PG.arm:PG[k]; const m=new T.InstancedMesh(g,new T.MeshLambertMaterial({color:0xffffff,side:k==='umb'?T.DoubleSide:T.FrontSide}),MAXP); m.instanceColor=new T.InstancedBufferAttribute(new Float32Array(MAXP*3),3); m.frustumCulled=false; m.castShadow=k==='torso'||k.startsWith('leg')||k==='umb'; scene.add(m); IMP[k]=m; }
-  let pedN=0,umbN=0; const m4=new T.Matrix4(),q4=new T.Quaternion(),e4=new T.Euler(0,0,0,'YXZ'),v4=new T.Vector3(),s4=new T.Vector3(),c4=new T.Color(),off=new T.Vector3(),UP=new T.Vector3(0,1,0);
-  function setP(k,idx,yaw,rx,rz,ox,oy,oz,bx,by,bz,sc,c0,lie){ const m=IMP[k]; e4.set(rx,yaw,rz); q4.setFromEuler(e4); off.set(ox,oy,oz).multiplyScalar(sc); if(lie){ off.set(off.y-10*sc,off.z,-off.x).applyAxisAngle(UP,yaw); e4.set(rx,yaw,rz+PI/2); q4.setFromEuler(e4); } else off.applyAxisAngle(UP,yaw); v4.set(bx+off.x,by+off.y,bz+off.z); s4.setScalar(sc); m4.compose(v4,q4,s4); m.setMatrixAt(idx,m4); c4.set(c0); m.setColorAt(idx,c4); }
-  function ped(q,t){ if(pedN>=MAXP) return; const lk=q.lk||{},yaw=-(q.a||0)-PI/2,sc=(q.sc||1)*.86,run=q.run,sw=q.lying?0:Math.sin(q.ph||0)*(run?.9:.5),X=q.x,Z=q.y,lie=!!q.lying,i=pedN,y=lie?1.5:0;
-    setP('torso',i,yaw,lie?0:(run?.18:0),0,0,12.8,0,X,y,Z,sc,lk.shirt||'#888',lie); setP('head',i,yaw,0,0,0,18,0,X,y,Z,sc,lk.skin||'#e0b48e',lie); setP('hair',i,yaw,0,0,0,18.2,0,X,y,Z,sc,lk.cap||lk.hair||'#222',lie);
-    setP('legL',i,yaw,sw,0,1.1,9.6,0,X,y,Z,sc,lk.pants||'#333',lie); setP('legR',i,yaw,-sw,0,-1.1,9.6,0,X,y,Z,sc,lk.pants||'#333',lie);
-    const wave=q.wave&&Math.sin(t*8)>-.5; setP('armL',i,yaw,wave?PI*.9:-sw*.8,0,2.7,15.8,0,X,y,Z,sc,lk.shirt||'#888',lie); setP('armR',i,yaw,q.phone?2.4:sw*.8,0,-2.7,15.8,0,X,y,Z,sc,lk.shirt||'#888',lie); pedN++;
+  // 寫實比例（約 7.5 頭身）：骨盆、胸、脖子、頭、髮型、上臂／前臂／手、大腿／小腿／鞋，走路時膝蓋、手肘會彎
+  const MAXP=260,cyl=(r1,r2,h,n)=>new T.CylinderGeometry(r1,r2,h,n||8).translate(0,-h/2,0);
+  const PG={torso:new T.CylinderGeometry(2.45,1.95,5.4,10).scale(1,1,.66),pelvis:new T.CylinderGeometry(1.95,1.85,2.1,10).scale(1,1,.72),neck:new T.CylinderGeometry(.62,.72,1.1,7),
+    head:new T.SphereGeometry(1.42,12,10).scale(.9,1.14,1),hair:new T.SphereGeometry(1.55,12,8,0,TAU,0,PI*.56).scale(.94,1.08,1.04),
+    hairL:(()=>{ const g=new T.CylinderGeometry(1.5,1.35,3.6,10,1,true,-PI*.75,PI*1.5).translate(0,-1.6,.15); return g; })(),
+    buzz:new T.SphereGeometry(1.47,10,6,0,TAU,0,PI*.45).scale(.92,1.1,1.02),cap:new T.SphereGeometry(1.6,12,6,0,TAU,0,PI*.5).scale(.95,.9,1.04),brim:new T.CylinderGeometry(1.5,1.5,.18,12,1,false,PI*.5,PI).scale(1,1,1.3),
+    ua:cyl(.66,.54,3.8,7),fa:cyl(.52,.42,3.4,7),hand:new T.SphereGeometry(.55,7,5).scale(.9,1.2,.7),th:cyl(1.02,.8,4.8,8),sh:cyl(.76,.58,4.7,8),shoe:new T.BoxGeometry(1.3,.95,2.7).translate(0,-.45,-.45),
+    umb:new T.ConeGeometry(8,3.4,8,1,true).translate(0,1.7,0)};
+  const PARTS=['torso','pelvis','neck','head','hair','hairL','buzz','cap','brim','uaL','uaR','faL','faR','handL','handR','thL','thR','shL','shR','shoeL','shoeR','umb'];
+  const IMP={},CNT={}; for(const k of PARTS){ const g=PG[k]||PG[k.slice(0,-1)]; const m=new T.InstancedMesh(g,new T.MeshLambertMaterial({color:0xffffff,side:k==='umb'||k==='hairL'?T.DoubleSide:T.FrontSide}),MAXP); m.instanceColor=new T.InstancedBufferAttribute(new Float32Array(MAXP*3),3); m.frustumCulled=false; m.castShadow=k==='torso'||k.startsWith('th')||k==='umb'; scene.add(m); IMP[k]=m; CNT[k]=0; }
+  let pedN=0,umbN=0; const m4=new T.Matrix4(),q4=new T.Quaternion(),e4=new T.Euler(0,0,0,'YXZ'),v4=new T.Vector3(),s4=new T.Vector3(),c4=new T.Color(),UP=new T.Vector3(0,1,0);
+  const MB=new T.Matrix4(),MT=new T.Matrix4(),MJ=new T.Matrix4(),MR=new T.Matrix4(),MX=new T.Matrix4();
+  const put=(k,M,col)=>{ const m=IMP[k],i=CNT[k]++; if(i>=MAXP) return; m.setMatrixAt(i,M); c4.set(col); m.setColorAt(i,c4); };
+  // 關節：先移到關節位置，再繞 X 軸轉（正值往前抬）
+  const joint=(parent,x,y,z,rx,rz,out)=>{ MT.makeTranslation(x,y,z); e4.set(rx,0,rz||0); MR.makeRotationFromEuler(e4); return out.multiplyMatrices(parent,MT).multiply(MR); };
+  const shadeP=(hex,k)=>{ c4.set(hex); c4.multiplyScalar(1+k); return '#'+c4.getHexString(); };
+  function ped(q,t){ if(pedN>=MAXP) return; const lk=q.lk||{},yaw=-(q.a||0)-PI/2,sc=(q.sc||1)*.86,run=q.run,lie=!!q.lying,ph=q.ph||0,sw=lie?0:Math.sin(ph)*(run?.75:.42),X=q.x,Z=q.y;
+    const skin=lk.skin||'#e0b48e',shirt=lk.shirt||'#888',pants=lk.pants||'#333',hair=lk.hair||'#222',shoe=lk.me?'#1a1a20':shadeP(pants,-.4);
+    const bob=lie?0:Math.abs(Math.sin(ph))*(run?.55:.25);
+    e4.set(0,yaw,0); MR.makeRotationFromEuler(e4); MB.makeTranslation(X,lie?1.5:0,Z).multiply(MR);
+    if(lie){ e4.set(0,0,PI/2); MX.makeRotationFromEuler(e4); MB.multiply(MX); MB.multiply(new T.Matrix4().makeTranslation(-10*sc/.86*.86,0,0)); }
+    MB.multiply(new T.Matrix4().makeScale(sc,sc,sc)); MB.multiply(new T.Matrix4().makeTranslation(0,bob,0));
+    const lean=run?.22:.06;
+    // 腿：大腿→小腿（膝蓋往後彎）→鞋
+    for(const [sd,ph2] of [[1,0],[-1,PI]]){ const s1=Math.sin(ph+ph2)*(lie?0:(run?.75:.42)),knee=lie?0:Math.max(0,Math.sin(ph+ph2+1.3))*(run?1.1:.55)+.05,L=sd>0?'L':'R';
+      const th=joint(MB,sd*1.0,10.4,0,-s1,0,new T.Matrix4()); put('th'+L,th,pants); const sh=joint(th,0,-4.8,0,-knee,0,new T.Matrix4()); put('sh'+L,sh,pants); const sf=joint(sh,0,-4.7,0,s1+knee,0,new T.Matrix4()); /* 膝蓋往後彎、鞋子保持貼地 */ put('shoe'+L,sf,shoe); }
+    const body=new T.Matrix4().copy(MB).multiply(new T.Matrix4().makeTranslation(0,10.6,0)).multiply(new T.Matrix4().makeRotationX(-lean));
+    put('pelvis',new T.Matrix4().copy(body).multiply(new T.Matrix4().makeTranslation(0,.2,0)),pants);
+    const chest=new T.Matrix4().copy(body).multiply(new T.Matrix4().makeTranslation(0,3.6,0)).multiply(new T.Matrix4().makeRotationY(sw*.12)); put('torso',chest,shirt);
+    const nk=new T.Matrix4().copy(chest).multiply(new T.Matrix4().makeTranslation(0,3.15,0)); put('neck',nk,skin);
+    const hd=new T.Matrix4().copy(nk).multiply(new T.Matrix4().makeTranslation(0,1.75,0)).multiply(new T.Matrix4().makeRotationX(lean*.6)); put('head',hd,skin);
+    const hs=lk.hs||(lk.fem?'long':lk.cap?'cap':'short');
+    if(lk.cap||hs==='cap'){ put('cap',new T.Matrix4().copy(hd).multiply(new T.Matrix4().makeTranslation(0,.25,0)),lk.cap||'#c8202a'); put('brim',new T.Matrix4().copy(hd).multiply(new T.Matrix4().makeTranslation(0,.3,-1.2)),lk.cap||'#c8202a'); }
+    else if(hs==='buzz') put('buzz',new T.Matrix4().copy(hd).multiply(new T.Matrix4().makeTranslation(0,.15,.05)),hair);
+    else { put('hair',new T.Matrix4().copy(hd).multiply(new T.Matrix4().makeTranslation(0,.18,.08)),hair); if(hs==='long') put('hairL',new T.Matrix4().copy(hd).multiply(new T.Matrix4().makeTranslation(0,.6,0)),hair); }
+    // 手：上臂（往前後擺）→前臂（手肘往前彎）→手
+    const wave=q.wave&&Math.sin(t*8)>-.5;
+    for(const [sd,arm] of [[1,'L'],[-1,'R']]){ let rx=(sd>0?sw:-sw)*.9,el=-(.25+Math.abs(sw)*.5)-(run?.6:0); if(sd>0&&wave){ rx=PI*.85; el=-.3; } if(sd<0&&q.phone){ rx=1.0; el=-2.1; }
+      const ua=joint(chest,sd*2.55,2.4,0,rx,sd*.08,new T.Matrix4()); put('ua'+arm,ua,shirt); const fa=joint(ua,0,-3.8,0,-el,0,new T.Matrix4()); put('fa'+arm,fa,lk.long?shirt:skin); put('hand'+arm,new T.Matrix4().copy(fa).multiply(new T.Matrix4().makeTranslation(0,-3.6,0)),skin); }
+    pedN++;
     if(q.umb&&!lie&&umbN<MAXP){ const m=IMP.umb; e4.set(0,0,0); q4.setFromEuler(e4); v4.set(X,21.5*sc/.86,Z); s4.setScalar(1); m4.compose(v4,q4,s4); m.setMatrixAt(umbN,m4); c4.set(lk.umb||'#c8202a'); m.setColorAt(umbN,c4); umbN++; } }
   /* ---------- 任務標記、導航箭頭、特效、雨、直升機、三角錐 ---------- */
   const zoneM=new T.MeshBasicMaterial({map:tex(canv(8,128,(c,w,h)=>{ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(255,255,255,.75)'); c.fillStyle=g; c.fillRect(0,0,w,h); })),color:0xffd23f,transparent:true,depthWrite:false,side:T.DoubleSide,blending:T.AdditiveBlending});
@@ -232,7 +264,7 @@ function make(T,o){
       const tq=Math.floor(t*4); if(tq!==lastSig){ lastSig=tq; let i=0; for(const s of SIG){ const stt=lightOf(s.ix,s.iy,!!s.h,t); for(const kk of ['r','y','g']){ c4.set(LC[kk][stt===kk?0:1]); sigL.setColorAt(i++,c4); } } sigL.instanceColor.needsUpdate=true; }
       syncParked(st.parkVer||0);
       // 動態物件
-      for(const k in POOL) POOL[k].used=0; pedN=0; umbN=0;
+      for(const k in POOL) POOL[k].used=0; pedN=0; umbN=0; for(const k in CNT) CNT[k]=0;
       const fx0=st.views[0].focus,near=(x,y,R0)=>{ for(const vw of st.views){ const f=vw.focus; if(Math.abs(x-f.x)<R0&&Math.abs(y-f.y)<R0) return true; } return false; };
       const sir=Math.sin(t*14)>0; sirenM[0].color.set(sir?0xffffff:0x401010); sirenM[1].color.set(sir?0x303060:0xffffff);
       for(const v of st.V){ if(!near(v.x,v.y,1500)) continue; const m=getVeh(v.ty); m.position.set(v.x,0,v.y); m.rotation.set(0,-v.a,v.ty==='scooter'||v.ty==='bike'?-(v.lean||0):0); m.bodyM.color.set(v.col||'#ccc'); if(v.hp<30) m.bodyM.color.multiplyScalar(.6);
@@ -241,7 +273,7 @@ function make(T,o){
         if(m.gl){ const on=e.dark>.25&&v.role!=='parked'&&v.role!=='wreck'&&v.role!=='traffic_dead'; for(const g of m.gl) g.visible=on; } }
       for(const pk of st.parked){ if(!near(pk.x,pk.y,1100)) continue; const m=getVeh(pk.ty); m.position.set(pk.x,0,pk.y); m.rotation.set(0,-pk.a,0); m.bodyM.color.set(pk.col); if(m.brakeM) m.brakeM.visible=false; if(m.s0){ m.s0.material=lampM; m.s1.material=lampM; } if(m.gl) for(const g of m.gl) g.visible=false; if(m.rider) m.rider.visible=false; }
       for(const k in POOL){ const P2=POOL[k]; for(let i=P2.used;i<P2.list.length;i++) P2.list[i].visible=false; }
-      for(const q of st.people){ if(near(q.x,q.y,1000)) ped(q,t); } for(const k in IMP){ IMP[k].count=k==='umb'?umbN:pedN; IMP[k].instanceMatrix.needsUpdate=true; IMP[k].instanceColor.needsUpdate=true; }
+      for(const q of st.people){ if(near(q.x,q.y,1000)) ped(q,t); } for(const k in IMP){ IMP[k].count=k==='umb'?umbN:Math.min(MAXP,CNT[k]); IMP[k].instanceMatrix.needsUpdate=true; IMP[k].instanceColor.needsUpdate=true; }
       // 標記
       let mi=0; for(const m of st.markers){ const g=MK[mi]||(MK[mi]=mk()); mi++; g.visible=true; g.position.set(m.x,0,m.y); const pu=.5+.5*Math.sin(t*4),red=m.red?0xff3a3a:m.green?0x3ce878:0xffd23f; for(const p of [g.ring,g.disc,g.arrow,g.spot]) p.material.color.setHex(red); g.zone.material.color.setHex(red);
         g.zone.visible=m.k==='zone'; g.disc.visible=m.k==='zone'; g.spot.visible=m.k==='spot'; g.ring.visible=m.k!=='spot'&&m.k!=='tag'; g.arrow.visible=m.k!=='spot';

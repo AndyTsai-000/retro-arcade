@@ -91,12 +91,18 @@ const OPP=['dransword','knightshield','wizardarrow','hellsscythe','leonclaw','rh
 const BOTN=['旋風小子','鐵壁','流星','閃電','颶風','黑曜','赤焰','白狼','銀河','雷神'];
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function shade(hex,k){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&255,b=n&255; const f=v=>clamp(Math.round(k>0?v+(255-v)*k:v*(1+k)),0,255); return 'rgb('+f(r)+','+f(g)+','+f(b)+')'; }
-const partsOf=L=>{ const id=L&&TOP[L.top]?L.top:'dransword'; return {top:id,blade:id,ratchet:TOP[id].rat,bit:TOP[id].bit}; };
+const partsOf=L=>{ const id=L&&TOP[L.top]?L.top:L&&TOP[L.t1]?L.t1:'dransword'; return {top:id,blade:id,ratchet:TOP[id].rat,bit:TOP[id].bit}; };
 const ratOf=r=>{ const tth=/^\d/.test(r)?+r[0]:5,hh=+r.split('-')[1]||70; return {teeth:tth,h:hh,res:.82+.05*Math.min(tth,8),low:hh<=60?1:hh<=70?.5:0,atk:hh<=60?1.06:hh<=70?1:.96}; };
 // 3 對 3：三顆不能同一顆，棘輪、底座也不能重複
 const clash=(d,slot,id)=>d.some((q,i)=>i!==slot&&(q.top===id||TOP[q.top].rat===TOP[id].rat||TOP[q.top].bit===TOP[id].bit));
 function fixDeck(d){ d=d.map(q=>partsOf(q)); for(let i=0;i<d.length;i++){ const pre=d.slice(0,i); if(pre.some(q=>q.top===d[i].top||TOP[q.top].rat===TOP[d[i].top].rat||TOP[q.top].bit===TOP[d[i].top].bit)){ const ok=TOPS.find(t=>!pre.some(q=>q.top===t.id||TOP[q.top].rat===t.rat||TOP[q.top].bit===t.bit)); d[i]=partsOf({top:ok.id}); } } return d; }
-function myDeck(L){ let d=null; try{ d=JSON.parse(localStorage.getItem('arcade.spin.deck2')||'null'); }catch(e){} if(!Array.isArray(d)||d.length!==3) d=[{top:partsOf(L).top},{top:'knightshield'},{top:'wizardrod'}]; return fixDeck(d); }
+// 比賽的三顆陀螺：以「我的造型」的第 1～3 顆為準；舊版存的出場順序（deck2）在造型還沒設定過時沿用一次
+function myDeck(L){ L=L||{}; let raw=null,d=null; try{ raw=JSON.parse(localStorage.getItem('arcade.look.spin')||'null'); }catch(e){}
+  if(L.t1&&TOP[L.t1]&&raw&&raw.t1) d=[{top:L.t1},{top:L.t2},{top:L.t3}];
+  if(!d){ try{ d=JSON.parse(localStorage.getItem('arcade.spin.deck2')||'null'); }catch(e){} }
+  if(!Array.isArray(d)||d.length!==3||d.some(q=>!q||!TOP[q.top])) d=[{top:L.t1&&TOP[L.t1]?L.t1:'dransword'},{top:L.t2&&TOP[L.t2]?L.t2:'knightshield'},{top:L.t3&&TOP[L.t3]?L.t3:'wizardrod'}];
+  return fixDeck(d); }
+function saveDeck(d){ try{ localStorage.setItem('arcade.spin.deck2',JSON.stringify(d.map(q=>({top:q.top})))); const L=JSON.parse(localStorage.getItem('arcade.look.spin')||'{}')||{}; L.t1=d[0].top; L.t2=d[1].top; L.t3=d[2].top; L.top=d[0].top; localStorage.setItem('arcade.look.spin',JSON.stringify(L)); }catch(e){} } /* 開賽前改了也存回我的造型 */
 function botDeck(si,i){ const d=[]; for(let k=0;k<3;k++) d.push({top:OPP[(si*2+i+k*7)%OPP.length]}); return fixDeck(d); }
 function statsOf(p){ const T0=TOP[p.top],Ty=TYPES[T0.type],B=BITS[BITK[T0.bit]],Rr=ratOf(T0.rat),x=T0.x;
   const [a,d,st,ds,br]=AB[T0.id]; /* 能力值換算成物理係數：數值越高越強 */
@@ -406,7 +412,7 @@ function create(env,opts){
   const CW=228,CX0=i=>34+i*252,CY0=70,SELY=CY0+192,BTN=[W/2-100,436,200,46];
   function cyc(d,slot,dir){ let i=TOPS.findIndex(q=>q.id===d[slot].top); for(let k=0;k<TOPS.length;k++){ i=(i+dir+TOPS.length)%TOPS.length; if(!clash(d,slot,TOPS[i].id)){ d[slot]=partsOf({top:TOPS[i].id}); break; } } popT[slot]=t; env.sfx('click'); }
   function confirmDeck(){ const f=T[ed]; f.deck=fixDeck(f.deck); env.sfx('item');
-    if(ed===0||(net&&ed===me)) try{ localStorage.setItem('arcade.spin.deck2',JSON.stringify(f.deck.map(q=>({top:q.top})))); }catch(e){}
+    if(ed===0||(net&&ed===me)) saveDeck(f.deck);
     if(client){ waiting=true; net.send({deck:f.deck.map(q=>({top:q.top}))}); return; }
     rdy[ed]=true; if(local2&&ed===0){ ed=1; cur=0; } else waiting=true; }
   function deckKeys(){ if(waiting) return; const h=c2=>env.hit(c2); let U,D,L,Rt,A;
@@ -771,17 +777,16 @@ function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); themeBg(ctx,ST
   drawTop(ctx,sx(Math.cos(a)*r),sz(Math.cos(a)*r,Math.sin(a)*r),S*TS,{top:OPP[(si*2+1)%OPP.length]},0,t*30,1);
   drawTop(ctx,sx(Math.cos(a+2.6)*r*.8),sz(Math.cos(a+2.6)*r*.8,Math.sin(a+2.6)*r*.8),S*TS,{top:OPP[(si*2)%OPP.length]},0,-t*30,1); ctx.drawImage(stadiumFront(si),0,0,W,H); ctx.restore(); }
 function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1d2a44'); g.addColorStop(1,'#0b0a1c'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
-  const P=partsOf(L),B=TOP[P.top],K=statsOf(P),s=Math.min(w,h)/88;
-  ctx.fillStyle='rgba(255,255,255,.08)'; ctx.beginPath(); ctx.ellipse(w*.27,h*.62,w*.22,w*.22*SQ,0,0,TAU); ctx.fill();
-  drawTop(ctx,w*.27,h*.7,s,P,0,t*B.dir*3,.6);
-  { const k=s/(S*TS)*.95; ctx.save(); ctx.translate(w*.27,h*.7-26*k*1.05); ctx.scale(k,k); drawLauncherC(ctx,0,0,'#3d8bff',1,.25+.2*Math.sin(t*2),false,false,L&&L.lc,L&&L.ls); ctx.restore(); } /* 發射器 */
-  const x0=w*.52,bw=w*.44,fs=Math.round(h*.055); ctx.textAlign='left'; ctx.textBaseline='middle';
-  ctx.font='900 '+Math.round(h*.075)+'px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText(B.n,x0,h*.1);
-  ctx.font='700 '+fs+'px '+TC; ctx.fillStyle='#9ac8ff'; ctx.fillText(B.code+'　'+B.rat+' '+BITN[B.bit]+(B.dir<0?'　左旋':''),x0,h*.2);
-  ctx.fillStyle=['#ff6a5a','#5aa8ff','#5fd068','#ffd23f','#c8a0ff'][Object.keys(TYPES).indexOf(B.type)]; ctx.font='900 '+fs+'px '+TC; ctx.fillText('類型：'+B.type+(B.type==='左旋'?'特化型':'型'),x0,h*.3);
-  ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='700 '+Math.round(h*.048)+'px '+TC; wrapText(ctx,'特色：'+B.feat,x0,h*.4,bw,h*.07,3);
-  const ab=AB[B.id],st=[['攻擊',ab[0]],['防禦',ab[1]],['持久',ab[2]],['衝刺',ab[3]],['耐久',ab[4]]];
-  ctx.font='700 '+Math.round(h*.042)+'px '+TC; st.forEach(([n,v0],i)=>{ const v=v0/(i===3?50:i===4?100:85),y=h*(.6+i*.078); ctx.textAlign='right'; ctx.fillStyle='#fff'; ctx.fillText(String(v0),x0+bw,y); ctx.textAlign='left'; /* 數字 */ ctx.fillStyle='#fff'; ctx.fillText(n,x0,y); const bx=x0+h*.2,bl=bw-h*.2-h*.09; ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(bx,y-h*.016,bl,h*.032); ctx.fillStyle=['#ff4d4d','#3d8bff','#3ed16a','#ff9d3d','#c8a0ff'][i]; ctx.fillRect(bx,y-h*.016,bl*clamp(v,.06,1),h*.032); }); }
+  L=L||{}; const ids=[L.t1,L.t2,L.t3].map((x,i)=>TOP[x]?x:['dransword','knightshield','wizardrod'][i]),fixed=fixDeck(ids.map(x=>({top:x}))).map(q=>q.top),s=Math.min(w,h)/150;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ids.forEach((id,i)=>{ const B=TOP[id],cx=w*(.18+i*.32),cy=h*.36,P=partsOf({top:id}),ab=AB[id],dup=fixed[i]!==id;
+    ctx.fillStyle='rgba(255,255,255,.07)'; ctx.beginPath(); ctx.ellipse(cx,cy+h*.04,w*.12,w*.12*SQ,0,0,TAU); ctx.fill();
+    drawTop(ctx,cx,cy+h*.06,s,P,0,t*B.dir*3+i,.7);
+    ctx.font='900 '+Math.round(h*.055)+'px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText((i+1)+'　'+B.n,cx,h*.62);
+    ctx.font='700 '+Math.round(h*.042)+'px '+TC; ctx.fillStyle=['#ff6a5a','#5aa8ff','#5fd068','#ffd23f','#c8a0ff'][Object.keys(TYPES).indexOf(B.type)]||'#fff'; ctx.fillText(B.type+'型　'+B.code,cx,h*.71);
+    ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='700 '+Math.round(h*.04)+'px '+TC; ctx.fillText('攻'+ab[0]+' 防'+ab[1]+' 持'+ab[2],cx,h*.8); ctx.fillText('衝'+ab[3]+' 耐'+ab[4],cx,h*.88);
+    if(dup){ ctx.fillStyle='#ff6a6a'; ctx.font='900 '+Math.round(h*.04)+'px '+TC; ctx.fillText('零件重複，比賽時會換成 '+TOP[fixed[i]].n,cx,h*.96); } });
+  { const k=s/(S*TS)*.55; ctx.save(); ctx.translate(w*.06,h*.12); ctx.scale(k,k); drawLauncherC(ctx,0,0,'#3d8bff',1,.25+.2*Math.sin(t*2),false,false,L.lc,L.ls); ctx.restore(); } }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).spin={name:'陀螺旋風戰',tag:'SPIN STORM',color:'#ff7a3d',online:true,maxPlayers:2,
   desc:'30 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就用滑鼠或手指拖曳拉繩發射（拉越快轉速越高，晚 1 秒就算發射失敗），之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，旋轉勝利、擊飛勝利、爆裂勝利、極限勝利，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
   goal:'選好落點發射，比對手轉得久＝旋轉勝利 1 分、撞進黃色擊飛區域或飛出場外＝擊飛勝利 2 分、撞到解體＝爆裂勝利 2 分、撞進紅色極限區域＝極限勝利 3 分。先拿 4 分的贏。',
@@ -792,7 +797,9 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   help:[['↑ ↓ ← →','開賽前移動落點'],['滑鼠拖曳','裁判喊 GO SHOOT 後，按住下方軌道上的握把往外拖，拖到底或放開就發射；拖得越快轉速越高（14,000 RPM 以上專業，16,000 以上極限要用握把式發射器）。喊完 1 秒內沒發射就算發射失敗、記失誤一次，失誤 2 次對方得 1 分'],['發射之後','陀螺自己轉、自己撞，不用操作'],['V','切換特寫鏡頭／看全場'],['雙人','1P 用 WASD、拖曳左半邊或按 F 發射；2P 用方向鍵、拖曳右半邊或按 Enter 發射']],
   touchHelp:[['方向盤','開賽前移動落點'],['手指拖曳','裁判喊 GO SHOOT 後按住軌道上的握把往外拖，越快轉速越高；晚 1 秒算失誤'],['鏡頭','切換特寫鏡頭／看全場']],
   touch:{left:'dpad',right:[{l:'鏡頭',c:'KeyV'}]},
-  looks:[{key:'top',label:'陀螺（點一下看類型和特色）',opts:TOPS.map(q=>({id:q.id,label:q.code+' '+q.n+'（'+q.type+'）'}))},
+  looks:[{key:'t1',label:'第 1 顆出場',type:'select',uniq:'deck',def:'dransword',opts:TOPS.map(q=>({id:q.id,label:q.n+'（'+q.type+'）'+q.code}))},
+    {key:'t2',label:'第 2 顆出場',type:'select',uniq:'deck',def:'knightshield',opts:TOPS.map(q=>({id:q.id,label:q.n+'（'+q.type+'）'+q.code}))},
+    {key:'t3',label:'第 3 顆出場',type:'select',uniq:'deck',def:'wizardrod',opts:TOPS.map(q=>({id:q.id,label:q.n+'（'+q.type+'）'+q.code}))},
     {key:'lc',label:'發射器顏色',type:'color',opts:['#e23b3b','#3d8bff','#ffd23f','#3ed16a','#b98cff','#ff7a3d','#2a2d36','#f4f4f4']},
     {key:'ls',label:'發射器款式',opts:[{id:'cord',label:'拉繩式'},{id:'string',label:'捲線式'},{id:'grip',label:'握把式'}]}],
   preview,
