@@ -199,7 +199,7 @@ function themeBg(c,th,t){ const T=TH[th],g=c.createLinearGradient(0,0,0,H); g.ad
   if(th==='storm'){ c.strokeStyle='rgba(220,240,255,.35)'; c.lineWidth=2; for(let i=0;i<24;i++){ const x=(i*83+t*300)%(W+200)-100,y=(i*41)%H; c.beginPath(); c.moveTo(x,y); c.lineTo(x+60,y+6); c.stroke(); } }
   if(th==='twin'){ c.strokeStyle='rgba(62,209,106,.15)'; c.lineWidth=1; for(let i=0;i<W;i+=40){ c.beginPath(); c.moveTo(i,0); c.lineTo(i,H); c.stroke(); } for(let j=0;j<H;j+=40){ c.beginPath(); c.moveTo(0,j); c.lineTo(W,j); c.stroke(); } } }
 const inPk=(st,a,extra)=>{ for(const p of st.pk){ let d=Math.abs(((a-p.a)%TAU+TAU*1.5)%TAU-Math.PI); if(d<p.w+(extra||0)) return p; } return null; };
-let ATT=60,POCKV=360,BMK=.05,LUNGE=9,KBK=1.5; const OCT_R=AR+60,OCT_Y=16,OCT_H=90,WALL_H=46;
+let ATT=60,POCKV=430,BMK=.04,LUNGE=9,KBK=1.22; const OCT_R=AR+60,OCT_Y=16,OCT_H=90,WALL_H=46;
 const octP=(k,r,dy)=>{ const a=k*Math.PI/4+Math.PI/8; return [sx(Math.cos(a)*r),sy(Math.sin(a)*r)+dy]; };
 function acryl(c,k,al,back){ const [x0,y0]=octP(k,OCT_R-4,OCT_Y),[x1,y1]=octP(k+1,OCT_R-4,OCT_Y),H2=WALL_H; /* 透明壓克力護罩一片 */
   c.save(); c.beginPath(); c.moveTo(x0,y0); c.lineTo(x1,y1); c.lineTo(x1,y1-H2); c.lineTo(x0,y0-H2); c.closePath();
@@ -392,7 +392,7 @@ function create(env,opts){
   setupRound(); if(!R.pv&&R.humans) phase='deck';
   // 一對一：每人帶 3 顆，開賽前組 3 顆陀螺、排出場順序（刀刃、棘輪、底座都不能重複）
   const CW=228,CX0=i=>34+i*252,CY0=70,SELY=CY0+192,BTN=[W/2-100,436,200,46];
-  function cyc(d,slot,dir){ let i=TOPS.findIndex(q=>q.id===d[slot].top); for(let k=0;k<TOPS.length;k++){ i=(i+dir+TOPS.length)%TOPS.length; if(!clash(d,slot,TOPS[i].id)){ d[slot]=partsOf({top:TOPS[i].id}); break; } } env.sfx('click'); }
+  function cyc(d,slot,dir){ let i=TOPS.findIndex(q=>q.id===d[slot].top); for(let k=0;k<TOPS.length;k++){ i=(i+dir+TOPS.length)%TOPS.length; if(!clash(d,slot,TOPS[i].id)){ d[slot]=partsOf({top:TOPS[i].id}); break; } } popT[slot]=t; env.sfx('click'); }
   function confirmDeck(){ const f=T[ed]; f.deck=fixDeck(f.deck); env.sfx('item');
     if(ed===0||(net&&ed===me)) try{ localStorage.setItem('arcade.spin.deck2',JSON.stringify(f.deck.map(q=>({top:q.top})))); }catch(e){}
     if(client){ waiting=true; net.send({deck:f.deck.map(q=>({top:q.top}))}); return; }
@@ -413,10 +413,10 @@ function create(env,opts){
   if(canvas&&canvas.addEventListener&&FMT3){ canvas.addEventListener('pointerdown',onDown); canvas.style.touchAction='none'; }
   function drawDeck(){ themeBg(c,ST.th,t); c.fillStyle='rgba(8,8,20,.72)'; c.fillRect(0,0,W,H); const d=T[ed].deck;
     c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText((local2?(ed+1)+'P ':'')+'選 3 顆陀螺、排好出場順序（每回合派一顆上場）',W/2,24);
-    c.fillStyle='rgba(255,255,255,.75)'; c.font='700 13px '+TC; c.fillText('三顆的機體、棘輪、底座都不能重複　按 ◀ ▶ 換陀螺、按 ⇄ 換出場順序'+(net?'　還剩 '+Math.max(0,Math.ceil(deckT))+' 秒':''),W/2,50);
+    c.fillStyle='rgba(255,255,255,.75)'; c.font='700 13px '+TC; c.fillText('點陀螺名稱用下拉選單選（或按 ◀ ▶ 換）、按 ⇄ 換出場順序　三顆的機體、棘輪、底座都不能重複'+(net?'　還剩 '+Math.max(0,Math.ceil(deckT))+' 秒':''),W/2,50);
     for(let i=0;i<3;i++){ const X=CX0(i),P=d[i],B=TOP[P.top],sel=cur===i; c.fillStyle='rgba(255,255,255,.08)'; rr(c,X,CY0,CW,354,14); c.fill(); c.strokeStyle=sel?'#ffd23f':'rgba(255,255,255,.2)'; c.lineWidth=2; c.stroke();
       c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('第 '+(i+1)+' 顆出場',X+CW/2,CY0+18);
-      c.fillStyle='rgba(255,255,255,.08)'; c.beginPath(); c.ellipse(X+CW/2,CY0+118,72,72*SQ,0,0,TAU); c.fill(); drawTop(c,X+CW/2,CY0+124,2.4,P,0,t*B.dir*4,.7);
+      c.fillStyle='rgba(255,255,255,.08)'; c.beginPath(); c.ellipse(X+CW/2,CY0+118,72,72*SQ,0,0,TAU); c.fill(); const pop=Math.max(0,1-(t-(popT[i]||-9))/.4); drawTop(c,X+CW/2,CY0+124-pop*18,2.4*(1+.22*pop),P,0,t*B.dir*(4+pop*20),.7); if(pop>0){ c.strokeStyle='rgba(255,210,63,'+pop+')'; c.lineWidth=3; c.beginPath(); c.ellipse(X+CW/2,CY0+124,90*(1.3-pop*.3),90*SQ*(1.3-pop*.3),0,0,TAU); c.stroke(); } /* 選好的陀螺彈出來亮相 */
       c.fillStyle=sel?'rgba(255,210,63,.25)':'rgba(0,0,0,.3)'; rr(c,X+6,SELY-17,CW-12,34,8); c.fill();
       c.fillStyle=sel?'#ffd23f':'#cfd6e2'; c.font='900 20px '+TC; c.fillText('◀',X+24,SELY+1); c.fillText('▶',X+CW-24,SELY+1);
       c.fillStyle='#fff'; c.font='900 16px '+TC; c.fillText(B.n,X+CW/2,SELY+1);
@@ -463,7 +463,7 @@ function create(env,opts){
         const vt=f.vx*(-ny*K.dir)+f.vy*(nx*K.dir);
         if(f.dashT<=0&&f.railCD<=0&&f.spin>25&&vt>70&&(touch?Math.random()<.42*K.dash:Math.random()<.02*K.dash*(1+vt/200))){ f.dashT=.34; f.railCD=1.6; addFx('dash',f.x,f.y); snd('boost'); }
         if(ST.lava) f.spin-=h*4; } }
-    f.spin-=h*(2.25+hyp(f.vx,f.vy)/420)/K.sta*ST.decay*(1-.15*(f.over||0)); if(f.spin<=0){ f.spin=0; finish(f,'spin'); } }
+    f.spin-=h*(1.3+hyp(f.vx,f.vy)/520)/K.sta*ST.decay*(1-.15*(f.over||0)); if(f.spin<=0){ f.spin=0; finish(f,'spin'); } }
   // 子彈獅鷲：激烈碰撞時內層子彈彈開，變成追撞對手的子彈單位，本體繼續旋轉
   function splitTop(f,o){ if(f.split||!TOP[f.P.top].x.split||f.st!=='on') return; f.split=true; f.k=Object.assign({},f.k,{wgt:f.k.wgt*.8,atk:f.k.atk*.9,sta:f.k.sta*1.1});
     const dx=o.x-f.x,dy=o.y-f.y,d=hyp(dx,dy)||1,px=-dy/d*K_SIDE(f),py=dx/d*K_SIDE(f);
@@ -490,7 +490,7 @@ function create(env,opts){
     const kb=KBK*(j+ex)*a.k.atk*pw(a)/b.k.def/mb*(1-.12*b.k.low)*stab(b),ka=KBK*(j+ex)*b.k.atk*pw(b)/a.k.def/ma*(1-.12*a.k.low)*stab(a);
     b.vx+=nx*kb; b.vy+=ny*kb; a.vx-=nx*ka; a.vy-=ny*ka;
     for(const [f,k] of [[a,ka],[b,kb]]) if(k>200){ const r=hyp(f.x,f.y)||1; f.vx+=f.x/r*k*.1; f.vy+=f.y/r*k*.1; if(k>200) f.kT=Math.min(.55,.2+k/1400); } /* 被撞的一方往外飛、一路滑到場邊 */
-    b.spin-=I*.013*a.k.atk/b.k.def; a.spin-=I*.013*b.k.atk/a.k.def;
+    b.spin-=I*.010*a.k.atk/b.k.def; a.spin-=I*.010*b.k.atk/a.k.def;
     if(!same){ const m=(a.spin+b.spin)/2; a.spin+=(m-a.spin)*.12; b.spin+=(m-b.spin)*.12; }
     if(I>110&&rt>.8){ splitTop(a,b); splitTop(b,a); }
     const thr=210;
@@ -625,7 +625,21 @@ function create(env,opts){
   function bubble(txt){ c.font='900 15px '+TC; const w=Math.min(330,c.measureText(txt).width+52),x1=W-12-w,y1=10; c.fillStyle='rgba(255,255,255,.95)'; rr(c,x1,y1,w,32,10); c.fill(); /* 裁判對話框固定在右上角，鏡頭拉近也看得到 */
     c.beginPath(); c.moveTo(W-70,y1+30); c.lineTo(W-58,y1+44); c.lineTo(W-50,y1+30); c.fill(); c.fillStyle='#14122b'; c.textAlign='left'; c.textBaseline='middle'; c.fillText('🎙',x1+10,y1+16); c.textAlign='center'; c.fillText(txt,x1+w/2+12,y1+16,w-44); }
   const drawLauncher=(X,Y,col,sd,pl,ready,cut,lc,ls)=>drawLauncherC(c,X,Y,col,sd,pl,ready,cut,lc,ls);
-  function draw(){ if(phase==='deck'){ drawDeck(); return; } c.save(); if(shake>0) c.translate((Math.random()-.5)*shake*24,(Math.random()-.5)*shake*24);
+  // 選陀螺：每顆名稱的位置放一個下拉選單（疊在畫面上），選了馬上換；別格已經選的陀螺不會出現在選單裡
+  let selBox=null; const popT=[];
+  function deckUI(){ const show=phase==='deck'&&!waiting&&canvas&&canvas.isConnected&&env.stage&&!opts.preview;
+    if(!show){ if(selBox){ selBox.remove(); selBox=null; } return; }
+    if(!selBox){ selBox=document.createElement('div'); selBox.style.cssText='position:absolute;left:0;top:0;width:0;height:0;z-index:4'; env.stage.appendChild(selBox);
+      selBox.sels=[0,1,2].map(i=>{ const sl=document.createElement('select'); sl.setAttribute('aria-label','第 '+(i+1)+' 顆陀螺');
+        sl.style.cssText='position:absolute;box-sizing:border-box;font-weight:900;font-family:'+TC+';background:#1d1a3a;color:#fff;border:2px solid #ffd23f;border-radius:8px;padding:0 6px;text-align:center;text-align-last:center;cursor:pointer;outline:none';
+        sl.addEventListener('change',()=>{ const d=T[ed].deck; if(clash(d,i,sl.value)){ selBox.key=''; return; } d[i]=partsOf({top:sl.value}); cur=i; popT[i]=t; env.sfx('item'); selBox.key=''; });
+        sl.addEventListener('focus',()=>{ cur=i; }); selBox.appendChild(sl); return sl; }); }
+    const r=canvas.getBoundingClientRect(),pr=env.stage.getBoundingClientRect(),k=Math.min(r.width/W,r.height/H),ox=r.left-pr.left+(r.width-W*k)/2,oy=r.top-pr.top+(r.height-H*k)/2;
+    const d=T[ed].deck,key=ed+':'+d.map(q=>q.top).join()+'|'+k.toFixed(3)+'|'+Math.round(ox)+'|'+Math.round(oy); if(selBox.key===key) return; selBox.key=key;
+    selBox.sels.forEach((sl,i)=>{ const X=CX0(i); const hh=Math.max(30,32*k); Object.assign(sl.style,{left:(ox+(X+40)*k)+'px',top:(oy+SELY*k-hh/2)+'px',width:((CW-80)*k)+'px',height:hh+'px',fontSize:Math.max(12,14*k)+'px'}); /* 手機上至少 30px 高，手指點得到 */
+      sl.innerHTML=TOPS.filter(q=>q.id===d[i].top||!d.some((o,j)=>j!==i&&o.top===q.id)).map(q=>{ const bad=q.id!==d[i].top&&clash(d,i,q.id); /* 棘輪或底座和別顆重複：看得到但不能選 */
+        return '<option value="'+q.id+'"'+(q.id===d[i].top?' selected':'')+(bad?' disabled':'')+'>'+q.n+(bad?'（零件重複）':'')+'</option>'; }).join(''); }); }
+  function draw(){ deckUI(); if(phase==='deck'){ drawDeck(); return; } c.save(); if(shake>0) c.translate((Math.random()-.5)*shake*24,(Math.random()-.5)*shake*24);
     c.save(); view(.12); themeBg(c,ST.th,t); c.restore();
     c.save(); view(.4); drawCrowd(c,t,cheer); c.restore();
     c.save(); view(.75); drawFloor(c,ST.th); const rs=refState(); drawRef(c,REFX,REFY,1,rs[0],t,!!refSay,rs[1]); c.restore();
@@ -719,7 +733,7 @@ function create(env,opts){
     if(refSay&&phase!=='over') bubble(refSay.txt);
     if(phase==='over'&&winKey){ c.fillStyle='rgba(11,10,28,.35)'; c.fillRect(0,0,W,H); for(let i=0;i<50;i++){ c.fillStyle=PCOL[i%4]; c.fillRect((i*97+t*50*(i%3+1))%W,(i*53+t*140*(1+i%4))%H,6,9); }
       const s=keyName(winKey)+' 獲勝！'; c.font='900 44px '+TC; c.lineWidth=9; c.strokeStyle='#0b0a1c'; c.strokeText(s,W/2,CY-30); c.fillStyle='#ffd23f'; c.fillText(s,W/2,CY-30); } }
-  return {update,draw,destroy(){ if(canvas&&canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointerdown',onPDown); canvas.removeEventListener('pointermove',onPMove); canvas.removeEventListener('pointerup',onPUp); canvas.removeEventListener('pointercancel',onPUp); } },_dbg:{T,TRK,fouls,shoot,onPDown,onPMove,onPUp,get shootT(){return shootT;},get wallHits(){return wallHits;},get ed(){return ed;},confirmDeck,cyc,get score(){return score;},get phase(){return phase;},get round(){return round;},finish,setPT(v){PT=v;},get cam(){return cam;}}};
+  return {update,draw,destroy(){ if(selBox){ selBox.remove(); selBox=null; } if(canvas&&canvas.removeEventListener){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointerdown',onPDown); canvas.removeEventListener('pointermove',onPMove); canvas.removeEventListener('pointerup',onPUp); canvas.removeEventListener('pointercancel',onPUp); } },_dbg:{T,TRK,fouls,shoot,onPDown,onPMove,onPUp,get shootT(){return shootT;},get wallHits(){return wallHits;},get ed(){return ed;},confirmDeck,cyc,get score(){return score;},get phase(){return phase;},get round(){return round;},finish,setPT(v){PT=v;},get cam(){return cam;}}};
 }
 function drawLauncherC(c,X,Y,col,sd,pl,ready,cut,lc,ls){ lc=lc||col; ls=ls||'cord'; c.save(); c.translate(X,Y); c.scale(sd,1);
   const e=1-Math.pow(1-(pl||0),3),tr=ready?(Math.random()-.5)*1.6:0,hx=40+e*(cut?78:50)+tr,hy=-8+e*(cut?26:16)+tr,CE=[24,-8]; /* 拉線：握把從發射器側邊一口氣往外拉 */
