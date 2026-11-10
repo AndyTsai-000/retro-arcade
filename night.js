@@ -13,7 +13,7 @@ const STALLS=[
   {n:'撈金魚',sign:'撈金魚',sub:'一支 50 元',tarp:['#d8202a','#f4f0e8'],th:[5,12,22],pz:[['金魚一隻（裝袋）','fishbag'],['金魚兩隻＋魚飼料','fishbag2'],['黑凸眼金魚＋小魚缸','tank']]},
   {n:'套圈圈',sign:'套圈圈',sub:'10 圈 100 元',tarp:['#1f5fc8','#f4f0e8'],th:[4,10,18],pz:[['彈珠汽水','soda'],['小熊玩偶','bear'],['超大熊熊娃娃','bigbear']]},
   {n:'射氣球',sign:'射氣球',sub:'15 發 100 元',tarp:['#1f8a4a','#f4f0e8'],th:[8,15,22],pz:[['棒棒糖','candy'],['水槍','watergun'],['大型絨毛娃娃','bigbear']]},
-  {n:'彈珠檯',sign:'賓果彈珠檯',sub:'10 顆 50 元',tarp:['#e8a020','#7a2a10'],th:[8,16,26],pz:[['一包乖乖','snack'],['養樂多一排','yakult'],['烤香腸兌換券','sausage']]},
+  {n:'彈珠檯',sign:'倍率彈珠台',sub:'10／50／100 顆',tarp:['#e8a020','#7a2a10'],th:[12,20,40],unit:'顆',note:'最後彈珠越多獎品越大',pz:[['一包乖乖','snack'],['養樂多一排','yakult'],['烤香腸兌換券','sausage']]},
   {n:'九宮格',sign:'棒球九宮格',sub:'12 球 100 元',tarp:['#2a7a3a','#f4f0e8'],th:[8,16,24],pz:[['可樂一罐','can'],['棒球手套','glove'],['球棒＋棒球','bat']]},
   {n:'丟沙包',sign:'丟沙包',sub:'一座 3 包 50 元',tarp:['#8a3ac8','#f4f0e8'],th:[20,32,44],pz:[['泡泡水','bubble'],['玩具車','car'],['大隻招財貓','cat']]},
   {n:'手槍射氣球',sign:'手槍射氣球',sub:'20 發 100 元',tarp:['#c82a2a','#1a1a2a'],th:[10,18,26],pz:[['氣球狗','balloondog'],['玩具手槍','toygun'],['大型絨毛娃娃','bigbear']]},
@@ -277,88 +277,120 @@ function gun(c,X,Y,rec){ const bx=640,by=520,a=Math.atan2(Y-by,X-bx); c.save(); 
   const g=c.createLinearGradient(0,-8,0,8); g.addColorStop(0,'#8a8e98'); g.addColorStop(.4,'#d8dce4'); g.addColorStop(1,'#3a3e48'); c.fillStyle=g; rr(c,30,-7,150,12,4); c.fill(); c.fillStyle='#2a2e38'; c.fillRect(176,-8,8,14); c.fillRect(120,-12,6,5);
   c.restore(); c.fillStyle='#e6bc96'; c.beginPath(); c.ellipse(bx+Math.cos(a)*40-6,by+Math.sin(a)*40+4,16,12,a,0,TAU); c.fill(); }
 
-// ═════════ 彈珠檯 ═════════
-const PB={x0:318,x1:622,top:84,bot:474,lane:600,acx:470,acy:236,ar:152,br:6};
-const HOLES=[]; for(let r=0;r<5;r++) for(let k=0;k<5;k++) HOLES.push({x:350+k*52,y:262+r*44,n:r*5+k+1});
-const PINS=(()=>{ const p=[]; for(const h of HOLES){ p.push([h.x-11,h.y-3],[h.x+11,h.y-3],[h.x-8,h.y+9],[h.x+8,h.y+9]); }
-  for(let r=0;r<5;r++) for(let k=0;k<4;k++) p.push([376+k*52,244+r*44]);
-  for(let k=0;k<6;k++) p.push([342+k*48,212+(k%2)*10]); for(let k=0;k<4;k++) p.push([372+k*52,182]);
-  for(let i=0;i<12;i++){ const y=226+i*21; p.push([326+(i%2)*7,y],[590-(i%2)*7,y]); } /* 兩側導引釘，彈珠不會貼著牆直接掉下去 */ return p; })();
-const LINES=(()=>{ const L=[]; for(let i=0;i<5;i++){ L.push([0,1,2,3,4].map(k=>i*5+k)); L.push([0,1,2,3,4].map(k=>k*5+i)); } L.push([0,6,12,18,24]); L.push([4,8,12,16,20]); return L; })();
-const HTYPE=n=>[1,5,13,21,25].includes(n)?'ret':[3,11,15,23].includes(n)?'free':''; /* 退珠洞：退 3 顆×倍數；再來洞：送一顆免費彈珠 */
-function pinStall(env,o){ o=initO(o); const S=STALLS[3]; let balls=10,score=0,ball=null,pow=0,pt=0,filled={},lines={},msg=null,ended=false,endT=0,trail=[],plunge=0,bet=1,free=[],drops=[],mulFx=null;
-  const say=(s,col)=>{ msg={s,l:1.8,c:col||'#ffd23f'}; react(o,col); };
-  const refund=(k,x,y)=>{ balls+=k; for(let i=0;i<Math.min(k,12);i++) drops.push({x:PB.x1+8,y:PB.bot-30-rnd(0,60),vx:rnd(30,110),vy:rnd(-160,-60),d:i*.08,land:false}); env.sfx('coin'); };
-  const g={ score:()=>score,left:()=>balls,leftLbl:'彈珠',ended:()=>ended&&endT<=0,
-    update(dt,t){ if(msg&&(msg.l-=dt)<=0) msg=null; if(mulFx&&(mulFx.l-=dt)<=0) mulFx=null;
-      for(const d of drops){ if(d.d>0){ d.d-=dt; continue; } d.vy+=700*dt; d.x+=d.vx*dt; d.y+=d.vy*dt; if(d.x>762){ d.x=762; d.vx=-Math.abs(d.vx)*.3; } if(d.y>470&&d.x>654) d.land=true; }
-      drops=drops.filter(d=>!d.land&&d.y<H+20);
+// ═════════ 彈珠檯（夜市倍率彈珠台：買珠→倍率燈轉→押注→彈出，落進亮燈球道就贏 押注×倍率）═════════
+const PB={x0:318,x1:622,lane:600,acx:470,acy:338,ar:152,bot:474,br:6,LT:416,NL:12}; PB.lw=(PB.lane-PB.x0)/PB.NL;
+const MULS=[2,4,6,8,10],MULW=[34,26,20,12,8],LITN={2:6,4:3,6:2,8:1,10:1},BUYS=[10,50,100],BUYP=['50 元','200 元','350 元'],ROUNDS=10;
+const PTH=n=>[Math.round(n*1.2),n*2,n*4]; /* 最後彈珠到買的 1.2、2、4 倍換小、中、大獎 */
+const PINS=(()=>{ const p=[]; for(let r=0;r<8;r++){ const y=214+r*24; for(let k=0;k<13;k++){ const x=330+k*22.5+(r%2?11:0); if(x>PB.lane-11||x<PB.x0+8) continue; if(y<PB.acy&&hyp(x-PB.acx,y-PB.acy)>PB.ar-15) continue; p.push([x,y,r===2||r===5]); } }
+  for(let i=1;i<PB.NL;i++) p.push([PB.x0+i*PB.lw,PB.LT,0,1]); return p; })();
+let rainbowPat=null;
+function pinStall(env,o){ o=initO(o); const S=STALLS[3]; S.th=PTH(10);
+  let st='buy',sel=0,start=10,balls=10,round=0,bet=1,mul=2,lampI=0,lit=[],spin=null,ball=null,rest=null,pow=0,pt=0,msg=null,ended=false,endT=0,trail=[],plunge=0,drops=[],resT=0,hold={},flash=0,lastWin=null;
+  const say=(s,col,l)=>{ msg={s,l:l||1.8,c:col||'#ffd23f'}; react(o,col); };
+  const pickMul=()=>{ let r=Math.random()*100; for(let i=0;i<5;i++){ if((r-=MULW[i])<0) return i; } return 0; };
+  function startSpin(){ const ti=pickMul(),steps=14+Math.floor(Math.random()*6); spin={k:0,steps,nt:.05,start:((ti-steps)%5+5)%5}; lampI=spin.start; lit=[]; rest=null; st='spin'; env.sfx('click'); }
+  function stopSpin(){ mul=MULS[lampI]; const L=[...Array(PB.NL).keys()].filter(i=>mul>=8?i>=4&&i<=7:mul>=6?i>=2&&i<=9:true); /* 高倍率的球道在中間，比較難瞄 */ for(let i=L.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [L[i],L[j]]=[L[j],L[i]]; } lit=L.slice(0,LITN[mul]).sort((a,b)=>a-b);
+    bet=clamp(bet,1,Math.min(99,balls)); st='bet'; flash=1; say('×'+mul+' 倍！亮 '+lit.length+' 條球道',mul>=8?'#ff5a3a':'#ffd23f',2.2); env.sfx(mul>=8?'win':'item'); }
+  const pour=(k)=>{ for(let i=0;i<Math.min(k,30);i++) drops.push({x:PB.x1+10,y:PB.bot-20-rnd(0,40),vx:rnd(30,110),vy:rnd(-170,-60),d:i*.05}); };
+  function land(lane,b){ ball=null; rest={x:PB.x0+(lane+.5)*PB.lw,lane,bet:b.bet}; round++;
+    if(lit.includes(lane)){ const pay=b.bet*mul; balls+=pay; pour(pay); lastWin={lane,l:1.8}; say('中了！'+b.bet+' 顆 × '+mul+' ＝ '+pay+' 顆','#86dc4f',2.2); env.sfx('win'); }
+    else { say('沒中，差一點！','#cfc8ff'); env.sfx('die'); }
+    st='res'; resT=1.9; }
+  const g={ score:()=>balls,lbl:'彈珠（顆）',left:()=>ROUNDS-round,leftLbl:'局數',ended:()=>ended&&endT<=0,
+    update(dt,t){ const K=env.keys; if(msg&&(msg.l-=dt)<=0) msg=null; if(flash>0) flash-=dt; if(lastWin&&(lastWin.l-=dt)<=0) lastWin=null;
+      for(const d of drops){ if(d.d>0){ d.d-=dt; continue; } d.vy+=700*dt; d.x+=d.vx*dt; d.y+=d.vy*dt; if(d.x>762){ d.x=762; d.vx=-Math.abs(d.vx)*.3; } if(d.y>470&&d.x>654) d.gone=true; }
+      drops=drops.filter(d=>!d.gone&&d.y<H+20);
       if(ended){ endT-=dt; return; }
-      if(!ball){ pt+=dt; pow=.5-.5*Math.cos(pt*3.4); plunge=pow; /* 力道表來回跑，按下去就彈出 */
-        const fr=free.length>0,maxB=Math.max(1,Math.min(3,balls));
-        if(!fr){ if(env.hit('ArrowUp')||env.hit('KeyW')||env.hit('ArrowRight')||env.hit('KeyD')){ if(bet<maxB){ bet++; env.sfx('click'); } } if(env.hit('ArrowDown')||env.hit('KeyS')||env.hit('ArrowLeft')||env.hit('KeyA')){ if(bet>1){ bet--; env.sfx('click'); } } bet=clamp(bet,1,maxB); }
-        if((fr||balls>0)&&(env.hit('Space')||env.hit('KeyJ')||env.hit('Enter'))){ let n,cost; if(fr){ n=free.shift(); cost=0; } else { n=Math.min(bet,balls); cost=n; balls-=n; }
-          ball={x:611,y:PB.bot-10,vx:0,vy:-(560+pow*330)*rnd(.98,1.02),left:false,t:0,still:0,n,cost}; plunge=0; env.sfx('spring'); }
-        if(balls<=0&&!free.length&&!ball){ ended=true; endT=1.6; } return; }
-      const n=4,h=dt/n; for(let s=0;s<n&&ball;s++) step(h);
-      trail.push([ball?ball.x:0,ball?ball.y:0]); if(trail.length>8||!ball) trail.shift(); },
-    draw(c,t){ marketBG(c,t); drawPinBooth(c,t,S); drawMachine(c,t,filled,lines,ball,trail,plunge,pow); canopy(c,160,W,S,t); hud(c,g,S,t,o);
-      const fr=free.length>0,cur=ball?ball.n:fr?free[0]:bet;
-      // 投入幾顆
-      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,66,120,98,12); c.fill(); c.textAlign='center'; c.textBaseline='alphabetic'; c.font='900 12px '+TC; c.fillStyle=fr&&!ball?'#7ab8ff':'#cfc8ff'; c.fillText(fr&&!ball?'免費彈珠！':'投入',710,84);
-      for(let i=0;i<3;i++){ c.globalAlpha=i<cur?1:.22; ballDraw(c,686+i*24,102); } c.globalAlpha=1;
-      c.font='900 26px '+TC; c.fillStyle=cur>=3?'#ff5a3a':cur===2?'#ffd23f':'#fff'; c.fillText('×'+cur,710,140);
-      if(!ball&&!fr&&!ended){ c.font='700 10px '+TC; c.fillStyle='#cfc8ff'; c.fillText('↑ ↓ 改投入幾顆',710,157); }
-      if(!ball&&!ended){ c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,170,120,190,12); c.fill(); c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText('力道',710,190); const gx=694,gy=206,gh=136; c.fillStyle='#2a2440'; c.fillRect(gx,gy,32,gh); const gg=c.createLinearGradient(0,gy+gh,0,gy); gg.addColorStop(0,'#3ed16a'); gg.addColorStop(.6,'#ffd23f'); gg.addColorStop(1,'#ff4a3a'); c.fillStyle=gg; c.fillRect(gx,gy+gh*(1-pow),32,gh*pow); c.strokeStyle='#fff'; c.lineWidth=2; c.strokeRect(gx,gy,32,gh); c.font='700 11px '+TC; c.fillStyle='#fff'; c.fillText(env.touch?'GO！彈出':'空白鍵彈出',710,352); }
-      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,366,120,52,12); c.fill(); c.font='900 12px '+TC; c.fillStyle='#cfc8ff'; c.textAlign='center'; c.fillText('連線',710,384); c.font='900 20px '+TC; c.fillStyle='#86dc4f'; c.fillText(Object.keys(lines).length+' 條',710,408);
-      // 退珠盤：剩下的彈珠都在這裡
-      c.fillStyle='#b8bcc6'; rr(c,648,424,124,60,10); c.fill(); c.fillStyle='#5a5e68'; rr(c,654,442,112,36,8); c.fill(); c.font='900 11px '+TC; c.fillStyle='#2a2440'; c.fillText('退珠盤　'+balls+' 顆',710,437);
+      const hitAny=(...ks)=>ks.some(k=>env.hit(k)),go=()=>hitAny('Space','KeyJ','Enter');
+      if(st==='buy'){ if(hitAny('ArrowLeft','KeyA','ArrowUp','KeyW')&&sel>0){ sel--; env.sfx('click'); } if(hitAny('ArrowRight','KeyD','ArrowDown','KeyS')&&sel<2){ sel++; env.sfx('click'); }
+        if(go()){ start=balls=BUYS[sel]; S.th=PTH(start); bet=Math.max(1,Math.round(start/10)); env.sfx('coin'); say('買了 '+start+' 顆彈珠！','#ffd23f'); startSpin(); } return; }
+      if(st==='spin'){ spin.nt-=dt; if(spin.nt<=0){ spin.k++; lampI=(spin.start+spin.k)%5; env.sfx('click'); if(spin.k>=spin.steps){ stopSpin(); return; } const left=spin.steps-spin.k; spin.nt=left>6?.06:.06+(6-left)*.05; } return; }
+      if(st==='res'){ resT-=dt; if(resT<=0){ if(round>=ROUNDS||balls<=0){ ended=true; endT=1.4; if(balls<=0) say('彈珠用完了','#cfc8ff'); } else startSpin(); } return; }
+      if(st==='bet'){ pt+=dt; pow=.5-.5*Math.cos(pt*3.4); plunge=pow; const mx=Math.min(99,balls);
+        for(const [ks,dv] of [[['ArrowUp','KeyW'],1],[['ArrowDown','KeyS'],-1],[['ArrowRight','KeyD'],10],[['ArrowLeft','KeyA'],-10]]){ const id=ks[0],down=ks.some(k=>K[k]),hit=ks.some(k=>env.hit(k));
+          if(hit){ hold[id]=0; } else if(down){ hold[id]=(hold[id]||0)+dt; } else { hold[id]=-1; continue; }
+          if(hit||hold[id]>.4){ if(!hit) hold[id]-=.06; const nb=clamp(bet+dv,1,mx); if(nb!==bet){ bet=nb; env.sfx('click'); } } }
+        bet=clamp(bet,1,mx);
+        if(go()){ balls-=bet; ball={x:611,y:PB.bot-10,vx:0,vy:-(480+pow*140)*rnd(.98,1.02),left:false,t:0,still:0,bet}; plunge=0; st='fly'; rest=null; env.sfx('spring'); } return; }
+      if(st==='fly'){ const n=4,h=dt/n; for(let s=0;s<n&&ball;s++) step(h); trail.push([ball?ball.x:0,ball?ball.y:0]); if(trail.length>8||!ball) trail.shift(); } },
+    draw(c,t){ marketBG(c,t); drawPinBooth(c,t,S); drawMachine(c,t); canopy(c,160,W,S,t); hud(c,g,S,t,o);
+      // 押注
+      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,66,120,98,12); c.fill(); c.textAlign='center'; c.textBaseline='alphabetic'; c.font='900 12px '+TC; c.fillStyle='#cfc8ff'; c.fillText('押注',710,84);
+      const bb=ball?ball.bet:st==='res'?(rest&&rest.bet)||bet:bet; c.font='900 26px '+TC; c.fillStyle='#fff'; c.fillText(bb+' 顆',710,114);
+      if(st==='bet'||st==='fly'||st==='res'){ c.font='900 12px '+TC; c.fillStyle=mul>=8?'#ff7a5a':'#ffd23f'; c.fillText('中獎 ×'+mul+' ＝ '+bb*mul+' 顆',710,136,112); }
+      if(st==='bet'){ c.font='700 10px '+TC; c.fillStyle='#cfc8ff'; c.fillText('↑↓ ±1　←→ ±10',710,156); }
+      if(st==='bet'){ c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,170,120,190,12); c.fill(); c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText('力道',710,190); const gx=694,gy=206,gh=136; c.fillStyle='#2a2440'; c.fillRect(gx,gy,32,gh); const gg=c.createLinearGradient(0,gy+gh,0,gy); gg.addColorStop(0,'#3ed16a'); gg.addColorStop(.6,'#ffd23f'); gg.addColorStop(1,'#ff4a3a'); c.fillStyle=gg; c.fillRect(gx,gy+gh*(1-pow),32,gh*pow); c.strokeStyle='#fff'; c.lineWidth=2; c.strokeRect(gx,gy,32,gh); c.font='700 11px '+TC; c.fillStyle='#fff'; c.fillText(env.touch?'GO！彈出':'空白鍵彈出',710,352); }
+      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,366,120,52,12); c.fill(); c.font='900 12px '+TC; c.fillStyle='#cfc8ff'; c.textAlign='center'; c.fillText('局數',710,384); c.font='900 20px '+TC; c.fillStyle='#86dc4f'; c.fillText(Math.min(ROUNDS,round+(st==='res'?0:1))+' / '+ROUNDS,710,408);
+      // 粉紅色接珠盤
+      c.fillStyle='#ff6aa0'; rr(c,648,424,124,60,12); c.fill(); c.fillStyle='#d84a80'; rr(c,654,442,112,36,9); c.fill(); c.font='900 11px '+TC; c.fillStyle='#fff'; c.fillText('接珠盤　'+balls+' 顆',710,437);
       for(let i=0;i<Math.min(balls,30);i++) ballDraw(c,663+(i%10)*10.4,471-Math.floor(i/10)*9);
       for(const d of drops) if(d.d<=0) ballDraw(c,d.x,d.y);
-      if(mulFx){ const k=clamp(mulFx.l*2,0,1),sc=1+(1.2-mulFx.l)*.35; c.save(); c.globalAlpha=k; c.translate(mulFx.x,mulFx.y); c.scale(sc,sc); c.font='900 30px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(mulFx.s,0,0); c.fillStyle=mulFx.c; c.fillText(mulFx.s,0,0); c.restore(); }
-      if(msg) banner(c,msg,470,150); } };
+      if(st==='buy'&&!o.noBuy){ c.fillStyle='rgba(8,8,20,.55)'; c.fillRect(0,0,W,H); c.fillStyle='#fff8e8'; rr(c,W/2-190,140,380,210,18); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=4; c.stroke();
+        c.textAlign='center'; c.textBaseline='middle'; c.font='900 22px '+TC; c.fillStyle='#c81414'; c.fillText('要買幾顆彈珠？',W/2,174);
+        BUYS.forEach((n,i)=>{ const x=W/2-120+i*120,on=i===sel; c.fillStyle=on?'#ffd23f':'#efe6d0'; rr(c,x-52,200,104,96,12); c.fill(); if(on){ c.strokeStyle='#c81414'; c.lineWidth=3; c.stroke(); }
+          for(let k=0;k<Math.min(6,1+i*2+(i?1:0));k++) ballDraw(c,x-15+(k%3)*15,224+Math.floor(k/3)*12); c.font='900 20px '+TC; c.fillStyle='#14122b'; c.fillText(n+' 顆',x,258); c.font='700 13px '+TC; c.fillStyle='#6a4a2a'; c.fillText(BUYP[i],x,282); });
+        c.font='700 13px '+TC; c.fillStyle='#14122b'; c.fillText(env.touch?'← → 選擇，按 GO！':'← → 選擇，空白鍵確定',W/2,326); }
+      if(msg) banner(c,msg,470,198); } };
   function step(h){ const b=ball; b.t+=h; b.vy+=520*h; b.x+=b.vx*h; b.y+=b.vy*h; const r=PB.br;
-    // 頂端圓弧
     if(b.y<PB.acy){ const dx=b.x-PB.acx,dy=b.y-PB.acy,d=hyp(dx,dy); if(d>PB.ar-r){ const nx=dx/d,ny=dy/d,vn=b.vx*nx+b.vy*ny; b.x=PB.acx+nx*(PB.ar-r); b.y=PB.acy+ny*(PB.ar-r); if(vn>0){ b.vx-=vn*nx*1.15; b.vy-=vn*ny*1.15; } } }
     if(b.x<PB.x0+r){ b.x=PB.x0+r; b.vx=Math.abs(b.vx)*.5; } if(b.x>PB.x1-r){ b.x=PB.x1-r; b.vx=-Math.abs(b.vx)*.5; }
-    // 發射軌道的隔板：出去之後就回不來
-    if(b.x<PB.lane-2&&b.y<PB.acy) b.left=true;
+    if(b.x<PB.lane-2&&b.y<PB.acy) b.left=true; /* 發射軌道的隔板：出去之後就回不來 */
     if(!b.left){ if(b.x<PB.lane+r&&b.y>PB.acy-30){ b.x=PB.lane+r; b.vx=Math.abs(b.vx)*.3; } }
     else if(b.x>PB.lane-r&&b.y>PB.acy-30){ b.x=PB.lane-r; b.vx=-Math.abs(b.vx)*.5; }
-    if(!b.left&&b.y>PB.bot-10&&b.vy>0){ ball=null; if(b.cost) balls+=b.cost; else free.unshift(b.n); say('力道不夠，再彈一次','#cfc8ff'); env.sfx('bump'); return; }
-    for(const p of PINS){ const dx=b.x-p[0],dy=b.y-p[1],d=hyp(dx,dy),m=r+2.2; if(d<m&&d>.01){ const nx=dx/d,ny=dy/d,vn=b.vx*nx+b.vy*ny; b.x=p[0]+nx*m; b.y=p[1]+ny*m; if(vn<0){ b.vx-=vn*nx*1.55; b.vy-=vn*ny*1.55; b.vx+=rnd(-14,14); if(Math.abs(vn)>80) env.sfx('rattle'); } } }
-    for(const q of HOLES){ const d=hyp(b.x-q.x,b.y-q.y); if(d<9&&!filled[q.n]&&b.left){ filled[q.n]=1; ball=null; const m=b.n,ty=HTYPE(q.n); score+=m; env.sfx('item'); let nl=0; LINES.forEach((L,i)=>{ if(!lines[i]&&L.every(k=>filled[k+1])){ lines[i]=1; nl++; } });
-      if(m>1) mulFx={s:'×'+m,x:q.x,y:q.y-26,l:1.2,c:m>=3?'#ff5a3a':'#ffd23f'};
-      let ret=0; const tx=[]; if(ty==='ret'){ ret+=3*m; tx.push('退珠 '+3*m+' 顆'); } if(ty==='free'){ free.push(m); tx.push('再來一顆！'); } if(nl){ score+=nl*5*m; ret+=nl*3*m; tx.unshift((nl>1?nl+' 條':'')+'連線 BINGO +'+nl*5*m+'　退珠 '+nl*3*m); env.sfx('win'); }
-      if(ret) refund(ret,q.x,q.y); say(tx.length?tx.join('　'):'進洞 '+q.n+' 號　+'+m,nl||ret?'#86dc4f':ty==='free'?'#9ae0ff':'#ffd23f'); return; } }
-    if(b.y>PB.bot+r){ ball=null; say('掉下去了','#cfc8ff'); env.sfx('die'); return; }
-    if(b.left&&hyp(b.vx,b.vy)<25){ b.still+=h; if(b.still>.8){ b.still=0; b.kick=(b.kick||0)+1; if(b.kick>3){ ball=null; say('卡住了，算掉下去','#cfc8ff'); env.sfx('die'); return; } b.vx=rnd(-90,90); b.vy=-60; env.sfx('bump'); } } else b.still=0; /* 卡在釘子上：拍一下機台 */
-    if(b.t>14){ ball=null; } }
-  g.dbg={get balls(){return balls;},get ball(){return ball;},get filled(){return filled;},get free(){return free;},get bet(){return bet;},set bet(v){bet=v;},setPow(v){pt=Math.acos(1-2*clamp(v,0,1))/3.4;}};
+    if(!b.left&&b.y>PB.bot-10&&b.vy>0){ ball=null; balls+=b.bet; st='bet'; say('力道不夠，再彈一次','#cfc8ff'); env.sfx('bump'); return; }
+    for(const p of PINS){ const dx=b.x-p[0],dy=b.y-p[1],d=hyp(dx,dy),m=r+2.2; if(d<m&&d>.01){ const nx=dx/d,ny=dy/d,vn=b.vx*nx+b.vy*ny; b.x=p[0]+nx*m; b.y=p[1]+ny*m; if(vn<0){ b.vx-=vn*nx*1.5; b.vy-=vn*ny*1.5; b.vx+=rnd(-36,36); if(Math.abs(vn)>80) env.sfx('rattle'); } } }
+    if(b.left&&b.y>PB.LT){ for(let i=1;i<PB.NL;i++){ const xi=PB.x0+i*PB.lw; if(Math.abs(b.x-xi)<r+2){ const sd=b.x<xi?-1:1; b.x=xi+sd*(r+2); b.vx=sd*Math.abs(b.vx)*.4; } } }
+    if(b.left&&b.y>=PB.bot-r-2){ land(clamp(Math.floor((b.x-PB.x0)/PB.lw),0,PB.NL-1),b); return; }
+    if(b.left&&hyp(b.vx,b.vy)<25){ b.still+=h; if(b.still>.8){ b.still=0; b.kick=(b.kick||0)+1; b.vx=rnd(-90,90); b.vy=-60; env.sfx('bump'); } } else b.still=0; /* 卡在釘子上：拍一下機台 */
+    if(b.t>14){ land(clamp(Math.floor((b.x-PB.x0)/PB.lw),0,PB.NL-1),b); } }
+  function drawMachine(c,t){ const X0=PB.x0-22,X1=PB.x1+22,Y0=82,Y1=H+4;
+    c.fillStyle='rgba(0,0,0,.45)'; rr(c,X0+8,Y0+8,X1-X0,Y1-Y0,14); c.fill();
+    const body=c.createLinearGradient(X0,0,X1,0); body.addColorStop(0,'#e8a810'); body.addColorStop(.5,'#ffd23a'); body.addColorStop(1,'#d89a08'); c.fillStyle=body; rr(c,X0,Y0,X1-X0,Y1-Y0,14); c.fill();
+    if(!rainbowPat){ const k=cacheCv(24,24,x=>{ const cs=['#e83a3a','#ff9a2a','#ffe23a','#4ac84a','#3a8aff','#8a4ae8']; for(let i=-6;i<12;i++){ x.fillStyle=cs[(i+12)%6]; x.beginPath(); x.moveTo(i*4,0); x.lineTo(i*4+4,0); x.lineTo(i*4+4+24,24); x.lineTo(i*4+24,24); x.closePath(); x.fill(); } }); rainbowPat=c.createPattern(k,'repeat'); }
+    c.save(); c.fillStyle=rainbowPat; c.fillRect(X0,Y0+6,7,Y1-Y0); c.fillRect(X1-7,Y0+6,7,Y1-Y0); c.fillRect(X0+6,Y0,X1-X0-12,6); c.restore();
+    // 上方面板：粉紅底＋泡泡、投幣孔、押注顯示、倍率燈、出珠口
+    const PX0=X0+12,PX1=X1-12,PY0=Y0+10,PY1=186; const pg=c.createLinearGradient(0,PY0,0,PY1); pg.addColorStop(0,'#ffb8e0'); pg.addColorStop(1,'#ff7ac0'); c.fillStyle=pg; rr(c,PX0,PY0,PX1-PX0,PY1-PY0,8); c.fill();
+    [[360,104,7,'#ff4a4a'],[420,98,5,'#4ac8ff'],[540,100,6,'#ffe23a'],[575,128,5,'#8aff6a'],[352,150,5,'#ffe23a'],[588,160,6,'#ff4a4a'],[500,98,4,'#ff8a2a']].forEach(([x,y,r,col])=>{ const bg=c.createRadialGradient(x-r*.3,y-r*.3,1,x,y,r); bg.addColorStop(0,'#fff'); bg.addColorStop(.35,col); bg.addColorStop(1,shade(col,-.35)); c.fillStyle=bg; c.beginPath(); c.arc(x,y,r,0,TAU); c.fill(); });
+    c.textAlign='center'; c.textBaseline='middle'; c.font='900 17px '+TC; c.lineWidth=5; c.strokeStyle='#c8287a'; c.strokeText('夜市彈珠台',470,106); c.fillStyle='#ffe23a'; c.fillText('夜市彈珠台',470,106);
+    // 投幣孔
+    const cg=c.createLinearGradient(PX0+6,0,PX0+34,0); cg.addColorStop(0,'#8a8e98'); cg.addColorStop(.5,'#eef0f4'); cg.addColorStop(1,'#7a7e88'); c.fillStyle=cg; rr(c,PX0+6,118,30,58,5); c.fill(); c.fillStyle='#2a2a30'; c.fillRect(PX0+19,126,4,18); c.beginPath(); c.arc(PX0+21,160,7,0,TAU); c.fill();
+    // 出珠口
+    c.fillStyle='#ffc81a'; rr(c,PX1-34,118,28,36,6); c.fill(); c.fillStyle='#e8a000'; rr(c,PX1-30,140,20,22,5); c.fill(); c.fillStyle='#3a2a10'; c.beginPath(); c.arc(PX1-20,150,5,0,TAU); c.fill();
+    // 押注數字（紅色 LED）
+    c.fillStyle='#14080a'; rr(c,446,120,48,28,4); c.fill(); const bv=String(Math.min(99,ball?ball.bet:bet)).padStart(2,'0'); c.font='900 22px Consolas,monospace'; c.fillStyle='#3a0a0a'; c.fillText('88',470,135); c.shadowColor='#ff2a2a'; c.shadowBlur=8; c.fillStyle='#ff3a2a'; c.fillText(st==='buy'?'--':bv,470,135); c.shadowBlur=0;
+    // 倍率燈
+    MULS.forEach((m,i)=>{ const x=392+i*39,y=168,on=st!=='buy'&&i===lampI,bl=on&&st!=='spin'?(Math.sin(t*12)>-.3):on; c.fillStyle=bl?'#ff2a2a':'#7a1a2a'; if(bl){ c.shadowColor='#ff3a2a'; c.shadowBlur=14; } c.beginPath(); c.arc(x,y,11,0,TAU); c.fill(); c.shadowBlur=0; c.strokeStyle='#fff'; c.lineWidth=1.5; c.stroke(); c.font='900 11px '+TC; c.fillStyle=bl?'#fff':'#e8a0b0'; c.fillText(m,x,y+.5); });
+    c.font='900 9px '+TC; c.fillStyle='#8a1a5a'; c.fillText('倍率',366,168);
+    // 盤面（拱形，玻璃底下）
+    c.save(); c.beginPath(); c.moveTo(PB.x0,PB.acy); c.arc(PB.acx,PB.acy,PB.ar,Math.PI,0); c.lineTo(PB.x1,PB.bot); c.lineTo(PB.x0,PB.bot); c.closePath(); c.clip();
+    const fg=c.createLinearGradient(0,PB.acy-PB.ar,0,PB.bot); fg.addColorStop(0,'#6ab8ff'); fg.addColorStop(.45,'#a8d8ff'); fg.addColorStop(.62,'#ffd8f0'); fg.addColorStop(1,'#ff8ac8'); c.fillStyle=fg; c.fillRect(PB.x0,PB.acy-PB.ar,PB.x1-PB.x0,PB.bot-PB.acy+PB.ar);
+    c.save(); c.globalAlpha=.18; c.translate(PB.acx,PB.bot+10); for(let i=0;i<18;i++){ c.rotate(Math.PI/9); c.fillStyle=i%2?'#fff':'#ff5aa8'; c.beginPath(); c.moveTo(0,0); c.lineTo(-30,-300); c.lineTo(30,-300); c.closePath(); c.fill(); } c.restore(); /* 底部放射光 */
+    // 城堡、氣球、圓圓的小人（原創）
+    c.fillStyle='#8a6ac8'; c.fillRect(338,292,70,70); c.fillRect(334,280,12,20); c.fillRect(372,276,12,24); c.fillRect(398,280,12,20); c.fillStyle='#6a4aa8'; c.beginPath(); c.moveTo(370,276); c.lineTo(378,256); c.lineTo(386,276); c.fill(); c.fillStyle='#fff'; for(let k=0;k<3;k++) c.fillRect(348+k*18,306,8,12);
+    c.fillStyle='#ffb02a'; c.beginPath(); c.moveTo(470,268); c.lineTo(486,300); c.lineTo(454,300); c.closePath(); c.fill(); c.fillStyle='#ff5a3a'; c.fillRect(456,300,28,60);
+    [[430,236,'#ff4a6a'],[528,250,'#4ac84a'],[560,226,'#3a8aff'],[396,232,'#ffe23a'],[500,224,'#ff8a2a']].forEach(([x,y,col],i)=>{ const yy=y+Math.sin(t*1.5+i)*3; c.strokeStyle='rgba(60,40,40,.5)'; c.lineWidth=1; c.beginPath(); c.moveTo(x,yy+10); c.lineTo(x+2,yy+30); c.stroke(); c.fillStyle=col; c.beginPath(); c.ellipse(x,yy,8,10,0,0,TAU); c.fill(); c.fillStyle='rgba(255,255,255,.5)'; c.beginPath(); c.arc(x-3,yy-3,2.5,0,TAU); c.fill(); });
+    [['#ffe23a',350],['#ff8ac8',386],['#8ad8ff',422],['#ffb06a',458],['#b8ff8a',494],['#ff6a6a',530],['#d8b0ff',566]].forEach(([col,x],i)=>{ const y=378+(i%2)*6,bob=Math.sin(t*3+i)*1.5; c.fillStyle=col; c.beginPath(); c.arc(x,y+bob,14,0,TAU); c.fill(); c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=1.2; c.stroke(); c.fillStyle='#fff'; c.beginPath(); c.ellipse(x-5,y+bob-1,4,5,0,0,TAU); c.ellipse(x+5,y+bob-1,4,5,0,0,TAU); c.fill(); c.fillStyle='#1a1a2a'; c.beginPath(); c.arc(x-4.5,y+bob,2,0,TAU); c.arc(x+5.5,y+bob,2,0,TAU); c.fill(); c.strokeStyle='#c81e4a'; c.lineWidth=1.5; c.beginPath(); c.arc(x,y+bob+5,3,.2,Math.PI-.2); c.stroke(); });
+    // 球道：亮燈的是中獎球道
+    for(let i=0;i<PB.NL;i++){ const x=PB.x0+i*PB.lw,on=lit.includes(i),win=lastWin&&lastWin.lane===i; if(on){ const a=.5+.15*Math.sin(t*8+i); c.fillStyle=win?'rgba(255,240,60,'+(.65+.3*Math.sin(t*20))+')':'rgba(255,40,40,'+a+')'; c.fillRect(x+1,PB.LT,PB.lw-2,PB.bot-PB.LT); }
+      c.fillStyle=on?'#ff2a2a':'#5a1a2a'; if(on){ c.shadowColor='#ff2a2a'; c.shadowBlur=10; } c.beginPath(); c.arc(x+PB.lw/2,PB.bot-10,4,0,TAU); c.fill(); c.shadowBlur=0; }
+    for(let i=1;i<PB.NL;i++){ const x=PB.x0+i*PB.lw; const fg2=c.createLinearGradient(x-3,0,x+3,0); fg2.addColorStop(0,'#e89a10'); fg2.addColorStop(.5,'#ffe27a'); fg2.addColorStop(1,'#d88a08'); c.fillStyle=fg2; rr(c,x-2.5,PB.LT-2,5,PB.bot-PB.LT+2,2.5); c.fill(); }
+    // 釘子
+    for(const p of PINS){ if(p[3]) continue; c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.arc(p[0]+1.2,p[1]+1.6,2.4,0,TAU); c.fill(); c.fillStyle=p[2]?'#e83a3a':'#d8dce4'; c.beginPath(); c.arc(p[0],p[1],2.4,0,TAU); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(p[0]-.6,p[1]-.6,.9,0,TAU); c.fill(); }
+    c.fillStyle='#c88a10'; c.fillRect(PB.lane-3,PB.acy-30,5,PB.bot-PB.acy+30); /* 發射軌道隔板 */
+    if(rest) ballDraw(c,rest.x,PB.bot-PB.br-2);
+    if(ball){ trail.forEach((p,i)=>{ c.fillStyle='rgba(255,255,255,'+(i/trail.length*.35)+')'; c.beginPath(); c.arc(p[0],p[1],PB.br*.8,0,TAU); c.fill(); }); ballDraw(c,ball.x,ball.y); }
+    else if(st==='bet') ballDraw(c,611,PB.bot-10);
+    c.restore();
+    c.fillStyle='rgba(255,255,255,.14)'; c.beginPath(); c.moveTo(PB.x0+40,PB.acy-PB.ar+40); c.lineTo(PB.x0+90,PB.acy-PB.ar+30); c.lineTo(PB.x0+10,PB.bot); c.lineTo(PB.x0-10,PB.bot); c.closePath(); c.fill(); /* 玻璃反光 */
+    c.strokeStyle='#ffe23a'; c.lineWidth=4; c.beginPath(); c.moveTo(PB.x0,PB.acy); c.arc(PB.acx,PB.acy,PB.ar,Math.PI,0); c.lineTo(PB.x1,PB.bot); c.lineTo(PB.x0,PB.bot); c.closePath(); c.stroke();
+    // 前面板＋彈簧拉桿
+    c.fillStyle='#ffcc2a'; c.fillRect(X0+7,PB.bot+2,X1-X0-14,H-PB.bot); c.fillStyle='#e83a5a'; c.beginPath(); c.arc(PB.x0+28,PB.bot+14,6,0,TAU); c.fill(); c.fillStyle='#c8ccd6'; c.beginPath(); c.arc(470,PB.bot+14,5,0,TAU); c.fill();
+    const pl=st==='bet'?plunge*14:0; c.fillStyle='#c8ccd6'; c.fillRect(607,PB.bot+2,8,12+pl); c.fillStyle='#e8ecf4'; rr(c,598,PB.bot+12+pl,26,10,5); c.fill(); }
+  g.dbg={get balls(){return balls;},set balls(v){balls=v;},get ball(){return ball;},get st(){return st;},get mul(){return mul;},get lit(){return lit;},get bet(){return bet;},set bet(v){bet=v;},get round(){return round;},get rest(){return rest;},setPow(v){pt=Math.acos(1-2*clamp(v,0,1))/3.4;},buy(i){ sel=i; start=balls=BUYS[i]; S.th=PTH(start); bet=Math.max(1,Math.round(start/10)); startSpin(); },showBet(){ stopSpin(); }};
   return g; }
 function drawPinBooth(c,t,S){ c.fillStyle='#2a1810'; c.fillRect(170,58,W-170,H-58); const wl=c.createLinearGradient(170,0,W,0); wl.addColorStop(0,'#3a2216'); wl.addColorStop(.5,'#5a3420'); wl.addColorStop(1,'#3a2216'); c.fillStyle=wl; c.fillRect(176,64,W-182,H-70);
   for(let s=0;s<2;s++){ const y=150+s*140; c.fillStyle='#8a5a2a'; c.fillRect(180,y,110,6); c.fillRect(W-146,y-4,140,6); ['snack','yakult','sausage','candy'].forEach((k,i)=>{ prize(c,200+i*26,y,1.1,k); }); }
   c.fillStyle='#5a5a62'; c.fillRect(176,H-24,W-182,24); }
-function drawMachine(c,t,filled,lines,ball,trail,plunge,pow){ const X0=PB.x0-18,X1=PB.x1+18,Y0=PB.top-60+2,Y1=PB.bot+18;
-  c.fillStyle='rgba(0,0,0,.5)'; rr(c,X0+8,Y0+10,X1-X0,Y1-Y0,18); c.fill();
-  const body=c.createLinearGradient(X0,0,X1,0); body.addColorStop(0,'#8a1a10'); body.addColorStop(.5,'#d83a20'); body.addColorStop(1,'#7a1408'); c.fillStyle=body; rr(c,X0,Y0,X1-X0,Y1-Y0,18); c.fill();
-  // 盤面
-  c.save(); c.beginPath(); c.moveTo(PB.x0,PB.acy); c.arc(PB.acx,PB.acy,PB.ar,Math.PI,0); c.lineTo(PB.x1,PB.bot); c.lineTo(PB.x0,PB.bot); c.closePath(); const fg=c.createLinearGradient(0,PB.top,0,PB.bot); fg.addColorStop(0,'#fff4c8'); fg.addColorStop(1,'#f0c878'); c.fillStyle=fg; c.fill(); c.clip();
-  c.globalAlpha=.18; c.font='900 30px '+TC; c.fillStyle='#c81e1e'; c.textAlign='center'; c.fillText('BINGO',PB.acx,150); c.globalAlpha=1;
-  // 連線亮燈
-  LINES.forEach((L,i)=>{ if(!lines[i]) return; c.strokeStyle='rgba(60,220,100,.55)'; c.lineWidth=12; c.lineCap='round'; c.beginPath(); c.moveTo(HOLES[L[0]].x,HOLES[L[0]].y); c.lineTo(HOLES[L[4]].x,HOLES[L[4]].y); c.stroke(); });
-  for(const q of HOLES){ const on=filled[q.n],ty=HTYPE(q.n); if(ty&&!on){ c.fillStyle=ty==='ret'?'rgba(255,90,58,'+(.35+.25*Math.sin(t*5+q.n))+')':'rgba(60,140,255,'+(.35+.25*Math.sin(t*5+q.n))+')'; c.beginPath(); c.arc(q.x,q.y,11,0,TAU); c.fill(); } c.fillStyle=on?'#ffd23f':'#3a2010'; c.beginPath(); c.arc(q.x,q.y,7.5,0,TAU); c.fill(); c.strokeStyle=ty==='ret'?'#ff5a3a':ty==='free'?'#3a8aff':'#8a6a3a'; c.lineWidth=ty?2.5:1.5; c.stroke(); if(on){ ballDraw(c,q.x,q.y); } c.font='900 9px '+TC; c.fillStyle=on?'#c81e1e':'#6a4a2a'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(q.n,q.x,q.y-17); if(ty&&!on){ c.font='900 8px '+TC; c.fillStyle=ty==='ret'?'#c81e1e':'#1a4ac8'; c.fillText(ty==='ret'?'退珠':'再來',q.x,q.y+16); } }
-  for(const p of PINS){ c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.arc(p[0]+1.2,p[1]+1.6,2.4,0,TAU); c.fill(); c.fillStyle='#d8dce4'; c.beginPath(); c.arc(p[0],p[1],2.2,0,TAU); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(p[0]-.6,p[1]-.6,.9,0,TAU); c.fill(); }
-  c.fillStyle='#8a1a10'; c.fillRect(PB.lane-3,PB.acy-30,5,PB.bot-PB.acy+30); /* 發射軌道隔板 */
-  if(ball){ trail.forEach((p,i)=>{ c.fillStyle='rgba(200,210,230,'+(i/trail.length*.3)+')'; c.beginPath(); c.arc(p[0],p[1],PB.br*.8,0,TAU); c.fill(); }); ballDraw(c,ball.x,ball.y); }
-  else ballDraw(c,611,PB.bot-10+plunge*0);
-  c.restore();
-  // 彈簧拉桿
-  const py=PB.bot+6+pow*0; c.fillStyle='#c8ccd6'; c.fillRect(607,PB.bot-2,8,24+(ball?0:plunge*14)); c.fillStyle='#1a1a1a'; rr(c,598,PB.bot+20+(ball?0:plunge*14),26,12,5); c.fill();
-  // 玻璃反光
-  c.fillStyle='rgba(255,255,255,.12)'; c.beginPath(); c.moveTo(PB.x0+40,PB.top+30); c.lineTo(PB.x0+90,PB.top+20); c.lineTo(PB.x0+10,PB.bot); c.lineTo(PB.x0-10,PB.bot); c.closePath(); c.fill();
-  c.strokeStyle='#ffd23f'; c.lineWidth=4; c.beginPath(); c.moveTo(PB.x0,PB.acy); c.arc(PB.acx,PB.acy,PB.ar,Math.PI,0); c.lineTo(PB.x1,PB.bot); c.lineTo(PB.x0,PB.bot); c.closePath(); c.stroke();
-  for(let i=0;i<14;i++){ const a=Math.PI+i/13*Math.PI,on=(Math.floor(t*6)+i)%2; c.fillStyle=on?'#fff6a0':'#7a5a2a'; c.beginPath(); c.arc(PB.acx+Math.cos(a)*(PB.ar+11),PB.acy+Math.sin(a)*(PB.ar+11),3,0,TAU); c.fill(); } }
 function ballDraw(c,x,y){ const g=c.createRadialGradient(x-2,y-2,.5,x,y,PB.br); g.addColorStop(0,'#fff'); g.addColorStop(.5,'#c8ccd8'); g.addColorStop(1,'#5a6070'); c.fillStyle=g; c.beginPath(); c.arc(x,y,PB.br,0,TAU); c.fill(); }
 
 // ───────── 共用介面 ─────────
@@ -367,7 +399,7 @@ function hud(c,g,S,t,o){ drawOwner(c,o,S,t); if(g.front) g.front(c,t); passers(c
   c.fillStyle='rgba(11,10,28,.84)'; rr(c,8,64,148,104,12); c.fill(); c.textAlign='left'; c.textBaseline='alphabetic'; c.font='900 11px '+TC; c.fillStyle='#cfc8ff'; c.fillText(g.lbl||'分數',18,80); c.font='900 24px '+TC; c.fillStyle='#fff'; c.fillText(g.score(),18,104);
   c.font='900 11px '+TC; c.fillStyle='#cfc8ff'; c.fillText(g.leftLbl+' 剩 '+g.left(),62,99,90); if(g.icons) g.icons(c,18,122,t);
   const sc=g.score(); S.th.forEach((v,i)=>{ const ok=sc>=v; c.fillStyle=ok?'#ffd23f':'rgba(255,255,255,.45)'; c.font='700 10.5px '+TC; c.fillText((ok?'★':'☆')+['小','中','大'][i]+' '+v,18+i*46,144); });
-  c.font='700 10px '+TC; c.fillStyle='rgba(255,255,255,.55)'; c.fillText(S.unit?'娃娃 1／2／3 隻換獎品':'分數到了就換獎品',18,160,132); }
+  c.font='700 10px '+TC; c.fillStyle='rgba(255,255,255,.55)'; c.fillText(S.note||(S.unit?'娃娃 1／2／3 隻換獎品':'分數到了就換獎品'),18,160,132); }
 
 // ───────── 寫實人物（老闆、路人、玩家） ─────────
 const SKINS=['#f2c8a0','#e8b890','#d8a078','#c08860','#f6d4b4','#e0b088'],HAIRS=['#1a1210','#2a1a10','#3a2a1a','#5a3a20','#0e0c0c','#7a5a3a','#1a1210'],TOPS=['#d83a3a','#2a6ad8','#f4f4f4','#2a2a30','#e8c040','#3a9a5a','#8a4ac8','#ff8ab0','#5ab8e8','#c86a2a','#f0e8d8','#4a5a6a'],BOTS=['#2a3a5a','#1a1a20','#4a4a52','#3a5a8a','#c8b890','#5a3a2a','#2a2a30'];
@@ -622,7 +654,7 @@ const MJNAME=id=>{ const k=id[0],v=id.slice(1); return k==='w'?'一二三四五�
 const FACT=[fishStall,ringStall,balloonStall,pinStall,nineStall,bagStall,pistolStall,mahjongStall];
 const STREET=(()=>{ const q=[{k:'arch'},{k:'food',f:0},{k:'game',i:0},{k:'game',i:1},{k:'food',f:1},{k:'game',i:2},{k:'game',i:3},{k:'food',f:2},{k:'game',i:4},{k:'game',i:5},{k:'food',f:10},{k:'game',i:6},{k:'game',i:7},{k:'food',f:5},{k:'exit'}]; let x=0; q.forEach(s=>{ s.w=s.k==='arch'||s.k==='exit'?240:270; s.x=x; x+=s.w; }); q.W=x; return q; })();
 function settle(si,sc){ const S=STALLS[si]; let tier=-1; S.th.forEach((v,i)=>{ if(sc>=v) tier=i; }); const b=load('best.'+si,0); if(sc>b) store('best.'+si,sc); const al=load('album.'+si,{}); if(tier>=0){ al[tier]=(al[tier]||0)+1; store('album.'+si,al); } return {tier,pz:tier>=0?S.pz[tier]:null,al}; }
-const snapCache={}; function stallSnap(i){ if(snapCache[i]) return snapCache[i]; const cv=document.createElement('canvas'); cv.width=400; cv.height=250; const x=cv.getContext('2d'); x.scale(.5,.5); const G=FACT[i]({keys:{},hit:()=>false,sfx:()=>{}},{}); G.draw(x,1.2); return snapCache[i]=cv; }
+const snapCache={}; function stallSnap(i){ if(snapCache[i]) return snapCache[i]; const cv=document.createElement('canvas'); cv.width=400; cv.height=250; const x=cv.getContext('2d'); x.scale(.5,.5); const G=FACT[i]({keys:{},hit:()=>false,sfx:()=>{}},{noBuy:1}); if(i===3){ G.dbg.buy(1); G.dbg.showBet(); } G.draw(x,1.2); return snapCache[i]=cv; }
 function stroll(env,opts,preview){ const Q={owner:{},N:15}; let px=STREET[2].x+135,cam=0,ph=0,moving=0,face=1,st='walk',inner=null,innerI=-1,res=null,fade=0,got=[],near=null,tt=0;
   const W2=[]; for(let i=0;i<20;i++) W2.push({x:rnd(0,STREET.W),v:(Math.random()<.5?-1:1)*rnd(38,70),d:rnd(0,1),ph:rnd(0,TAU),L:randLook(i*5+11),stop:0,stopT:rnd(2,9)});
   const me={sk:'#f0c8a0',hr:'#1a1210',top:'#3a8ad8',bot:'#2a3a5a',shoe:'#f4f4f4'};
@@ -723,11 +755,11 @@ function create(env,opts){ const stg=clamp(opts.stage|0,0,STALLS.length),{ctx:c}
   function draw(){ c.save(); G.draw(c,t); c.restore(); }
   return {update,draw,destroy(){},_dbg:G.dbg?Object.assign(G.dbg,{G}):{G}}; }
 function stageShow(ctx,w,h,stg,t){ ctx.save(); ctx.scale(w/W,h/H); const env={keys:{},hit:()=>false,sfx:()=>{},end:()=>{}};
-  const k='__nightPv'+stg; if(!stageShow[k]){ if(stg===0){ const R=stroll(env,{}); R.px=STREET[3].x+40; R.update(0,0); stageShow[k]={draw:(c,t)=>{ R.update(1/60,t); R.draw(c,t); }}; } else { const G=FACT[stg-1](env,{}); if(stg===3) G.dbg.aim(480,220); if(stg===7) G.dbg.aim(470,200); stageShow[k]=G; } }
+  const k='__nightPv'+stg; if(!stageShow[k]){ if(stg===0){ const R=stroll(env,{}); R.px=STREET[3].x+40; R.update(0,0); stageShow[k]={draw:(c,t)=>{ R.update(1/60,t); R.draw(c,t); }}; } else { const G=FACT[stg-1](env,{}); if(stg===3) G.dbg.aim(480,220); if(stg===4){ G.dbg.buy(1); G.dbg.showBet(); } if(stg===7) G.dbg.aim(470,200); stageShow[k]=G; } }
   stageShow[k].draw(ctx,t||0); ctx.restore(); }
-const HELP=[[['方向鍵','移動紙網'],['空白鍵','下水撈（靠近水面的魚比較好撈）']],[['← →','左右瞄準'],['↑ ↓','丟遠、丟近'],['空白鍵','丟圈圈']],[['方向鍵','移動準星（手會晃）'],['空白鍵','開槍']],[['↑ ↓','投入 1～3 顆（幾顆就幾倍）'],['空白鍵','照力道表彈出彈珠']],
+const HELP=[[['方向鍵','移動紙網'],['空白鍵','下水撈（靠近水面的魚比較好撈）']],[['← →','左右瞄準'],['↑ ↓','丟遠、丟近'],['空白鍵','丟圈圈']],[['方向鍵','移動準星（手會晃）'],['空白鍵','開槍']],[['← →','選買幾顆、押注 ±10'],['↑ ↓','押注 ±1'],['空白鍵','照力道表彈出彈珠']],
   [['方向鍵','瞄準'],['空白鍵','投球']],[['方向鍵','瞄準'],['空白鍵','丟沙包']],[['方向鍵','移動準星'],['空白鍵','開槍']],[['方向鍵','選一張蓋著的牌'],['空白鍵','翻牌']]];
-const GOAL=['用紙網撈金魚，紙泡水太久或撈太重的魚會破。3 支紙網都破了就結束。','把 10 個圈圈丟出去，要整個套住獎品才算。越後面的獎品分數越高。','15 發子彈射氣球，金色氣球 3 分，打掉一整排多 5 分。','先選投入幾顆彈珠，投幾顆分數就幾倍。進洞得分，連成一線多 5 分；紅色「退珠」洞會退彈珠回來，藍色「再來」洞送一顆免費彈珠。',
+const GOAL=['用紙網撈金魚，紙泡水太久或撈太重的魚會破。3 支紙網都破了就結束。','把 10 個圈圈丟出去，要整個套住獎品才算。越後面的獎品分數越高。','15 發子彈射氣球，金色氣球 3 分，打掉一整排多 5 分。','先買 10、50 或 100 顆彈珠。每局倍率燈會轉，停在 2～10 倍；倍率越高，亮燈的球道越少。押好顆數後彈出彈珠，落進亮燈球道就拿到「押注 × 倍率」顆。一共 10 局，最後彈珠越多獎品越大。',
   '12 顆球打九宮格，打掉一格 1 分，連成一線多 3 分。','每座 10 個罐子、3 個沙包，打倒一罐 1 分，全倒多 5 分，一共 4 座。','氣球在輸送帶上跑，20 發子彈，金色 3 分，連中 5 發多 3 分。','一共 6 局，每局從 36 張蓋著的牌抽 15 張，翻到的牌會在 6×6 盤面亮起來。直接連成一線（橫、直、斜 6 張）就送娃娃；聽牌（差 1 張）加抽 5 張，加抽連線多送一局。選 13、12 張玩，娃娃更大。'];
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).night={
   name:'夜市遊戲大集合',tag:'NIGHT MARKET',color:'#ff5a3a',
