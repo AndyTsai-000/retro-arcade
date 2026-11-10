@@ -13,7 +13,7 @@ const STALLS=[
   {n:'撈金魚',sign:'撈金魚',sub:'一支 50 元',tarp:['#d8202a','#f4f0e8'],th:[5,12,22],pz:[['金魚一隻（裝袋）','fishbag'],['金魚兩隻＋魚飼料','fishbag2'],['黑凸眼金魚＋小魚缸','tank']]},
   {n:'套圈圈',sign:'套圈圈',sub:'10 圈 100 元',tarp:['#1f5fc8','#f4f0e8'],th:[4,10,18],pz:[['彈珠汽水','soda'],['小熊玩偶','bear'],['超大熊熊娃娃','bigbear']]},
   {n:'射氣球',sign:'射氣球',sub:'15 發 100 元',tarp:['#1f8a4a','#f4f0e8'],th:[8,15,22],pz:[['棒棒糖','candy'],['水槍','watergun'],['大型絨毛娃娃','bigbear']]},
-  {n:'彈珠檯',sign:'賓果彈珠檯',sub:'10 顆 50 元',tarp:['#e8a020','#7a2a10'],th:[4,8,14],pz:[['一包乖乖','snack'],['養樂多一排','yakult'],['烤香腸兌換券','sausage']]},
+  {n:'彈珠檯',sign:'賓果彈珠檯',sub:'10 顆 50 元',tarp:['#e8a020','#7a2a10'],th:[8,16,26],pz:[['一包乖乖','snack'],['養樂多一排','yakult'],['烤香腸兌換券','sausage']]},
   {n:'九宮格',sign:'棒球九宮格',sub:'12 球 100 元',tarp:['#2a7a3a','#f4f0e8'],th:[8,16,24],pz:[['可樂一罐','can'],['棒球手套','glove'],['球棒＋棒球','bat']]},
   {n:'丟沙包',sign:'丟沙包',sub:'一座 3 包 50 元',tarp:['#8a3ac8','#f4f0e8'],th:[20,32,44],pz:[['泡泡水','bubble'],['玩具車','car'],['大隻招財貓','cat']]},
   {n:'手槍射氣球',sign:'手槍射氣球',sub:'20 發 100 元',tarp:['#c82a2a','#1a1a2a'],th:[10,18,26],pz:[['氣球狗','balloondog'],['玩具手槍','toygun'],['大型絨毛娃娃','bigbear']]},
@@ -285,18 +285,37 @@ const PINS=(()=>{ const p=[]; for(const h of HOLES){ p.push([h.x-11,h.y-3],[h.x+
   for(let k=0;k<6;k++) p.push([342+k*48,212+(k%2)*10]); for(let k=0;k<4;k++) p.push([372+k*52,182]);
   for(let i=0;i<12;i++){ const y=226+i*21; p.push([326+(i%2)*7,y],[590-(i%2)*7,y]); } /* 兩側導引釘，彈珠不會貼著牆直接掉下去 */ return p; })();
 const LINES=(()=>{ const L=[]; for(let i=0;i<5;i++){ L.push([0,1,2,3,4].map(k=>i*5+k)); L.push([0,1,2,3,4].map(k=>k*5+i)); } L.push([0,6,12,18,24]); L.push([4,8,12,16,20]); return L; })();
-function pinStall(env,o){ o=initO(o); const S=STALLS[3]; let balls=10,score=0,ball=null,pow=0,pt=0,filled={},lines={},msg=null,ended=false,endT=0,trail=[],plunge=0;
+const HTYPE=n=>[1,5,13,21,25].includes(n)?'ret':[3,11,15,23].includes(n)?'free':''; /* 退珠洞：退 3 顆×倍數；再來洞：送一顆免費彈珠 */
+function pinStall(env,o){ o=initO(o); const S=STALLS[3]; let balls=10,score=0,ball=null,pow=0,pt=0,filled={},lines={},msg=null,ended=false,endT=0,trail=[],plunge=0,bet=1,free=[],drops=[],mulFx=null;
   const say=(s,col)=>{ msg={s,l:1.8,c:col||'#ffd23f'}; react(o,col); };
+  const refund=(k,x,y)=>{ balls+=k; for(let i=0;i<Math.min(k,12);i++) drops.push({x:PB.x1+8,y:PB.bot-30-rnd(0,60),vx:rnd(30,110),vy:rnd(-160,-60),d:i*.08,land:false}); env.sfx('coin'); };
   const g={ score:()=>score,left:()=>balls,leftLbl:'彈珠',ended:()=>ended&&endT<=0,
-    update(dt,t){ if(msg&&(msg.l-=dt)<=0) msg=null; if(ended){ endT-=dt; return; }
+    update(dt,t){ if(msg&&(msg.l-=dt)<=0) msg=null; if(mulFx&&(mulFx.l-=dt)<=0) mulFx=null;
+      for(const d of drops){ if(d.d>0){ d.d-=dt; continue; } d.vy+=700*dt; d.x+=d.vx*dt; d.y+=d.vy*dt; if(d.x>762){ d.x=762; d.vx=-Math.abs(d.vx)*.3; } if(d.y>470&&d.x>654) d.land=true; }
+      drops=drops.filter(d=>!d.land&&d.y<H+20);
+      if(ended){ endT-=dt; return; }
       if(!ball){ pt+=dt; pow=.5-.5*Math.cos(pt*3.4); plunge=pow; /* 力道表來回跑，按下去就彈出 */
-        if(balls>0&&(env.hit('Space')||env.hit('KeyJ')||env.hit('Enter'))){ balls--; ball={x:611,y:PB.bot-10,vx:0,vy:-(560+pow*330)*rnd(.98,1.02),left:false,t:0,still:0}; plunge=0; env.sfx('spring'); }
-        if(balls<=0&&!ball){ ended=true; endT=1.2; } return; }
+        const fr=free.length>0,maxB=Math.max(1,Math.min(3,balls));
+        if(!fr){ if(env.hit('ArrowUp')||env.hit('KeyW')||env.hit('ArrowRight')||env.hit('KeyD')){ if(bet<maxB){ bet++; env.sfx('click'); } } if(env.hit('ArrowDown')||env.hit('KeyS')||env.hit('ArrowLeft')||env.hit('KeyA')){ if(bet>1){ bet--; env.sfx('click'); } } bet=clamp(bet,1,maxB); }
+        if((fr||balls>0)&&(env.hit('Space')||env.hit('KeyJ')||env.hit('Enter'))){ let n,cost; if(fr){ n=free.shift(); cost=0; } else { n=Math.min(bet,balls); cost=n; balls-=n; }
+          ball={x:611,y:PB.bot-10,vx:0,vy:-(560+pow*330)*rnd(.98,1.02),left:false,t:0,still:0,n,cost}; plunge=0; env.sfx('spring'); }
+        if(balls<=0&&!free.length&&!ball){ ended=true; endT=1.6; } return; }
       const n=4,h=dt/n; for(let s=0;s<n&&ball;s++) step(h);
       trail.push([ball?ball.x:0,ball?ball.y:0]); if(trail.length>8||!ball) trail.shift(); },
     draw(c,t){ marketBG(c,t); drawPinBooth(c,t,S); drawMachine(c,t,filled,lines,ball,trail,plunge,pow); canopy(c,160,W,S,t); hud(c,g,S,t,o);
-      if(!ball&&!ended){ c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,170,120,190,12); c.fill(); c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText('力道',710,190); const gx=694,gy=206,gh=136; c.fillStyle='#2a2440'; c.fillRect(gx,gy,32,gh); const gg=c.createLinearGradient(0,gy+gh,0,gy); gg.addColorStop(0,'#3ed16a'); gg.addColorStop(.6,'#ffd23f'); gg.addColorStop(1,'#ff4a3a'); c.fillStyle=gg; c.fillRect(gx,gy+gh*(1-pow),32,gh*pow); c.strokeStyle='#fff'; c.lineWidth=2; c.strokeRect(gx,gy,32,gh); c.font='700 11px '+TC; c.fillStyle='#fff'; c.fillText('空白鍵彈出',710,352); }
-      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,370,120,64,12); c.fill(); c.font='900 12px '+TC; c.fillStyle='#cfc8ff'; c.textAlign='center'; c.fillText('連線',710,390); c.font='900 24px '+TC; c.fillStyle='#86dc4f'; c.fillText(Object.keys(lines).length+' 條',710,416);
+      const fr=free.length>0,cur=ball?ball.n:fr?free[0]:bet;
+      // 投入幾顆
+      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,66,120,98,12); c.fill(); c.textAlign='center'; c.textBaseline='alphabetic'; c.font='900 12px '+TC; c.fillStyle=fr&&!ball?'#7ab8ff':'#cfc8ff'; c.fillText(fr&&!ball?'免費彈珠！':'投入',710,84);
+      for(let i=0;i<3;i++){ c.globalAlpha=i<cur?1:.22; ballDraw(c,686+i*24,102); } c.globalAlpha=1;
+      c.font='900 26px '+TC; c.fillStyle=cur>=3?'#ff5a3a':cur===2?'#ffd23f':'#fff'; c.fillText('×'+cur,710,140);
+      if(!ball&&!fr&&!ended){ c.font='700 10px '+TC; c.fillStyle='#cfc8ff'; c.fillText('↑ ↓ 改投入幾顆',710,157); }
+      if(!ball&&!ended){ c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,170,120,190,12); c.fill(); c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText('力道',710,190); const gx=694,gy=206,gh=136; c.fillStyle='#2a2440'; c.fillRect(gx,gy,32,gh); const gg=c.createLinearGradient(0,gy+gh,0,gy); gg.addColorStop(0,'#3ed16a'); gg.addColorStop(.6,'#ffd23f'); gg.addColorStop(1,'#ff4a3a'); c.fillStyle=gg; c.fillRect(gx,gy+gh*(1-pow),32,gh*pow); c.strokeStyle='#fff'; c.lineWidth=2; c.strokeRect(gx,gy,32,gh); c.font='700 11px '+TC; c.fillStyle='#fff'; c.fillText(env.touch?'GO！彈出':'空白鍵彈出',710,352); }
+      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,366,120,52,12); c.fill(); c.font='900 12px '+TC; c.fillStyle='#cfc8ff'; c.textAlign='center'; c.fillText('連線',710,384); c.font='900 20px '+TC; c.fillStyle='#86dc4f'; c.fillText(Object.keys(lines).length+' 條',710,408);
+      // 退珠盤：剩下的彈珠都在這裡
+      c.fillStyle='#b8bcc6'; rr(c,648,424,124,60,10); c.fill(); c.fillStyle='#5a5e68'; rr(c,654,442,112,36,8); c.fill(); c.font='900 11px '+TC; c.fillStyle='#2a2440'; c.fillText('退珠盤　'+balls+' 顆',710,437);
+      for(let i=0;i<Math.min(balls,30);i++) ballDraw(c,663+(i%10)*10.4,471-Math.floor(i/10)*9);
+      for(const d of drops) if(d.d<=0) ballDraw(c,d.x,d.y);
+      if(mulFx){ const k=clamp(mulFx.l*2,0,1),sc=1+(1.2-mulFx.l)*.35; c.save(); c.globalAlpha=k; c.translate(mulFx.x,mulFx.y); c.scale(sc,sc); c.font='900 30px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(mulFx.s,0,0); c.fillStyle=mulFx.c; c.fillText(mulFx.s,0,0); c.restore(); }
       if(msg) banner(c,msg,470,150); } };
   function step(h){ const b=ball; b.t+=h; b.vy+=520*h; b.x+=b.vx*h; b.y+=b.vy*h; const r=PB.br;
     // 頂端圓弧
@@ -306,13 +325,16 @@ function pinStall(env,o){ o=initO(o); const S=STALLS[3]; let balls=10,score=0,ba
     if(b.x<PB.lane-2&&b.y<PB.acy) b.left=true;
     if(!b.left){ if(b.x<PB.lane+r&&b.y>PB.acy-30){ b.x=PB.lane+r; b.vx=Math.abs(b.vx)*.3; } }
     else if(b.x>PB.lane-r&&b.y>PB.acy-30){ b.x=PB.lane-r; b.vx=-Math.abs(b.vx)*.5; }
-    if(!b.left&&b.y>PB.bot-10&&b.vy>0){ ball=null; balls++; say('力道不夠，再彈一次','#cfc8ff'); env.sfx('bump'); return; }
+    if(!b.left&&b.y>PB.bot-10&&b.vy>0){ ball=null; if(b.cost) balls+=b.cost; else free.unshift(b.n); say('力道不夠，再彈一次','#cfc8ff'); env.sfx('bump'); return; }
     for(const p of PINS){ const dx=b.x-p[0],dy=b.y-p[1],d=hyp(dx,dy),m=r+2.2; if(d<m&&d>.01){ const nx=dx/d,ny=dy/d,vn=b.vx*nx+b.vy*ny; b.x=p[0]+nx*m; b.y=p[1]+ny*m; if(vn<0){ b.vx-=vn*nx*1.55; b.vy-=vn*ny*1.55; b.vx+=rnd(-14,14); if(Math.abs(vn)>80) env.sfx('rattle'); } } }
-    for(const q of HOLES){ const d=hyp(b.x-q.x,b.y-q.y); if(d<9&&!filled[q.n]&&b.left){ filled[q.n]=1; ball=null; score+=1; env.sfx('item'); let nl=0; LINES.forEach((L,i)=>{ if(!lines[i]&&L.every(k=>filled[k+1])){ lines[i]=1; nl++; } }); if(nl){ score+=nl*5; say((nl>1?nl+' 條':'')+'連線！BINGO +'+nl*5,'#86dc4f'); env.sfx('win'); } else say('進洞 '+q.n+' 號　+1'); return; } }
+    for(const q of HOLES){ const d=hyp(b.x-q.x,b.y-q.y); if(d<9&&!filled[q.n]&&b.left){ filled[q.n]=1; ball=null; const m=b.n,ty=HTYPE(q.n); score+=m; env.sfx('item'); let nl=0; LINES.forEach((L,i)=>{ if(!lines[i]&&L.every(k=>filled[k+1])){ lines[i]=1; nl++; } });
+      if(m>1) mulFx={s:'×'+m,x:q.x,y:q.y-26,l:1.2,c:m>=3?'#ff5a3a':'#ffd23f'};
+      let ret=0; const tx=[]; if(ty==='ret'){ ret+=3*m; tx.push('退珠 '+3*m+' 顆'); } if(ty==='free'){ free.push(m); tx.push('再來一顆！'); } if(nl){ score+=nl*5*m; ret+=nl*3*m; tx.unshift((nl>1?nl+' 條':'')+'連線 BINGO +'+nl*5*m+'　退珠 '+nl*3*m); env.sfx('win'); }
+      if(ret) refund(ret,q.x,q.y); say(tx.length?tx.join('　'):'進洞 '+q.n+' 號　+'+m,nl||ret?'#86dc4f':ty==='free'?'#9ae0ff':'#ffd23f'); return; } }
     if(b.y>PB.bot+r){ ball=null; say('掉下去了','#cfc8ff'); env.sfx('die'); return; }
     if(b.left&&hyp(b.vx,b.vy)<25){ b.still+=h; if(b.still>.8){ b.still=0; b.kick=(b.kick||0)+1; if(b.kick>3){ ball=null; say('卡住了，算掉下去','#cfc8ff'); env.sfx('die'); return; } b.vx=rnd(-90,90); b.vy=-60; env.sfx('bump'); } } else b.still=0; /* 卡在釘子上：拍一下機台 */
     if(b.t>14){ ball=null; } }
-  g.dbg={get balls(){return balls;},get ball(){return ball;},get filled(){return filled;},setPow(v){pt=Math.acos(1-2*clamp(v,0,1))/3.4;}};
+  g.dbg={get balls(){return balls;},get ball(){return ball;},get filled(){return filled;},get free(){return free;},get bet(){return bet;},set bet(v){bet=v;},setPow(v){pt=Math.acos(1-2*clamp(v,0,1))/3.4;}};
   return g; }
 function drawPinBooth(c,t,S){ c.fillStyle='#2a1810'; c.fillRect(170,58,W-170,H-58); const wl=c.createLinearGradient(170,0,W,0); wl.addColorStop(0,'#3a2216'); wl.addColorStop(.5,'#5a3420'); wl.addColorStop(1,'#3a2216'); c.fillStyle=wl; c.fillRect(176,64,W-182,H-70);
   for(let s=0;s<2;s++){ const y=150+s*140; c.fillStyle='#8a5a2a'; c.fillRect(180,y,110,6); c.fillRect(W-146,y-4,140,6); ['snack','yakult','sausage','candy'].forEach((k,i)=>{ prize(c,200+i*26,y,1.1,k); }); }
@@ -325,7 +347,7 @@ function drawMachine(c,t,filled,lines,ball,trail,plunge,pow){ const X0=PB.x0-18,
   c.globalAlpha=.18; c.font='900 30px '+TC; c.fillStyle='#c81e1e'; c.textAlign='center'; c.fillText('BINGO',PB.acx,150); c.globalAlpha=1;
   // 連線亮燈
   LINES.forEach((L,i)=>{ if(!lines[i]) return; c.strokeStyle='rgba(60,220,100,.55)'; c.lineWidth=12; c.lineCap='round'; c.beginPath(); c.moveTo(HOLES[L[0]].x,HOLES[L[0]].y); c.lineTo(HOLES[L[4]].x,HOLES[L[4]].y); c.stroke(); });
-  for(const q of HOLES){ const on=filled[q.n]; c.fillStyle=on?'#ffd23f':'#3a2010'; c.beginPath(); c.arc(q.x,q.y,7.5,0,TAU); c.fill(); c.strokeStyle='#8a6a3a'; c.lineWidth=1.5; c.stroke(); if(on){ ballDraw(c,q.x,q.y); } c.font='900 9px '+TC; c.fillStyle=on?'#c81e1e':'#6a4a2a'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(q.n,q.x,q.y-17); }
+  for(const q of HOLES){ const on=filled[q.n],ty=HTYPE(q.n); if(ty&&!on){ c.fillStyle=ty==='ret'?'rgba(255,90,58,'+(.35+.25*Math.sin(t*5+q.n))+')':'rgba(60,140,255,'+(.35+.25*Math.sin(t*5+q.n))+')'; c.beginPath(); c.arc(q.x,q.y,11,0,TAU); c.fill(); } c.fillStyle=on?'#ffd23f':'#3a2010'; c.beginPath(); c.arc(q.x,q.y,7.5,0,TAU); c.fill(); c.strokeStyle=ty==='ret'?'#ff5a3a':ty==='free'?'#3a8aff':'#8a6a3a'; c.lineWidth=ty?2.5:1.5; c.stroke(); if(on){ ballDraw(c,q.x,q.y); } c.font='900 9px '+TC; c.fillStyle=on?'#c81e1e':'#6a4a2a'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(q.n,q.x,q.y-17); if(ty&&!on){ c.font='900 8px '+TC; c.fillStyle=ty==='ret'?'#c81e1e':'#1a4ac8'; c.fillText(ty==='ret'?'退珠':'再來',q.x,q.y+16); } }
   for(const p of PINS){ c.fillStyle='rgba(0,0,0,.25)'; c.beginPath(); c.arc(p[0]+1.2,p[1]+1.6,2.4,0,TAU); c.fill(); c.fillStyle='#d8dce4'; c.beginPath(); c.arc(p[0],p[1],2.2,0,TAU); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(p[0]-.6,p[1]-.6,.9,0,TAU); c.fill(); }
   c.fillStyle='#8a1a10'; c.fillRect(PB.lane-3,PB.acy-30,5,PB.bot-PB.acy+30); /* 發射軌道隔板 */
   if(ball){ trail.forEach((p,i)=>{ c.fillStyle='rgba(200,210,230,'+(i/trail.length*.3)+')'; c.beginPath(); c.arc(p[0],p[1],PB.br*.8,0,TAU); c.fill(); }); ballDraw(c,ball.x,ball.y); }
@@ -703,9 +725,9 @@ function create(env,opts){ const stg=clamp(opts.stage|0,0,STALLS.length),{ctx:c}
 function stageShow(ctx,w,h,stg,t){ ctx.save(); ctx.scale(w/W,h/H); const env={keys:{},hit:()=>false,sfx:()=>{},end:()=>{}};
   const k='__nightPv'+stg; if(!stageShow[k]){ if(stg===0){ const R=stroll(env,{}); R.px=STREET[3].x+40; R.update(0,0); stageShow[k]={draw:(c,t)=>{ R.update(1/60,t); R.draw(c,t); }}; } else { const G=FACT[stg-1](env,{}); if(stg===3) G.dbg.aim(480,220); if(stg===7) G.dbg.aim(470,200); stageShow[k]=G; } }
   stageShow[k].draw(ctx,t||0); ctx.restore(); }
-const HELP=[[['方向鍵','移動紙網'],['空白鍵','下水撈（靠近水面的魚比較好撈）']],[['← →','左右瞄準'],['↑ ↓','丟遠、丟近'],['空白鍵','丟圈圈']],[['方向鍵','移動準星（手會晃）'],['空白鍵','開槍']],[['空白鍵','照力道表彈出彈珠']],
+const HELP=[[['方向鍵','移動紙網'],['空白鍵','下水撈（靠近水面的魚比較好撈）']],[['← →','左右瞄準'],['↑ ↓','丟遠、丟近'],['空白鍵','丟圈圈']],[['方向鍵','移動準星（手會晃）'],['空白鍵','開槍']],[['↑ ↓','投入 1～3 顆（幾顆就幾倍）'],['空白鍵','照力道表彈出彈珠']],
   [['方向鍵','瞄準'],['空白鍵','投球']],[['方向鍵','瞄準'],['空白鍵','丟沙包']],[['方向鍵','移動準星'],['空白鍵','開槍']],[['方向鍵','選一張蓋著的牌'],['空白鍵','翻牌']]];
-const GOAL=['用紙網撈金魚，紙泡水太久或撈太重的魚會破。3 支紙網都破了就結束。','把 10 個圈圈丟出去，要整個套住獎品才算。越後面的獎品分數越高。','15 發子彈射氣球，金色氣球 3 分，打掉一整排多 5 分。','力道表來回跑，按下去把彈珠彈出去。進洞得分，連成一條線（橫、直、斜）多 5 分。',
+const GOAL=['用紙網撈金魚，紙泡水太久或撈太重的魚會破。3 支紙網都破了就結束。','把 10 個圈圈丟出去，要整個套住獎品才算。越後面的獎品分數越高。','15 發子彈射氣球，金色氣球 3 分，打掉一整排多 5 分。','先選投入幾顆彈珠，投幾顆分數就幾倍。進洞得分，連成一線多 5 分；紅色「退珠」洞會退彈珠回來，藍色「再來」洞送一顆免費彈珠。',
   '12 顆球打九宮格，打掉一格 1 分，連成一線多 3 分。','每座 10 個罐子、3 個沙包，打倒一罐 1 分，全倒多 5 分，一共 4 座。','氣球在輸送帶上跑，20 發子彈，金色 3 分，連中 5 發多 3 分。','一共 6 局，每局從 36 張蓋著的牌抽 15 張，翻到的牌會在 6×6 盤面亮起來。直接連成一線（橫、直、斜 6 張）就送娃娃；聽牌（差 1 張）加抽 5 張，加抽連線多送一局。選 13、12 張玩，娃娃更大。'];
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).night={
   name:'夜市遊戲大集合',tag:'NIGHT MARKET',color:'#ff5a3a',
