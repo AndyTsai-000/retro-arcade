@@ -1,5 +1,5 @@
-// 塗裝躲躲樂：白色小人偶躲進一幅畫裡。躲的人換姿勢、轉方向、用吸管從畫裡取色塗裝，把自己變成背景的一部分；
-// 時間到換找的人上場，在畫裡把大家揪出來。單人可以「我來躲」（電腦來找）或「我來找」（電腦躲）；雙人同一台輪流；連線 2～6 人輪流當找的人。
+// 塗裝躲躲樂（3D）：白色小人偶躲進 3D 大空間。躲的人換位置、擺姿勢、用吸管或調色盤塗裝，把自己變成場景的一部分；
+// 找的人用第一人稱在場景裡走動把大家揪出來。4 回合（兩邊各躲兩次、找兩次）。單人對電腦、雙人輪流、連線 2～12 人分兩隊。下面 10 幅畫是各場景牆壁與道具的材質。
 (function(){
 'use strict';
 const W=800,H=450,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LU=150,PXU=1.2,LP=LU*PXU,HALF=LU/2;
@@ -62,189 +62,312 @@ const SCENES=[
    for(let k=0;k<6;k++){ const x=60+R()*680,y=320+R()*80; for(let q=0;q<200;q++){ c.fillStyle=hsl(R()<.5?0:280,60,30+R()*30); c.beginPath(); c.arc(x+R()*16-8,y-R()*60,2.4,0,TAU); c.fill(); } } }]];
 const SCN={};
 function scene(i,S){ const key=i+':'+S; if(SCN[key]) return SCN[key]; const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S; const c=cv.getContext('2d'); c.scale(S,S); SCENES[i][1](c,mul(i*7919+11)); SCN[key]=cv; return cv; }
-const STAGES=SCENES.map((s,i)=>{ const k=i/9; return {name:s[0],k,stars:1+Math.round(k*4),nHide:3+Math.round(k*4),bs:12-8*k,noise:44-34*k,eye:.9-.45*k}; });
 
-// ---------- 小人偶：姿勢（上臂角度、彎曲；從正下方算，往外為正）----------
-const POSES=[['站好',[.15,0,.15,0],[.06,0,.06,0]],['大字',[2.0,0,2.0,0],[.5,0,.5,0]],['舉雙手',[2.9,.1,2.9,.1],[.1,0,.1,0]],['稻草人',[1.57,0,1.57,0],[0,0,0,0]],['蹲下',[.5,-1.2,.5,-1.2],[1.3,-2.3,1.3,-2.3]],
-  ['單腳站',[1.2,.6,.3,-.8],[.05,0,1.5,-1.6]],['跳舞',[2.6,.4,1.0,-1.3],[.5,-.3,.15,.2]],['叉腰',[.9,-2.2,.9,-2.2],[.25,0,.25,0]],['抱頭',[2.6,-2.4,2.6,-2.4],[.2,.2,.2,.2]],['怪姿勢',[3.1,-1.5,1.7,1.4],[1.0,-1.9,.3,1.2]]];
-function dollShape(c,p){ const A=POSES[p%POSES.length],lim=(x,y,sd,a1,a2,L1,L2,w)=>{ const x2=x+sd*Math.sin(a1)*L1,y2=y+Math.cos(a1)*L1,a=a1+a2; c.lineWidth=w; c.beginPath(); c.moveTo(x,y); c.lineTo(x2,y2); c.lineTo(x2+sd*Math.sin(a)*L2,y2+Math.cos(a)*L2); c.stroke(); };
-  c.lineCap='round'; c.lineJoin='round'; c.beginPath(); c.ellipse(0,-4,15,22,0,0,TAU); c.fill(); c.beginPath(); c.arc(0,-40,15,0,TAU); c.fill();
-  lim(-11,-18,-1,A[1][0],A[1][1],16,15,8); lim(11,-18,1,A[1][2],A[1][3],16,15,8); lim(-7,14,-1,A[2][0],A[2][1],18,18,10); lim(7,14,1,A[2][2],A[2][3],18,18,10); }
-function newFig(o){ const f=Object.assign({x:W/2,y:H/2,s:.5,rot:0,fl:1,pose:0},o||{}); f.lay=document.createElement('canvas'); f.lay.width=f.lay.height=LP; const g=f.lay.getContext('2d'); g.fillStyle='#f6f6f6'; g.fillRect(0,0,LP,LP);
-  g.fillStyle='#2a2a33'; for(const ex of [-5,5]){ g.beginPath(); g.arc((ex+HALF)*PXU,(-41+HALF)*PXU,2*PXU,0,TAU); g.fill(); } f.fc=document.createElement('canvas'); f.fc.width=f.fc.height=LP; f.mask=null; mkMask(f); return f; }
-function mkMask(f){ if(!f.mask){ f.mask=document.createElement('canvas'); f.mask.width=f.mask.height=LP; } const g=f.mask.getContext('2d'); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,LP,LP); g.setTransform(PXU,0,0,PXU,HALF*PXU,HALF*PXU); g.fillStyle=g.strokeStyle='#000'; dollShape(g,f.pose); g.setTransform(1,0,0,1,0,0); f.md=g.getImageData(0,0,LP,LP).data; f.dirty=1; }
-const TMP=document.createElement('canvas'); TMP.width=TMP.height=LP;
-function build(f){ if(!f.dirty) return; f.dirty=0; const g=f.fc.getContext('2d'),t=TMP.getContext('2d'); g.clearRect(0,0,LP,LP);
-  g.globalAlpha=.24; for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]) g.drawImage(f.mask,dx,dy); g.globalAlpha=1; g.globalCompositeOperation='source-in'; g.fillStyle='#000'; g.fillRect(0,0,LP,LP); g.globalCompositeOperation='source-over';
-  t.clearRect(0,0,LP,LP); t.drawImage(f.lay,0,0); t.globalCompositeOperation='destination-in'; t.drawImage(f.mask,0,0); t.globalCompositeOperation='source-over'; g.drawImage(TMP,0,0); }
-function drawFig(c,f){ build(f); c.save(); c.translate(f.x,f.y); c.rotate(f.rot); c.scale(f.s*f.fl,f.s); c.drawImage(f.fc,-HALF,-HALF,LU,LU); c.restore(); }
-function toLocal(f,sx,sy){ const dx=sx-f.x,dy=sy-f.y,cs=Math.cos(f.rot),sn=Math.sin(f.rot); return [((dx*cs+dy*sn)/f.s*f.fl+HALF)*PXU,((-dx*sn+dy*cs)/f.s+HALF)*PXU]; }
-function toScene(f,px,py){ const lx=(px/PXU-HALF)*f.fl*f.s,ly=(py/PXU-HALF)*f.s,cs=Math.cos(f.rot),sn=Math.sin(f.rot); return [f.x+lx*cs-ly*sn,f.y+lx*sn+ly*cs]; }
-function inFig(f,sx,sy,pad){ const [px,py]=toLocal(f,sx,sy); pad=pad||0; for(let dy=-pad;dy<=pad;dy+=Math.max(1,pad)) for(let dx=-pad;dx<=pad;dx+=Math.max(1,pad)){ const x=px+dx|0,y=py+dy|0; if(x>=0&&y>=0&&x<LP&&y<LP&&f.md[(y*LP+x)*4+3]>40) return true; } return false; }
-// 電腦塗裝：照著背後的畫取色，關卡越後面越精細
-function autoPaint(f,sd,ST,R,lazy){ const g=f.lay.getContext('2d'),im=g.createImageData(LP,LP),d=im.data,bs=lazy?40:ST.bs,nz=lazy?10:ST.noise,SW=W*2; let ar=0,ag=0,ab=0,an=0;
-  const samp=(x,y)=>{ const ix=clamp(x*2|0,0,SW-1),iy=clamp(y*2|0,0,H*2-1),i=(iy*SW+ix)*4; return [sd[i],sd[i+1],sd[i+2]]; },bc={};
-  for(let py=0;py<LP;py++) for(let px=0;px<LP;px++){ const o=(py*LP+px)*4; if(f.md[o+3]<20){ d[o+3]=0; continue; } const [sx,sy]=toScene(f,px,py),qx=Math.floor(sx/bs),qy=Math.floor(sy/bs),key=qx+','+qy;
-    if(!bc[key]){ const s=samp((qx+.5)*bs,(qy+.5)*bs),n=(R()-.5)*nz; bc[key]=[s[0]+n,s[1]+n,s[2]+n]; } const q=bc[key]; d[o]=q[0]; d[o+1]=q[1]; d[o+2]=q[2]; d[o+3]=255; ar+=q[0]; ag+=q[1]; ab+=q[2]; an++; }
-  if(lazy&&an){ for(let i=0;i<d.length;i+=4) if(d[i+3]){ d[i]=ar/an; d[i+1]=ag/an; d[i+2]=ab/an; } }
-  g.putImageData(im,0,0); f.dirty=1; }
-// 看起來多明顯：人偶顏色和背後畫面的差距
-function visib(f,sd){ let s=0,n=0; const d=f.lay.getContext('2d').getImageData(0,0,LP,LP).data,SW=W*2;
-  for(let py=0;py<LP;py+=3) for(let px=0;px<LP;px+=3){ const o=(py*LP+px)*4; if(f.md[o+3]<40) continue; const [sx,sy]=toScene(f,px,py),ix=clamp(sx*2|0,0,SW-1),iy=clamp(sy*2|0,0,H*2-1),i=(iy*SW+ix)*4;
-    s+=Math.hypot(d[o]-sd[i],d[o+1]-sd[i+1],d[o+2]-sd[i+2]); n++; } return n?s/n/255:1; }
-function figData(f){ return {x:r2(f.x),y:r2(f.y),s:r2(f.s),rot:r2(f.rot),fl:f.fl,pose:f.pose,img:f.lay.toDataURL('image/jpeg',.82)}; }
-function figFrom(o){ const f=newFig(o); const im=new Image(); im.onload=()=>{ f.lay.getContext('2d').drawImage(im,0,0); f.dirty=1; }; im.src=o.img; return f; }
+// ---------- 3D 場景：每一關一個可以走動的大空間，牆壁、地板、道具都用上面的畫和花紋當材質 ----------
+const THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+function load(){ const K=window.ARCADE_GAMES&&window.ARCADE_GAMES.kart; if(window.THREE) return Promise.resolve(); if(K&&K.load) return K.load();
+  return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=THREE_URL; s.onload=()=>res(); s.onerror=()=>{ s.remove(); rej(new Error('three')); }; document.head.appendChild(s); }); }
+const TEXC={};
+function texCanvas(spec){ const key=JSON.stringify(spec); if(TEXC[key]) return TEXC[key]; let cv;
+  if(spec[0]==='p'){ cv=scene(spec[1],.8); }
+  else { cv=document.createElement('canvas'); cv.width=cv.height=256; const c=cv.getContext('2d'),R=mul(key.length*131+key.charCodeAt(2)*7); const k=spec[0];
+    if(k==='chk'){ const n=spec[3]||8,s=256/n; for(let y=0;y<n;y++) for(let x=0;x<n;x++){ c.fillStyle=(x+y)%2?spec[1]:spec[2]; c.fillRect(x*s,y*s,s,s); } }
+    else if(k==='str'){ const n=spec[3]||8,s=256/n; for(let i=0;i<n;i++){ c.fillStyle=i%2?spec[1]:spec[2]; if(spec[4]) c.fillRect(0,i*s,256,s); else c.fillRect(i*s,0,s,256); } }
+    else if(k==='dot'){ c.fillStyle=spec[1]; c.fillRect(0,0,256,256); for(let i=0;i<90;i++){ c.fillStyle=spec[2][i%spec[2].length]; c.beginPath(); c.arc(R()*256,R()*256,spec[3]||10,0,TAU); c.fill(); } }
+    else if(k==='wood'){ c.fillStyle=spec[1]; c.fillRect(0,0,256,256); for(let i=0;i<40;i++){ c.strokeStyle='rgba(60,30,10,'+(.08+R()*.15)+')'; c.lineWidth=1+R()*3; const y=R()*256; c.beginPath(); c.moveTo(0,y); c.bezierCurveTo(80,y+R()*10-5,170,y+R()*10-5,256,y); c.stroke(); } for(let i=0;i<4;i++){ c.fillStyle='rgba(0,0,0,.18)'; c.fillRect(0,i*64,256,2); } }
+    else if(k==='grass'){ c.fillStyle='#4e9a34'; c.fillRect(0,0,256,256); for(let i=0;i<2600;i++){ c.fillStyle=hsl(85+R()*40,55,25+R()*30); c.fillRect(R()*256,R()*256,2,4+R()*5); } for(let i=0;i<40;i++){ c.fillStyle=hsl([0,50,300,200][i%4],85,65); c.beginPath(); c.arc(R()*256,R()*256,3,0,TAU); c.fill(); } }
+    else if(k==='sand'){ c.fillStyle='#f0d898'; c.fillRect(0,0,256,256); for(let i=0;i<3000;i++){ c.fillStyle=hsl(38+R()*10,45,55+R()*30,.8); c.fillRect(R()*256,R()*256,2,2); } }
+    else if(k==='brick'){ c.fillStyle='#6a5a50'; c.fillRect(0,0,256,256); for(let y=0;y<256;y+=32) for(let x=(y/32%2)*32-32;x<256;x+=64){ c.fillStyle=hsl(spec[1]+R()*14,45,35+R()*15); c.fillRect(x+2,y+2,60,28); } }
+    else if(k==='noise'){ c.fillStyle=spec[1]; c.fillRect(0,0,256,256); for(let i=0;i<2500;i++){ c.fillStyle='rgba('+(R()<.5?'0,0,0':'255,255,255')+','+(R()*.12)+')'; c.fillRect(R()*256,R()*256,3,3); } }
+    else if(k==='sol'){ c.fillStyle=spec[1]; c.fillRect(0,0,256,256); } }
+  TEXC[key]=cv; return cv; }
+const IMGD=new Map(); function pixAt(cv,u,v){ let d=IMGD.get(cv); if(!d){ d=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data; IMGD.set(cv,d); } u=((u%1)+1)%1; v=((v%1)+1)%1; const x=Math.min(cv.width-1,u*cv.width|0),y=Math.min(cv.height-1,(1-v)*cv.height|0),i=(y*cv.width+x)*4; return [d[i],d[i+1],d[i+2]]; }
+const PK=['#ff5d8f','#ffd23f','#5ac8e8','#7ae05a','#b983ff','#ff9f45'];
+/* 10 個空間：out＝戶外（沒有牆、遠處有背景板）；floor／walls／tex＝材質；kinds＝道具種類；dens＝道具密度 */
+const THEMES=[
+  {floor:['chk','#ff9cc4','#ffe0ee',8],fr:5,walls:[['p',0],['p',4]],tex:[['p',0],['str','#ff8ab8','#fff',8],['dot','#fff',PK,9],['chk','#ffe06a','#5ac8e8',6],['p',4]],kinds:['shelf','crate','barrel','ball','table','shelf'],dens:.62,hemi:['#fff4f8','#e8b8c8'],sun:1},
+  {floor:['noise','#5a5a62'],fr:6,walls:[['p',1]],tex:[['p',1],['brick',8],['str','#ffd23f','#222',6,1],['noise','#7a6a5a']],kinds:['crate','barrel','panel','crate','pillar'],dens:.55,hemi:['#dde8ff','#6a5a50'],sun:.9},
+  {out:1,floor:['grass'],fr:6,walls:[['p',2]],tex:[['p',2],['grass'],['wood','#a8743a']],kinds:['bush','bush','table','barrel','panel','ball'],dens:.6,hemi:['#d8f0ff','#4e7a34'],sun:1.1,sky:['#7ac8f8','#d8f0ff']},
+  {floor:['wood','#b8844a'],fr:5,walls:[['p',3]],tex:[['p',3],['wood','#a8743a'],['str','#e8443a','#fff',8],['p',3]],kinds:['crate','table','barrel','crate','shelf'],dens:.62,hemi:['#fff8e8','#a8743a'],sun:1},
+  {floor:['chk','#5ac8e8','#ffe06a',8],fr:5,walls:[['p',4]],tex:[['p',4],['chk','#ff5d8f','#fff',6],['dot','#5ac8e8',PK,12],['str','#7ae05a','#ffd23f',6]],kinds:['ball','crate','shelf','panel','ball','barrel'],dens:.6,hemi:['#ffffff','#c8b8e8'],sun:1},
+  {floor:['wood','#6a4024'],fr:5,walls:[['p',5]],tex:[['p',5],['wood','#7a4e2c'],['p',5]],kinds:['shelf','shelf','table','crate'],dens:.6,hemi:['#fff0d8','#5a3a22'],sun:.85},
+  {out:1,floor:['sand'],fr:6,walls:[['p',6]],tex:[['p',6],['sand'],['str','#e8343a','#fff',6],['str','#2a7ae8','#fff',6]],kinds:['umbrella','ball','crate','panel','umbrella'],dens:.5,hemi:['#e0f4ff','#d8c088'],sun:1.15,sky:['#5ab4f0','#d8f0ff']},
+  {floor:['p',7],fr:4,walls:[['p',7]],tex:[['p',7],['chk','#c8c0b0','#8a8478',6],['p',7]],kinds:['panel','pillar','crate','panel','ball'],dens:.55,hemi:['#f4f0e8','#9a9080'],sun:1},
+  {out:1,night:1,floor:['noise','#2a2030'],fr:6,walls:[['p',8]],tex:[['p',8],['str','#e8303a','#fff',6],['noise','#3a2a3e']],kinds:['stall','crate','barrel','panel','stall'],dens:.55,hemi:['#a890d8','#3a1a3e'],sun:.5,sky:['#14102e','#3a1a3e']},
+  {floor:['p',9],fr:4,walls:[['p',9]],tex:[['p',9],['p',9],['chk','#a8c8e0','#d8e8f0',6]],kinds:['panel','pillar','ball','panel','crate'],dens:.55,hemi:['#f0f8ff','#a8c0d0'],sun:1}];
+const HALFL=9,WH=4.2;
+function matOf(T,spec,rx,ry){ const cv=texCanvas(spec),tx=new T.CanvasTexture(cv); tx.wrapS=tx.wrapT=T.RepeatWrapping; tx.repeat.set(rx||1,ry||1); tx.anisotropy=4; const m=new T.MeshLambertMaterial({map:tx}); m.userData.cv=cv; return m; }
+function buildWorld(T,si,low){ const R=mul(si*7919+11),th=THEMES[si],grp=new T.Group(),solids=[],boxes=[],tops=[];
+  const add=(mesh,solid)=>{ mesh.castShadow=mesh.receiveShadow=!low; grp.add(mesh); if(solid!==false){ solids.push(mesh); } return mesh; };
+  const pick=a=>a[R()*a.length|0];
+  const fl=add(new T.Mesh(new T.PlaneGeometry(HALFL*2,HALFL*2),matOf(T,th.floor,th.fr,th.fr))); fl.rotation.x=-Math.PI/2; fl.castShadow=false;
+  if(!th.out){ for(let k=0;k<4;k++){ const m=matOf(T,th.walls[k%th.walls.length],2.4,1),w=add(new T.Mesh(new T.PlaneGeometry(HALFL*2,WH),m)); w.position.y=WH/2; w.castShadow=false; const a=k*Math.PI/2; w.position.x=-Math.sin(a)*HALFL; w.position.z=-Math.cos(a)*HALFL; w.rotation.y=a; } const ce=new T.Mesh(new T.PlaneGeometry(HALFL*2,HALFL*2),matOf(T,['noise',th.ceil||'#e8e0d8'],4,4)); ce.rotation.x=Math.PI/2; ce.position.y=WH; grp.add(ce); }
+  else { for(let k=0;k<4;k++){ const a=k*Math.PI/2; const m=matOf(T,th.walls[0],2.6,1),bd=new T.Mesh(new T.PlaneGeometry(36,8),m); bd.position.set(-Math.sin(a)*17,4,-Math.cos(a)*17); bd.rotation.y=a; grp.add(bd);
+      const hm=matOf(T,th.tex[1],6,1),hd=add(new T.Mesh(new T.BoxGeometry(HALFL*2,1,.4),hm)); hd.position.set(-Math.sin(a)*(HALFL+.2),.5,-Math.cos(a)*(HALFL+.2)); hd.rotation.y=a; } }
+  const box=(w,h,d,x,y,z,spec,ry)=>{ const m=add(new T.Mesh(new T.BoxGeometry(w,h,d),matOf(T,spec,Math.max(1,Math.round(w)),Math.max(1,Math.round(h))))); m.position.set(x,y+h/2,z); m.rotation.y=ry||0; return m; };
+  const cyl=(r1,r2,h,x,y,z,spec,seg)=>{ const m=add(new T.Mesh(new T.CylinderGeometry(r1,r2,h,seg||20),matOf(T,spec,2,1))); m.position.set(x,y+h/2,z); return m; };
+  const ball=(r,x,y,z,spec)=>{ const m=add(new T.Mesh(new T.SphereGeometry(r,20,14),matOf(T,spec,2,1))); m.position.set(x,y+r,z); return m; };
+  const CS=2.4;
+  for(let gx=-3;gx<=3;gx++) for(let gz=-3;gz<=3;gz++){ if(Math.abs(gx)<=0&&Math.abs(gz)<=0) continue; if(R()>th.dens) continue; const x=gx*CS+(R()-.5)*.6,z=gz*CS+(R()-.5)*.6,kind=pick(th.kinds),sp=pick(th.tex),ry=(R()<.5?0:Math.PI/2)+(R()-.5)*.3;
+    if(kind==='crate'){ const w=.6+R()*.7,h=.5+R()*.7; box(w,h,w,x,0,z,sp,ry); if(R()<.5){ const w2=w*(.5+R()*.4); box(w2,w2,w2,x+(R()-.5)*.2,h,z+(R()-.5)*.2,pick(th.tex),ry+.4); } if(R()<.4) box(.5+R()*.4,.4+R()*.4,.5,x+w*.9,0,z+(R()-.5)*.4,pick(th.tex),ry); }
+    else if(kind==='shelf'){ const h=1.6+R()*.9,w=1.6+R()*.4; const g=new T.Group(); const sides=matOf(T,['wood','#8a5a34'],1,2); for(const sx of [-1,1]){ const s=new T.Mesh(new T.BoxGeometry(.08,h,.5),sides); s.position.set(sx*w/2,h/2,0); g.add(s); }
+      const nb=3; for(let k=0;k<=nb;k++){ const b=new T.Mesh(new T.BoxGeometry(w,.06,.5),sides); b.position.set(0,k*(h-.06)/nb+.03,0); g.add(b); if(k<nb){ const fill=new T.Mesh(new T.BoxGeometry(w-.12,(h/nb)*.7,.36),matOf(T,sp,1,1)); fill.position.set(0,k*(h-.06)/nb+.06+(h/nb)*.35,-.02); g.add(fill); } }
+      g.position.set(x,0,z); g.rotation.y=ry; grp.add(g); g.traverse(o=>{ if(o.isMesh){ o.castShadow=o.receiveShadow=!low; solids.push(o); } }); }
+    else if(kind==='barrel'){ const r=.3+R()*.2; cyl(r,r*.9,.8+R()*.5,x,0,z,sp); }
+    else if(kind==='ball'){ ball(.25+R()*.35,x,0,z,sp); if(R()<.5) ball(.2+R()*.2,x+.7,0,z-.3,pick(th.tex)); }
+    else if(kind==='table'){ const tw=1.2+R()*.5,td=.8,th2=.72; box(tw,.08,td,x,th2,z,['wood','#9a6a3a'],ry); for(const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ const lx=a*(tw/2-.08),lz=b*(td/2-.08); box(.07,th2,.07,x+lx*Math.cos(ry)+lz*Math.sin(ry),0,z-lx*Math.sin(ry)+lz*Math.cos(ry),['wood','#7a4a2a'],ry); } if(R()<.6) box(.3+R()*.3,.25+R()*.3,.3,x,th2+.08,z,pick(th.tex),ry+.5); }
+    else if(kind==='panel'){ box(1.4+R()*.6,1.4+R()*.8,.08,x,0,z,sp,ry); }
+    else if(kind==='pillar'){ cyl(.28,.28,WH-.2,x,0,z,sp); }
+    else if(kind==='bush'){ const b=ball(.5+R()*.4,x,-.15,z,sp); b.scale.y=.8; }
+    else if(kind==='umbrella'){ cyl(.04,.04,2.1,x,0,z,['sol','#eee'],8); const cone=add(new T.Mesh(new T.ConeGeometry(1.2,.5,16,1,true),matOf(T,sp,4,1))); cone.material.side=T.DoubleSide; cone.position.set(x,2.2,z); box(1.6,.06,.7,x+.4,0,z+.8,sp,ry); }
+    else if(kind==='stall'){ box(1.8,.9,.7,x,0,z,sp,ry); box(1.9,.06,1.0,x,2.0,z,['str','#e8303a','#fff',6],ry); for(const sx of [-.85,.85]) box(.06,2,.06,x+sx*Math.cos(ry),0,z-sx*Math.sin(ry),['sol','#3a2a2a'],ry);
+      const lan=new T.Mesh(new T.SphereGeometry(.14,12,8),new T.MeshBasicMaterial({color:0xff5a3a})); lan.position.set(x,1.8,z); grp.add(lan); } }
+  if(th.night){ for(let k=0;k<14;k++){ const lan=new T.Mesh(new T.SphereGeometry(.16,12,8),new T.MeshBasicMaterial({color:k%2?0xff5a3a:0xffc040})); lan.position.set((R()-.5)*16,3+R()*.6,(R()-.5)*16); grp.add(lan); } }
+  grp.updateMatrixWorld(true);
+  for(const m of solids){ if(m===fl) continue; const b=new T.Box3().setFromObject(m); if(b.max.y>.15) boxes.push(b); }
+  return {grp,solids,boxes,floor:fl}; }
+/* 碰到的地方原本是什麼顏色（材質本身的顏色，不含光影） */
+function albedo(hit){ const m=hit.object.material; if(m&&m.userData&&m.userData.cv&&hit.uv){ const rp=m.map.repeat; return pixAt(m.userData.cv,hit.uv.x*rp.x,hit.uv.y*rp.y); } if(m&&m.userData&&m.userData.atlas&&hit.uv) return pixAt2(m.userData.atlas,hit.uv.x,hit.uv.y); const c=m&&m.color?m.color:{r:.8,g:.8,b:.8}; return [c.r*255|0,c.g*255|0,c.b*255|0]; }
+function pixAt2(cv,u,v){ const g=cv.getContext('2d'),x=clamp(u*cv.width|0,0,cv.width-1),y=clamp((1-v)*cv.height|0,0,cv.height-1),d=g.getImageData(x,y,1,1).data; return [d[0],d[1],d[2]]; }
+// ---------- 3D 小人偶：關節可以擺姿勢；全身的塗裝畫在一張 512×384 的貼圖上（每個部位一格 128×128） ----------
+const AW=512,AH=384,CELL=128;
+const PARTS=['head','torso','hips','uarmL','larmL','uarmR','larmR','thighL','shinL','thighR','shinR'];
+const PARTN={head:'頭',torso:'身體',hips:'屁股',uarmL:'左手臂',larmL:'左手',uarmR:'右手臂',larmR:'右手',thighL:'左大腿',shinL:'左小腿',thighR:'右大腿',shinR:'右小腿'};
+/* 姿勢：sh＝肩（往前、往外）、el＝手肘、hp＝髖（往前、往外）、kn＝膝蓋、tilt＝整個身體往前倒（趴／躺）、lift＝高度、bend＝彎腰 */
+const POSES=[
+  ['站好',{sh:[0,.12,0,.12],el:[.1,.1],hp:[0,0,0,0],kn:[0,0]}],
+  ['大字',{sh:[0,1.25,0,1.25],el:[0,0],hp:[0,.45,0,.45],kn:[0,0]}],
+  ['舉雙手',{sh:[0,2.85,0,2.85],el:[0,0],hp:[0,.08,0,.08],kn:[0,0]}],
+  ['稻草人',{sh:[0,1.57,0,1.57],el:[0,0],hp:[0,0,0,0],kn:[0,0]}],
+  ['蹲下',{sh:[.7,.2,.7,.2],el:[1.1,1.1],hp:[1.9,.25,1.9,.25],kn:[2.3,2.3],lift:-.3,bend:.35}],
+  ['坐下',{sh:[.3,.15,.3,.15],el:[.6,.6],hp:[1.57,.12,1.57,.12],kn:[1.57,1.57],lift:-.26}],
+  ['單腳站',{sh:[0,1.2,0,1.2],el:[0,0],hp:[1.2,0,0,0],kn:[1.7,0]}],
+  ['跳舞',{sh:[0,2.6,1.0,.3],el:[0,1.3],hp:[0,0,0,.45],kn:[0,0]}],
+  ['趴下',{sh:[2.9,.2,2.9,.2],el:[0,0],hp:[0,.15,0,.15],kn:[0,0],tilt:1.57,lift:.13}],
+  ['躺平',{sh:[0,.35,0,.35],el:[0,0],hp:[0,.1,0,.1],kn:[0,0],tilt:-1.57,lift:.13}],
+  ['縮成一團',{sh:[1.3,.1,1.3,.1],el:[2.2,2.2],hp:[2.3,.1,2.3,.1],kn:[2.5,2.5],lift:-.4,bend:.6}],
+  ['倒立',{sh:[0,2.95,0,2.95],el:[0,0],hp:[0,.3,0,.3],kn:[0,0],tilt:3.14,lift:1.36}]];
+function remapUV(geo,cell){ const col=cell%4,row=cell/4|0,uv=geo.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,(col+uv.getX(i))/4,1-(row+1-uv.getY(i))/3); uv.needsUpdate=true; return geo; }
+function newAtlas(){ const cv=document.createElement('canvas'); cv.width=AW; cv.height=AH; const g=cv.getContext('2d'); g.fillStyle='#f4f4f4'; g.fillRect(0,0,AW,AH);
+  g.fillStyle='#2a2a33'; for(const du of [-.045,.045]){ g.beginPath(); g.ellipse((.25+du)*CELL,(1-.56)*CELL,4,6,0,0,TAU); g.fill(); } g.strokeStyle='#2a2a33'; g.lineWidth=2; g.beginPath(); g.arc(.25*CELL,(1-.47)*CELL,5,.3,Math.PI-.3); g.stroke(); return cv; }
+function makeDoll(T,atlas){ const tex=new T.CanvasTexture(atlas); const mat=new T.MeshLambertMaterial({map:tex}); mat.userData.atlas=atlas; const root=new T.Group(),body=new T.Group(); root.add(body); const parts={},meshes=[];
+  const mesh=(name,geo)=>{ const m=new T.Mesh(remapUV(geo,PARTS.indexOf(name)),mat); m.castShadow=m.receiveShadow=true; m.userData.part=name; parts[name]=m; meshes.push(m); return m; };
+  const hips=new T.Group(); hips.position.y=.55; body.add(hips); const hm=mesh('hips',new T.SphereGeometry(.12,14,10)); hm.scale.set(1,.7,.85); hips.add(hm);
+  const spine=new T.Group(); hips.add(spine); const tor=mesh('torso',new T.CylinderGeometry(.13,.11,.38,16)); tor.position.y=.2; spine.add(tor);
+  const head=mesh('head',new T.SphereGeometry(.14,18,14)); head.position.y=.53; spine.add(head);
+  const limb=(nu,nl,x,y,l1,l2,r1,r2,par)=>{ const p1=new T.Group(); p1.position.set(x,y,0); par.add(p1); const m1=mesh(nu,new T.CylinderGeometry(r1,r1*.88,l1,10)); m1.position.y=-l1/2; p1.add(m1); const p2=new T.Group(); p2.position.y=-l1; p1.add(p2); const m2=mesh(nl,new T.CylinderGeometry(r2,r2*.8,l2,10)); m2.position.y=-l2/2; p2.add(m2); const end=new T.Mesh(new T.SphereGeometry(r2*.95,8,6),mat); end.position.y=-l2; p2.add(end); end.castShadow=true; end.userData.part=nl; meshes.push(end); return [p1,p2]; };
+  const [shL,elL]=limb('uarmL','larmL',.17,.36,.24,.22,.042,.036,spine),[shR,elR]=limb('uarmR','larmR',-.17,.36,.24,.22,.042,.036,spine);
+  const [hpL,knL]=limb('thighL','shinL',.07,0,.27,.27,.058,.046,hips),[hpR,knR]=limb('thighR','shinR',-.07,0,.27,.27,.058,.046,hips);
+  function pose(i){ const P=POSES[((i%POSES.length)+POSES.length)%POSES.length][1];
+    shL.rotation.set(-P.sh[0],0,P.sh[1]); shR.rotation.set(-P.sh[2],0,-P.sh[3]); elL.rotation.set(-P.el[0],0,0); elR.rotation.set(-P.el[1],0,0);
+    hpL.rotation.set(-P.hp[0],0,P.hp[1]); hpR.rotation.set(-P.hp[2],0,-P.hp[3]); knL.rotation.set(P.kn[0],0,0); knR.rotation.set(P.kn[1],0,0);
+    spine.rotation.x=P.bend||0; body.rotation.x=P.tilt||0; body.position.y=P.lift||0; if(P.tilt&&Math.abs(P.tilt)>3) body.position.y=P.lift; }
+  pose(0); return {root,meshes,parts,tex,atlas,mat,pose,dirty(){ tex.needsUpdate=true; },dispose(){ tex.dispose(); mat.dispose(); for(const m of meshes) m.geometry.dispose(); }}; }
+const STAGES=SCENES.map((s,i)=>{ const k=i/9; return {name:s[0],k,stars:1+Math.round(k*4),nHide:3+Math.round(k*4),noise:46-38*k,blot:30-20*k,eye:.9-.45*k}; });
+function figData(f){ return {p:[r2(f.x),r2(f.y),r2(f.z)],ry:r2(f.ry),s:r2(f.s),pose:f.pose,img:f.atlas.toDataURL('image/jpeg',.8)}; }
+// 顏色工具
+const hex=c=>'#'+c.map(v=>Math.round(clamp(v,0,255)).toString(16).padStart(2,'0')).join('');
+const unhex=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+function hsv2rgb(h,s,v){ const f=n=>{ const k=(n+h/60)%6; return v-v*s*Math.max(0,Math.min(k,4-k,1)); }; return [f(5)*255,f(3)*255,f(1)*255]; }
+function rgb2hsv(r,g,b){ r/=255; g/=255; b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn; let h=0; if(d){ if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0) h+=360; } return [h,mx?d/mx:0,mx]; }
 
 function create(env,opts){
-  const net=opts.net,host=!!net&&net.host,client=!!net&&!net.host,me=net?net.me:0,pv=!!opts.preview,mode=net?'net':opts.mode||'hide',si=clamp(opts.stage|0,0,9),ST=STAGES[si];
-  const {ctx:c,canvas}=env.canvas2d(W,H); canvas.style.touchAction='none'; const SC=scene(si,2),sd=SC.getContext('2d').getImageData(0,0,W*2,H*2).data,R=mul((Math.random()*1e9)|0);
+  const T=window.THREE,net=opts.net,host=!!net&&net.host,client=!!net&&!net.host,me=net?net.me:0,pv=!!opts.preview,mode=net?'net':opts.mode||'hide',si=clamp(opts.stage|0,0,9),ST=STAGES[si];
+  const {ctx:c,canvas}=env.canvas2d(W,H); canvas.style.touchAction='none'; const sfx=n=>{ if(!pv) env.sfx(n); };
+  if(!T){ c.fillStyle='#14122b'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText('3D 元件載入失敗，請重新整理再試',W/2,H/2); setTimeout(()=>env.end(pv?{}:{title:'無法開始',big:'',text:'載不到 three.js'}),2500); return {update(){},draw(){},destroy(){}}; }
+  const low=!!env.touch||pv,Q=pv?.6:env.touch?1:1.3,R=mul((Math.random()*1e9)|0);
+  const cv3=document.createElement('canvas'),rd=new T.WebGLRenderer({canvas:cv3,antialias:!pv}); rd.setPixelRatio(1); rd.setSize(W*Q,H*Q,false); rd.shadowMap.enabled=!low; rd.shadowMap.type=T.PCFSoftShadowMap;
+  const S3=new T.Scene(),TH=THEMES[si],WD=buildWorld(T,si,low); S3.add(WD.grp);
+  const bg=document.createElement('canvas'); bg.width=2; bg.height=64; { const g=bg.getContext('2d'),gr=g.createLinearGradient(0,0,0,64),sk=TH.sky||['#e8e0f0','#c8c0d8']; gr.addColorStop(0,sk[0]); gr.addColorStop(1,sk[1]); g.fillStyle=gr; g.fillRect(0,0,2,64); } S3.background=new T.CanvasTexture(bg);
+  S3.add(new T.HemisphereLight(TH.hemi[0],TH.hemi[1],TH.night?.62:.7)); S3.add(new T.AmbientLight(0xffffff,.12)); const sun=new T.DirectionalLight(0xffffff,.42*TH.sun); sun.position.set(6,12,4); sun.castShadow=!low; sun.shadow.mapSize.set(1024,1024); const shc=sun.shadow.camera; shc.left=shc.bottom=-11; shc.right=shc.top=11; shc.near=1; shc.far=40; S3.add(sun);
+  const cam=new T.PerspectiveCamera(62,W/H,.05,80),rc=new T.Raycaster();
   const N=net?net.count:2,names=net?net.names.map((n,i)=>n||('玩家 '+(i+1))):mode==='2p'?['1P','2P']:[opts.name||'你','電腦'];
-  const sfx=n=>{ if(!pv) env.sfx(n); };
-  let phase='intro',PT=pv?.5:net?5:2.2,t=0,ban=null,ended=false,me_=null,figs=[],marks=[],found={},seekT=0,ai=null,round=0,cover=null,sent=false,waitAll=false,sc=[0,0],hidT=0,rsc=0,hideDur=120,seekDur=300; /* 每種玩法都兩回合：藏 2 分鐘、找最多 5 分鐘 */
-  let tool='move',brush=7,colA='#e8343a',colB='#3a6ae8',pat=0,undo=[],view={z:1,ox:0,oy:0},tbTop=false,drag=null,ptr={x:W/2,y:H/2};
-  const TM=['紅隊','藍隊'],TC2=['#ff5a6a','#4aa8ff'],team=i=>i%2,NR=2; /* 連線分兩隊：照順序交錯分隊，兩隊各躲一次 */
-  const say=(txt,col)=>{ ban={txt,col:col||'#ffd23f',t:0}; };
-  const L=(x,y)=>[(x+view.ox)/view.z,(y+view.oy)/view.z];
-  function zoomTo(z,cx,cy){ view.z=z; view.ox=clamp(cx*z-W/2,0,W*z-W); view.oy=clamp(cy*z-H/2,0,H*z-H); }
-  // ---- 流程（每種玩法都兩回合：兩邊各躲一次，人偶躲越久分數越高，1 秒 1 分）----
-  const SN=net?TM:mode==='2p'?['1P','2P']:[names[0],'電腦'],solo=mode==='hide'||mode==='seek',cpuHides=()=>solo&&hidT===1;
+  const TM=['紅隊','藍隊'],TC2=['#ff5a6a','#4aa8ff'],team=i=>i%2,NR=4,solo=mode==='hide'||mode==='seek';
+  const SN=net?TM:mode==='2p'?['1P','2P']:[names[0],'電腦'];
+  let phase='intro',PT=pv?.3:net?5:2.2,t=0,ban=null,ended=false,me_=null,figs=[],found={},seekT=0,ai=null,round=0,cover=null,sent=false,waitAll=false,sc=[0,0],hidT=0,rsc=0,hideDur=180,seekDur=300;
+  let tool='move',brush=8,col=[232,52,58],recent=['#e8343a','#3a6ae8','#f4f4f4','#2a2a33','#7ae05a','#ffd23f'],pat=0,undo=[],tbTop=false,drag=null,ptr={x:W/2,y:H/2},BT=[],marks=[];
+  // 相機：躲的時候繞著人偶轉；找的時候第一人稱
+  const orb={yaw:.6,pitch:.35,dist:3.2,tx:0,ty:.7,tz:0},fp={x:0,z:0,yaw:0,pitch:-.05,fov:64};
+  const say=(txt,col2)=>{ ban={txt,col:col2||'#ffd23f',t:0}; };
   const fmt=s=>s>=60?Math.floor(s/60)+' 分 '+(s%60)+' 秒':s+' 秒';
-  function beginRound(){ hidT=mode==='seek'?1-round:round; for(const k in nFigs) delete nFigs[k]; ai=null; marks=[];
-    if(mode==='net'){ if(team(me)!==hidT){ phase='wait'; PT=hideDur; say(TM[hidT]+'在躲，等一下換你們找',TC2[team(me)]); } else startHide(); return; }
-    if(cpuHides()) aiHide(); else startHide(); }
-  function startHide(){ phase='hide'; PT=hideDur; me_=newFig({x:180+R()*440,y:150+R()*170,pose:0}); tool='move'; undo=[]; sent=false; waitAll=false; zoomTo(1,0,0);
-    say(mode==='2p'?SN[hidT]+' 來躲！（'+SN[1-hidT]+' 先別看）':mode==='net'?TM[hidT]+'躲進畫裡！藏好按「已藏好」':'躲進畫裡！換姿勢、用吸管取色塗裝',mode==='net'?TC2[hidT]:null); sfx('go'); }
-  function startSeek(list){ phase='seek'; PT=seekDur; figs=list; marks=[]; found={}; seekT=0; zoomTo(1,0,0); tool='move';
-    if(solo&&hidT===0){ const v=visib(figs[0],sd),base=9*ST.eye/Math.max(.03,v)*(.5/Math.max(.25,figs[0].s))**.6*(.75+R()*.5); ai={T:base,x:W/2,y:H/2,tx:R()*W,ty:R()*H,nx:1.5,v}; }
-    say(solo&&hidT===0?'電腦來找你了！':iSeek()?(mode==='net'?'換你們找！點一下抓人':'換'+(mode==='2p'?' '+SN[1-hidT]+' ':'你')+'找！點一下抓人'):TM[1-hidT]+'正在找…',iSeek()?'#7ae8ff':'#ffd23f'); sfx('beep'); }
+  /* ---- 人偶 ---- */
+  function placeFig(f){ f.d.root.position.set(f.x,f.y,f.z); f.d.root.rotation.y=f.ry; f.d.root.scale.setScalar(f.s); f.d.pose(f.pose); }
+  function newFig(o,atlas){ const f=Object.assign({x:0,y:0,z:0,ry:0,s:1,pose:0},o||{}); f.atlas=atlas||newAtlas(); f.d=makeDoll(T,f.atlas); placeFig(f); return f; }
+  function figFrom(o){ const f=newFig({x:o.p[0],y:o.p[1],z:o.p[2],ry:o.ry,s:o.s,pose:o.pose}); const im=new Image(); im.onload=()=>{ f.atlas.getContext('2d').drawImage(im,0,0); IMGD.delete(f.atlas); f.d.dirty(); }; im.src=o.img; return f; }
+  function showFigs(list){ for(const f of allShown) S3.remove(f.d.root); allShown=list.slice(); for(const f of allShown) S3.add(f.d.root); } let allShown=[];
+  /* 找可以站的地方：從上往下打到水平的面 */
+  function surfaceAt(x,z){ rc.set(new T.Vector3(x,8,z),new T.Vector3(0,-1,0)); rc.far=20; const h=rc.intersectObjects(WD.solids,false)[0]; rc.far=Infinity; if(!h) return null; const n=h.face.normal.clone().transformDirection(h.object.matrixWorld); return n.y>.6?h.point:null; }
+  function randomSpot(avoid){ for(let k=0;k<80;k++){ const x=(R()-.5)*(HALFL*2-1.4),z=(R()-.5)*(HALFL*2-1.4); if(Math.hypot(x,z)<2.2) continue; const p=surfaceAt(x,z); if(!p) continue; if(avoid.some(a=>Math.hypot(a.x-p.x,a.z-p.z)<1.1)) continue; return p; } return new T.Vector3((R()-.5)*8,0,(R()-.5)*8); }
+  /* 電腦塗裝：從人偶每個部位往四周打射線，取附近東西的顏色塗上去（越後面的關卡塗得越像） */
+  function autoPaint(f,q){ const g=f.atlas.getContext('2d'),d=f.d; d.root.updateMatrixWorld(true); const dirs=[];
+    for(let k=0;k<22;k++){ const a=R()*TAU,e=(R()-.35)*Math.PI*.9; dirs.push(new T.Vector3(Math.cos(a)*Math.cos(e),Math.sin(e),Math.sin(a)*Math.cos(e))); }
+    PARTS.forEach((pn,ci)=>{ const m=d.parts[pn],p=new T.Vector3(); m.getWorldPosition(p); const cols=[]; for(const dir of dirs){ rc.set(p,dir); rc.far=2.2; const h=rc.intersectObjects(WD.solids,false)[0]; if(h) cols.push(albedo(h)); } rc.far=Infinity; if(!cols.length) cols.push([200,200,200]);
+      const cx=(ci%4)*CELL,cy=(ci/4|0)*CELL,nz=()=>(R()-.5)*q.noise; const avg=[0,1,2].map(j=>cols.reduce((s,c2)=>s+c2[j],0)/cols.length); g.fillStyle=hex(avg.map(v=>v+nz())); g.fillRect(cx,cy,CELL,CELL);
+      const nb=Math.round(60-q.blot); for(let k=0;k<nb;k++){ const c2=cols[R()*cols.length|0],n0=nz(); g.fillStyle=hex(c2.map(v=>v+n0)); g.beginPath(); g.ellipse(cx+R()*CELL,cy+R()*CELL,q.blot*(.5+R()),q.blot*(.3+R()*.6),R()*3,0,TAU); g.fill(); } });
+    IMGD.delete(f.atlas); d.dirty(); }
+  /* 看起來多明顯：每個部位的顏色跟附近東西的顏色差多少 × 有多少角度看得到 */
+  function visib(f){ const d=f.d; d.root.updateMatrixWorld(true); const g=f.atlas.getContext('2d'); let s=0,wsum=0; const W8=[4,3,1.2,1,1,1,1,1.4,1.2,1.4,1.2];
+    PARTS.forEach((pn,ci)=>{ const im=g.getImageData((ci%4)*CELL,(ci/4|0)*CELL,CELL,CELL).data; let a=[0,0,0],n=0; for(let i=0;i<im.length;i+=4*37){ a[0]+=im[i]; a[1]+=im[i+1]; a[2]+=im[i+2]; n++; } a=a.map(v=>v/n);
+      const p=new T.Vector3(); d.parts[pn].getWorldPosition(p); const ds=[]; for(let k=0;k<14;k++){ const th=k/14*TAU,dir=new T.Vector3(Math.cos(th),k%3===0?-.6:k%3===1?0:.4,Math.sin(th)).normalize(); rc.set(p,dir); rc.far=2.5; const h=rc.intersectObjects(WD.solids,false)[0]; if(h){ const c2=albedo(h); ds.push(Math.hypot(a[0]-c2[0],a[1]-c2[1],a[2]-c2[2])); } } rc.far=Infinity;
+      const v=ds.length?(ds.sort((x,y)=>x-y),ds[0]*.6+ds.reduce((x,y)=>x+y,0)/ds.length*.4)/441:.8; s+=v*W8[ci]; wsum+=W8[ci]; });
+    const c0=new T.Vector3(); d.parts.torso.getWorldPosition(c0); let seen=0,tot=0; for(let k=0;k<12;k++){ const a=k/12*TAU,e=new T.Vector3(Math.cos(a)*6,1.45,Math.sin(a)*6); tot++; const dir=c0.clone().sub(e),L=dir.length(); rc.set(e,dir.normalize()); rc.far=L-.25; if(!rc.intersectObjects(WD.solids,false).length) seen++; } rc.far=Infinity;
+    return {v:s/wsum,expo:seen/tot}; }
+  /* ---- 流程（4 回合：兩邊各躲兩次、找兩次；躲越久分數越高） ---- */
+  const cpuHides=()=>solo&&hidT===1;
   const iSeek=()=>mode==='net'?team(me)!==hidT:mode==='2p'?phase==='seek':cpuHides();
+  function beginRound(){ hidT=mode==='seek'?1-round%2:round%2; for(const k in nFigs) delete nFigs[k]; ai=null; marks=[]; showFigs([]);
+    if(mode==='net'){ if(team(me)!==hidT){ phase='wait'; PT=hideDur; fp.x=0; fp.z=0; say(TM[hidT]+'在躲，等一下換你們找',TC2[team(me)]); } else startHide(); return; }
+    if(cpuHides()) aiHide(); else startHide(); }
+  function startHide(){ phase='hide'; PT=hideDur; const p=randomSpot([]); me_=newFig({x:p.x,y:p.y,z:p.z,ry:R()*TAU,pose:0}); showFigs([me_]); tool='move'; undo=[]; sent=false; waitAll=false; orb.tx=p.x; orb.tz=p.z; orb.ty=p.y+.7; orb.dist=3.2;
+    say(mode==='2p'?SN[hidT]+' 來躲！（'+SN[1-hidT]+' 先別看）':mode==='net'?TM[hidT]+'躲起來！藏好按「已藏好」':'找個地方躲好、塗成跟周圍一樣的顏色！',mode==='net'?TC2[hidT]:null); sfx('go'); }
+  function startSeek(list){ phase='seek'; PT=seekDur; figs=list; found={}; seekT=0; marks=[]; tool='move'; showFigs(figs); fp.x=0; fp.z=0; fp.yaw=R()*TAU; fp.pitch=-.05; fp.fov=64;
+    if(solo&&hidT===0){ const V=visib(figs[0]),T0=14*ST.eye/Math.max(.03,V.v*(.35+.65*V.expo))*Math.pow(1/Math.max(.5,figs[0].s),.7)*(.8+R()*.4); ai={T:T0,V,x:0,z:0,yaw:0,tx:0,tz:0,nx:0}; }
+    say(solo&&hidT===0?'電腦來找你了！':iSeek()?(mode==='net'?'換你們找！走動找人，點一下抓':'換'+(mode==='2p'?' '+SN[1-hidT]+' ':'你')+'找！走動找人，點一下抓'):TM[1-hidT]+'正在找…',iSeek()?'#7ae8ff':'#ffd23f'); sfx('beep'); }
   function finishHide(){ if(solo){ startSeek([me_]); return; }
     if(mode==='2p'){ cover={txt:'換 '+SN[1-hidT]+' 來找',sub:SN[hidT]+' 已經藏好了，換人拿裝置',auto:5,fn:()=>{ cover=null; startSeek([me_]); }}; phase='cover'; return; }
     if(mode==='net'&&!sent){ sent=true; waitAll=true; const fd=figData(me_); fd.who=me; if(host) gotFig(fd); else { nFigs[me]=fd; net.send({fig:fd}); } } }
   function undoDone(){ if(mode!=='net'||!sent||phase!=='hide'||PT<=0) return; sent=false; waitAll=false; delete nFigs[me]; if(host) net.send({ru:me}); else net.send({un:me}); }
-  function hostNet(){ return mode==='net'&&host; }
+  const hostNet=()=>mode==='net'&&host;
   const nFigs={}; function gotFig(fd){ nFigs[fd.who]=fd; if(host){ net.send({rf:fd}); checkAll(); } }
-  function hiders(){ const a=[]; for(let i=0;i<N;i++) if(team(i)===hidT&&!(left[i])) a.push(i); return a; }
-  const left={};
+  const left={}; function hiders(){ const a=[]; for(let i=0;i<N;i++) if(team(i)===hidT&&!left[i]) a.push(i); return a; }
   function checkAll(){ if(phase!=='hide'&&phase!=='wait') return; if(hiders().every(i=>nFigs[i])){ net.send({ph:'seek'}); goSeekNet(); } }
-  function goSeekNet(){ const list=hiders().filter(i=>nFigs[i]).map(i=>{ const f=figFrom(nFigs[i]); f.who=i; return f; }); startSeek(list); }
-  function guess(x,y){ if(phase!=='seek'||!iSeek()) return; if(mode==='net'&&!host){ net.send({clk:[r2(x),r2(y)]}); return; } judge(x,y); }
-  function judge(x,y){ let hit=-1; figs.forEach((f,i)=>{ if(hit<0&&found[i]==null&&inFig(f,x,y,3)) hit=i; }); const at=seekT; if(hostNet()) net.send({hit:[r2(x),r2(y),hit,r2(at)]}); applyHit(x,y,hit,at); }
-  function applyHit(x,y,hit,at){ if(hit>=0){ found[hit]=at+.001; sfx('item'); marks.push({x,y,ok:1,t:0}); const f=figs[hit]; say(mode==='net'?names[f.who]+' 被找到了！':'找到了！','#7aff8a'); }
-    else { marks.push({x,y,ok:0,t:0}); sfx('bump'); if(mode==='net'||iSeek()){ seekT+=2; PT=Math.max(0,PT-2); } } /* 亂點扣 2 秒（也算進對方躲的時間） */
+  function goSeekNet(){ if(phase==='seek') return; const list=hiders().filter(i=>nFigs[i]).map(i=>{ const f=i===me&&me_?me_:figFrom(nFigs[i]); f.who=i; return f; }); startSeek(list); }
+  function tagAt(x,y){ if(phase!=='seek'||!iSeek()) return; const hit=pickRay(x,y,[...WD.solids,...figs.flatMap(f=>f.d.meshes)]); let idx=-1; if(hit) idx=figs.findIndex(f=>f.d.meshes.includes(hit.object)); if(idx>=0&&found[idx]!=null) return;
+    if(mode==='net'&&!host){ net.send({clk:idx}); return; } judge(idx); }
+  function judge(idx){ const at=seekT; if(hostNet()) net.send({hit:[idx,r2(at)]}); applyHit(idx,at); }
+  function applyHit(idx,at){ if(idx>=0&&found[idx]==null){ found[idx]=at+.001; sfx('item'); const f=figs[idx]; say(mode==='net'?names[f.who]+' 被找到了！':'找到了！','#7aff8a'); }
+    else if(idx<0){ sfx('bump'); marks.push({t:0}); if(mode==='net'||iSeek()){ seekT+=2; PT=Math.max(0,PT-2); } }
     if(figs.every((f,i)=>found[i]!=null)&&(mode!=='net'||host)) endSeek(); }
   function endSeek(){ if(phase!=='seek') return; phase='res'; PT=pv?2:5; const all=figs.every((f,i)=>found[i]!=null);
-    rsc=Math.round(figs.reduce((s,f,i)=>s+(found[i]!=null?Math.min(found[i],seekDur):seekDur),0)/Math.max(1,figs.length)); /* 躲的一方：平均躲幾秒＝得幾分 */
+    rsc=Math.round(figs.reduce((s,f,i)=>s+(found[i]!=null?Math.min(found[i],seekDur):seekDur),0)/Math.max(1,figs.length));
     if(mode!=='net'||host){ sc[hidT]+=rsc; if(hostNet()) net.send({ph:'res',sc,rs:rsc}); }
-    const myHide=mode==='net'?team(me)===hidT:solo?hidT===0:true; sfx(mode==='2p'?'win':(myHide?!all:all)?'win':'lose');
-    say(SN[hidT]+' 得 '+rsc+' 分'+(all?'':'（有人沒被找到！）'),all?'#ffd23f':'#7aff8a'); }
-  function nextAfterRes(){ if(pv){ conclude(); return; }
-    if(round>=1){ if(hostNet()) net.send({end:sc}); conclude(); return; }
-    round=1;
-    if(mode==='net'){ net.send({ph:'hide',r:1}); beginRound(); return; }
-    if(mode==='2p'){ cover={txt:'換 '+SN[1]+' 來躲',sub:SN[0]+' 請先別看',auto:5,fn:()=>{ cover=null; beginRound(); }}; phase='cover'; return; }
-    cover={txt:'第 2 回合',sub:mode==='seek'?'換你躲，電腦來找':'換電腦躲，你來找',auto:3,fn:()=>{ cover=null; beginRound(); }}; phase='cover'; }
+    const myHide=mode==='net'?team(me)===hidT:solo?hidT===0:true; sfx(mode==='2p'?'win':(myHide?!all:all)?'win':'lose'); say(SN[hidT]+' 得 '+rsc+' 分'+(all?'':'（有人沒被找到！）'),all?'#ffd23f':'#7aff8a'); }
+  function nextAfterRes(){ if(pv){ conclude(); return; } if(round>=NR-1){ if(hostNet()) net.send({end:sc}); conclude(); return; } round++;
+    if(mode==='net'){ net.send({ph:'hide',r:round}); beginRound(); return; } const nh=mode==='seek'?1-round%2:round%2;
+    if(mode==='2p'){ cover={txt:'第 '+(round+1)+' 回合：換 '+SN[nh]+' 來躲',sub:SN[1-nh]+' 請先別看',auto:5,fn:()=>{ cover=null; beginRound(); }}; phase='cover'; return; }
+    cover={txt:'第 '+(round+1)+' / '+NR+' 回合',sub:nh===0?'換你躲，電腦來找':'換電腦躲，你來找',auto:3,fn:()=>{ cover=null; beginRound(); }}; phase='cover'; }
   function conclude(){ if(ended) return; ended=true; if(pv){ env.end({}); return; }
-    const w=sc[0]===sc[1]?-1:sc[0]>sc[1]?0:1,big=SN[0]+' '+sc[0]+' 分　：　'+sc[1]+' 分 '+SN[1],tx='兩回合加起來：人偶躲越久分數越高（1 秒 1 分，沒被找到算 '+seekDur+' 分）。';
-    if(solo){ if(w===0) recWin(mode,si); env.end({title:w<0?'平手！':w===0?'你贏了！':'電腦贏了',big,text:ST.name+'：'+tx+(w===0?'':' 用吸管取背後的顏色、換個跟畫面一樣的姿勢會更難找。'),next:w===0&&si<9}); }
+    const w=sc[0]===sc[1]?-1:sc[0]>sc[1]?0:1,big=SN[0]+' '+sc[0]+' 分　：　'+sc[1]+' 分 '+SN[1],tx='4 回合加起來（兩邊各躲兩次）：人偶躲越久分數越高（1 秒 1 分，沒被找到算 '+seekDur+' 分）。';
+    if(solo){ if(w===0) recWin(mode,si); env.end({title:w<0?'平手！':w===0?'你贏了！':'電腦贏了',big,text:ST.name+'：'+tx+(w===0?'':' 用吸管吸周圍的顏色、擺跟周圍一樣的姿勢會更難找。'),next:w===0&&si<9}); }
     else if(mode==='2p') env.end({title:w<0?'平手！':SN[w]+' 贏了！',big,text:tx});
     else env.end({title:w<0?'平手！':TM[w]+'贏了！'+(team(me)===w?'（你們隊）':''),big,text:tx}); }
-  // ---- 連線 ----
-  if(net){
-    net.onmsg=(m,from)=>{ if(m.fig&&host){ gotFig(m.fig); return; } if(m.rf&&!host){ nFigs[m.rf.who]=m.rf; return; } if(m.un!=null&&host){ if(phase==='hide'||phase==='wait'){ delete nFigs[m.un]; net.send({ru:m.un}); } return; } if(m.ru!=null&&!host){ if(m.ru!==me) delete nFigs[m.ru]; return; }
-      if(m.clk&&host){ if(phase==='seek'&&team(from)!==hidT&&!left[from]) judge(m.clk[0],m.clk[1]); return; }
-      if(!host){ if(m.ph==='hide'){ round=m.r; beginRound(); } else if(m.ph==='seek'){ goSeekNet(); } else if(m.hit){ seekT=m.hit[3]; applyHit(m.hit[0],m.hit[1],m.hit[2],m.hit[3]); } else if(m.ph==='res'){ endSeek(); sc=m.sc; rsc=m.rs; } else if(m.end){ sc=m.end; conclude(); } } };
-    net.onleave=i=>{ left[i]=1; if(host){ let any=false; for(let k=0;k<N;k++) if(team(k)!==hidT&&!left[k]) any=true; if(!any&&phase==='seek'){ endSeek(); } else checkAll(); } };
-  }
-  // ---- 輸入：滑鼠／觸控都用畫布座標 ----
+  function aiHide(){ const list=[],ok=[]; for(let i=0;i<ST.nHide;i++){ const p=randomSpot(ok); ok.push(p); const f=newFig({x:p.x,y:p.y,z:p.z,ry:R()*TAU,s:.75+R()*.4,pose:R()*POSES.length|0}); placeFig(f); autoPaint(f,ST); list.push(f); } startSeek(list); }
+  function demo(){ hidT=1; aiHide(); }
+  /* ---- 連線 ---- */
+  if(net){ net.onmsg=(m,from)=>{ if(m.fig&&host){ gotFig(m.fig); return; } if(m.rf&&!host){ nFigs[m.rf.who]=m.rf; return; } if(m.un!=null&&host){ if(phase==='hide'||phase==='wait'){ delete nFigs[m.un]; net.send({ru:m.un}); } return; } if(m.ru!=null&&!host){ if(m.ru!==me) delete nFigs[m.ru]; return; }
+      if(m.clk!=null&&host){ if(phase==='seek'&&team(from)!==hidT&&!left[from]) judge(m.clk); return; }
+      if(!host){ if(m.ph==='hide'){ round=m.r; beginRound(); } else if(m.ph==='seek'){ goSeekNet(); } else if(m.hit){ seekT=m.hit[1]; applyHit(m.hit[0],m.hit[1]); } else if(m.ph==='res'){ endSeek(); sc=m.sc; rsc=m.rs; } else if(m.end){ sc=m.end; conclude(); } } };
+    net.onleave=i=>{ left[i]=1; if(host){ let any=false; for(let k=0;k<N;k++) if(team(k)!==hidT&&!left[k]) any=true; if(!any&&phase==='seek') endSeek(); else checkAll(); } }; }
+  /* ---- 射線 ---- */
+  function pickRay(x,y,list){ rc.setFromCamera(new T.Vector2(x/W*2-1,-(y/H*2-1)),cam); return rc.intersectObjects(list,false)[0]||null; }
+  /* ---- 塗裝 ---- */
+  function snapUndo(){ undo.push(me_.atlas.getContext('2d').getImageData(0,0,AW,AH)); if(undo.length>10) undo.shift(); }
+  function cellOf(m){ const ci=PARTS.indexOf(m.userData.part); return [(ci%4)*CELL,(ci/4|0)*CELL]; }
+  function paintHit(h,first){ const g=me_.atlas.getContext('2d'),[cx,cy]=cellOf(h.object),px=h.uv.x*AW,py=(1-h.uv.y)*AH; g.save(); g.beginPath(); g.rect(cx,cy,CELL,CELL); g.clip(); g.fillStyle=g.strokeStyle=hex(col);
+    const r=brush/Math.max(.6,me_.s); if(!first&&drag&&drag.lp&&drag.lp[2]===h.object.userData.part&&Math.hypot(drag.lp[0]-px,drag.lp[1]-py)<CELL*.6){ g.lineCap='round'; g.lineWidth=r*2; g.beginPath(); g.moveTo(drag.lp[0],drag.lp[1]); g.lineTo(px,py); g.stroke(); } g.beginPath(); g.arc(px,py,r,0,TAU); g.fill(); g.restore(); drag.lp=[px,py,h.object.userData.part]; me_.d.dirty(); }
+  function fillPart(m){ snapUndo(); const g=me_.atlas.getContext('2d'),[cx,cy]=cellOf(m); g.fillStyle=hex(col); g.fillRect(cx,cy,CELL,CELL); me_.d.dirty(); say('「'+PARTN[m.userData.part]+'」塗滿了','#fff'); }
+  function pattern(){ snapUndo(); pat=(pat+1)%4; const g=me_.atlas.getContext('2d'),c2=unhex(recent[1]||'#ffffff'); g.fillStyle=hex(c2); g.fillRect(0,0,AW,AH); g.fillStyle=hex(col); const s=16;
+    if(pat===0) for(let y=0;y<AH;y+=s*2) g.fillRect(0,y,AW,s); else if(pat===1) for(let y=0;y<AH;y+=s) for(let x=(y/s%2)*s/2;x<AW;x+=s){ g.beginPath(); g.arc(x,y,s*.3,0,TAU); g.fill(); } else if(pat===2) for(let y=0;y<AH;y+=s) for(let x=0;x<AW;x+=s){ if((x+y)/s%2<1) g.fillRect(x,y,s,s); } else { const r=mul(99); for(let k=0;k<160;k++){ g.beginPath(); g.ellipse(r()*AW,r()*AH,6+r()*16,4+r()*10,r()*3,0,TAU); g.fill(); } }
+    me_.d.dirty(); sfx('click'); say(['條紋','點點','格子','迷彩'][pat]+'（用目前顏色＋上一個顏色）','#fff'); }
+  function setCol(rgb,fromPick){ col=rgb.map(v=>Math.round(v)); const h=hex(col); recent=[h,...recent.filter(x=>x!==h)].slice(0,12); if(fromPick){ tool='brush'; sfx('pop'); } }
+  /* ---- 輸入 ---- */
   const pos=e=>{ const r=canvas.getBoundingClientRect(),k=Math.min(r.width/W,r.height/H); return [(e.clientX-r.left-(r.width-W*k)/2)/k,(e.clientY-r.top-(r.height-H*k)/2)/k]; };
-  let BT=[]; const btn=(x,y,w,h,label,fn,o)=>BT.push(Object.assign({x,y,w,h,label,fn},o||{}));
-  function snapUndo(){ const g=me_.lay.getContext('2d'); undo.push(g.getImageData(0,0,LP,LP)); if(undo.length>12) undo.shift(); }
-  function paintAt(x,y,first){ const [px,py]=toLocal(me_,x,y),g=me_.lay.getContext('2d'),r=brush*PXU/me_.s*.5; g.fillStyle=colA; g.beginPath();
-    if(!first&&drag&&drag.lp){ g.lineCap='round'; g.strokeStyle=colA; g.lineWidth=r*2; g.moveTo(drag.lp[0],drag.lp[1]); g.lineTo(px,py); g.stroke(); } g.arc(px,py,r,0,TAU); g.fill(); drag.lp=[px,py]; me_.dirty=1; }
-  function pick(x,y){ const ix=clamp(x*2|0,0,W*2-1),iy=clamp(y*2|0,0,H*2-1),i=(iy*W*2+ix)*4; colB=colA; colA='rgb('+sd[i]+','+sd[i+1]+','+sd[i+2]+')'; sfx('pop'); tool='brush'; }
-  function pattern(){ snapUndo(); pat=(pat+1)%4; const g=me_.lay.getContext('2d'); g.fillStyle=colB; g.fillRect(0,0,LP,LP); g.fillStyle=colA; const s=10*PXU;
-    if(pat===0) for(let y=0;y<LP;y+=s*2) g.fillRect(0,y,LP,s); else if(pat===1) for(let y=0;y<LP;y+=s) for(let x=(y/s%2)*s/2;x<LP;x+=s){ g.beginPath(); g.arc(x,y,s*.3,0,TAU); g.fill(); }
-    else if(pat===2) for(let y=0;y<LP;y+=s) for(let x=0;x<LP;x+=s){ if((x+y)/s%2<1) g.fillRect(x,y,s,s); } else { const r=mul(99); for(let k=0;k<40;k++){ g.beginPath(); g.ellipse(r()*LP,r()*LP,6+r()*14,4+r()*9,r()*3,0,TAU); g.fill(); } }
-    me_.dirty=1; sfx('click'); }
+  const PAL={x:W-150,y:44,w:142};   // 右邊調色盤
+  function palHit(x,y){ return phase==='hide'&&!waitAll&&x>=PAL.x-4&&x<=PAL.x+PAL.w+4&&y>=PAL.y-4&&y<=PAL.y+196; }
+  function palAt(x,y){ const lx=x-PAL.x,ly=y-PAL.y; const [hh,ss,vv]=rgb2hsv(...col);
+    if(ly>=26&&ly<=126&&lx>=0&&lx<=PAL.w){ setCol(hsv2rgb(hh,clamp(lx/PAL.w,0,1),clamp(1-(ly-26)/100,0,1))); return true; }
+    if(ly>=132&&ly<=146){ setCol(hsv2rgb(clamp(lx/PAL.w,0,1)*359.9,Math.max(.35,ss),Math.max(.45,vv))); return true; }
+    if(ly>=152&&ly<=190){ const i=Math.floor(lx/(PAL.w/6))+(ly>=172?6:0); if(recent[i]){ setCol(unhex(recent[i])); sfx('click'); } return true; } return false; }
   function onDown(e){ e.preventDefault(); const [x,y]=pos(e); ptr={x,y}; try{ canvas.setPointerCapture(e.pointerId); }catch(er){}
     if(cover){ sfx('click'); cover.fn(); return; }
     for(const b of BT) if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ if(!b.dis){ b.fn(); if(!b.quiet) sfx('click'); } return; }
-    const [sx,sy]=L(x,y);
-    if(phase==='hide'&&!waitAll){ if(tool==='pick'){ pick(sx,sy); return; }
-      if(tool==='brush'){ drag={k:'paint'}; snapUndo(); paintAt(sx,sy,true); return; }
-      if(inFig(me_,sx,sy,6)){ drag={k:'fig',dx:sx-me_.x,dy:sy-me_.y}; return; } if(view.z>1) drag={k:'pan',x,y,ox:view.ox,oy:view.oy}; return; }
-    if(phase==='seek'&&iSeek()){ drag={k:'tap',x,y,ox:view.ox,oy:view.oy,moved:false}; } }
-  function onMove(e){ const [x,y]=pos(e); ptr={x,y}; if(!drag) return; const [sx,sy]=L(x,y);
-    if(drag.k==='paint') paintAt(sx,sy,false); else if(drag.k==='fig'){ me_.x=clamp(sx-drag.dx,10,W-10); me_.y=clamp(sy-drag.dy,10,H-10); }
-    else if(drag.k==='pan'||drag.k==='tap'){ if(Math.hypot(x-drag.x,y-drag.y)>8) drag.moved=true; if(view.z>1&&drag.moved){ view.ox=clamp(drag.ox-(x-drag.x),0,W*view.z-W); view.oy=clamp(drag.oy-(y-drag.y),0,H*view.z-H); } } }
-  function onUp(e){ if(drag&&drag.k==='tap'&&!drag.moved){ const [sx,sy]=L(drag.x,drag.y); guess(sx,sy); } drag=null; }
-  function onWheel(e){ if(phase!=='hide'&&!(phase==='seek'&&iSeek())) return; e.preventDefault(); const [x,y]=pos(e),[sx,sy]=L(x,y),z=clamp(view.z*(e.deltaY<0?1.25:.8),1,4); view.z=z; view.ox=clamp(sx*z-x,0,W*z-W); view.oy=clamp(sy*z-y,0,H*z-H); }
+    if(palHit(x,y)){ drag={k:'pal'}; palAt(x,y); return; }
+    if(phase==='hide'&&!waitAll&&me_){ const hd=pickRay(x,y,me_.d.meshes);
+      if(tool==='pick'){ const h=pickRay(x,y,[...WD.solids,...me_.d.meshes]); if(h){ setCol(albedo(h),true); say('吸到顏色了，在人偶上塗塗看','#fff'); } return; }
+      if(tool==='brush'&&hd){ snapUndo(); drag={k:'paint'}; paintHit(hd,true); return; }
+      if(tool==='fill'&&hd){ fillPart(hd.object); return; }
+      if(tool==='move'&&hd){ drag={k:'fig',x,y,moved:false}; return; } }
+    drag={k:'look',x,y,lx:x,ly:y,moved:false}; }
+  function onMove(e){ const [x,y]=pos(e); ptr={x,y}; if(!drag) return;
+    if(drag.k==='pal'){ palAt(x,y); return; }
+    if(drag.k==='paint'){ const hd=pickRay(x,y,me_.d.meshes); if(hd) paintHit(hd,false); else drag.lp=null; return; }
+    if(drag.k==='fig'){ if(Math.hypot(x-drag.x,y-drag.y)>6) drag.moved=true; if(drag.moved){ const h=pickRay(x,y,WD.solids); if(h){ const n=h.face.normal.clone().transformDirection(h.object.matrixWorld); if(n.y>.6){ me_.x=h.point.x; me_.y=h.point.y; me_.z=h.point.z; placeFig(me_); orb.tx=me_.x; orb.tz=me_.z; orb.ty=me_.y+.7; } } } return; }
+    if(drag.k==='look'){ const dx=x-drag.lx,dy=y-drag.ly; drag.lx=x; drag.ly=y; if(Math.hypot(x-drag.x,y-drag.y)>7) drag.moved=true;
+      if(phase==='seek'||phase==='wait'||phase==='res'){ fp.yaw-=dx*.006*(fp.fov/64); fp.pitch=clamp(fp.pitch-dy*.005*(fp.fov/64),-1.3,1.2); } else { orb.yaw-=dx*.008; orb.pitch=clamp(orb.pitch+dy*.006,-.25,1.45); } } }
+  function onUp(){ if(drag&&drag.k==='look'&&!drag.moved){ if(phase==='seek') tagAt(drag.x,drag.y); else if(phase==='hide'&&!waitAll&&tool==='move'&&me_){ const h=pickRay(drag.x,drag.y,WD.solids); if(h){ const n=h.face.normal.clone().transformDirection(h.object.matrixWorld); if(n.y>.6){ me_.x=h.point.x; me_.y=h.point.y; me_.z=h.point.z; placeFig(me_); orb.tx=me_.x; orb.tz=me_.z; orb.ty=me_.y+.7; sfx('place'); } else say('只能放在地上或平台上面','#ffb0b0'); } } }
+    if(drag&&drag.k==='fig'&&!drag.moved){ /* 點人偶本身：沒事 */ } drag=null; }
+  function onWheel(e){ e.preventDefault(); if(phase==='hide') orb.dist=clamp(orb.dist*(e.deltaY<0?.85:1.18),1,12); else fp.fov=clamp(fp.fov*(e.deltaY<0?.85:1.18),18,75); }
   if(!pv){ canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); canvas.addEventListener('wheel',onWheel,{passive:false}); }
-  // ---- 每一格 ----
-  function update(dt){ t+=dt; if(ban) ban.t+=dt; for(const m of marks) m.t+=dt; if(cover&&cover.auto!=null){ cover.auto-=dt; if(cover.auto<=0){ sfx('go'); cover.fn(); } } if(cover||ended) return;
-    if(phase==='intro'){ PT-=dt; if(PT<=0){ if(pv){ demo(); return; } round=0; beginRound(); } return; }
-    if(phase==='hide'||phase==='wait'){ PT-=dt; if(PT<=0&&phase==='hide'&&!waitAll) finishHide(); if(phase==='wait'&&host&&PT<-6) { net.send({ph:'seek'}); goSeekNet(); } if(phase==='hide'&&waitAll&&host&&PT<-6){ net.send({ph:'seek'}); goSeekNet(); } return; }
-    if(phase==='seek'){ seekT+=dt; if(mode!=='net'||host){ PT-=dt; if(PT<=0) endSeek(); } else PT-=dt;
-      if(ai){ const f=figs[0]; ai.nx-=dt; if(seekT>ai.T*.75&&!found[0]){ ai.tx=f.x+(R()-.5)*40*Math.max(0,(ai.T-seekT)/ai.T*4); ai.ty=f.y+(R()-.5)*40*Math.max(0,(ai.T-seekT)/ai.T*4); }
-        else if(ai.nx<=0){ ai.nx=1.6+R()*2; if(R()<.5){ judge(ai.x,ai.y); } ai.tx=R()*W; ai.ty=R()*H; }
-        ai.x+=(ai.tx-ai.x)*Math.min(1,dt*2.5); ai.y+=(ai.ty-ai.y)*Math.min(1,dt*2.5); if(seekT>=ai.T&&!found[0]){ ai.x=f.x; ai.y=f.y; judge(f.x,f.y); if(!found[0]){ found[0]=seekT; endSeek(); } } }
+  /* ---- 第一人稱移動與碰撞 ---- */
+  function walk(dt){ const k=env.keys||{},f=(k.ArrowUp||k.KeyW?1:0)-(k.ArrowDown||k.KeyS?1:0),s=(k.ArrowRight||k.KeyD?1:0)-(k.ArrowLeft||k.KeyA?1:0); if(!f&&!s) return; const sp=3.2*dt,sy=Math.sin(fp.yaw),cy=Math.cos(fp.yaw);
+    let nx=fp.x+(-sy*f+cy*s)*sp,nz=fp.z+(-cy*f-sy*s)*sp; nx=clamp(nx,-HALFL+.35,HALFL-.35); nz=clamp(nz,-HALFL+.35,HALFL-.35);
+    for(const b of WD.boxes){ if(b.min.y>1.6||b.max.y<.3) continue; const r=.3; if(nx>b.min.x-r&&nx<b.max.x+r&&nz>b.min.z-r&&nz<b.max.z+r){ const px=Math.min(nx-(b.min.x-r),b.max.x+r-nx),pz=Math.min(nz-(b.min.z-r),b.max.z+r-nz); if(px<pz) nx=nx-(b.min.x-r)<b.max.x+r-nx?b.min.x-r:b.max.x+r; else nz=nz-(b.min.z-r)<b.max.z+r-nz?b.min.z-r:b.max.z+r; } } fp.x=nx; fp.z=nz; }
+  /* ---- 每一格 ---- */
+  const padEl=document.getElementById('pad'); let padV=null; /* 方向鍵只在走動找人時顯示，躲的時候不擋按鈕 */
+  function update(dt){ dt=Math.min(dt,.05); t+=dt; if(padEl&&!pv){ const v=(phase==='seek'&&iSeek()&&!ai)||phase==='wait'?'':'hidden'; if(v!==padV){ padV=v; padEl.style.visibility=v; } } if(ban) ban.t+=dt; for(const m of marks) m.t+=dt; if(cover&&cover.auto!=null){ cover.auto-=dt; if(cover.auto<=0){ sfx('go'); cover.fn(); } } if(cover||ended) return;
+    if(phase==='intro'){ PT-=dt; orb.yaw+=dt*.2; if(PT<=0){ if(pv){ demo(); return; } round=0; beginRound(); } return; }
+    if(phase==='hide'||phase==='wait'){ PT-=dt; if(phase==='wait'){ walk(dt); } if(PT<=0&&phase==='hide'&&!waitAll) finishHide(); if(phase==='wait'&&host&&PT<-6){ net.send({ph:'seek'}); goSeekNet(); } if(phase==='hide'&&waitAll&&host&&PT<-6){ net.send({ph:'seek'}); goSeekNet(); } return; }
+    if(phase==='seek'){ seekT+=dt; if(mode!=='net'||host){ PT-=dt; if(PT<=0) endSeek(); } else PT-=dt; if(!ai) walk(dt);
+      if(ai){ const f=figs[0]; ai.nx-=dt; const close=seekT>ai.T*.7; if(close){ ai.tx=f.x+Math.cos(t)*1.6; ai.tz=f.z+Math.sin(t)*1.6; } else if(ai.nx<=0){ ai.nx=2+R()*2.5; ai.tx=(R()-.5)*14; ai.tz=(R()-.5)*14; }
+        ai.x+=(ai.tx-ai.x)*Math.min(1,dt*.8); ai.z+=(ai.tz-ai.z)*Math.min(1,dt*.8); fp.x=ai.x; fp.z=ai.z; const want=close?Math.atan2(-(f.x-ai.x),-(f.z-ai.z)):fp.yaw+dt*.6; let dy=want-fp.yaw; while(dy>Math.PI) dy-=TAU; while(dy<-Math.PI) dy+=TAU; fp.yaw+=dy*Math.min(1,dt*(close?3:1)); fp.pitch=close?-.25:-.05;
+        if(seekT>=ai.T&&found[0]==null){ judge(0); } }
       if(pv&&seekT>8) endSeek(); return; }
-    if(phase==='res'){ PT-=dt; if(PT<=0){ if(pv){ conclude(); return; } if(mode==='net'&&!host) { PT=99; return; } nextAfterRes(); } } }
-  function aiHide(){ const list=[]; for(let i=0;i<ST.nHide;i++){ let f,ok=false; for(let k=0;k<40&&!ok;k++){ f=newFig({x:50+R()*700,y:50+R()*350,s:.38+R()*.25,rot:(R()-.5)*(R()<.3?3:.6),fl:R()<.5?1:-1,pose:R()*POSES.length|0}); ok=list.every(g=>Math.hypot(g.x-f.x,g.y-f.y)>70); }
-      autoPaint(f,sd,ST,R,i===0&&ST.k<.5); list.push(f); } startSeek(list); }
-  function demo(){ hidT=1; aiHide(); }
-  // ---- 畫面 ----
-  function draw(){ BT=[]; c.save(); c.setTransform(2,0,0,2,0,0); c.fillStyle='#0b0a1c'; c.fillRect(0,0,W,H); c.save(); c.translate(-view.ox,-view.oy); c.scale(view.z,view.z); c.drawImage(SC,0,0,W,H);
-    if(phase==='seek'||phase==='res') figs.forEach((f,i)=>{ const fd=found[i]!=null||phase==='res'; if(fd){ const b=found[i]!=null?Math.max(0,1-(seekT-found[i])*3):0; c.save(); c.translate(0,-Math.sin(b*Math.PI)*10); drawFig(c,f); c.restore(); } else drawFig(c,f);
-      const mine=(mode==='net'&&team(f.who)===team(me))||(solo&&hidT===0); if(fd||mine){ c.strokeStyle=found[i]!=null?'#7aff8a':mine?'#ffd23f':'#ff6a6a'; c.lineWidth=2.5/view.z; c.setLineDash([6/view.z,4/view.z]); c.beginPath(); c.arc(f.x,f.y,f.s*55,0,TAU); c.stroke(); c.setLineDash([]);
-        const lb=mode==='net'?names[f.who]:mine?'你':(found[i]!=null?'找到':'在這裡'); c.font='900 '+(13/view.z)+'px '+TC; c.textAlign='center'; c.lineWidth=4/view.z; c.strokeStyle='#14122b'; c.strokeText(lb,f.x,f.y-f.s*58); c.fillStyle='#fff'; c.fillText(lb,f.x,f.y-f.s*58); } });
-    if(phase==='hide'&&me_){ drawFig(c,me_); c.strokeStyle='rgba(255,255,255,.75)'; c.lineWidth=1.5/view.z; c.setLineDash([5/view.z,4/view.z]); c.beginPath(); c.arc(me_.x,me_.y,me_.s*60,0,TAU); c.stroke(); c.setLineDash([]); }
-    for(const m of marks){ if(m.t>1.4) continue; const a=1-m.t/1.4; c.globalAlpha=a; c.lineWidth=4/view.z; c.strokeStyle=m.ok?'#7aff8a':'#ff4d5a'; const r=12/view.z; c.beginPath(); if(m.ok){ c.arc(m.x,m.y,r+m.t*20,0,TAU); } else { c.moveTo(m.x-r,m.y-r); c.lineTo(m.x+r,m.y+r); c.moveTo(m.x+r,m.y-r); c.lineTo(m.x-r,m.y+r); } c.stroke(); c.globalAlpha=1; }
-    if(ai&&phase==='seek'){ c.strokeStyle='#14122b'; c.lineWidth=5; c.beginPath(); c.arc(ai.x,ai.y,16,0,TAU); c.moveTo(ai.x+12,ai.y+12); c.lineTo(ai.x+26,ai.y+26); c.stroke(); c.strokeStyle='#fff'; c.lineWidth=2.5; c.beginPath(); c.arc(ai.x,ai.y,16,0,TAU); c.moveTo(ai.x+12,ai.y+12); c.lineTo(ai.x+26,ai.y+26); c.stroke(); }
-    c.restore(); hud(); c.restore(); }
-  const B=(x,y,w,h,label,fn,o)=>{ o=o||{}; btn(x,y,w,h,label,fn,o); c.fillStyle=o.on?'#ffd23f':o.dis?'rgba(40,40,60,.7)':'rgba(20,18,43,.88)'; rrect(c,x,y,w,h,7); c.fill(); c.strokeStyle=o.on?'#fff':'rgba(255,255,255,.35)'; c.lineWidth=1.5; c.stroke();
+    if(phase==='res'){ PT-=dt; if(PT<=0){ if(pv){ conclude(); return; } if(mode==='net'&&!host){ PT=99; return; } nextAfterRes(); } } }
+  /* ---- 畫面 ---- */
+  const V3=new T.Vector3();
+  function setCam(){ if(phase==='hide'||phase==='intro'||phase==='cover'){ const cp=Math.cos(orb.pitch); cam.position.set(orb.tx+Math.sin(orb.yaw)*cp*orb.dist,orb.ty+Math.sin(orb.pitch)*orb.dist,orb.tz+Math.cos(orb.yaw)*cp*orb.dist); cam.lookAt(orb.tx,orb.ty,orb.tz); cam.fov=60; }
+    else { cam.position.set(fp.x,1.45,fp.z); cam.rotation.set(0,0,0); cam.rotation.order='YXZ'; cam.rotation.y=fp.yaw; cam.rotation.x=fp.pitch; cam.fov=fp.fov; } cam.updateProjectionMatrix(); }
+  function proj(x,y,z){ V3.set(x,y,z).project(cam); return V3.z<1?[(V3.x+1)/2*W,(1-V3.y)/2*H]:null; }
+  function draw(){ BT=[]; for(const [i,f] of figs.entries()){ const fd=found[i]!=null; f.d.mat.emissive&&f.d.mat.emissive.setRGB(fd?.15+.12*Math.sin(t*6):0,fd?.35+.15*Math.sin(t*6):0,0); }
+    setCam(); rd.render(S3,cam); c.save(); c.setTransform(2,0,0,2,0,0); c.drawImage(cv3,0,0,W,H);
+    // 標記：找到的人偶、自己的人偶、隊友
+    if(phase==='seek'||phase==='res') figs.forEach((f,i)=>{ const mine=(mode==='net'&&team(f.who)===team(me))||(solo&&hidT===0); const show=found[i]!=null||phase==='res'||mine; if(!show) return; const p=proj(f.x,f.y+1.45*f.s,f.z); if(!p) return; const lb=mode==='net'?names[f.who]:mine?'你':(found[i]!=null?'找到':'在這裡'); c.font='900 13px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=4; c.strokeStyle='#14122b'; c.strokeText(lb,p[0],p[1]); c.fillStyle=found[i]!=null?'#7aff8a':mine?'#ffd23f':'#ff6a6a'; c.fillText(lb,p[0],p[1]); });
+    if(phase==='seek'&&iSeek()){ c.strokeStyle='rgba(255,255,255,.7)'; c.lineWidth=1.5; c.beginPath(); c.arc(ptr.x,ptr.y,10,0,TAU); c.stroke(); }
+    for(const m of marks){ if(m.t>1) continue; c.fillStyle='rgba(255,60,80,'+(.35*(1-m.t))+')'; c.fillRect(0,0,W,H); }
+    hud(); c.restore(); }
+  const B=(x,y,w,h,label,fn,o)=>{ o=o||{}; BT.push(Object.assign({x,y,w,h,label,fn},o)); c.fillStyle=o.on?'#ffd23f':o.dis?'rgba(40,40,60,.7)':'rgba(20,18,43,.88)'; rrect(c,x,y,w,h,7); c.fill(); c.strokeStyle=o.on?'#fff':'rgba(255,255,255,.35)'; c.lineWidth=1.5; c.stroke();
     if(o.sw){ c.fillStyle=o.sw; rrect(c,x+5,y+5,w-10,h-10,5); c.fill(); c.strokeStyle='#fff'; c.stroke(); return; } c.fillStyle=o.on?'#14122b':'#fff'; c.font='800 '+(o.fs||12)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(label,x+w/2,y+h/2+1); };
-  function topBar(txt,col){ c.fillStyle='rgba(10,10,28,.78)'; rrect(c,W/2-180,6,360,26,8); c.fill(); c.fillStyle=col||'#fff'; c.font='900 13px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(txt,W/2,20); }
-  function teamCard(){ c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#fff'; c.font='900 24px '+TC; c.fillText('分隊對戰　兩回合，兩隊各躲一次',W/2,52);
-    for(let tq=0;tq<2;tq++){ const x=W/2+(tq?170:-170),ms=[]; for(let i=0;i<N;i++) if(team(i)===tq) ms.push(i);
-      c.fillStyle=TC2[tq]; rrect(c,x-140,84,280,40,10); c.fill(); c.fillStyle='#fff'; c.font='900 20px '+TC; c.fillText(TM[tq]+(tq===0?'（先躲）':'（先找）'),x,105);
-      ms.forEach((i,j)=>{ const y=146+j*28; c.fillStyle=i===me?'#ffd23f':'#fff'; c.font=(i===me?'900 ':'700 ')+'17px '+TC; c.fillText((i===me?'▶ ':'')+names[i]+(i===me?'（你）':''),x,y); }); }
-    c.fillStyle='#7ae8ff'; c.font='700 14px '+TC; c.fillText('躲的隊每人藏一個人偶（2 分鐘），對方最多找 5 分鐘；躲越久分數越高',W/2,H-40); }
-  function hud(){ const tm=Math.max(0,Math.ceil(PT));
-    const doneN=()=>hiders().filter(i=>nFigs[i]).length+'/'+hiders().length;
+  function topBar(txt,col2){ c.fillStyle='rgba(10,10,28,.78)'; rrect(c,W/2-200,6,400,26,8); c.fill(); c.fillStyle=col2||'#fff'; c.font='900 13px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(txt,W/2,20); }
+  function palette(){ const P0=PAL,[hh,ss,vv]=rgb2hsv(...col); c.fillStyle='rgba(20,18,43,.88)'; rrect(c,P0.x-6,P0.y-6,P0.w+12,204,10); c.fill();
+    c.fillStyle=hex(col); rrect(c,P0.x,P0.y,P0.w,20,5); c.fill(); c.strokeStyle='#fff'; c.lineWidth=1.5; c.stroke(); c.fillStyle=vv>.6&&ss<.5?'#14122b':'#fff'; c.font='800 10px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('目前顏色',P0.x+P0.w/2,P0.y+10);
+    const sx=P0.x,sy=P0.y+26; let g=c.createLinearGradient(sx,0,sx+P0.w,0); g.addColorStop(0,'#fff'); g.addColorStop(1,hex(hsv2rgb(hh,1,1))); c.fillStyle=g; c.fillRect(sx,sy,P0.w,100); g=c.createLinearGradient(0,sy,0,sy+100); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'#000'); c.fillStyle=g; c.fillRect(sx,sy,P0.w,100);
+    c.strokeStyle='#fff'; c.lineWidth=2; c.beginPath(); c.arc(sx+ss*P0.w,sy+(1-vv)*100,5,0,TAU); c.stroke();
+    for(let k=0;k<P0.w;k++){ c.fillStyle=hex(hsv2rgb(k/P0.w*360,1,1)); c.fillRect(sx+k,P0.y+132,1,14); } c.fillStyle='#fff'; c.fillRect(sx+hh/360*P0.w-1.5,P0.y+130,3,18);
+    const sw=P0.w/6; recent.forEach((h2,i)=>{ const x=sx+(i%6)*sw,y=P0.y+152+(i>=6?20:0); c.fillStyle=h2; c.fillRect(x+1,y,sw-2,18); }); }
+  function hud(){ const tm=Math.max(0,Math.ceil(PT)),doneN=()=>hiders().filter(i=>nFigs[i]).length+'/'+hiders().length;
     if(phase==='hide'){ if(waitAll){ topBar('你已藏好！等隊友… 已藏好 '+doneN()+'　剩 '+fmt(tm),'#7ae8ff'); B(W/2-110,H-50,220,40,'✔ 已藏好（點一下取消、繼續畫）',undoDone,{on:true,fs:13}); return; }
-      const y0=tbTop?38:H-80,bw=48,gap=4,row=(i,j)=>[8+j*(bw+gap),y0+i*38]; topBar('躲藏 '+fmt(tm)+'　｜　'+(tool==='move'?'拖曳人偶移動':tool==='brush'?'在人偶上塗色（滾輪可放大）':'點畫面取顏色'),tm<=10?'#ff6a6a':'#fff');
-      const r1=[['◀姿勢',()=>{ me_.pose=(me_.pose+POSES.length-1)%POSES.length; mkMask(me_); }],['姿勢▶',()=>{ me_.pose=(me_.pose+1)%POSES.length; mkMask(me_); }],['↺ 轉',()=>{ me_.rot-=Math.PI/12; }],['↻ 轉',()=>{ me_.rot+=Math.PI/12; }],['縮小',()=>{ me_.s=clamp(me_.s-.05,.3,.85); }],['放大',()=>{ me_.s=clamp(me_.s+.05,.3,.85); }],['翻面',()=>{ me_.fl*=-1; }],[view.z>1?'看全圖':'放大鏡',()=>{ if(view.z>1) zoomTo(1,0,0); else zoomTo(3,me_.x,me_.y); }],['⇅',()=>{ tbTop=!tbTop; }]];
-      r1.forEach(([l,f],j)=>{ const [x,y]=row(0,j); B(x,y,bw,32,l,f,{fs:11}); }); const [gx,gy]=row(0,r1.length); B(gx,gy,W-gx-8,32,'✔ 已藏好'+(mode==='net'?'（'+doneN()+'）':''),()=>finishHide(),{on:true,fs:13});
-      const r2=[['移動',()=>{ tool='move'; },tool==='move'],['畫筆',()=>{ tool='brush'; },tool==='brush'],['吸管',()=>{ tool='pick'; },tool==='pick'],['粗細 '+(brush<6?'細':brush<10?'中':'粗'),()=>{ brush=brush<6?8:brush<10?14:4; }],['塗滿',()=>{ snapUndo(); const g=me_.lay.getContext('2d'); g.fillStyle=colA; g.fillRect(0,0,LP,LP); me_.dirty=1; }],['花紋',pattern],['復原',()=>{ if(undo.length){ me_.lay.getContext('2d').putImageData(undo.pop(),0,0); me_.dirty=1; } },false,!undo.length]];
-      r2.forEach(([l,f,on,dis],j)=>{ const [x,y]=row(1,j); B(x,y,bw,32,l,f,{on,dis,fs:11}); }); let [sx,sy]=row(1,r2.length); B(sx,sy,40,32,'',()=>{ tool='brush'; },{sw:colA}); B(sx+44,sy,40,32,'',()=>{ const q=colA; colA=colB; colB=q; },{sw:colB});
-      c.fillStyle='rgba(255,255,255,.75)'; c.font='700 10px '+TC; c.textAlign='left'; c.fillText('←目前顏色　點右邊互換',sx+90,sy+17); }
-    else if(phase==='wait'){ c.fillStyle='rgba(10,10,28,.55)'; c.fillRect(0,0,W,H); topBar(TM[hidT]+'正在躲… 已藏好 '+doneN()+'　最多 '+fmt(tm)+'後換你們找','#7ae8ff'); }
-    else if(phase==='seek'){ const n=Object.keys(found).length; topBar((iSeek()?'找出人偶！點一下抓':solo?'電腦正在找你…':'看'+TM[1-hidT]+'找人')+'　剩 '+fmt(tm)+'　找到 '+n+' / '+figs.length,tm<=10?'#ff6a6a':'#fff');
-      if(iSeek()) B(W-96,H-40,88,32,view.z>1?'看全圖':'放大鏡',()=>{ if(view.z>1) zoomTo(1,0,0); else zoomTo(2.2,ptr.x,ptr.y); }); }
-    else if(phase==='res') topBar('第 '+(round+1)+' / 2 回合　'+SN[0]+' '+sc[0]+' 分　：　'+sc[1]+' 分 '+SN[1],'#ffd23f');
-    else if(phase==='intro'){ c.fillStyle='rgba(10,10,28,'+(mode==='net'?.82:.45)+')'; c.fillRect(0,0,W,H); if(mode==='net') teamCard(); }
+      topBar('躲藏 '+fmt(tm)+'　｜　'+(tool==='move'?'點地面或平台換位置、拖曳空白處轉視角':tool==='brush'?'在人偶上塗色（滾輪拉近拉遠）':tool==='fill'?'點人偶的部位整塊塗滿':'點任何東西吸它的顏色'),tm<=10?'#ff6a6a':'#fff');
+      palette(); const y0=tbTop?38:H-80,bw=46,row=(i,j)=>[8+j*(bw+4),y0+i*38];
+      const r1=[['◀姿勢',()=>{ me_.pose=(me_.pose+POSES.length-1)%POSES.length; placeFig(me_); say(POSES[me_.pose][0],'#fff'); }],['姿勢▶',()=>{ me_.pose=(me_.pose+1)%POSES.length; placeFig(me_); say(POSES[me_.pose][0],'#fff'); }],['↺ 轉',()=>{ me_.ry+=Math.PI/8; placeFig(me_); }],['↻ 轉',()=>{ me_.ry-=Math.PI/8; placeFig(me_); }],['縮小',()=>{ me_.s=clamp(me_.s-.1,.5,1.5); placeFig(me_); }],['放大',()=>{ me_.s=clamp(me_.s+.1,.5,1.5); placeFig(me_); }],['拉近',()=>{ orb.dist=clamp(orb.dist*.8,1,12); }],['拉遠',()=>{ orb.dist=clamp(orb.dist*1.25,1,12); }],['⇅',()=>{ tbTop=!tbTop; }]];
+      r1.forEach(([l,f],j)=>{ const [x,y]=row(0,j); B(x,y,bw,32,l,f,{fs:11}); }); const [gx,gy]=row(0,r1.length); B(gx,gy,PAL.x-gx-14,32,'✔ 已藏好'+(mode==='net'?'（'+doneN()+'）':''),()=>finishHide(),{on:true,fs:13});
+      const r2b=[['移動',()=>{ tool='move'; },tool==='move'],['畫筆',()=>{ tool='brush'; },tool==='brush'],['吸管',()=>{ tool='pick'; },tool==='pick'],['塗滿',()=>{ tool='fill'; },tool==='fill'],['粗細 '+(brush<6?'細':brush<11?'中':'粗'),()=>{ brush=brush<6?8:brush<11?16:4; }],['全身',()=>{ snapUndo(); const g=me_.atlas.getContext('2d'); g.fillStyle=hex(col); g.fillRect(0,0,AW,AH); me_.d.dirty(); say('全身塗滿','#fff'); }],['花紋',pattern],['復原',()=>{ if(undo.length){ me_.atlas.getContext('2d').putImageData(undo.pop(),0,0); me_.d.dirty(); } },false,!undo.length]];
+      r2b.forEach(([l,f,on,dis],j)=>{ const [x,y]=row(1,j); B(x,y,bw,32,l,f,{on,dis,fs:11}); }); }
+    else if(phase==='wait'){ topBar(TM[hidT]+'正在躲… 已藏好 '+doneN()+'　最多 '+fmt(tm)+'後換你們找','#7ae8ff'); c.fillStyle='rgba(10,10,28,.35)'; c.fillRect(0,0,W,H); }
+    else if(phase==='seek'){ const n=Object.keys(found).length; topBar((iSeek()?'走動找人，點一下抓':solo?'電腦正在找你…':'看'+TM[1-hidT]+'找人')+'　剩 '+fmt(tm)+'　找到 '+n+' / '+figs.length,tm<=10?'#ff6a6a':'#fff');
+      if(iSeek()||mode==='net') B(W-96,H-40,88,32,fp.fov<40?'看全景':'望遠鏡',()=>{ fp.fov=fp.fov<40?64:28; }); }
+    else if(phase==='res') topBar('第 '+(round+1)+' / '+NR+' 回合　'+SN[0]+' '+sc[0]+' 分　：　'+sc[1]+' 分 '+SN[1],'#ffd23f');
+    else if(phase==='intro'){ c.fillStyle='rgba(10,10,28,'+(mode==='net'?.82:.35)+')'; c.fillRect(0,0,W,H); if(mode==='net') teamCard(); else { c.fillStyle='#fff'; c.font='900 30px '+TC; c.textAlign='center'; c.fillText(ST.name,W/2,H/2-10); c.font='700 14px '+TC; c.fillText('4 回合：兩邊各躲兩次、找兩次',W/2,H/2+22); } }
     if(cover){ c.fillStyle='rgba(10,10,28,.96)'; c.fillRect(0,0,W,H); c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 34px '+TC; c.fillText(cover.txt,W/2,H/2-20); c.fillStyle='#fff'; c.font='700 15px '+TC; c.fillText(cover.sub,W/2,H/2+24); if(cover.auto!=null){ c.fillStyle='#7ae8ff'; c.font='900 18px '+TC; c.fillText(Math.ceil(cover.auto)+' 秒後自動開始（點一下馬上開始）',W/2,H/2+62); } }
-    if(ban&&ban.t<2.2&&!cover){ const u=Math.min(1,ban.t*6),s=1+(1-u)*.6; c.save(); c.translate(W/2,H*.38); c.scale(s,s); c.globalAlpha=Math.min(1,(2.2-ban.t)*3); c.textAlign='center'; c.textBaseline='middle'; c.font='900 28px '+TC; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(ban.txt,0,0); c.fillStyle=ban.col; c.fillText(ban.txt,0,0); c.restore(); c.globalAlpha=1; } }
-  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); canvas.removeEventListener('wheel',onWheel); },
-    _dbg:{get phase(){return phase;},get me(){return me_;},get figs(){return figs;},get found(){return found;},get ai(){return ai;},get sc(){return sc;},get round(){return round;},get hidT(){return hidT;},finishHide,undoDone,judge,guess,sd,set PT(v){PT=v;},get PT(){return PT;},autoPaint:()=>autoPaint(me_,sd,STAGES[9],R,false),get cover(){return cover;},visib:()=>visib(me_,sd)}};
+    if(ban&&ban.t<2.2&&!cover){ const u=Math.min(1,ban.t*6),s=1+(1-u)*.6; c.save(); c.translate(W/2,H*.36); c.scale(s,s); c.globalAlpha=Math.min(1,(2.2-ban.t)*3); c.textAlign='center'; c.textBaseline='middle'; c.font='900 26px '+TC; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(ban.txt,0,0); c.fillStyle=ban.col; c.fillText(ban.txt,0,0); c.restore(); c.globalAlpha=1; } }
+  function teamCard(){ c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#fff'; c.font='900 24px '+TC; c.fillText('分隊對戰　4 回合，兩隊各躲兩次',W/2,52);
+    for(let tq=0;tq<2;tq++){ const x=W/2+(tq?170:-170),ms=[]; for(let i=0;i<N;i++) if(team(i)===tq) ms.push(i); c.fillStyle=TC2[tq]; rrect(c,x-140,84,280,40,10); c.fill(); c.fillStyle='#fff'; c.font='900 20px '+TC; c.fillText(TM[tq]+(tq===0?'（先躲）':'（先找）'),x,105);
+      ms.forEach((i,j)=>{ const y=146+j*28; c.fillStyle=i===me?'#ffd23f':'#fff'; c.font=(i===me?'900 ':'700 ')+'17px '+TC; c.fillText((i===me?'▶ ':'')+names[i]+(i===me?'（你）':''),x,y); }); }
+    c.fillStyle='#7ae8ff'; c.font='700 14px '+TC; c.fillText('躲的隊每人藏一個人偶（3 分鐘），對方最多找 5 分鐘；躲越久分數越高',W/2,H-40); }
+  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); canvas.removeEventListener('wheel',onWheel); rd.dispose(); if(padEl) padEl.style.visibility=''; },
+    _dbg:{get phase(){return phase;},get me(){return me_;},get figs(){return figs;},get found(){return found;},get ai(){return ai;},get sc(){return sc;},get round(){return round;},get hidT(){return hidT;},finishHide,undoDone,judge,tagAt,set PT(v){PT=v;},get PT(){return PT;},get cover(){return cover;},visib:()=>visib(me_),autoPaint:()=>autoPaint(me_,STAGES[9]),fp,orb,setCol,get col(){return col;},get tool(){return tool;},set tool(v){tool=v;},placeFig,WD,proj,cam,setCam,pickRay}};
 }
-// 開始畫面／關卡圖：畫＋兩個人偶（一個白的、一個藏起來的）
-const SHOWF={};
-function stageShow(ctx,w,h,si,t){ const S=scene(si,1); ctx.drawImage(S,0,0,w,h); const k=w/W;
-  if(!SHOWF[si]){ const sd=scene(si,2).getContext('2d').getImageData(0,0,W*2,H*2).data,R=mul(si+5); const a=newFig({x:250,y:250,s:.6,pose:6}),b=newFig({x:560,y:230,s:.55,pose:1,rot:.3}); autoPaint(b,sd,STAGES[si],R,false); SHOWF[si]=[a,b]; }
-  const [a,b]=SHOWF[si]; ctx.save(); ctx.scale(k,k); a.y=250+Math.sin(t*3)*6; drawFig(ctx,a); drawFig(ctx,b); const p=(Math.sin(t*1.5)+1)/2; ctx.strokeStyle='rgba(255,255,255,'+(.3+p*.6)+')'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(b.x,b.y,30+p*6,0,TAU); ctx.stroke();
-  ctx.font='900 16px '+TC; ctx.textAlign='center'; ctx.lineWidth=5; ctx.strokeStyle='#14122b'; ctx.strokeText('躲在這裡！',b.x,b.y-44); ctx.fillStyle='#ffd23f'; ctx.fillText('躲在這裡！',b.x,b.y-44); ctx.restore(); }
-(window.ARCADE_GAMES=window.ARCADE_GAMES||{}).hide={name:'塗裝躲躲樂',tag:'PAINT & HIDE',color:'#ff7eb6',online:true,maxPlayers:12,
-  desc:'白色小人偶躲進一幅畫裡！換個奇葩姿勢、用吸管從畫裡取色塗裝，把自己變成背景的一部分；時間到換人來找，看誰的眼力最好、誰躲得最心機。兩回合兩邊各躲一次，躲越久分數越高：可以跟電腦比、兩人輪流，或 2～12 人連線分兩隊對戰。',
-  goal:'兩回合，兩邊輪流躲：藏人偶最多 2 分鐘（藏好按「已藏好」，連線要同隊全部按），找的一方最多找 5 分鐘、亂點扣 2 秒。人偶躲越久分數越高（1 秒 1 分，沒被找到 300 分），兩回合加起來高的贏。',
-  stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),stageLabel:'選擇畫作',
-  stageGoal:i=>STAGES[i].name+'：你和電腦各躲一次（我先躲／我先找），電腦會躲 '+STAGES[i].nHide+' 個人偶；越後面電腦眼力越好、塗得越像。',
+/* 開始畫面：畫作當示意（有 3D 截圖時大廳會用截圖） */
+function stageShow(ctx,w,h,si,t){ const S=scene(si,1); ctx.drawImage(S,0,0,w,h); ctx.save(); ctx.scale(w/W,h/H); ctx.fillStyle='rgba(10,10,28,.35)'; ctx.fillRect(0,H-60,W,60); ctx.font='900 22px '+TC; ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.fillText('3D 場景：'+SCENES[si][0],W/2,H-24); ctx.restore(); }
+(window.ARCADE_GAMES=window.ARCADE_GAMES||{}).hide={name:'塗裝躲躲樂',tag:'PAINT & HIDE 3D',color:'#ff7eb6',online:true,maxPlayers:12,
+  desc:'白色小人偶躲進 3D 大空間！換個奇葩姿勢、躲到桌底架上，用吸管吸周圍的顏色或自己調色塗裝，把自己變成場景的一部分；換人時找的人在場景裡走來走去把大家揪出來。可以跟電腦比、兩人輪流，或 2～12 人連線分兩隊對戰。',
+  goal:'4 回合，兩邊各躲兩次、找兩次：藏人偶最多 3 分鐘（藏好按「已藏好」，連線要同隊全部按），找的一方最多找 5 分鐘、亂點扣 2 秒。人偶躲越久分數越高（1 秒 1 分，沒被找到 300 分），加起來高的贏。',
+  stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),stageLabel:'選擇場景',
+  stageGoal:i=>STAGES[i].name+'：你和電腦各躲兩次（我先躲／我先找），電腦會躲 '+STAGES[i].nHide+' 個人偶；越後面電腦眼力越好、塗得越像。',
   modes:[{id:'hide',label:'我先躲'},{id:'seek',label:'我先找'},{id:'2p',label:'雙人輪流'}],
-  help:[['拖曳','移動人偶（滾輪放大縮小）'],['姿勢／轉／大小／翻面','擺出跟畫面融合的姿勢'],['吸管→畫筆','點畫面取色，在人偶上塗'],['塗滿／花紋','整隻換顏色、兩色條紋點點格子迷彩'],['找的時候','點一下抓人，亂點扣 2 秒']],
-  touchHelp:[['拖曳','移動人偶'],['姿勢／轉／大小','擺出融入畫面的姿勢'],['吸管→畫筆','點畫面取色，在人偶上塗'],['放大鏡','放大來塗細節'],['找的時候','點一下抓人']],
+  help:[['躲的時候','點地面換位置、拖曳空白處轉視角、滾輪拉近'],['姿勢／轉／大小','擺出跟周圍融合的樣子'],['吸管、調色盤','吸周圍的顏色或自己選色，在人偶上塗'],['找的時候','方向鍵／WASD 走動、拖曳轉頭、點一下抓人（亂點扣 2 秒）']],
+  touchHelp:[['躲的時候','點地面換位置、拖曳轉視角'],['吸管、調色盤','取色後在人偶上塗'],['找的時候','方向鍵走動、拖曳轉頭、點一下抓']],
+  touch:{left:'dpad',right:[]},
   hubBest:()=>{ let n=0; for(let i=0;i<10;i++) n+=(hasWin('hide',i)?1:0)+(hasWin('seek',i)?1:0); return n?'過關 <b>'+n+' / 20</b>':'尚無紀錄'; },
   stageBest:i=>(hasWin('hide',i)?'躲 ★':'')+(hasWin('seek',i)?' 找 ★':''),
-  livePreview:false,stageShow,thumb:(ctx,w,h,t)=>stageShow(ctx,w,h,Math.floor(t/5)%10,t),create};
+  livePreview:false,stageShow,thumb:(ctx,w,h,t)=>stageShow(ctx,w,h,Math.floor(t/4)%10,t),load,ready:()=>!!window.THREE,create};
 })();
