@@ -275,20 +275,20 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=259; // 每次改版加一
+window.ARCADE_V=260; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
-  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
+  document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','party'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
 <script>
 (function(){
 'use strict';
 // 在 LINE、Facebook、Instagram 等 App 的內建瀏覽器裡直接就能玩，不強制跳到外部瀏覽器
 const G=window.ARCADE_GAMES||{};
-const ORDER=['kart','chess','bomb','royale','spin','deliver','space','chase','spy','sling','room','hide','classic','ace','sumo','sky','boxing','meow','bball','dodge','soccer','baseball','rich','purple','jelly','tower','bowl','poker','dice','qi','mahjong','rummy','drum','dance','passbomb','draw','wolf','stairs','blocks','volley','golf','pool','moto','sled','jet','run','isle','tank','bubble','night','pillow','dash','claw'].filter(k=>G[k]);
+const ORDER=['kart','chess','bomb','royale','spin','deliver','space','chase','party','sling','room','hide','classic','ace','sumo','sky','boxing','meow','bball','dodge','soccer','baseball','rich','purple','jelly','tower','bowl','poker','dice','qi','mahjong','rummy','drum','dance','stairs','blocks','volley','golf','pool','moto','sled','jet','run','isle','tank','bubble','night','pillow','dash','claw'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 // 大廳分類（每款遊戲屬於一個類別）
 const CATS=[['act','動作闖關'],['race','競速'],['ball','球類運動'],['fight','格鬥'],['board','益智桌遊'],['puzzle','益智消除'],['rhythm','節奏音樂'],['strategy','策略經營'],['shoot','射擊'],['party','派對']];
-const CAT_OF={room:'puzzle',sling:'act',spy:'party',hide:'party',classic:'puzzle',chase:'race',ace:'shoot',night:'party',stairs:'act',bomb:'act',kart:'race',volley:'ball',dodge:'ball',soccer:'ball',bowl:'ball',baseball:'ball',purple:'fight',rummy:'board',mahjong:'board',meow:'board',poker:'board',dice:'board',deliver:'act',chess:'board',qi:'board',moto:'race',sled:'race',jet:'race',run:'race',isle:'fight',pillow:'fight',bball:'ball',golf:'ball',pool:'ball',blocks:'puzzle',drum:'rhythm',dance:'rhythm',tower:'strategy',jelly:'act',rich:'board',space:'shoot',royale:'shoot',draw:'party',wolf:'party',passbomb:'party',bubble:'puzzle',claw:'act',tank:'shoot',dash:'act',spin:'fight',sumo:'fight',sky:'shoot',boxing:'fight'};
+const CAT_OF={party:'party',room:'puzzle',sling:'act',spy:'party',hide:'party',classic:'puzzle',chase:'race',ace:'shoot',night:'party',stairs:'act',bomb:'act',kart:'race',volley:'ball',dodge:'ball',soccer:'ball',bowl:'ball',baseball:'ball',purple:'fight',rummy:'board',mahjong:'board',meow:'board',poker:'board',dice:'board',deliver:'act',chess:'board',qi:'board',moto:'race',sled:'race',jet:'race',run:'race',isle:'fight',pillow:'fight',bball:'ball',golf:'ball',pool:'ball',blocks:'puzzle',drum:'rhythm',dance:'rhythm',tower:'strategy',jelly:'act',rich:'board',space:'shoot',royale:'shoot',draw:'party',wolf:'party',passbomb:'party',bubble:'puzzle',claw:'act',tank:'shoot',dash:'act',spin:'fight',sumo:'fight',sky:'shoot',boxing:'fight'};
 const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;};
 const isTouch=matchMedia('(pointer:coarse)').matches;
 if(isTouch) document.body.classList.add('touch');
@@ -611,7 +611,7 @@ function buildHub(){
 }
 const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
 // 大廳封面：3D 遊戲用真實遊戲截圖（慢慢縮放平移、兩張交叉淡入），其他遊戲用自己畫的動態縮圖
-const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={},SHOT_IDS=['chess','bomb','deliver','meow','stairs','jelly','blocks','drum','dance','tower','purple','rummy','poker','rich','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow','royale','space','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room'],STAGE_SHOTS={hide:1,classic:1,deliver:1,bball:1,golf:1,pool:1,royale:1}; SHOT_IDS.forEach(k=>COVERS[k]=['shots/'+k+'.jpg']);
+const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={},SHOT_IDS=['chess','bomb','deliver','meow','stairs','jelly','blocks','drum','dance','tower','purple','rummy','poker','rich','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow','royale','space','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room'],STAGE_SHOTS={hide:1,classic:1,deliver:1,bball:1,golf:1,pool:1,royale:1}; SHOT_IDS.forEach(k=>COVERS[k]=['shots/'+k+'.jpg']); COVERS.party=['shots/spy.jpg','shots/wolf.jpg','shots/draw.jpg','shots/passbomb.jpg']; /* 聚會鬧翻天：四款的封面輪流播 */
 const SHOW_COVER={baseball:1,bowl:1};
 function stageCover(id,si){ const src=STAGE_SHOTS[id]?'shots/'+id+'_'+si+'.jpg':SHOW_COVER[id]?'shots/'+id+'.jpg':null; if(!src) return null; if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } const im=coverImg[src]; return im.complete&&im.naturalWidth?im:null; }
 function cover(id){ const list=COVERS[id]; if(!list) return null; return list.map(src=>{ if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } return coverImg[src]; }).filter(im=>im.complete&&im.naturalWidth); }
@@ -675,7 +675,7 @@ function makeDpad(){
 }
 
 /* ---------- 遊戲流程 ---------- */
-let cur=null,inst=null,state='hub',lastOpts=null,ovAt=0,acc=0,last=0,stageSel=0,variantSel=null;
+let curPack=null,cur=null,inst=null,state='hub',lastOpts=null,ovAt=0,acc=0,last=0,stageSel=0,variantSel=null;
 const stage=$('#stage'),ov=$('#ov'),card=$('#card');
 const env={
   stage,keys,touch:isTouch,
@@ -852,11 +852,17 @@ const ZLOCK_STATES={running:1,coin:1,paused:1,over:1,loading:1};
 function open(id){
   if(!myName){ nameModal(); return; }
   audio(); SFX.click();
-  cur=G[id]; cur.id=id; loadOpts(cur); stageSel=0; if(cur.stageLocked&&cur.stages){ while(stageSel<cur.stages.length-1&&!cur.stageLocked(stageSel+1)) stageSel++; } /* 有鎖關卡的遊戲：預設選最新解鎖的那一關 */ variantSel=cur.variants?(cur.variants.find(v=>v.def)||cur.variants[0]).id:null; // def:true 的選項是預設
-  $('#hub').hidden=true; $('#play').hidden=false; $('#gName').textContent=cur.name;
-  buildPad(padSpec(cur)); stage.innerHTML='';
+  const P=G[id]; if(P&&P.pack){ curPack=P; P.id=id; const k=load('arcade.pack.'+id); id=P.pack.includes(k)?k:P.pack[0]; } else curPack=null; /* 合集：直接打開上次玩的那一款 */
+  setCur(id); $('#hub').hidden=true; $('#play').hidden=false;
   startCard(); scrollTo(0,0); pushGuard();
 }
+function setCur(id){
+  cur=G[id]; cur.id=id; loadOpts(cur); stageSel=0; if(cur.stageLocked&&cur.stages){ while(stageSel<cur.stages.length-1&&!cur.stageLocked(stageSel+1)) stageSel++; } /* 有鎖關卡的遊戲：預設選最新解鎖的那一關 */ variantSel=cur.variants?(cur.variants.find(v=>v.def)||cur.variants[0]).id:null; // def:true 的選項是預設
+  $('#gName').textContent=curPack?curPack.name+'・'+cur.name:cur.name;
+  buildPad(padSpec(cur)); stage.innerHTML='';
+}
+function packHtml(){ return curPack?'<div class="lkhead">選擇遊戲</div><div class="chips">'+curPack.pack.map(k=>'<button class="chip'+(k===cur.id?' sel':'')+'" data-pk="'+k+'">'+G[k].name+'</button>').join('')+'</div>':''; }
+function bindPack(){ card.querySelectorAll('[data-pk]').forEach(b=>b.addEventListener('click',()=>{ const k=b.dataset.pk; if(k===cur.id) return; SFX.click(); save('arcade.pack.'+curPack.id,k); closePrev(); setCur(k); startCard(); })); }
 // 關卡很多的遊戲（stageGrid）：左邊示意圖和開始按鈕，右邊只放關卡數字，不用一直往下拉
 function gridHtml(g){
   return '<div class="sgrid">'+g.stages.map((s,i)=>{ const lock=g.stageLocked&&g.stageLocked(i),done=g.stageBest&&g.stageBest(i);
@@ -882,8 +888,8 @@ function startCard(){
   showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas>'+stInfo()+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
     (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+
-    '<div class="lklist">'+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+goalOf(g,stageSel)+'</p><div class="lkhead">操作說明</div><div id="sgHelp">'+helpHtml(g)+'</div></div></div>');
-  closeLook(); demo(g); leftTrack(g); lockSync(g);
+    '<div class="lklist">'+packHtml()+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+goalOf(g,stageSel)+'</p><div class="lkhead">操作說明</div><div id="sgHelp">'+helpHtml(g)+'</div></div></div>');
+  closeLook(); demo(g); leftTrack(g); lockSync(g); bindPack();
   bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); lockSync(g); const gl=$('#sgGoal'); if(gl&&(g.stageGoal||g.optNote)) gl.innerHTML=goalOf(g,stageSel); const hb=$('#sgHelp'); if(hb&&g.stageHelp) hb.innerHTML=helpHtml(g); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ const reOpt=()=>{ if(!g.optNote) return; const gl=$('#sgGoal'),ob=$('#optBox'); if(gl) gl.innerHTML=goalOf(g,stageSel); if(ob){ ob.innerHTML='<div class="lkhead">玩法設定</div>'+optsHtml(g); bindOpts(g,reOpt); } }; bindOpts(g,reOpt); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
   const sel=card.querySelector('.lklist .sg.sel,.lklist .chip.sel[data-s]'); if(sel) sel.scrollIntoView({block:'nearest'});
@@ -1051,7 +1057,7 @@ function back(fromPop){
   if(fromPop!==true&&history.state&&history.state.arc){ popSkip++; history.back(); } // 按畫面上的按鈕回大廳：把瀏覽器紀錄也退一格
   safe(leaveNet); safe(killInst); safe(closeLook);
   safe(()=>{ if(document.fullscreenElement||document.webkitFullscreenElement) (document.exitFullscreen||document.webkitExitFullscreen).call(document); }); // 回大廳就離開全螢幕
-  cur=null; state='hub'; inst=null; helpPaused=false;
+  cur=null; curPack=null; state='hub'; inst=null; helpPaused=false;
   for(const k in keys) keys[k]=false; for(const k in hits) delete hits[k];
   ov.hidden=true; modal.hidden=true; document.body.classList.remove('playing');
   $('#play').hidden=true; $('#hub').hidden=false; safe(buildHub); scrollTo(0,0);
