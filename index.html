@@ -107,7 +107,7 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .cart canvas{display:block;width:100%;aspect-ratio:16/9;background:#000;border-block:3px solid #0b0a1c}
 .cart .info{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
 .cart h2{margin:0;font-size:22px;font-weight:900;letter-spacing:.03em}
-.cart .desc{margin:0;color:var(--dim);font-size:14px;flex:1}
+.cart .desc{margin:0;color:var(--dim);font-size:14px;flex:1}@media (max-width:819px){.cart .desc{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}}
 .cart .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .cart .best{font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
 .cart .best b{color:var(--text)}
@@ -275,7 +275,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=264; // 每次改版加一
+window.ARCADE_V=265; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','party'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>

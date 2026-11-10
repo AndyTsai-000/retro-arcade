@@ -270,7 +270,7 @@ function create(env,opts){
     // 連擊
     if(P.combo>=5){ c.textAlign='center'; c.font='900 30px '+PIX; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(P.combo,dx+130,dy-10); c.fillStyle=P.combo>=50?'#ff7eb6':'#ffd23f'; c.fillText(P.combo,dx+130,dy-10); c.font='900 13px '+TC; c.fillStyle='#fff'; c.strokeText('連擊',dx+130,dy+18); c.fillText('連擊',dx+130,dy+18); }
     // 說明
-    if(T<0){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,W/2-210,262,420,96,18); c.fill(); c.textAlign='center'; c.fillStyle='#fff'; c.font='900 18px '+TC; c.fillText('紅色「咚」按 ←，藍色「咔」按 →，黃色連打按空白鍵',W/2,292); c.fillStyle='#ffd23f'; c.font='900 30px '+PIX; c.fillText(T<-1.6?'3':T<-.8?'2':'1',W/2,334); }
+    if(T<0){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,W/2-210,262,420,96,18); c.fill(); c.textAlign='center'; c.fillStyle='#fff'; c.font='900 18px '+TC; c.fillText(document.body.classList.contains('touch')?'紅色按「咚」，藍色按「咔」，黃色按「連打」':'紅色「咚」按 ←，藍色「咔」按 →，黃色連打按空白鍵',W/2,292); c.fillStyle='#ffd23f'; c.font='900 30px '+PIX; c.fillText(T<-1.6?'3':T<-.8?'2':'1',W/2,334); }
     // 進度條
     c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(0,H-6,W,6); c.fillStyle='#ffd23f'; c.fillRect(0,H-6,W*clamp(T/song.dur,0,1),6);
     if(ended&&endT>.3){ const ok=P.rate()>=60; c.textAlign='center'; c.font='900 40px '+TC; c.lineWidth=8; c.strokeStyle='#14122b'; c.strokeText(ok?'演奏成功！':'再接再厲',W/2,H/2+20); c.fillStyle=ok?'#ffd23f':'#ff8a8a'; c.fillText(ok?'演奏成功！':'再接再厲',W/2,H/2+20); } }

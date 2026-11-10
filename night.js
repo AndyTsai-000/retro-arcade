@@ -733,7 +733,7 @@ function stroll(env,opts,preview){ const Q={owner:{},N:15}; let px=STREET[2].x+1
     ppl.sort((a,b)=>a.y-b.y).forEach(p=>p.f());
     // 提示
     c.fillStyle='rgba(11,10,28,.82)'; rr(c,8,8,190,58,10); c.fill(); c.textAlign='left'; c.textBaseline='alphabetic'; c.font='900 12px '+TC; c.fillStyle='#ffd23f'; c.fillText('今天換到的獎品',18,26); got.slice(-7).forEach((p,i)=>prize(c,28+i*24,58,.8,p[1])); if(!got.length){ c.font='700 11px '+TC; c.fillStyle='#cfc8ff'; c.fillText('還沒有，去攤位玩玩看！',18,48); }
-    if(near){ const txt=near.k==='exit'?'空白鍵　回家（結束）':'空白鍵　玩「'+STALLS[near.i].n+'」'; c.font='900 18px '+TC; c.textAlign='center'; const w=c.measureText(txt).width+40; c.fillStyle='rgba(255,210,63,.95)'; rr(c,W/2-w/2,H-50,w,36,18); c.fill(); c.fillStyle='#14122b'; c.textBaseline='middle'; c.fillText(txt,W/2,H-32);
+    if(near){ const kk=document.body.classList.contains('touch')?'GO！　':'空白鍵　',txt=near.k==='exit'?kk+'回家（結束）':kk+'玩「'+STALLS[near.i].n+'」'; c.font='900 18px '+TC; c.textAlign='center'; const w=c.measureText(txt).width+40; c.fillStyle='rgba(255,210,63,.95)'; rr(c,W/2-w/2,H-50,w,36,18); c.fill(); c.fillStyle='#14122b'; c.textBaseline='middle'; c.fillText(txt,W/2,H-32);
       if(near.k==='game'){ const b=load('best.'+near.i,0); if(b){ c.font='700 12px '+TC; c.fillStyle='#fff'; c.fillText('最高 '+b+' 分',W/2,H-62); } } }
     else { c.font='700 13px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=4; c.strokeStyle='#0b0a1c'; const s=env.touch?'← → 逛夜市，走到攤位前按 GO！':'← → 逛夜市，走到攤位前按空白鍵'; c.strokeText(s,W/2,H-22); c.fillStyle='#fff'; c.fillText(s,W/2,H-22); }
     if(fade>0){ c.fillStyle='rgba(0,0,0,'+fade+')'; c.fillRect(0,0,W,H); } }
@@ -741,7 +741,7 @@ function stroll(env,opts,preview){ const Q={owner:{},N:15}; let px=STREET[2].x+1
     c.textAlign='center'; c.textBaseline='middle'; c.font='900 22px '+TC; c.fillStyle='#c81414'; c.fillText(res.pz?'老闆：恭喜！拿去吧！':'老闆：再來一次啦！',W/2,146);
     c.font='900 16px '+TC; c.fillStyle='#14122b'; const S=STALLS[res.i]; c.fillText(S.n+'　'+fmtSc(S,res.sc),W/2,178);
     if(res.pz){ prize(c,W/2,300,3.2,res.pz[1]); c.font='900 18px '+TC; c.fillStyle='#c81414'; c.fillText('「'+res.pz[0]+'」',W/2,330); } else { c.font='700 14px '+TC; c.fillStyle='#5a5a6a'; c.fillText('差一點就有獎品了',W/2,260); }
-    c.font='900 14px '+TC; c.fillStyle='#14122b'; c.fillText('按空白鍵回到街上',W/2,362); }
+    c.font='900 14px '+TC; c.fillStyle='#14122b'; c.fillText(document.body.classList.contains('touch')?'按 GO！ 回到街上':'按空白鍵回到街上',W/2,362); }
   return {update,draw,get st(){return st;},get innerI(){return innerI;},get px(){return px;},set px(v){px=v;},get near(){return near;},get inner(){return inner;},W2}; }
 
 const fmtSc=(S,v)=>S.unit?v+' '+S.unit:v+' 分';

@@ -169,7 +169,7 @@ function worldMap(c,cam,t,cur,avatar,L){ // 六個區域連成一條路
   // 主角站在節點上
   hero(c,avatar.x-cam,avatar.y-10,{t,L,run:avatar.moving?t:0,moving:avatar.moving,face:avatar.face,air:false,big:false});
   const lv=LEVELS[cur],rec=getRec(cur); c.fillStyle='rgba(11,10,28,.82)'; rr(c,W/2-210,H-74,420,60,18); c.fill(); c.fillStyle='#ffd23f'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText('第 '+(cur+1)+' 關　'+lv.name,W/2,H-52);
-  c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText('← → 選關卡　空白鍵進入'+(rec!=null&&rec>=8?'　星星金幣 '+starsOf(rec)+' / 3':''),W/2,H-28); }
+  c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText((document.body.classList.contains('touch')?'◀ ▶ 選關卡　按「跳」進入':'← → 選關卡　空白鍵進入')+(rec!=null&&rec>=8?'　星星金幣 '+starsOf(rec)+' / 3':''),W/2,H-28); }
 
 /* ---------- 遊戲 ---------- */
 function create(env,opts){

@@ -469,7 +469,7 @@ function create(env,opts){
   function say(o,txt,dur,col){ if(BUB.length>7) BUB.shift(); BUB.push({o,txt,t:dur||2.8,T:dur||2.8,col:col||'#fff'}); }
   function radio(who,txt,dur){ DQ.push({who,txt,t:dur||Math.max(3.6,txt.length*.16),T:0}); }
   function hint(p,key,txt,keys){ if(p.seen[key]||prev) return; p.seen[key]=1; (p.hq=p.hq||[]).push({txt,keys:keys||[],t:6}); }
-  const KN=local2?[{n:'Enter',f:'右 Shift'},{n:'空白鍵',f:'E'}]:[{n:'空白鍵',f:'F'}];
+  const KN=local2?[{n:'Enter',f:'右 Shift'},{n:'空白鍵',f:'E'}]:document.body.classList.contains('touch')?[{n:'「加速」',f:'「上下車」'}]:[{n:'空白鍵',f:'F'}];
   /* ---- 行人 ---- */
   const corner=(b,cn)=>cn===0?[b.x0+12,b.y0+12]:cn===1?[b.x1-12,b.y0+12]:cn===2?[b.x1-12,b.y1-12]:[b.x0+12,b.y1-12];
   function spawnPed(nearP,far){ for(let tr=0;tr<12;tr++){ const a=R()*TAU,d=far?520+R()*500:120+R()*700,x=nearP.x+Math.cos(a)*d,y=nearP.y+Math.sin(a)*d,i=Math.floor(x/P),j=Math.floor(y/P),b=Wd.blk(i,j); if(!b) continue; if(far&&!offView(x,y,30)) continue; const cn=Math.floor(R()*4),nx=(cn+1)%4,p0=corner(b,cn),p1=corner(b,nx),k=R(); const q={b,cn,to:nx,tb:b,x:lerp(p0[0],p1[0],k),y:lerp(p0[1],p1[1],k),sp:20+R()*16,lk:mkLook(R),ph:R()*6,st:'walk',a:0,umb:R()<.85,phone:R()<.2,bag:R()<.2?pick(R,['#c8202a','#e8e8e0','#3a6ab8']):null,dodge:0,dx:0,dy:0}; PD.push(q); return q; } }
