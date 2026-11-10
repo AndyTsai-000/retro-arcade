@@ -23,6 +23,13 @@ const aKey='arcade.night.',load=(k,d)=>{ try{ const v=localStorage.getItem(aKey+
 
 // ───────── 夜市街景（遠處攤位、燈泡、人潮、煙） ─────────
 const FOODS=[['雞排','#ffd23f','#c81e1e'],['珍珠奶茶','#fff','#7a4a2a'],['臭豆腐','#ffe08a','#1f6a2a'],['大腸包小腸','#fff','#c83a1e'],['蚵仔煎','#ffd23f','#1f4ab8'],['烤玉米','#ffe8a0','#a0501a'],['地瓜球','#fff','#e07a1a'],['滷味','#ffd23f','#5a1a1a'],['豆花','#fff','#2a7ab8'],['胡椒餅','#ffe08a','#8a2a1a'],['鹽酥雞','#ffd23f','#d82a2a'],['蔥油餅','#fff','#3a8a3a']];
+const FPRICE=[80,60,70,75,80,60,40,100,45,55,90,40],FSIDE=[['甘梅薯條',40],['布丁奶茶',65],['麻辣臭豆腐',80],['香腸加大',90],['蝦仁煎',100],['奶油玉米',70],['芋頭球',40],['加王子麵',15],['花生豆花',50],['黑胡椒餅',60],['炸杏鮑菇',50],['加蛋',15]];
+let skyCv=null;
+/* 遠處的老街：三四層樓的公寓、鐵窗、冷氣、直立發光招牌 */
+function skyline(){ if(skyCv) return skyCv; const Wd=1600,Hd=200; return skyCv=cacheCv(Wd,Hd,c=>{ let x=0,i=0; const R=k=>Math.abs(Math.sin(i*12.9898+k*78.233)*43758.5453)%1,SG=['藥局','牛肉麵','KTV','當舖','眼鏡','手機','診所','冰品','檳榔','鞋店','髮廊','麵包'],SC=['#e8201a','#ffd23f','#2a8ae8','#3ac85a','#ff7ab0','#ff8a2a'];
+  while(x<Wd){ const bw=110+R(1)*90,bh=110+R(2)*80,y=Hd-bh,col=['#2a2630','#30282a','#26262e','#2e2a26'][i%4]; c.fillStyle=col; c.fillRect(x,y,bw-4,bh);
+    for(let fy=y+14;fy<Hd-50;fy+=34) for(let fx=x+10;fx<x+bw-24;fx+=30){ const lit=R(fy+fx)<.55; c.fillStyle=lit?(R(fx)<.5?'rgba(255,214,140,.75)':'rgba(190,220,255,.6)'):'rgba(20,20,30,.8)'; c.fillRect(fx,fy,18,16); c.strokeStyle='rgba(120,120,130,.5)'; c.lineWidth=1; for(let k=0;k<4;k++){ c.beginPath(); c.moveTo(fx+2+k*5,fy-2); c.lineTo(fx+2+k*5,fy+18); c.stroke(); } if(R(fx+fy)<.3){ c.fillStyle='#8a8e98'; c.fillRect(fx+18,fy+6,10,8); } }
+    const sx=x+bw-26,sh=70+R(5)*40,sc=SC[i%SC.length],txt=SG[i%SG.length]; c.save(); c.shadowColor=sc; c.shadowBlur=12; c.fillStyle=sc; c.fillRect(sx,Hd-sh-60,20,sh); c.restore(); c.fillStyle=sc==='#ffd23f'?'#c81414':'#fff'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; [...txt].forEach((ch,k)=>c.fillText(ch,sx+10,Hd-sh-60+14+k*17)); x+=bw; i++; } }); }
 const VPX=90,VPY=196;
 let streetCv=null;
 function street(){ if(streetCv) return streetCv; return streetCv=cacheCv(W,H,c=>{
@@ -611,26 +618,58 @@ function stroll(env,opts,preview){ const Q={owner:{},N:15}; let px=STREET[2].x+1
       for(let i=0;i<16;i++){ c.fillStyle=(Math.floor(t*5)+i)%2?'#fff6a0':'#8a5a2a'; c.beginPath(); c.arc(cx-110+i*14.6,56,3,0,TAU); c.arc(cx-110+i*14.6,118,3,0,TAU); c.fill(); }
       c.font='900 24px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ffe08a'; c.fillText(s.k==='arch'?'星光觀光夜市':'出口・回家',cx,82); c.font='900 12px '+TC; c.fillText(s.k==='arch'?'歡迎光臨':'謝謝光臨，下次再來',cx,105);
       for(const sd of [-1,1]){ c.fillStyle='#d8201a'; c.beginPath(); c.ellipse(cx+sd*70,150,16,20,0,0,TAU); c.fill(); c.fillStyle='#ffd23f'; c.fillRect(cx+sd*70-7,128,14,4); c.fillRect(cx+sd*70-7,168,14,4); } return; }
-    // 攤子本體
-    const ig=c.createLinearGradient(0,top+40,0,base); ig.addColorStop(0,'#ffd890'); ig.addColorStop(1,'#8a4a1a'); c.fillStyle=ig; c.fillRect(x,top+40,w,base-top-40);
-    if(s.k==='game'){ const S=STALLS[s.i]; c.drawImage(stallSnap(s.i),85,32,315,210,x+10,top+52,w-20,(w-20)*210/315); c.fillStyle='rgba(255,200,120,.08)'; c.fillRect(x,top+40,w,base-top-40); }
-    else { const f=FOODS[s.f]; c.fillStyle='#c8ccd6'; c.fillRect(x+20,top+120,w-40,60); c.fillStyle='#8a8e98'; c.fillRect(x+20,top+176,w-40,6); for(let i=0;i<7;i++){ c.fillStyle=['#c8782a','#e0a040','#a0501a'][i%3]; c.beginPath(); c.ellipse(x+40+i*30,top+128,12,6,0,0,TAU); c.fill(); } for(let i=0;i<3;i++){ const k=(t*.4+i/3)%1; c.fillStyle='rgba(240,240,240,'+(.3*(1-k))+')'; c.beginPath(); c.arc(x+60+i*70+Math.sin(t+i)*6,top+110-k*80,10+k*20,0,TAU); c.fill(); } }
+    const game=s.k==='game',S=game?STALLS[s.i]:null,F=game?null:FOODS[s.f];
+    // 攤位的燈把周圍照亮
+    const glow=c.createRadialGradient(x+w/2,top+80,10,x+w/2,top+140,w*.95); glow.addColorStop(0,game?'rgba(255,255,240,.42)':'rgba(255,220,160,.38)'); glow.addColorStop(1,'rgba(255,230,180,0)'); c.fillStyle=glow; c.fillRect(x-60,top-50,w+120,base-top+140);
+    // 後牆（攤子裡面被日光燈照得很亮）
+    const ig=c.createLinearGradient(0,top+40,0,base); if(game){ ig.addColorStop(0,'#fffaf0'); ig.addColorStop(1,'#d8c0a0'); } else { ig.addColorStop(0,'#f4f0e8'); ig.addColorStop(1,'#a8a49c'); } c.fillStyle=ig; c.fillRect(x,top+40,w,base-top-40);
+    if(game){ // 獎品架：一層一層擺滿娃娃，上面還吊著一排
+      const K=['bear','cat','duck','robot','bigbear','car','candy','soda','snack','bear','cat','duck'];
+      for(let r=0;r<2;r++){ const sy=top+92+r*44; c.fillStyle='#c8a070'; c.fillRect(x+6,sy,w-12,5); c.fillStyle='rgba(0,0,0,.15)'; c.fillRect(x+6,sy+5,w-12,3); for(let k=0;k<6;k++) prize(c,x+28+k*(w-56)/5,sy-2,.8,K[(k*3+r*5+s.i)%K.length]); }
+      c.strokeStyle='#5a5a62'; c.lineWidth=2; c.beginPath(); c.moveTo(x+4,top+48); c.lineTo(x+w-4,top+48); c.stroke();
+      for(let k=0;k<5;k++){ const hx=x+30+k*(w-60)/4,sw=Math.sin(t*1.6+k+s.i)*3; c.strokeStyle='rgba(60,60,60,.7)'; c.lineWidth=1; c.beginPath(); c.moveTo(hx,top+48); c.lineTo(hx+sw,top+58); c.stroke(); prize(c,hx+sw,top+70,.72,K[(k*2+s.i+3)%K.length]); }
+      c.drawImage(stallSnap(s.i),85,32,315,210,x+28,top+150,w-56,(w-56)*210/315); c.strokeStyle='#8a6a40'; c.lineWidth=3; c.strokeRect(x+28,top+150,w-56,(w-56)*210/315);
+      // 價目牌
+      c.save(); c.translate(x+w-50,top+120); c.rotate(.05); c.fillStyle='#fff'; rr(c,-36,-16,72,40,4); c.fill(); c.strokeStyle='#c81414'; c.lineWidth=2; c.stroke(); c.fillStyle='#c81414'; c.font='900 10px '+TC; c.textAlign='center'; c.textBaseline='middle'; const pr=S.sub.split(' '); c.fillText(pr[0],0,-5,66); c.fillText(pr.slice(1).join(' '),0,10,66); c.restore(); }
+    else { // 小吃攤：菜單板、不鏽鋼推車＋玻璃櫥窗、冒煙
+      c.fillStyle='#1a1a1e'; rr(c,x+18,top+56,w-36,74,5); c.fill(); c.strokeStyle='#c8a040'; c.lineWidth=2; c.stroke(); c.font='900 15px '+TC; c.textAlign='left'; c.textBaseline='middle';
+      const menu=[[F[0],FPRICE[s.f]],[FSIDE[s.f][0],FSIDE[s.f][1]],['加辣／不辣','免費']]; menu.forEach(([n,p],k)=>{ c.fillStyle=k?'#f4f0e8':'#ffd23f'; c.fillText(n,x+30,top+72+k*21,w-120); c.textAlign='right'; c.fillStyle='#ff8a6a'; c.fillText(typeof p==='number'?'$'+p:p,x+w-30,top+72+k*21); c.textAlign='left'; });
+      const lan=(lx,ly)=>{ c.fillStyle='#d8201a'; c.beginPath(); c.ellipse(lx,ly,11,14,0,0,TAU); c.fill(); c.fillStyle='rgba(255,200,120,.35)'; c.beginPath(); c.arc(lx,ly,22,0,TAU); c.fill(); c.fillStyle='#ffd23f'; c.fillRect(lx-5,ly-16,10,3); c.fillRect(lx-5,ly+13,10,3); c.fillRect(lx-1,ly+16,2,8); }; lan(x+14,top+58); lan(x+w-14,top+58);
+      for(let i=0;i<3;i++){ const k=(t*.4+i/3)%1; c.fillStyle='rgba(240,240,240,'+(.28*(1-k))+')'; c.beginPath(); c.arc(x+60+i*70+Math.sin(t*1.3+i)*8,base-132-k*30,8+k*14,0,TAU); c.fill(); } }
     // 老闆站在檯子後面
-    const oi=s.k==='game'?s.i:(s.f+3)%8,call=((t+s.x*.013)%9)<2; human(c,x+w-46,base-4,150,s.k==='game'?OWN[oi]:{...OWN[oi],apron:'#f4f4f4',cap:'#f4f4f4'},{dir:0,pose:s.k==='game'?(call?'wave':'hips'):'talk',t,mouth:call||s.k!=='game'});
-    c.fillStyle='#5a3a22'; c.fillRect(x,base-70,w,70); c.fillStyle='#7a5232'; c.fillRect(x-3,base-74,w+6,8); c.fillStyle='rgba(0,0,0,.25)'; for(let i=0;i<6;i++) c.fillRect(x+i*w/6,base-66,2,66); /* 檯子 */
-    // 帆布＋招牌
-    const tarp=s.k==='game'?STALLS[s.i].tarp:['#c8282a','#f4f0e8'],n=6,sw=w/n; for(let i=0;i<n;i++){ c.fillStyle=tarp[i%2]; c.fillRect(x+i*sw,top+14,sw,26); c.beginPath(); c.moveTo(x+i*sw,top+40); c.quadraticCurveTo(x+i*sw+sw/2,top+54,x+(i+1)*sw,top+40); c.fill(); }
-    const sg=c.createLinearGradient(0,top-24,0,top+14); sg.addColorStop(0,'#fff6d8'); sg.addColorStop(1,'#ffd890'); c.fillStyle='#14100c'; rr(c,x+16,top-28,w-32,44,7); c.fill(); c.fillStyle=s.k==='game'?sg:FOODS[s.f][2]; rr(c,x+19,top-25,w-38,38,6); c.fill();
-    c.font='900 22px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle=s.k==='game'?'#c81414':FOODS[s.f][1]; c.fillText(s.k==='game'?STALLS[s.i].sign:FOODS[s.f][0],x+w/2,top-6,w-50);
-    bulbs(c,x+4,top+52,x+w-4,top+52,6,7,t+s.x,false);
-    if(s.k==='game'){ c.font='900 12px '+TC; c.fillStyle='#ffe8a0'; c.fillText(STALLS[s.i].sub,x+w/2-20,base-30); }
-    if(call&&s.k==='game') bubble(c,x+w-46,base-118,'來喔～'+STALLS[s.i].n+'！',150);
+    const oi=game?s.i:(s.f+3)%8,call=((t+s.x*.013)%9)<2; human(c,x+w-46,base-4,150,game?OWN[oi]:{...OWN[oi],apron:'#f4f4f4',cap:'#f4f4f4'},{dir:0,pose:game?(call?'wave':'hips'):'talk',t,mouth:call||!game});
+    if(game){ c.fillStyle='#6a4428'; c.fillRect(x,base-70,w,70); c.fillStyle='#8a5c36'; c.fillRect(x-3,base-74,w+6,8); c.fillStyle='rgba(0,0,0,.25)'; for(let i=0;i<6;i++) c.fillRect(x+i*w/6,base-66,2,66);
+      c.fillStyle=S.tarp[0]; c.fillRect(x+12,base-58,w-24,30); c.fillStyle='#fff'; c.font='900 14px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(S.sub,x+w/2,base-43,w-40); }
+    else { // 不鏽鋼推車＋玻璃櫥窗
+      const sg=c.createLinearGradient(0,base-78,0,base); sg.addColorStop(0,'#e8ecf2'); sg.addColorStop(.5,'#a8aeb8'); sg.addColorStop(1,'#6a707a'); c.fillStyle=sg; c.fillRect(x+4,base-78,w-8,78); c.fillStyle='rgba(255,255,255,.5)'; c.fillRect(x+4,base-74,w-8,2);
+      c.fillStyle='rgba(200,230,255,.35)'; c.fillRect(x+12,base-128,w-24,50); c.strokeStyle='#c8ccd4'; c.lineWidth=3; c.strokeRect(x+12,base-128,w-24,50); c.fillStyle='rgba(255,255,255,.4)'; c.beginPath(); c.moveTo(x+18,base-124); c.lineTo(x+48,base-124); c.lineTo(x+22,base-84); c.closePath(); c.fill();
+      for(let i=0;i<8;i++){ c.fillStyle=['#c8782a','#e0a040','#a0501a','#d89040'][(i+s.f)%4]; c.beginPath(); c.ellipse(x+32+i*(w-60)/7,base-90,11,6,0,0,TAU); c.fill(); c.fillStyle='rgba(255,255,255,.25)'; c.beginPath(); c.ellipse(x+29+i*(w-60)/7,base-92,4,2,0,0,TAU); c.fill(); }
+      c.fillStyle=F[2]; c.fillRect(x+12,base-60,w-24,28); c.fillStyle=F[1]; c.font='900 16px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(F[0]+'　$'+FPRICE[s.f],x+w/2,base-46,w-40);
+      // 攤前的塑膠小凳子和小桌子
+      c.fillStyle='#e8eef4'; c.fillRect(x+w*.3,base+10,60,6); c.fillStyle='#c8ccd4'; c.fillRect(x+w*.3+4,base+16,4,22); c.fillRect(x+w*.3+52,base+16,4,22);
+      for(const [sx,col] of [[x+w*.18,'#d82a2a'],[x+w*.62,'#2a6ad8']]){ c.fillStyle=col; rr(c,sx,base+18,26,7,3); c.fill(); c.fillRect(sx+3,base+25,4,14); c.fillRect(sx+19,base+25,4,14); } }
+    // 遮雨帆布（一片片垂下來的波浪邊）
+    const tarp=game?S.tarp:['#c8282a','#f4f0e8'],n=7,sw=w/n; c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(x-4,top+12,w+8,4); for(let i=0;i<n;i++){ const g2=c.createLinearGradient(0,top+14,0,top+44); g2.addColorStop(0,shade(tarp[i%2],-.15)); g2.addColorStop(1,tarp[i%2]); c.fillStyle=g2; c.fillRect(x+i*sw,top+14,sw,28); c.beginPath(); c.moveTo(x+i*sw,top+42); c.quadraticCurveTo(x+i*sw+sw/2,top+56,x+(i+1)*sw,top+42); c.fill(); }
+    // 鐵架柱子
+    for(const pxx of [x+2,x+w-2]){ const g3=c.createLinearGradient(pxx-4,0,pxx+4,0); g3.addColorStop(0,'#5a5e68'); g3.addColorStop(.5,'#eef2f8'); g3.addColorStop(1,'#4a4e58'); c.fillStyle=g3; c.fillRect(pxx-4,top+10,8,base-top-10); }
+    // 日光燈管（白光）
+    c.fillStyle='rgba(255,255,255,.2)'; c.fillRect(x+16,top+44,w-32,14); c.fillStyle='#ffffff'; c.fillRect(x+20,top+48,w-40,5); c.fillStyle='rgba(220,240,255,.9)'; c.fillRect(x+20,top+48,w-40,2);
+    // 招牌：遊戲攤＝紅底黃字大布條；小吃攤＝會閃的 LED 招牌
+    if(game){ c.fillStyle='#14100c'; rr(c,x+10,top-30,w-20,46,6); c.fill(); const sg=c.createLinearGradient(0,top-27,0,top+13); sg.addColorStop(0,'#e8201a'); sg.addColorStop(1,'#a8100c'); c.fillStyle=sg; rr(c,x+13,top-27,w-26,40,5); c.fill(); c.font='900 24px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=4; c.strokeStyle='#5a0808'; c.strokeText(S.sign,x+w/2,top-6,w-50); c.fillStyle='#ffe040'; c.fillText(S.sign,x+w/2,top-6,w-50); }
+    else { c.fillStyle='#0c0c10'; rr(c,x+12,top-30,w-24,46,6); c.fill(); for(let i=0;i<22;i++){ const on=(Math.floor(t*6)+i)%3; c.fillStyle=on?'#ff3a3a':'#ffd23f'; c.beginPath(); c.arc(x+18+i*(w-36)/21,top-26,1.8,0,TAU); c.arc(x+18+i*(w-36)/21,top+12,1.8,0,TAU); c.fill(); }
+      c.font='900 24px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.shadowColor=F[1]==='#fff'?'#ff6a3a':F[1]; c.shadowBlur=10; c.fillStyle=F[1]==='#fff'?'#ffb070':F[1]; c.fillText(F[0],x+w/2,top-6,w-50); c.shadowBlur=0; }
+    bulbs(c,x+4,top+16,x+w-4,top+16,4,7,t+s.x,false);
+    if(game){ c.font='900 12px '+TC; c.textAlign='center'; c.fillStyle='#14122b'; }
+    if(call&&game) bubble(c,x+w-46,base-118,'來喔～'+STALLS[s.i].n+'！',150);
+    if(call&&!game&&((t+s.x*.01)%9)<1) bubble(c,x+w-46,base-118,'好吃的'+F[0]+'喔！',150);
     if(near===s){ c.strokeStyle='rgba(255,230,80,'+(.6+.4*Math.sin(t*6))+')'; c.lineWidth=4; rr(c,x-2,top-32,w+4,base-top+34,10); c.stroke(); } }
   function draw(c,t){ if(st==='in'||st==='res'){ inner.draw(c,t); if(st==='res') result(c,t); if(fade>0){ c.fillStyle='rgba(0,0,0,'+fade+')'; c.fillRect(0,0,W,H); } return; }
     const sky=c.createLinearGradient(0,0,0,300); sky.addColorStop(0,'#05060f'); sky.addColorStop(1,'#2a1a2a'); c.fillStyle=sky; c.fillRect(0,0,W,H);
-    for(let i=0;i<30;i++){ const x=((i*137-cam*.3)%(W+200)+W+200)%(W+200)-100,h=50+((i*53)%90); c.fillStyle='#0c0d18'; c.fillRect(x,70-h+60,60,h+40); for(let k=0;k<4;k++) if((i+k)%3===0){ c.fillStyle='rgba(255,220,140,.3)'; c.fillRect(x+10+k*12,90-h+70,5,6); } } /* 遠處的大樓 */
-    const gd=c.createLinearGradient(0,372,0,H); gd.addColorStop(0,'#3a2a26'); gd.addColorStop(1,'#1a1214'); c.fillStyle=gd; c.fillRect(0,372,W,H-372); c.strokeStyle='rgba(255,255,255,.05)'; for(let i=-1;i<12;i++){ const x=i*90-(cam%90); c.beginPath(); c.moveTo(x,372); c.lineTo(x-60,H); c.stroke(); } /* 地磚 */
-    for(let i=0;i<12;i++){ const x=((i*173-cam*1.0)%(W+300)+W+300)%(W+300)-150; c.fillStyle='rgba(255,190,110,.06)'; c.beginPath(); c.ellipse(x,430+(i%3)*22,70,6,0,0,TAU); c.fill(); }
+    const sk=skyline(),TW=sk.width/2,off=((cam*.35)%TW+TW)%TW; for(let k=0;k*TW-off<W;k++) c.drawImage(sk,k*TW-off,-30,TW,sk.height/2); /* 遠處的老街大樓 */
+    const gd=c.createLinearGradient(0,372,0,H); gd.addColorStop(0,'#2a2628'); gd.addColorStop(1,'#141214'); c.fillStyle=gd; c.fillRect(0,372,W,H-372); /* 柏油路 */
+    c.fillStyle='rgba(255,255,255,.035)'; for(let i=0;i<60;i++){ const x=((i*97-cam)%(W+40)+W+40)%(W+40)-20; c.fillRect(x,380+(i*37)%110,2,2); }
+    for(let i=0;i<4;i++){ const x=((i*480+120-cam)%(W+480)+W+480)%(W+480)-240; c.fillStyle='#3a3638'; c.fillRect(x,452,90,18); c.fillStyle='#1a1818'; for(let k=0;k<8;k++) c.fillRect(x+5+k*11,455,6,12); } /* 水溝蓋 */
+    for(const s2 of STREET){ const X=s2.x-cam+s2.w/2; if(X<-200||X>W+200) continue; const col=s2.k==='game'?'255,250,235':'255,190,120'; const g=c.createLinearGradient(0,375,0,H); g.addColorStop(0,'rgba('+col+',.16)'); g.addColorStop(1,'rgba('+col+',0)'); c.fillStyle=g; c.fillRect(X-s2.w*.35,375,s2.w*.7,H-375); } /* 地上的燈光倒影 */
     for(const s of STREET){ const X=s.x-cam; if(X>W||X+s.w<0) continue; facade(c,s,X,t); }
     for(let i=0;i<2;i++){ const y=2+i*9,o=((-cam*(.6+i*.15))%300+300)%300; bulbs(c,-300+o,y,W+300+o,y,6,30,t+i,true); } /* 頭上的燈泡串 */
     // 人（依前後排序），自己也在裡面
@@ -648,12 +687,12 @@ function stroll(env,opts,preview){ const Q={owner:{},N:15}; let px=STREET[2].x+1
     c.font='900 16px '+TC; c.fillStyle='#14122b'; const S=STALLS[res.i]; c.fillText(S.n+'　'+fmtSc(S,res.sc),W/2,178);
     if(res.pz){ prize(c,W/2,300,3.2,res.pz[1]); c.font='900 18px '+TC; c.fillStyle='#c81414'; c.fillText('「'+res.pz[0]+'」',W/2,330); } else { c.font='700 14px '+TC; c.fillStyle='#5a5a6a'; c.fillText('差一點就有獎品了',W/2,260); }
     c.font='900 14px '+TC; c.fillStyle='#14122b'; c.fillText('按空白鍵回到街上',W/2,362); }
-  return {update,draw,get st(){return st;},get px(){return px;},set px(v){px=v;},get near(){return near;},get inner(){return inner;},W2}; }
+  return {update,draw,get st(){return st;},get innerI(){return innerI;},get px(){return px;},set px(v){px=v;},get near(){return near;},get inner(){return inner;},W2}; }
 
 const fmtSc=(S,v)=>S.unit?v+' '+S.unit:v+' 分';
 // ───────── 外殼介面 ─────────
 function create(env,opts){ const stg=clamp(opts.stage|0,0,STALLS.length),{ctx:c}=env.canvas2d(W,H); let t=0,done=false;
-  if(stg===0){ const R=stroll(env,opts); return {update(dt){ dt=Math.min(dt,.05); t+=dt; R.update(dt,t); },draw(){ c.save(); R.draw(c,t); c.restore(); },destroy(){},_dbg:{R}}; }
+  if(stg===0){ const R=stroll(env,opts); return {update(dt){ dt=Math.min(dt,.05); t+=dt; R.update(dt,t); },draw(){ c.save(); R.draw(c,t); c.restore(); },destroy(){},helpStage:()=>R.st==='in'||R.st==='res'?R.innerI+1:0 /* 在攤位裡按「遊戲操作」顯示這一攤的說明 */,_dbg:{R}}; }
   const si=stg-1,S=STALLS[si],G=FACT[si](env,{owner:{},N:+((opts.options||{}).mjn)||15});
   function update(dt){ dt=Math.min(dt,.05); t+=dt; G.update(dt,t); if(!done&&G.ended()){ done=true; finish(); } }
   function finish(){ const sc=G.score(),{tier,pz,al}=settle(si,sc); env.sfx(tier>=1?'win':tier===0?'heal':'lose');
