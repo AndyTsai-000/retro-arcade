@@ -295,6 +295,8 @@ function jetModel(L){ L=L||{}; const type=L.boat||'pwc',key='j:'+[type,L.hull,L.
     else { hull([[-1.7,.25],[-1.75,.75],[-.4,.85],[.9,.9],[1.9,.65],[2.25,.4],[1.9,.12],[-1.5,.1]],1.15,hm); box(1.17,.12,3.4,wh,0,.36,.1);
       box(.6,.2,1.45,dark,0,.98,-.6); ball(.5,hm,0,.95,.95,1,.5,1.6); box(.7,.32,.05,glass,0,1.18,1.0,-.6);
       limb([0,.98,.75],[0,1.3,.7],.06,dark); limb([-.5,1.32,.7],[.5,1.32,.7],.04,dark);
+      for(const sx of [-1,1]){ box(.62,.14,3.5,hm,sx*.3,.12,.1,0,0,sx*.42); box(.03,.09,2.9,wh,sx*.59,.62,.15); box(.03,.05,2.6,ph(L.vest||'#ff7a1a',60),sx*.595,.5,.2); box(.16,.26,1.5,hm,sx*.5,.92,-.45); box(.12,.03,1.4,dark,sx*.5,.79,-.45); }
+      box(1.0,.09,.42,dark,0,.52,-1.78); box(.5,.12,.1,ph('#b8bcc6',110),0,.45,-1.98); box(.9,.12,.5,hm,0,.9,1.55,-.3); add(new T.CylinderGeometry(.09,.09,.12,12),ph('#b8bcc6',110),0,.32,-1.85,PI/2);
       rider3(K,Object.assign(rd,{hip:[0,1.15,-.6],sh:[0,1.72,-.32],hand:[.5,1.32,.7],knee:[.38,1.1,.05],foot:[.38,.72,-.25]})); }
     for(const x of [-.25,.25]) box(.16,.06,.05,ph('#e82424'),x,type==='speed'?.85:.6,type==='speed'?-2.42:-1.78);
     return g; }}; }
@@ -744,6 +746,8 @@ function drawBack(c,VW,VH,TH,bx,by,t){
     if(TH.isle){ layer(mixC(TH.farCol2||'#5a9a6a',fogC,.45),VH*.06,0,2); } }
   else if(far!=='none'){ layer(mixC(TH.farCol2||'#8ab0c8',fogC,.3),VH*.2,0,2); layer(TH.farCol||'#5a8aa0',VH*.12,1,3);
     if(far==='mountain'||far==='snowmtn'){ c.fillStyle='rgba(0,0,0,.08)'; for(let i=0;i<9;i++){ const xx=((i*131-ox*.6)%VW+VW)%VW; c.beginPath(); c.moveTo(xx,hz-VH*.09); c.lineTo(xx+VW*.03,hz); c.lineTo(xx-VW*.01,hz); c.fill(); } } }
+  if(TH._fx&&!N&&!TH.rain){ const sx=VW*.72,sy=VH*.2; for(const [k,r,a] of [[.35,VH*.03,.25],[.6,VH*.05,.15],[1.25,VH*.02,.3]]){ const fx=sx+(VW/2-sx)*k*2,fy=sy+(hz-sy)*k*1.2; c.fillStyle='rgba(255,240,200,'+a+')'; c.beginPath(); c.arc(fx,fy,r,0,7); c.fill(); }
+    for(let i=0;i<5;i++){ const bx2=((t*30+i*170+ox*.2)%(VW+120))-60,by2=VH*(.16+(i%3)*.05)+Math.sin(t*2+i)*4,fl=Math.sin(t*10+i)*VH*.008; c.strokeStyle='rgba(40,40,60,.55)'; c.lineWidth=1.3; c.beginPath(); c.moveTo(bx2-6,by2-fl); c.quadraticCurveTo(bx2-2,by2-3,bx2,by2); c.quadraticCurveTo(bx2+2,by2-3,bx2+6,by2-fl); c.stroke(); } }
   /* 地平線的霧氣 */
   const hg=c.createLinearGradient(0,hz-VH*.16,0,hz+2); hg.addColorStop(0,'rgba(0,0,0,0)'); hg.addColorStop(1,fogC); c.globalAlpha=N?.55:.75; c.fillStyle=hg; c.fillRect(0,hz-VH*.16,VW,VH*.16+2); c.globalAlpha=1; }
 // 畫一個視窗：cam＝{x,z,airY,bx}，items＝每段要畫的動態物件
@@ -764,6 +768,12 @@ function renderView(c,vp,C,cam,items,t,o){ o=o||{}; const TH=C.TH,segs=C.segs,VW
     const poly=(xa,ya,wa,xb,yb,wb,col)=>{ c.fillStyle=col; c.beginPath(); c.moveTo(xa-wa,ya+.6); c.lineTo(xa+wa,ya+.6); c.lineTo(xb+wb,yb-.6); c.lineTo(xb-wb,yb-.6); c.fill(); }; /* 上下各多 0.6 像素，避免路面出現接縫細線 */
     if(TH.rumble){ const rc=F(TH.rumble[band]); poly(X1-W1*1.055,Y1,W1*.065,X2-W2*1.055,Y2,W2*.065,rc); poly(X1+W1*1.055,Y1,W1*.065,X2+W2*1.055,Y2,W2*.065,rc); } /* 只畫兩側路緣，整片畫在路面底下會從接縫透出細線 */
     poly(X1,Y1,W1,X2,Y2,W2,F(TH.road[band]));
+    if(C.G.id==='moto'&&n<85&&!TH.tracks){ const al=(1-f)*.9; for(let k=0;k<6;k++){ const u=((i*37+k*53)%97)/97*1.8-.9; c.globalAlpha=al*(k%2?.10:.07); poly(X1+W1*u,Y1,W1*.012,X2+W2*u,Y2,W2*.012,k%2?'#000':'#fff'); } c.globalAlpha=al*.13; for(let L=0;L<(TH.lanes||2);L++){ const k0=-1+(2*L+1)/(TH.lanes||2); for(const e of [-.22,.22]){ const kk=k0+e/(TH.lanes||2); poly(X1+W1*kk,Y1,W1*.028,X2+W2*kk,Y2,W2*.028,'#000'); } } c.globalAlpha=1;
+      if(band&&TH.night) for(let L=1;L<(TH.lanes||2);L++){ const k=-1+2*L/(TH.lanes||2); c.fillStyle='rgba(255,230,140,'+(1-f)+')'; c.fillRect(X1+W1*k-W1*.012,Y1-W1*.012,W1*.024,W1*.012); }
+      c.globalAlpha=(1-f)*.5; poly(X1-W1*1.13,Y1,W1*.02,X2-W2*1.13,Y2,W2*.02,'#8a8478'); poly(X1+W1*1.13,Y1,W1*.02,X2+W2*1.13,Y2,W2*.02,'#8a8478'); c.globalAlpha=1; } /* 機車：柏油顆粒、輪胎痕、路肩碎石、夜間反光貓眼 */
+    if(C.G.id==='jet'&&n<110){ const al=(1-f); for(let k=0;k<3;k++){ const ph=(i*13+k*41)%17,on=((i+Math.floor(t*5)+k*3)%7)===0; if(!on) continue; const u=((i*29+k*67)%100)/100*3-1.5; c.globalAlpha=al*.38; poly(X1+W1*u,Y1,W1*(.14+ph/120),X2+W2*u,Y2,W2*(.1+ph/140),'#ffffff'); }
+      if(!TH.night){ for(let k=0;k<2;k++){ const u=((i*53+k*31)%100)/100*2.4-1.2; if(Math.sin(t*7+i*1.3+k*2)>.75){ c.globalAlpha=al*.9; c.fillStyle='#fffbe8'; c.fillRect(X1+W1*u-1.5,Y1-1,3+W1*.01,1.6); } } }
+      c.globalAlpha=al*.16; poly(X1,Y1,W1*1.02,X2,Y2,W2*1.02,band?'#bfefff':'#0a3a6a'); c.globalAlpha=1; } /* 快艇：浪頭白浪、陽光閃光、水色明暗 */
     if(TH.tracks&&n<90){ const tw1=W1*.05,tw2=W2*.05,tc=F(shade(TH.road[0],.86)); for(let L=0;L<TH.lanes;L++){ const k=-1+(2*L+1)/TH.lanes; for(const e of [-.3,.3]){ const kk=k+e/TH.lanes; poly(X1+W1*kk,Y1,tw1,X2+W2*kk,Y2,tw2,tc); } } }
     if(TH.tracks&&n<60&&((i*7919)%23)===0) poly(X1+W1*(((i*31)%10)/10-.5),Y1,W1*.18,X2+W2*(((i*31)%10)/10-.5),Y2,W2*.18,F(shade(TH.road[0],.8)));
     if(TH.lanes&&band){ const lw1=W1*.03,lw2=W2*.03; for(let L=1;L<TH.lanes;L++){ const k=-1+2*L/TH.lanes; poly(X1+W1*k,Y1,lw1,X2+W2*k,Y2,lw2,F(TH.laneCol||'#ffffff')); } }
@@ -991,7 +1001,7 @@ const MOTO_TH={
   mountain:{sky:['#5aa4d8','#d8eef8'],far:'mountain',farCol:'#4f7080',farCol2:'#86a4b4',ground:['#4b8738','#468036'],road:['#58585e','#55555b'],rumble:['#c4c8cc','#b8bcc0'],edgeLine:'#ecece4',tracks:1,lanes:2,spr:[['pine',5],['rock',2],['cliff',1]],edge:['post',4,1.15],dens:.55,near:1.35,spread:2.2,fog:'#d0e4ec'},
   bridge:{sky:['#4aa4e0','#d8f0ff'],far:'sea',farCol:'#2f78b8',ground:['#2f6fa8','#2d6ca4'],road:['#58585e','#55555b'],edgeLine:'#ecece4',tracks:1,rumble:['#c8ccd4','#8a8e98'],lanes:3,spr:[['boat',1]],edge:['tower',40,1.3],dens:.04,near:3,spread:3,fog:'#cfe6f6',nosign:1},
   neon:{sky:['#120c28','#3a1f5a'],far:'city',farCol:'#241a40',farCol2:'#33275a',ground:['#2a2638','#27233a'],road:['#2f2c3a','#2d2a38'],tracks:1,rumble:['#ff3bd4','#3ddbd9'],lanes:3,spr:[['neon',6],['building',2]],edge:['lamp',6,1.22],dens:.7,near:1.45,spread:1.4,fog:'#2a1f45',night:1}};
-function motoTheme(S){ const T=Object.assign({},MOTO_TH[S.th]); const m=S.mod||'';
+function motoTheme(S){ const T=Object.assign({_fx:1},MOTO_TH[S.th]); const m=S.mod||'';
   if(m.includes('night')&&!T.night){ T.night=1; T.sky=['#0a1030','#2a3060']; T.fog='#1a2040'; T.ground=T.ground.map(x=>shade(x,.4)); T.road=T.road.map(x=>shade(x,.55)); T.farCol=shade(T.farCol||'#4a5a70',.45); T.farCol2=shade(T.farCol2||'#6a7a90',.45); }
   if(m.includes('sunset')){ T.sky=['#ff8a5a','#ffd8a0']; T.fog='#f4c8a0'; T.sun='rgba(255,200,120,.8)'; }
   if(m.includes('rain')){ T.rain=1; T.grip=.78; T.mist=1.6; if(!T.night){ T.sky=['#6a7280','#a8b0bc']; T.fog='#9aa2ae'; } }
@@ -1074,7 +1084,7 @@ const SLED={id:'sled',name:'雪山大滑降',camH:1150,kmh:110,down:1,roll:.07,t
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'壓低',c:'ArrowUp'},{l:'煞',c:'ArrowDown'},{l:'衝刺',c:'KeyX',act:true}]}};
 // ---- 3. 浪尖快艇賽 ----
 const JET_BASE={sky:['#4ab0f0','#d8f4ff'],far:'sea',farCol:'#2a7fc0',isle:1,ground:['#2a86c8','#2680c0'],road:['#3aa0e0','#3498d8'],rumble:['#ffffff','#e8f6ff'],water:1,spr:[['island',3],['rock',2],['boat',1]],edge:['buoy',4,1.22],dens:.18,near:1.6,spread:3,fog:'#cfeaf8',nosign:1,rock:'#7a7068'};
-function jetTheme(S){ const T=Object.assign({},JET_BASE,S.tx||{}); const m=S.mod||'';
+function jetTheme(S){ const T=Object.assign({_fx:1},JET_BASE,S.tx||{}); const m=S.mod||'';
   if(m.includes('sunset')){ T.sky=['#ff8a5a','#ffd8a0']; T.fog='#f4c8a0'; T.sun='rgba(255,190,110,.8)'; T.road=['#e88a5a','#d88050'].map(x=>shade(x,.85)); T.ground=['#c8704a','#bc6a46']; }
   if(m.includes('night')){ T.night=1; T.sky=['#081028','#24305a']; T.fog='#1a2848'; T.road=['#1f4a78','#1c4470']; T.ground=['#14305a','#122c54']; T.farCol='#14305a'; }
   if(m.includes('rain')){ T.rain=1; T.mist=1.6; if(!T.night){ T.sky=['#5a6a7a','#a0aab4']; T.fog='#8a96a2'; } }
