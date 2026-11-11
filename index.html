@@ -275,7 +275,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=267; // 每次改版加一
+window.ARCADE_V=268; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge3d','dodge','soccer3d','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','party','gems','chair','tacit','piano','stroke','dragon'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -284,7 +284,7 @@ window.ARCADE_V=267; // 每次改版加一
 'use strict';
 // 在 LINE、Facebook、Instagram 等 App 的內建瀏覽器裡直接就能玩，不強制跳到外部瀏覽器
 const G=window.ARCADE_GAMES||{};
-const ORDER=['kart','chess','bomb','royale','spin','deliver','space','chase','gems','chair','tacit','piano','stroke','dragon','party','sling','room','hide','classic','ace','sumo','sky','boxing','meow','bball','dodge','soccer','baseball','rich','purple','jelly','tower','bowl','poker','dice','qi','mahjong','rummy','drum','dance','stairs','blocks','volley','golf','pool','moto','sled','jet','run','isle','tank','bubble','night','pillow','dash','claw'].filter(k=>G[k]);
+const ORDER=['kart','chess','bomb','royale','spin','deliver','space','chase','gems','piano','stroke','dragon','party','sling','room','hide','classic','ace','sumo','sky','boxing','meow','bball','dodge','soccer','baseball','rich','purple','jelly','tower','bowl','poker','dice','qi','mahjong','rummy','drum','dance','stairs','blocks','volley','golf','pool','moto','sled','jet','run','isle','tank','bubble','night','pillow','dash','claw'].filter(k=>G[k]);
 const $=s=>document.querySelector(s);
 // 大廳分類（每款遊戲屬於一個類別）
 const CATS=[['act','動作闖關'],['race','競速'],['ball','球類運動'],['fight','格鬥'],['board','益智桌遊'],['puzzle','益智消除'],['rhythm','節奏音樂'],['strategy','策略經營'],['shoot','射擊'],['party','派對']];
@@ -623,7 +623,7 @@ function buildHub(){
 }
 const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
 // 大廳封面：3D 遊戲用真實遊戲截圖（慢慢縮放平移、兩張交叉淡入），其他遊戲用自己畫的動態縮圖
-const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={},SHOT_IDS=['chess','bomb','deliver','meow','stairs','jelly','blocks','drum','dance','tower','purple','rummy','poker','rich','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow','royale','space','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','gems','chair','tacit','piano','stroke','dragon'],STAGE_SHOTS={hide:1,classic:1,deliver:1,bball:1,golf:1,pool:1,royale:1}; SHOT_IDS.forEach(k=>COVERS[k]=['shots/'+k+'.jpg']); COVERS.party=['shots/spy.jpg','shots/wolf.jpg','shots/draw.jpg','shots/passbomb.jpg']; /* 聚會鬧翻天：四款的封面輪流播 */
+const COVERS={kart:['shots/kart.jpg','shots/kart2.jpg']},coverImg={},SHOT_IDS=['chess','bomb','deliver','meow','stairs','jelly','blocks','drum','dance','tower','purple','rummy','poker','rich','dice','qi','mahjong','bowl','dodge','soccer','baseball','volley','bball','golf','pool','moto','sled','jet','run','isle','pillow','royale','space','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','gems','chair','tacit','piano','stroke','dragon'],STAGE_SHOTS={hide:1,classic:1,deliver:1,bball:1,golf:1,pool:1,royale:1}; SHOT_IDS.forEach(k=>COVERS[k]=['shots/'+k+'.jpg']); COVERS.party=['shots/spy.jpg','shots/wolf.jpg','shots/draw.jpg','shots/passbomb.jpg','shots/chair.jpg','shots/tacit.jpg']; /* 聚會鬧翻天：六款的封面輪流播 */
 const SHOW_COVER={baseball:1,bowl:1};
 function stageCover(id,si){ const src=STAGE_SHOTS[id]?'shots/'+id+'_'+si+'.jpg':SHOW_COVER[id]?'shots/'+id+'.jpg':null; if(!src) return null; if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } const im=coverImg[src]; return im.complete&&im.naturalWidth?im:null; }
 function cover(id){ const list=COVERS[id]; if(!list) return null; return list.map(src=>{ if(!coverImg[src]){ const im=new Image(); im.src=src+(/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:''); coverImg[src]=im; } return coverImg[src]; }).filter(im=>im.complete&&im.naturalWidth); }
