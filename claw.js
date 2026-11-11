@@ -10,7 +10,12 @@ const MACH=[
   {name:'夜市彈珠檯',body:'#7a3ad8',trim:'#3ddbd9',glass:'#2a2050',floor:'#4a3a7a',p:[['熊貓','panda','#f4f4f0'],['黑貓','cat','#4a4658'],['紅狐狸','fox','#ff8a4a'],['藍企鵝','penguin','#4f8dd8'],['小綿羊','sheep','#fffaf0'],['金元寶龍','dino','#ffc83f']]},
   {name:'糖果遊樂場',body:'#ff7eb6',trim:'#fff0a0',glass:'#fff0f8',floor:'#ffc0dc',p:[['草莓兔','rabbit','#ff9ab0'],['布丁熊','bear','#ffd878'],['薄荷貓','cat','#a8ecd8'],['葡萄豬','pig','#c8a8ff'],['檸檬鴨','duck','#fff07a'],['彩虹獨角獸','rabbit','#ffb8ff']]},
   {name:'海底水族館',body:'#1f7ab8',trim:'#7ae8ff',glass:'#d0f4ff',floor:'#e8d8a0',p:[['小海豹','seal','#d8e0e8'],['章魚哥','octo','#ff7a7a'],['海星星','star','#ffb04a'],['藍企鵝','penguin','#3a6ab8'],['河豚','puffer','#ffd878'],['金鯨魚','seal','#ffc83f']]},
-  {name:'太空基地',body:'#2a2e48',trim:'#ff9d3d',glass:'#141838',floor:'#4a4e6a',p:[['外星貓','cat','#86dc4f'],['機器熊','robot','#a8b4c8'],['太空兔','rabbit','#d8d8f0'],['星星','star','#ffe14d'],['紫章魚','octo','#b98cff'],['金機器人','robot','#ffc83f']]}];
+  {name:'太空基地',body:'#2a2e48',trim:'#ff9d3d',glass:'#141838',floor:'#4a4e6a',p:[['外星貓','cat','#86dc4f'],['機器熊','robot','#a8b4c8'],['太空兔','rabbit','#d8d8f0'],['星星','star','#ffe14d'],['紫章魚','octo','#b98cff'],['金機器人','robot','#ffc83f']]},
+  {name:'森林小木屋',body:'#5a8a3a',trim:'#ffd8a0',glass:'#f0ffe8',floor:'#a8c878',p:[['小青蛙','frog','#7ad86a'],['倉鼠','hamster','#f4c890'],['棕熊','bear','#c8905a'],['貓頭鷹','owl','#a87a4a'],['小綿羊','sheep','#fffaf0'],['金貓頭鷹','owl','#ffc83f']]},
+  {name:'和風祭典',body:'#c8202a',trim:'#f4f0e8',glass:'#fff8f0',floor:'#d8b890',p:[['柴犬','dog','#f0b070'],['白兔','rabbit','#ffffff'],['紅狐狸','fox','#ff9a4a'],['熊貓','panda','#f4f4f0'],['招財貓','cat','#fff8e8'],['金招財貓','cat','#ffc83f']]},
+  {name:'恐龍樂園',body:'#2f7a46',trim:'#ffd23f',glass:'#eaffe8',floor:'#c8b078',p:[['綠恐龍','dino','#7ad86a'],['小黃鴨','duck','#ffe14d'],['藍恐龍','dino','#6ab0ff'],['小青蛙','frog','#5ac85a'],['粉恐龍','dino','#ff9ac8'],['彩虹恐龍','dino','#c08aff']]},
+  {name:'冰雪王國',body:'#3a8ad0',trim:'#ffffff',glass:'#eaf8ff',floor:'#e8f4ff',p:[['北極熊','bear','#f8f8ff'],['小企鵝','penguin','#3a6ab8'],['雪兔','rabbit','#f0f4ff'],['小海豹','seal','#e0e8f0'],['雪貓頭鷹','owl','#f4f4fa'],['金企鵝','penguin','#ffc83f']]},
+  {name:'夢幻寶石屋',body:'#8a3ad8',trim:'#ffd23f',glass:'#fbf0ff',floor:'#e0c8ff',p:[['奶茶倉鼠','hamster','#e8c8a0'],['紫貓','cat','#c8a8ff'],['雲朵狗','dog','#f4f0e8'],['草莓熊','bear','#ff9ac8'],['水晶星','star','#a8e8ff'],['金倉鼠','hamster','#ffc83f']]}];
 const TIER=[{n:'普通',v:10,w:44,grip:.86},{n:'普通',v:10,w:30,grip:.82},{n:'少見',v:30,w:14,grip:.66},{n:'少見',v:30,w:7,grip:.62},{n:'稀有',v:60,w:3.6,grip:.48},{n:'超稀有',v:150,w:1.4,grip:.34}];
 const INK='#2a1a26';
 function plush(c,x,y,r,kind,col,o){ o=o||{}; c.save(); c.translate(x,y); if(o.a) c.rotate(o.a); const s=r/20; c.scale(s,s); c.lineWidth=2; c.strokeStyle=INK; c.lineJoin='round'; const dk=shade(col,.82),fl=(f)=>{ c.fillStyle=col; f(); c.fill(); c.stroke(); },dot=(a,b,q)=>{ c.fillStyle=INK; c.beginPath(); c.arc(a,b,q,0,TAU); c.fill(); };
@@ -22,17 +27,23 @@ function plush(c,x,y,r,kind,col,o){ o=o||{}; c.save(); c.translate(x,y); if(o.a)
   else if(kind==='dino'){ c.fillStyle='#ff9d3d'; for(let i=-1;i<=1;i++){ c.beginPath(); c.moveTo(i*9-5,-17); c.lineTo(i*9,-27+Math.abs(i)*3); c.lineTo(i*9+5,-17); c.fill(); c.stroke(); } }
   else if(kind==='octo'){ for(let i=-2;i<=2;i++) fl(()=>{ c.beginPath(); c.ellipse(i*7,16,4.4,9,i*.2,0,TAU); }); }
   else if(kind==='pig'){ for(const k of [-1,1]) fl(()=>{ c.beginPath(); c.moveTo(k*8,-16); c.lineTo(k*17,-20); c.lineTo(k*16,-8); c.closePath(); }); }
+  else if(kind==='frog'){ for(const k of [-1,1]){ c.fillStyle=col; c.beginPath(); c.arc(k*9,-16,8,0,TAU); c.fill(); c.stroke(); } }
+  else if(kind==='owl'){ for(const k of [-1,1]) fl(()=>{ c.beginPath(); c.moveTo(k*8,-17); c.lineTo(k*16,-26); c.lineTo(k*17,-11); c.closePath(); }); }
+  else if(kind==='hamster'){ for(const k of [-1,1]){ c.fillStyle=col; c.beginPath(); c.arc(k*13,-15,6.5,0,TAU); c.fill(); c.stroke(); c.fillStyle='#ffb0c0'; c.beginPath(); c.arc(k*13,-15,3.2,0,TAU); c.fill(); } }
   else if(kind==='puffer'){ c.fillStyle=dk; for(let i=0;i<10;i++){ const a=i/10*TAU; c.beginPath(); c.moveTo(Math.cos(a-.2)*18,Math.sin(a-.2)*18); c.lineTo(Math.cos(a)*25,Math.sin(a)*25); c.lineTo(Math.cos(a+.2)*18,Math.sin(a+.2)*18); c.fill(); c.stroke(); } }
   /* 身體 */
   if(kind==='star'){ c.fillStyle=col; c.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i/10*TAU,q=i%2?11:22; c.lineTo(Math.cos(a)*q,Math.sin(a)*q+2); } c.closePath(); c.fill(); c.stroke(); }
   else if(kind==='robot'){ c.fillStyle=col; rr(c,-17,-18,34,36,8); c.fill(); c.stroke(); }
   else { c.fillStyle=col; c.beginPath(); c.arc(0,0,20,0,TAU); c.fill(); c.stroke(); }
+  if(kind==='owl'){ c.fillStyle='rgba(255,255,255,.88)'; for(const k of [-1,1]){ c.beginPath(); c.arc(k*8,-3,8,0,TAU); c.fill(); c.stroke(); } c.fillStyle=shade(col,1.15); c.beginPath(); c.ellipse(0,11,11,8,0,0,TAU); c.fill(); c.strokeStyle='rgba(0,0,0,.25)'; for(let i=-1;i<=1;i++){ c.beginPath(); c.arc(i*5,10,2.4,0,Math.PI); c.stroke(); } c.strokeStyle=INK; }
+  if(kind==='hamster'){ c.fillStyle='#fff6ea'; c.beginPath(); c.ellipse(0,7,13,10,0,0,TAU); c.fill(); }
+  if(kind==='frog'){ for(const k of [-1,1]){ c.fillStyle='#fff'; c.beginPath(); c.arc(k*9,-16,4.6,0,TAU); c.fill(); dot(k*9,-15.4,2.4); } c.fillStyle='rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(0,9,12,7,0,0,TAU); c.fill(); }
   if(kind==='panda'){ c.fillStyle='#2a2a30'; for(const k of [-1,1]){ c.beginPath(); c.ellipse(k*8,-3,6,7,k*.3,0,TAU); c.fill(); } }
   if(kind==='penguin'){ c.fillStyle='#fff'; c.beginPath(); c.ellipse(0,5,13,13,0,0,TAU); c.fill(); }
   if(kind==='fox'||kind==='dog'||kind==='cat'&&col==='#f2b45a'){ c.fillStyle='rgba(255,255,255,.75)'; c.beginPath(); c.ellipse(0,8,10,8,0,0,TAU); c.fill(); }
-  const ey=kind==='star'?1:-3,wh=kind==='panda'?'#fff':null; for(const k of [-1,1]){ if(wh){ c.fillStyle='#fff'; c.beginPath(); c.arc(k*8,ey,3.4,0,TAU); c.fill(); dot(k*8,ey,2); } else { dot(k*8,ey,3.2); c.fillStyle='#fff'; c.beginPath(); c.arc(k*8-1,ey-1.2,1,0,TAU); c.fill(); } }
+  const ey=kind==='star'?1:-3,wh=kind==='panda'?'#fff':null; if(kind!=='frog') for(const k of [-1,1]){ if(wh){ c.fillStyle='#fff'; c.beginPath(); c.arc(k*8,ey,3.4,0,TAU); c.fill(); dot(k*8,ey,2); } else { dot(k*8,ey,3.2); c.fillStyle='#fff'; c.beginPath(); c.arc(k*8-1,ey-1.2,1,0,TAU); c.fill(); } }
   c.fillStyle='rgba(255,110,130,.45)'; c.beginPath(); c.ellipse(-12,ey+6,3.2,2,0,0,TAU); c.ellipse(12,ey+6,3.2,2,0,0,TAU); c.fill();
-  if(kind==='duck'||kind==='penguin'){ c.fillStyle='#ff9a3d'; c.beginPath(); c.ellipse(0,ey+7,6,3.4,0,0,TAU); c.fill(); c.stroke(); } else if(kind==='pig'){ c.fillStyle=dk; c.beginPath(); c.ellipse(0,ey+8,6,4.4,0,0,TAU); c.fill(); c.stroke(); dot(-2,ey+8,1); dot(2,ey+8,1); } else if(kind==='robot'){ c.strokeRect(-6,ey+7,12,4); } else { c.lineWidth=1.6; c.beginPath(); c.moveTo(-3,ey+6); c.quadraticCurveTo(-1.4,ey+9,0,ey+6.4); c.quadraticCurveTo(1.4,ey+9,3,ey+6); c.stroke(); }
+  if(kind==='owl'){ c.fillStyle='#ff9a3d'; c.beginPath(); c.moveTo(-3.5,ey+4); c.lineTo(3.5,ey+4); c.lineTo(0,ey+10); c.closePath(); c.fill(); c.stroke(); } else if(kind==='frog'){ c.lineWidth=1.8; c.beginPath(); c.arc(0,ey+2,8,.25,Math.PI-.25); c.stroke(); } else if(kind==='duck'||kind==='penguin'){ c.fillStyle='#ff9a3d'; c.beginPath(); c.ellipse(0,ey+7,6,3.4,0,0,TAU); c.fill(); c.stroke(); } else if(kind==='pig'){ c.fillStyle=dk; c.beginPath(); c.ellipse(0,ey+8,6,4.4,0,0,TAU); c.fill(); c.stroke(); dot(-2,ey+8,1); dot(2,ey+8,1); } else if(kind==='robot'){ c.strokeRect(-6,ey+7,12,4); } else { c.lineWidth=1.6; c.beginPath(); c.moveTo(-3,ey+6); c.quadraticCurveTo(-1.4,ey+9,0,ey+6.4); c.quadraticCurveTo(1.4,ey+9,3,ey+6); c.stroke(); }
   c.restore(); }
 function shade(h,k){ const n=parseInt(h.slice(1),16),q=v=>clamp(Math.round(v*k),0,255); return 'rgb('+q(n>>16)+','+q(n>>8&255)+','+q(n&255)+')'; }
 const aKey='arcade.claw.album.',album=mi=>{ try{ return JSON.parse(localStorage.getItem(aKey+mi)||'{}'); }catch(e){ return {}; } },saveAlbum=(mi,a)=>{ try{ localStorage.setItem(aKey+mi,JSON.stringify(a)); }catch(e){} };
@@ -76,10 +87,11 @@ function create(env,opts){
 function stageShow(ctx,w,h,si,t){ const M=MACH[si]; ctx.save(); ctx.scale(w/W,h/H); machine(ctx,M,t,si); ctx.save(); ctx.beginPath(); ctx.rect(GX,GY,GW,GH); ctx.clip(); const pos=[[0,0],[1,0],[2,0],[3,0],[4,0],[.5,1],[1.5,1],[2.5,1],[3.5,1],[1,2],[2,2],[3,2]]; pos.forEach((p,i)=>{ const q=M.p[i%6]; plush(ctx,CHUTE+44+p[0]*62,FLOOR-24-p[1]*38,24,q[1],q[2],{a:(i%3-1)*.15}); }); claw(ctx,CHUTE+150+Math.sin(t)*90,GY+60,0,GY); ctx.restore(); machineFront(ctx,M); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).claw={
   name:'幸運夾夾樂',tag:'LUCKY CLAW',color:'#ffc83f',
-  desc:'懷舊夾娃娃機！左右移動爪子、按一下下爪，夾到就送進出口。五台機器各有六種娃娃可以收藏，越稀有越難夾。',
+  desc:'懷舊夾娃娃機！左右移動爪子、按一下下爪，夾到就送進出口。十台機器各有六種娃娃，一共 60 隻可以收藏，越稀有越難夾。',
   goal:'每局 12 枚代幣，一次下爪用一枚。爪子對準娃娃正中間比較夾得住，連續夾到 3 次多送 1 枚。',
   stages:MACH.map(m=>m.name),stageLabel:'選擇機台',stageShow,thumb:(c,w,h,t)=>stageShow(c,w,h,0,t),
   stageBest:i=>{ const n=Object.keys(album(i)).length; return n?'收藏 '+n+'/6':''; },
+  hubBest:()=>{ let n=0; for(let i=0;i<MACH.length;i++) n+=Object.keys(album(i)).length; return n?'收藏 <b>'+n+' / '+MACH.length*6+'</b> 隻':'尚無紀錄'; },
   help:[['← →','移動爪子'],['空白鍵','下爪']],touchHelp:[['← →','移動爪子'],['夾！','下爪']],
   touch:{left:[{l:'←',c:'ArrowLeft'},{l:'→',c:'ArrowRight'}],right:[{l:'夾！',c:'Space',act:true}]},
   best:{label:'最高分',fmt:v=>v+' 分',lower:false},create};

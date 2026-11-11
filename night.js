@@ -746,10 +746,12 @@ function stroll(env,opts,preview){ const Q={owner:{},N:15}; let px=STREET[2].x+1
 
 const fmtSc=(S,v)=>S.unit?v+' '+S.unit:v+' 分';
 // ───────── 外殼介面 ─────────
+/* 手機的「結束」鈕只有彈珠台用得到：其他時候藏起來 */
+function quitBtn(on){ try{ const box=document.getElementById('padR'); if(!box) return; for(const b of box.querySelectorAll('button')) if(b.textContent==='結束') b.style.display=on?'':'none'; }catch(e){} }
 function create(env,opts){ const stg=clamp(opts.stage|0,0,STALLS.length),{ctx:c}=env.canvas2d(W,H); let t=0,done=false;
-  if(stg===0){ const R=stroll(env,opts); return {update(dt){ dt=Math.min(dt,.05); t+=dt; R.update(dt,t); },draw(){ c.save(); R.draw(c,t); c.restore(); },destroy(){},helpStage:()=>R.st==='in'||R.st==='res'?R.innerI+1:0 /* 在攤位裡按「遊戲操作」顯示這一攤的說明 */,_dbg:{R}}; }
-  const si=stg-1,S=STALLS[si],G=FACT[si](env,{owner:{},N:+((opts.options||{}).mjn)||15});
-  function update(dt){ dt=Math.min(dt,.05); t+=dt; if(env.hit('KeyX')&&G.quit) G.quit(); G.update(dt,t); if(!done&&G.ended()){ done=true; finish(); } }
+  if(stg===0){ const R=stroll(env,opts); quitBtn(false); return {update(dt){ dt=Math.min(dt,.05); t+=dt; R.update(dt,t); if(!opts.preview) quitBtn(R.st==='in'&&R.innerI===3); },draw(){ c.save(); R.draw(c,t); c.restore(); },destroy(){},helpStage:()=>R.st==='in'||R.st==='res'?R.innerI+1:0 /* 在攤位裡按「遊戲操作」顯示這一攤的說明 */,_dbg:{R}}; }
+  const si=stg-1,S=STALLS[si],G=FACT[si](env,{owner:{},N:+((opts.options||{}).mjn)||15}); if(!opts.preview) quitBtn(si===3);
+  function update(dt){ dt=Math.min(dt,.05); t+=dt; if(t<.3&&!opts.preview) quitBtn(si===3); if(env.hit('KeyX')&&G.quit) G.quit(); G.update(dt,t); if(!done&&G.ended()){ done=true; finish(); } }
   function finish(){ const sc=G.score(),{tier,pz,al}=settle(si,sc); env.sfx(tier>=1?'win':tier===0?'heal':'lose');
     env.end({title:pz?'老闆：恭喜！拿去吧！':'老闆：再來一次啦！',big:fmtSc(S,sc),html:'<table class="ls"><tr><th>獎項</th><th>條件</th><th>獎品</th></tr>'+S.th.map((v,i)=>'<tr><td>'+(i===tier?'★ ':'')+['小獎','中獎','大獎'][i]+'</td><td>'+fmtSc(S,v)+'</td><td>'+S.pz[i][0]+(al[i]?'　✓':'')+'</td></tr>').join('')+'</table>',
       text:pz?'你換到「'+pz[0]+'」！':'差一點就有獎品了。',score:S.unit?null:(sc||null)}); }

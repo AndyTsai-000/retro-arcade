@@ -30,13 +30,22 @@ function art(c,w,h,i,t){ c.save(); c.scale(w/480,h/270); const g=GAMES[i];
   if(i===5){ c.fillStyle='#535353'; c.fillRect(0,200,480,2); const jy=Math.max(0,Math.sin(t*3))*60; c.fillRect(110,160-jy,30,40); c.fillRect(132,150-jy,22,16); for(let k=0;k<3;k++){ const x=480-((t*140+k*190)%560); c.fillRect(x,170,10,30); c.fillRect(x-8,178,8,4); } }
   if(i===6){ const N=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0]; N.forEach((n,k)=>{ if(!n) return; const x=170+(k%4)*36,y=55+Math.floor(k/4)*36; c.fillStyle='#ffd23f'; c.fillRect(x,y,33,33); c.fillStyle='#14122b'; c.font='bold 16px Arial'; c.textAlign='center'; c.fillText(n,x+16,y+22); }); }
   c.font='900 22px '+TC; c.textAlign='center'; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(g.n,240,262); c.fillStyle='#fff'; c.fillText(g.n,240,262); c.restore(); }
+/* 七款原本各自一種配色：嵌進來時套上遊戲區的外觀（深紫背景、霓虹格線、金框圓角、按鈕同一種樣式） */
+const THEME_CSS=`html,body{background:radial-gradient(ellipse at 50% -10%,#3a2470 0%,#140c34 55%,#07051a 100%) fixed!important;color:#f0ecff!important;font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif!important}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(150,120,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(150,120,255,.08) 1px,transparent 1px);background-size:34px 34px;-webkit-mask-image:linear-gradient(transparent,#000 40%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 40%,#000 70%,transparent)}
+#top,#hud{position:relative;z-index:1;background:rgba(20,14,48,.88)!important;border:2px solid rgba(255,210,63,.4);border-radius:14px;padding:6px 14px!important;margin:8px auto 8px!important;box-shadow:0 4px 18px rgba(0,0,0,.45);color:#f0ecff!important}
+#top button,#hud button{background:#2b2560!important;color:#fff!important;border:2px solid #ffd23f!important;border-radius:10px!important;font-weight:900!important;padding:4px 12px!important;cursor:pointer;font-family:inherit!important}
+#top button:hover,#hud button:hover{background:#ffd23f!important;color:#14122b!important}
+body>canvas,#win,#mid>#board{position:relative;z-index:1;border-radius:12px;box-shadow:0 0 0 3px rgba(255,210,63,.4),0 0 24px rgba(160,120,255,.35),0 12px 30px rgba(0,0,0,.6)}
+#tip{position:relative;z-index:1;color:#cfc8ff!important}`;
+function theme(d){ if(!d||d.getElementById('arcTheme')) return; const st=d.createElement('style'); st.id='arcTheme'; st.textContent=THEME_CSS; (d.head||d.documentElement).appendChild(st); }
 function create(env,opts){ const si=Math.max(0,Math.min(GAMES.length-1,opts.stage|0)),G=GAMES[si],{ctx:c}=env.canvas2d(480,270);
   c.fillStyle='#0b0a1c'; c.fillRect(0,0,480,270);
   if(opts.preview){ let t=0; return {update(dt){ t+=dt; if(t>30) env.end({}); },draw(){ art(c,480,270,si,t); },destroy(){}}; }
   const fr=document.createElement('iframe'); fr.title=G.n; fr.src='classic/'+G.f+'.html'+(window.ARCADE_V?'?v='+window.ARCADE_V:''); fr.setAttribute('allow','autoplay');
   fr.style.cssText='position:absolute;inset:0;width:100%;height:100%;border:0;display:block;z-index:3;background:#0b0a1c';
   env.stage.appendChild(fr); const focus=()=>{ try{ fr.contentWindow.focus(); }catch(e){} };
-  fr.addEventListener('load',()=>{ focus(); try{ const d=fr.contentDocument; d.addEventListener('pointerdown',focus); }catch(e){} });
+  fr.addEventListener('load',()=>{ focus(); try{ const d=fr.contentDocument; d.addEventListener('pointerdown',focus); theme(d); }catch(e){} });
   let t=0; return {update(dt){ t+=dt; },draw(){},destroy(){ fr.remove(); },_dbg:{fr,G}}; }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).classic={name:'經典小遊戲合集',tag:'CLASSIC PACK',color:'#3ddbd9',
   desc:'以前電腦裡的經典小遊戲一次收齊：踩地雷、彈珠台、五子棋、貪食蛇、打殭屍、恐龍跳躍、數字拼圖。選一款就能玩，紀錄會自動保存。',

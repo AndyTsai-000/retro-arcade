@@ -45,10 +45,16 @@ function drawCourt(ctx,t){
   ctx.fillStyle='#6aa8c8'; ctx.beginPath(); ctx.moveTo(150,197); ctx.quadraticCurveTo(205,168,262,197); ctx.fill();
   const bx=(t*8)%(W+60)-30; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(bx,192); ctx.lineTo(bx,174); ctx.lineTo(bx+12,192); ctx.fill(); ctx.fillStyle='#c9573f'; ctx.fillRect(bx-8,192,22,3);
   // 海
-  ctx.fillStyle='#2f8fd6'; ctx.fillRect(0,196,W,40); ctx.fillStyle='#57b4ee'; for(let x=0;x<W;x+=40) ctx.fillRect((x+t*12)%W,204+((x/40)%2)*12,22,3);
-  ctx.fillStyle='rgba(255,255,255,.75)'; for(let x=0;x<W;x+=16){ const y=230+Math.sin(t*2+x*.08)*1.5; ctx.fillRect(x,y,12,3); }
+  const sea=ctx.createLinearGradient(0,196,0,236); sea.addColorStop(0,'#1f78c8'); sea.addColorStop(1,'#5ccbe8'); ctx.fillStyle=sea; ctx.fillRect(0,196,W,40);
+  ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=1.2; for(let r=0;r<4;r++){ const y=201+r*8,o=(t*(10+r*4))%36; ctx.beginPath(); for(let x=-36+o;x<W;x+=36){ ctx.moveTo(x,y); ctx.quadraticCurveTo(x+6,y-2,x+12,y); } ctx.stroke(); }
+  for(let i=0;i<14;i++){ const a=Math.sin(t*3+i*1.7); if(a<.6) continue; ctx.fillStyle='rgba(255,255,240,'+(a-.6)*2+')'; const gx=(i*67+t*4)%W,gy=200+(i*13)%30; ctx.fillRect(gx-3,gy,6,1.2); ctx.fillRect(gx-.6,gy-2.4,1.2,6); }
+  ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.moveTo(0,236); for(let x=0;x<=W;x+=8) ctx.lineTo(x,229+Math.sin(t*2+x*.06)*2+Math.sin(t*3.3+x*.13)); ctx.lineTo(W,236); ctx.fill();
   // 沙灘
-  ctx.fillStyle='#f3d892'; ctx.fillRect(0,232,W,H-232); ctx.fillStyle='#e6c676'; for(let i=0;i<40;i++) ctx.fillRect((i*53)%W,240+(i*29)%56,6,2);
+  const sand=ctx.createLinearGradient(0,232,0,H); sand.addColorStop(0,'#c8a868'); sand.addColorStop(.12,'#f6dc98'); sand.addColorStop(1,'#e8c47a'); ctx.fillStyle=sand; ctx.fillRect(0,232,W,H-232);
+  for(let i=0;i<70;i++){ ctx.fillStyle=i%3?'rgba(200,160,90,.55)':'rgba(255,255,255,.6)'; ctx.fillRect((i*53)%W,238+(i*29)%60,i%3?2:1.5,i%3?2:1.5); }
+  ctx.fillStyle='rgba(160,120,60,.25)'; for(let i=0;i<10;i++){ const fx=60+i*38,fy=286-(i%2)*5; ctx.beginPath(); ctx.ellipse(fx,fy,3,1.6,.3,0,7); ctx.fill(); }
+  ctx.fillStyle='#ffc8b0'; ctx.beginPath(); ctx.arc(120,292,4,Math.PI,0); ctx.fill(); ctx.fillStyle='#ff8a4a'; ctx.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i/10*7,r=i%2?2:5; ctx.lineTo(372+Math.cos(a)*r,290+Math.sin(a)*r); } ctx.fill();
+  /* 有透視的場地線 */ ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(30,GROUND+28); ctx.lineTo(62,GROUND-6); ctx.lineTo(W-62,GROUND-6); ctx.lineTo(W-30,GROUND+28); ctx.stroke(); ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(NETX,GROUND-6); ctx.lineTo(NETX,GROUND+28); ctx.stroke();
   // 椰子樹
   const palm=(x,lean)=>{ ctx.strokeStyle='#8a5a2a'; ctx.lineWidth=7; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x,262); ctx.quadraticCurveTo(x+lean*.5,200,x+lean,150); ctx.stroke(); ctx.strokeStyle='#6a4520'; ctx.lineWidth=1.5; for(let k=0;k<7;k++){ const yy=250-k*15; ctx.beginPath(); ctx.moveTo(x+lean*(1-(yy-150)/112)*.9-4,yy); ctx.lineTo(x+lean*(1-(yy-150)/112)*.9+4,yy-2); ctx.stroke(); }
     const tx=x+lean,ty=150; ctx.fillStyle='#2f9a4a'; for(let k=0;k<6;k++){ const a=-Math.PI*.95+k*Math.PI/5+Math.sin(t*1.5+k)*.05; ctx.beginPath(); ctx.moveTo(tx,ty); ctx.quadraticCurveTo(tx+Math.cos(a)*24,ty+Math.sin(a)*24-10,tx+Math.cos(a)*40,ty+Math.sin(a)*40+8); ctx.quadraticCurveTo(tx+Math.cos(a)*22,ty+Math.sin(a)*22,tx,ty); ctx.fill(); }
@@ -57,11 +63,13 @@ function drawCourt(ctx,t){
   // 遮陽傘與觀眾
   const umb=(x,c)=>{ ctx.strokeStyle='#eee'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,250); ctx.lineTo(x,214); ctx.stroke(); for(let k=0;k<4;k++){ ctx.fillStyle=k%2?'#fff':c; ctx.beginPath(); ctx.moveTo(x,210); ctx.arc(x,218,22,Math.PI+k*Math.PI/4,Math.PI+(k+1)*Math.PI/4); ctx.fill(); } };
   umb(62,'#ff5d4f'); umb(420,'#4f9dff');
-  for(const [x,c] of [[48,'#ffd23f'],[78,'#ff7eb6'],[404,'#86dc4f'],[436,'#ff9d3d']]){ const j=Math.max(0,Math.sin(t*4+x))*3; ctx.fillStyle=c; ctx.fillRect(x-4,236-j,8,10); ctx.fillStyle='#ffd9a8'; ctx.beginPath(); ctx.arc(x,232-j,4,0,7); ctx.fill(); }
+  for(const [x,c,tw] of [[48,'#ffd23f','#4f9dff'],[78,'#ff7eb6','#ffd23f'],[404,'#86dc4f','#ff5d4f'],[436,'#ff9d3d','#c56bff']]){ const j=Math.max(0,Math.sin(t*4+x))*3,wv=Math.sin(t*8+x)*.6; ctx.fillStyle=tw; ctx.fillRect(x-9,244,18,6); ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillRect(x-9,246,18,1.5);
+    ctx.fillStyle=c; ctx.beginPath(); ctx.ellipse(x,240-j,5,6,0,0,7); ctx.fill(); ctx.strokeStyle='#ffd9a8'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x+4,237-j); ctx.lineTo(x+8+wv*3,229-j); ctx.stroke(); ctx.fillStyle='#ffd9a8'; ctx.beginPath(); ctx.arc(x,231-j,4.5,0,7); ctx.fill(); ctx.fillStyle='#3a2418'; ctx.beginPath(); ctx.arc(x,229.5-j,4.6,Math.PI,0); ctx.fill(); ctx.fillStyle='#2a1a26'; ctx.fillRect(x-2,231-j,1.2,1.4); ctx.fillRect(x+1,231-j,1.2,1.4); }
   // 場地線
-  ctx.fillStyle='#fff'; ctx.fillRect(0,GROUND-1,W,3); ctx.fillRect(40,GROUND-1,3,26); ctx.fillRect(W-43,GROUND-1,3,26);
+
   // 球網：網柱、網格、白邊
-  ctx.fillStyle='#7a5a3a'; ctx.fillRect(NETX-NETW/2,NETTOP,NETW,GROUND-NETTOP);
+  ctx.fillStyle='rgba(60,40,20,.25)'; ctx.beginPath(); ctx.moveTo(NETX-4,GROUND+2); ctx.lineTo(NETX+4,GROUND+2); ctx.lineTo(NETX+30,GROUND+16); ctx.lineTo(NETX+22,GROUND+16); ctx.fill();
+  const pg=ctx.createLinearGradient(NETX-NETW/2,0,NETX+NETW/2,0); pg.addColorStop(0,'#5a3a1a'); pg.addColorStop(.4,'#a87a4a'); pg.addColorStop(1,'#4a2a10'); ctx.fillStyle=pg; ctx.fillRect(NETX-NETW/2,NETTOP,NETW,GROUND-NETTOP); ctx.fillStyle='rgba(0,0,0,.25)'; for(let y=NETTOP+50;y<GROUND;y+=14) ctx.fillRect(NETX-NETW/2,y,NETW,1.5);
   ctx.strokeStyle='rgba(20,18,43,.45)'; ctx.lineWidth=1; for(let y=NETTOP+6;y<NETTOP+44;y+=6){ ctx.beginPath(); ctx.moveTo(NETX-NETW/2-6,y); ctx.lineTo(NETX+NETW/2+6,y); ctx.stroke(); }
   for(let x=-6;x<=6;x+=4){ ctx.beginPath(); ctx.moveTo(NETX+x,NETTOP); ctx.lineTo(NETX+x,NETTOP+44); ctx.stroke(); }
   ctx.fillStyle='#f4f0ff'; ctx.fillRect(NETX-NETW/2-6,NETTOP-4,NETW+12,7); ctx.fillStyle='#ff5d4f'; ctx.fillRect(NETX-1,NETTOP-22,2,18); ctx.fillStyle='#fff'; ctx.fillRect(NETX-1,NETTOP-22,2,4);

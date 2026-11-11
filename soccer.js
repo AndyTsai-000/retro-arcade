@@ -273,6 +273,8 @@ function create(env,opts){
     }
   }
 
+  /* 3D 畫面（載不到 three.js 就用原本的 2D） */
+  let G3=null; if(window.THREE&&window.__SOCCER3D&&window.__H3D&&!opts.flat2d){ try{ G3=window.__SOCCER3D(window.THREE,{W,H,FW,X0,X1,YB,YF,GY0,GY1,cols,bgKey:L.bg,grass:L.grass,ballCol:L.ball,bg:(c2,cm,tt)=>drawField(c2,cm,L.grass,L.bg,cols[0],cols[1],tt),players:P.map(p=>({team:p.team,hair:p.hair,gk:p.gk}))}); }catch(e){ G3=null; } }
   function update(dt){
     t+=dt; if(msgT>0) msgT-=dt; stepFx(dt);
     if(client){
@@ -314,6 +316,12 @@ function create(env,opts){
 
   function draw(){
     ctx.save(); if(shake>0) ctx.translate((Math.random()-.5)*shake*22,(Math.random()-.5)*shake*16);
+    if(G3){ G3.render({P,b:ball,t,camX:cam,ctrl:[0,1].filter(tm=>human[tm]&&(!net||tm===me)).map(tm=>ctrl[tm]),shotCol:ball.type&&SHOT[ball.type]?SHOT[ball.type].col:null}); ctx.drawImage(G3.canvas,0,0,W,H);
+      for(let tm=0;tm<2;tm++) if(human[tm]&&(!net||tm===me)){ const p=P[ctrl[tm]]; if(!p) continue; const [hx,hy]=G3.head(p.id); ctx.fillStyle=tm?'#3ddbd9':'#ffd23f'; ctx.beginPath(); ctx.moveTo(hx-6,hy-8); ctx.lineTo(hx+6,hy-8); ctx.lineTo(hx,hy); ctx.fill(); }
+      for(const f of fx){ const [sx,sy]=G3.toScreen(f.x,f.y,0); ctx.globalAlpha=Math.max(0,f.life/f.max); ctx.fillStyle=f.col; const z=f.size*(.5+f.life/f.max*.5); ctx.fillRect(sx-z/2,sy-z/2,z,z); } ctx.globalAlpha=1;
+      for(const r of rings){ const u=r.t/r.max,[sx,sy]=G3.toScreen(r.x,r.y,0); ctx.globalAlpha=1-u; ctx.strokeStyle=r.col; ctx.lineWidth=6*(1-u)+1; ctx.beginPath(); ctx.ellipse(sx,sy,r.r*u,r.r*u*.45,0,0,7); ctx.stroke();
+        if(r.txt){ ctx.font='900 '+(20+u*10)+'px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=5; ctx.strokeStyle='#14122b'; ctx.strokeText(r.txt,sx,sy-34-u*14); ctx.fillStyle='#fff'; ctx.fillText(r.txt,sx,sy-34-u*14); } }
+      ctx.globalAlpha=1; ctx.restore(); drawOver(); return; }
     drawField(ctx,cam,L.grass,L.bg,cols[0],cols[1],t);
     drawGoal(ctx,cam,0,false); drawGoal(ctx,cam,1,false);
     const list=P.slice().sort((a,b)=>a.y-b.y);
@@ -332,11 +340,12 @@ function create(env,opts){
     ctx.globalAlpha=1;
     for(const r of rings){ const u=r.t/r.max; ctx.globalAlpha=1-u; ctx.strokeStyle=r.col; ctx.lineWidth=6*(1-u)+1; ctx.beginPath(); ctx.ellipse(r.x,r.y,r.r*u,r.r*u*.7,0,0,7); ctx.stroke();
       if(r.txt){ ctx.font='900 '+(20+u*10)+'px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=5; ctx.strokeStyle='#14122b'; ctx.strokeText(r.txt,r.x,r.y-24-u*14); ctx.fillStyle='#fff'; ctx.fillText(r.txt,r.x,r.y-24-u*14); } }
-    ctx.globalAlpha=1; ctx.restore(); ctx.restore();
+    ctx.globalAlpha=1; ctx.restore(); ctx.restore(); drawOver(); }
+  function drawOver(){
     if(flash>0){ ctx.fillStyle='rgba(255,255,255,'+Math.min(.7,flash*5)+')'; ctx.fillRect(0,0,W,H); }
-    if(cut){ const u=cut.t/cut.max,c=SHOT[cut.type].col,ul=cut.type==='ultra',dir=cut.team?-1:1,cx=cut.x-cam;
+    if(cut){ const u=cut.t/cut.max,c=SHOT[cut.type].col,ul=cut.type==='ultra',dir=cut.team?-1:1,CP=G3?G3.toScreen(cut.x,cut.y,30):[cut.x-cam,cut.y],cx=CP[0],cy0=CP[1];
       ctx.fillStyle='rgba(10,9,26,'+(ul?.62:.42)+')'; ctx.fillRect(0,0,W,H); ctx.strokeStyle=c; ctx.lineWidth=ul?3:2; ctx.globalAlpha=.8;
-      for(let i=0;i<(ul?46:28);i++){ const a=i*2.399+t*4,r0=30+((i*37)%50)+u*20,r2=r0+60+((i*53)%140); ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*r0,cut.y-20+Math.sin(a)*r0); ctx.lineTo(cx+Math.cos(a)*r2,cut.y-20+Math.sin(a)*r2); ctx.stroke(); }
+      for(let i=0;i<(ul?46:28);i++){ const a=i*2.399+t*4,r0=30+((i*37)%50)+u*20,r2=r0+60+((i*53)%140); ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*r0,cy0-20+Math.sin(a)*r0); ctx.lineTo(cx+Math.cos(a)*r2,cy0-20+Math.sin(a)*r2); ctx.stroke(); }
       ctx.globalAlpha=1; const slide=Math.min(1,u*4),bx=(1-slide)*-dir*W,bh=ul?64:46,by=H*.42;
       ctx.save(); ctx.translate(bx,0); ctx.transform(1,-.12,0,1,0,26);
       ctx.fillStyle='#14122b'; ctx.fillRect(-20,by-bh/2-4,W+40,bh+8); ctx.fillStyle=c; ctx.fillRect(-20,by-bh/2,W+40,bh);
@@ -381,6 +390,7 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).soccer={
   coin:o=>({verb:'先開球',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}),
   name:'鬥魂足球',tag:'SOCCER',color:'#5fd068',online:true,maxPlayers:2,
+  load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   desc:'五對五的鬥魂足球，沒有犯規，可以鏟人搶球。助跑射門是必殺射門，集滿氣還能放超必殺。10 支隊伍，可單人、兩人同一台，或開房間連線。',
   goal:'2 分鐘內進球多的贏，平手打延長賽。連按兩下 ← 或 → 助跑後射門，會踢出必殺射門；沒球時按「射」是鏟球。守門員會自己守。',
   // 開始畫面左邊：選哪一隊就顯示那一隊的五名球員
