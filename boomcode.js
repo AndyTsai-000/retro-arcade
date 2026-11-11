@@ -1,5 +1,5 @@
-// 密碼炸彈大挑戰（終極密碼）：炸彈裡藏一個數字，大家輪流猜，範圍越縮越小，猜中密碼的人就被炸！
-// 單人配電腦、同機 2 人輪流用同一個數字鍵盤、連線最多 8 人（房主運算；密碼只在房主那邊）。
+// 密碼炸彈大挑戰（終極密碼）：炸彈裡藏一個數字，大家輪流猜，範圍越縮越小，猜中密碼的人就被炸，一局玩到有人被炸為止。
+// 單人配電腦、同機 2 人輪流用同一個數字鍵盤、連線最多 8 人（房主運算；密碼只在房主那邊）。連線可以讓玩家輪流出密碼（每局換下一個人出，出題的人不猜）。
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2;
@@ -55,41 +55,46 @@ function bombArt(c,x,y,R,t,hot,lo,hi,flash,boomT){ c.save(); c.translate(x+(hot>
   c.fillStyle='#ff3b3b'; c.beginPath(); c.arc(-sw/2+10,-sh/2-14,4,0,TAU); c.fill(); if(Math.sin(t*(4+hot*16))>0){ c.fillStyle='#ff9a9a'; c.beginPath(); c.arc(-sw/2+10,-sh/2-14,2,0,TAU); c.fill(); }
   c.restore(); }
 
+let SET_ROT=0; // 連線輪流出密碼：房主記到第幾個人了（重玩時換下一個）
 function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,two=!net&&opts.mode==='2p',pv=!!opts.preview,OP=opts.options||{},sc=clamp(opts.stage|0,0,SCN.length-1);
-  const MAX=+OP.max||100,ROUNDS=+OP.rounds||5,TL=OP.time==null?12:+OP.time;
+  const MAX=+OP.max||100,TL=OP.time==null?12:+OP.time,ST=30;
   const humans=net?net.count:pv?0:two?2:1,n=net?clamp(net.count+(net.bots||0),2,8):clamp(+OP.seats||5,2,8),me=net?net.me:0;
   const names=[],looks=[]; for(let i=0;i<n;i++){ if(i<humans){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:i===0?opts.look||{}:{}); } else { names.push(BOTN[(i-humans+sc*2)%BOTN.length]); looks.push(BOTLOOK(i+sc)); } }
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%8]:L.color; };
   const mine=i=>two?i<2:i===me;
   let secret=0,t=0,ended=false,sendT=0,evq=[],shake=0,fx=[],buf='',aiT=1,aiN=0,aiTxt='',flash=0,pops=[];
-  let G={ph:'intro',T:pv?.4:2.2,round:1,lo:1,hi:MAX,cur:(opts.first||0)%n,turnT:TL,boom:Array(n).fill(0),last:null,hits:0,boomAt:-1,boomN:0,msg:'',guessN:0,typing:''};
+  let mySec=0; const setter=net&&host&&OP.setter!=='cpu'&&!pv?(SET_ROT++)%net.count:-1;
+  let G={ph:'intro',T:pv?.4:2.2,lo:1,hi:MAX,cur:0,setter,turnT:TL,boom:Array(n).fill(0),last:null,hits:0,boomAt:-1,boomN:0,msg:'',guessN:0,typing:'',hist:[]};
+  const nxt=i=>{ let q=(i+1)%n; if(q===G.setter) q=(q+1)%n; return q; }; G.cur=(opts.first||0)%n; if(G.cur===G.setter) G.cur=nxt(G.cur);
   const sfx=k=>{ if(pv) return; env.sfx(k); if(net&&host) evq.push(k); };
   const tone=(f,d,type,v)=>{ const A=env.audio&&env.audio(); if(!A||pv) return; try{ const o=A.createOscillator(),g=A.createGain(),t0=A.currentTime; o.type=type||'square'; o.frequency.value=f; g.gain.setValueAtTime(v||.05,t0); g.gain.exponentialRampToValueAtTime(.001,t0+d); o.connect(g); g.connect((env.out&&env.out())||A.destination); o.start(t0); o.stop(t0+d+.02); }catch(e){} };
   const hot=()=>1-clamp((G.hi-G.lo)/(MAX-1),0,1);
-  function newRound(){ secret=1+Math.floor(Math.random()*MAX); G.lo=1; G.hi=MAX; G.last=null; G.ph='turn'; G.turnT=TL; G.msg=''; startTurn(); sfx('go'); }
+  function newRound(){ if(G.setter>=0&&!secret){ G.ph='set'; G.turnT=ST; return; } if(!secret) secret=1+Math.floor(Math.random()*MAX); G.lo=1; G.hi=MAX; G.last=null; G.ph='turn'; G.turnT=TL; G.msg=''; startTurn(); sfx('go'); }
   function startTurn(){ G.turnT=TL; G.typing=''; buf=''; aiT=.9+Math.random()*1.2; aiN=pickBot(); aiTxt=''; }
   /* 電腦：大多猜中間附近，有時故意只縮一點點、有時大膽砍一刀 */
   function pickBot(){ const lo=G.lo,hi=G.hi,sz=hi-lo; if(sz<=0) return lo; const r=Math.random(); let g; if(sz<=3) g=lo+Math.floor(Math.random()*(sz+1)); else if(r<.25) g=Math.random()<.5?lo+1+Math.floor(Math.random()*2):hi-1-Math.floor(Math.random()*2); else if(r<.5) g=Math.round(lo+sz*(.5+(Math.random()-.5)*.3)); else g=Math.round(lo+sz*(.2+Math.random()*.6)); return clamp(g,lo,hi); }
   function guess(who,g){ if(G.ph!=='turn'||who!==G.cur) return false; g=Math.round(+g); if(!(g>=G.lo&&g<=G.hi)) return false;
-    G.guessN++; G.last={who,g,dir:0};
+    G.guessN++; G.last={who,g,dir:0}; G.hist.push([who,g]);
     if(g===secret){ G.ph='boom'; G.T=3; G.boom[who]++; G.boomAt=who; G.boomN++; G.hits=secret; G.msg=names[who]+' 猜中密碼 '+secret+'！'; sfx('boom'); sfx('hurt'); return true; }
     if(g<secret){ G.lo=g+1; G.last.dir=1; } else { G.hi=g-1; G.last.dir=-1; }
-    sfx('place'); G.cur=(G.cur+1)%n; startTurn(); return true; }
+    sfx('place'); G.cur=nxt(G.cur); startTurn(); return true; }
+  function setSecret(who,v){ if(G.ph!=='set'||who!==G.setter) return; v=Math.round(+v); if(!(v>=1&&v<=MAX)) return; secret=v; newRound(); }
   function stepHost(dt){
     if(G.ph==='intro'){ G.T-=dt; if(G.T<=0) newRound(); return; }
+    if(G.ph==='set'){ G.turnT-=dt; if(G.turnT<=0){ secret=1+Math.floor(Math.random()*MAX); newRound(); } return; }
     if(G.ph==='turn'){ if(TL>0){ G.turnT-=dt; if(G.turnT<=0){ const g=G.lo+Math.floor(Math.random()*(G.hi-G.lo+1)); G.msg='時間到！自動猜 '+g; guess(G.cur,g); return; } }
       if(G.cur>=humans){ aiT-=dt; const s=String(aiN); G.typing=s.slice(0,clamp(Math.floor((1.6-aiT)*4),0,s.length)); if(aiT<=0) guess(G.cur,aiN); } }
-    if(G.ph==='boom'){ G.T-=dt; if(G.T<=0){ if(G.round>=ROUNDS){ G.ph='end'; G.T=1.2; } else { G.round++; G.cur=G.boomAt; G.ph='ready'; G.T=1.6; } } }
-    if(G.ph==='ready'){ G.T-=dt; if(G.T<=0) newRound(); }
+    if(G.ph==='boom'){ G.T-=dt; if(G.T<=0){ G.ph='end'; G.T=.3; } }
     if(G.ph==='end'){ G.T-=dt; if(G.T<=0&&!ended){ ended=true; if(net) net.send({st:G}); finish(); } } }
-  function finish(){ const order=[...Array(n).keys()].sort((a,b)=>G.boom[a]-G.boom[b]),least=G.boom[order[0]],win=order.filter(i=>G.boom[i]===least),myB=two?Math.min(G.boom[0],G.boom[1]):G.boom[me],iWin=win.some(mine);
-    env.sfx(iWin?'win':'lose');
-    env.end({title:win.length>1?win.map(i=>names[i]).join('、')+' 並列最安全':names[win[0]]+' 最會閃炸彈！',big:two?(win.some(i=>i<2)?(G.boom[0]<G.boom[1]?'1P 獲勝':G.boom[1]<G.boom[0]?'2P 獲勝':'1P、2P 平手'):'電腦獲勝'):iWin?'你最安全':'你被炸了 '+myB+' 次',
-      html:'<table class="ls"><tr><th>玩家</th><th>被炸次數</th></tr>'+order.map(i=>'<tr><td>'+names[i]+'</td><td>'+(G.boom[i]?'💥'.repeat(G.boom[i]):'沒被炸')+'</td></tr>').join('')+'</table>',text:ROUNDS+' 回合結束',score:!net&&!two&&!pv?G.boom[me]:null}); }
+  function finish(){ const L=G.boomAt,meLose=two?L<2:L===me,iSet=!two&&G.setter===me&&me>=0; if(!net&&!pv&&!(two?false:meLose)) try{ localStorage.setItem('arcade.boomcode.safe',(+localStorage.getItem('arcade.boomcode.safe')||0)+1); }catch(e){}
+    env.sfx(meLose&&!two?'lose':'win');
+    env.end({title:names[L]+' 猜中密碼 '+G.hits+'，被炸了！',big:two?(L===0?'2P 獲勝':L===1?'1P 獲勝':'1P、2P 都安全'):meLose?'你被炸了！':iSet?'你的密碼炸到 '+names[L]+'！':'你安全了！',
+      text:'密碼是 '+G.hits+(G.setter>=0?'（'+names[G.setter]+' 出的）':'')+'，大家一共猜了 '+G.hist.length+' 次',
+      html:'<table class="ls"><tr><th>順序</th><th>玩家</th><th>猜的數字</th></tr>'+G.hist.map((h,k)=>'<tr><td>'+(k+1)+'</td><td>'+names[h[0]]+'</td><td>'+(h[0]===L&&k===G.hist.length-1?'💥 '+h[1]:h[1])+'</td></tr>').join('')+'</table>',score:null}); }
   const pub=()=>Object.assign({},G); // 密碼不在 G 裡，別人看不到
   if(net){ if(client) net.onmsg=m=>{ if(m.st){ const was=G.boomN,wasG=G.guessN; G=m.st; if(G.boomN>was) bigBoom(); if(G.guessN>wasG&&G.ph==='turn'){ buf=''; pop(); } if(G.ph==='end'&&!ended&&G.T<=0){ ended=true; finish(); } } if(m.ev) for(const k of m.ev) env.sfx(k); };
-    else net.onmsg=(m,from)=>{ if(m.g!=null) guess(from,m.g); }; }
+    else net.onmsg=(m,from)=>{ if(m.g!=null) guess(from,m.g); if(m.sec!=null) setSecret(from,m.sec); }; }
   const BX=400,BY=150,BR=86;
   function bigBoom(){ shake=18; flash=0; for(let i=0;i<90;i++){ const a=Math.random()*TAU,s=80+Math.random()*420; fx.push({x:BX,y:BY,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,l:.5+Math.random()*.9,c:['#ffd23f','#ff7a3d','#ff3b3b','#fff','#55505a'][i%5],s:3+Math.random()*7}); } fx.push({ring:1,x:BX,y:BY,l:.6,L:.6}); const p=seat(G.boomAt); for(let i=0;i<14;i++) fx.push({smoke:1,x:p[0]+(Math.random()-.5)*30,y:p[1]-90,vx:(Math.random()-.5)*30,vy:-30-Math.random()*30,l:1.4+Math.random(),c:'#3a3438',s:10+Math.random()*10}); }
   function pop(){ flash=.18; if(G.last){ const p=seat(G.last.who); pops.push({x:p[0],y:p[1]-80,g:G.last.g,dir:G.last.dir,l:1.1}); } tone(500+hot()*700,.08,'square',.05); }
@@ -97,9 +102,11 @@ function create(env,opts){
   /* 數字鍵盤（在自己回合才出現） */
   const KEYS=['1','2','3','4','5','6','7','8','9','0','⌫','確定'],kRect=k=>{ const w=58,gp=6,x0=W/2-(12*(w+gp)-gp)/2; return [x0+k*(w+gp),H-50,w+(k===11?0:0),42]; };
   const toG=e=>{ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H); return [(e.clientX-r.left-(r.width-W*s)/2)/s,(e.clientY-r.top-(r.height-H*s)/2)/s]; };
-  const myTurn=()=>G.ph==='turn'&&(two?G.cur<2:G.cur===me)&&!pv;
+  const mySet=()=>G.ph==='set'&&G.setter===me&&!pv&&!mySec,myTurn=()=>!pv&&(mySet()||G.ph==='turn'&&(two?G.cur<2:G.cur===me));
+  const rng=()=>mySet()?[1,MAX]:[G.lo,G.hi];
   function type(k){ if(!myTurn()) return; if(k==='⌫'){ buf=buf.slice(0,-1); tone(300,.04); return; } if(k==='確定'){ submit(); return; } if(buf.length>=String(MAX).length) return; buf=(buf+k).replace(/^0+/,''); tone(700,.04); }
-  function submit(){ if(!buf) return; const g=+buf; if(!(g>=G.lo&&g<=G.hi)){ G.bad=.6; buf=''; env.sfx('bump'); return; } if(client){ net.send({g}); buf=''; G.typing=''; } else { const w=G.cur; buf=''; guess(w,g); } }
+  function submit(){ if(!buf) return; const g=+buf,[lo,hi]=rng(); if(!(g>=lo&&g<=hi)){ G.bad=.6; buf=''; env.sfx('bump'); return; }
+    if(mySet()){ mySec=g; buf=''; tone(900,.1); if(client) net.send({sec:g}); else setSecret(me,g); return; } if(client){ net.send({g}); buf=''; G.typing=''; } else { const w=G.cur; buf=''; guess(w,g); } }
   let pressK=-1,pressT=0;
   const pd=e=>{ if(!myTurn()) return; const [x,y]=toG(e); for(let k=0;k<12;k++){ const [a,b,w,h]=kRect(k); if(x>=a&&x<=a+w&&y>=b&&y<=b+h){ pressK=k; pressT=.12; type(KEYS[k]); } } };
   canvas.addEventListener('pointerdown',pd);
@@ -107,8 +114,8 @@ function create(env,opts){
     for(let i=fx.length-1;i>=0;i--){ const f=fx[i]; f.l-=dt; if(f.l<=0){ fx.splice(i,1); continue; } if(f.smoke){ f.x+=f.vx*dt; f.y+=f.vy*dt; f.s+=dt*14; } else if(!f.ring){ f.x+=f.vx*dt; f.y+=f.vy*dt; f.vy+=480*dt; } }
     for(let i=pops.length-1;i>=0;i--){ pops[i].l-=dt; if(pops[i].l<=0) pops.splice(i,1); }
     if(myTurn()){ for(let d=0;d<10;d++) if(env.hit('Digit'+d)||env.hit('Numpad'+d)) type(String(d)); if(env.hit('Backspace')) type('⌫'); if(env.hit('Enter')||env.hit('NumpadEnter')||env.hit('Space')) type('確定');
-      if(env.hit('ArrowUp')){ buf=String(clamp((+buf||G.lo-1)+1,G.lo,G.hi)); tone(700,.03); } if(env.hit('ArrowDown')){ buf=String(clamp((+buf||G.hi+1)-1,G.lo,G.hi)); tone(700,.03); }
-      if(env.hit('ArrowRight')){ buf=String(clamp((+buf||G.lo)+10,G.lo,G.hi)); tone(760,.03); } if(env.hit('ArrowLeft')){ buf=String(clamp((+buf||G.hi)-10,G.lo,G.hi)); tone(760,.03); } }
+      const [lo,hi]=rng(); if(env.hit('ArrowUp')){ buf=String(clamp((+buf||lo-1)+1,lo,hi)); tone(700,.03); } if(env.hit('ArrowDown')){ buf=String(clamp((+buf||hi+1)-1,lo,hi)); tone(700,.03); }
+      if(env.hit('ArrowRight')){ buf=String(clamp((+buf||lo)+10,lo,hi)); tone(760,.03); } if(env.hit('ArrowLeft')){ buf=String(clamp((+buf||hi)-10,lo,hi)); tone(760,.03); } }
     if(client) return;
     const was=G.boomN,wasG=G.guessN,wasPh=G.ph; stepHost(dt); if(G.boomN>was) bigBoom(); else if(G.guessN>wasG) pop();
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/12; net.send({st:pub()}); if(evq.length){ net.send({ev:evq}); evq=[]; } } } }
@@ -119,11 +126,11 @@ function create(env,opts){
     /* 範圍條 */ const bx0=150,bw=500,by=BY+BR+44; c.fillStyle='rgba(11,10,28,.6)'; rr(c,bx0-8,by-8,bw+16,30,10); c.fill(); c.fillStyle='rgba(255,255,255,.12)'; rr(c,bx0,by,bw,14,7); c.fill();
     const X=v=>bx0+(v-1)/(MAX-1||1)*bw,x1=X(G.lo),x2=X(G.hi); const gg=c.createLinearGradient(x1,0,x2+1,0); gg.addColorStop(0,H0>.7?'#ff5d4f':'#ffd23f'); gg.addColorStop(1,H0>.7?'#ff9d3d':'#5fd068'); c.fillStyle=gg; rr(c,x1,by,Math.max(8,x2-x1),14,7); c.fill();
     c.fillStyle='#fff'; c.font='700 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('1',bx0-1,by+28); c.fillText(String(MAX),bx0+bw,by+28); if(G.last&&G.ph==='turn'){ const lx=X(G.last.g); c.fillStyle='#ff5a9a'; c.beginPath(); c.moveTo(lx,by-2); c.lineTo(lx-6,by-12); c.lineTo(lx+6,by-12); c.fill(); }
-    /* 人物 */ const C=window.ARCADE_CHAR; for(let i=0;i<n;i++){ const [x,y]=seat(i),cur=G.cur===i&&(G.ph==='turn'),L=looks[i]||{},hitMe=G.boomAt===i&&(G.ph==='boom'||G.ph==='ready');
+    /* 人物 */ const C=window.ARCADE_CHAR; for(let i=0;i<n;i++){ const [x,y]=seat(i),cur=G.cur===i&&(G.ph==='turn'),L=looks[i]||{},hitMe=G.boomAt===i&&(G.ph==='boom'||G.ph==='end');
       if(cur){ c.fillStyle='rgba(255,210,63,.35)'; c.beginPath(); c.ellipse(x,y+4,40,12,0,0,TAU); c.fill(); c.fillStyle='#ffd23f'; c.beginPath(); const by2=y-124+Math.sin(t*6)*4; c.moveTo(x,by2+12); c.lineTo(x-9,by2); c.lineTo(x+9,by2); c.fill(); }
       if(C) C.drawChar(c,x,y-38,hitMe?'#4a4044':colOf(i),1,cur,t+i,1.7,L.char||'cap',L.deco||''); if(hitMe){ c.fillStyle='rgba(30,26,30,.55)'; c.beginPath(); c.arc(x,y-76,26,0,TAU); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=2; c.beginPath(); for(let k=0;k<3;k++){ const a=t*5+k*2.1; c.moveTo(x+Math.cos(a)*24,y-84+Math.sin(a)*5); c.lineTo(x+Math.cos(a)*24+3,y-88+Math.sin(a)*5); } c.stroke(); }
       const nm=names[i].slice(0,6); c.font='900 12px '+TC; c.textAlign='center'; c.textBaseline='middle'; const w2=c.measureText(nm).width+14; c.fillStyle=mine(i)?'#ffd23f':'rgba(11,10,28,.75)'; rr(c,x-w2/2,y+6,w2,18,9); c.fill(); c.fillStyle=mine(i)?'#14122b':'#fff'; c.fillText(nm,x,y+15);
-      if(G.boom[i]){ c.font='13px sans-serif'; c.fillText('💥'.repeat(Math.min(5,G.boom[i]))+(G.boom[i]>5?'×'+G.boom[i]:''),x,y+33); }
+      if(G.setter===i){ c.fillStyle='#ffd23f'; rr(c,x-34,y+28,68,18,9); c.fill(); c.fillStyle='#14122b'; c.font='900 11px '+TC; c.fillText('🔑 出密碼',x,y+37); }
       if(cur&&i>=humans&&G.typing){ c.fillStyle='#fff'; rr(c,x-30,y-148,60,28,10); c.fill(); c.fillStyle='#14122b'; c.font='900 18px "Courier New",monospace'; c.fillText(G.typing,x,y-134); }
       else if(cur&&i>=humans){ c.fillStyle='rgba(255,255,255,.9)'; rr(c,x-24,y-146,48,24,10); c.fill(); c.fillStyle='#14122b'; c.font='900 16px sans-serif'; c.fillText('.'.repeat(1+Math.floor(t*3)%3),x,y-134); } }
     /* 猜的數字飛出來 */ for(const p of pops){ const a=Math.min(1,p.l*2),u=1-p.l/1.1; c.globalAlpha=a; c.font='900 26px "Courier New",monospace'; c.lineWidth=5; c.strokeStyle='#14122b'; c.textAlign='center'; const y=p.y-u*30; c.strokeText(p.g,p.x,y); c.fillStyle='#fff'; c.fillText(p.g,p.x,y); c.font='900 14px '+TC; const s=p.dir>0?'密碼比較大 ▲':'密碼比較小 ▼'; c.strokeText(s,p.x,y+22); c.fillStyle=p.dir>0?'#7aff7a':'#7ac8ff'; c.fillText(s,p.x,y+22); c.globalAlpha=1; }
@@ -131,33 +138,36 @@ function create(env,opts){
     if(boomNow){ const k=(G.T-1.2)/1.8; c.fillStyle='rgba(255,240,180,'+Math.max(0,k-.6)*2+')'; c.fillRect(0,0,W,H); bombArt(c,BX,BY,BR*.9,t,1,0,0,0,1); }
     c.restore();
     c.textAlign='center'; c.textBaseline='middle';
-    if(G.ph==='boom'||G.ph==='ready'){ c.font='900 30px '+TC; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(G.msg,W/2,BY-BR-8>30?BY-BR-14:40); c.fillStyle='#ffd23f'; c.fillText(G.msg,W/2,BY-BR-8>30?BY-BR-14:40); }
-    if(G.ph==='intro'||G.ph==='ready'&&G.T<1.2){ const s='第 '+G.round+' / '+ROUNDS+' 回合'; c.font='900 34px '+TC; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(s,W/2,BY); c.fillStyle='#fff'; c.fillText(s,W/2,BY); }
-    /* 左上：回合、計時 */ c.fillStyle='rgba(11,10,28,.75)'; rr(c,10,10,176,30,10); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.fillText('第 '+G.round+' / '+ROUNDS+' 回合　1～'+MAX,20,25);
+    if(G.ph==='boom'||G.ph==='end'){ c.font='900 30px '+TC; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(G.msg,W/2,BY-BR-8>30?BY-BR-14:40); c.fillStyle='#ffd23f'; c.fillText(G.msg,W/2,BY-BR-8>30?BY-BR-14:40); }
+    if(G.ph==='intro'){ const s='誰會踩到密碼？'; c.font='900 34px '+TC; c.lineWidth=7; c.strokeStyle='#14122b'; c.strokeText(s,W/2,BY); c.fillStyle='#fff'; c.fillText(s,W/2,BY); }
+    /* 左上：回合、計時 */ c.fillStyle='rgba(11,10,28,.75)'; rr(c,10,10,176,30,10); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.fillText('密碼 1～'+MAX+'　已猜 '+G.hist.length+' 次',20,25);
+    if(mySec&&G.setter===me){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,10,46,176,28,10); c.fill(); c.fillStyle='#7aff7a'; c.fillText('🔑 你出的密碼：'+mySec,20,60); }
+    if(G.ph==='set'){ const s=G.setter===me?(mySec?'密碼設好了！':'偷偷輸入一個密碼，別人看不到！'):names[G.setter]+' 正在出密碼…',yy=BY-BR-14>30?BY-BR-14:40; c.textAlign='center'; c.font='900 24px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(s,W/2,yy); c.fillStyle='#ffd23f'; c.fillText(s,W/2,yy); c.font='700 13px '+TC; c.textAlign='right'; c.fillStyle='#fff'; c.fillText('剩 '+Math.ceil(Math.max(0,G.turnT))+' 秒',W-20,25); }
     if(G.ph==='turn'){ const nm=names[G.cur],s=mine(G.cur)?(two?(G.cur+1)+'P 輪到你了！':'輪到你了！'):'輪到 '+nm; c.fillStyle='rgba(11,10,28,.75)'; rr(c,W-196,10,186,30,10); c.fill(); c.fillStyle=mine(G.cur)?'#ffd23f':'#fff'; c.textAlign='left'; c.fillText(s,W-186,25); if(TL>0){ const u=clamp(G.turnT/TL,0,1); c.fillStyle=u<.3&&Math.sin(t*16)>0?'#ff5d4f':'#ffd23f'; c.beginPath(); c.moveTo(W-28,25); c.arc(W-28,25,10,-Math.PI/2,-Math.PI/2+u*TAU); c.fill(); } }
     /* 鍵盤 */ if(myTurn()){ c.fillStyle='rgba(11,10,28,.82)'; rr(c,18,H-110,W-36,104,16); c.fill();
-      c.fillStyle=G.bad>0?'#ff5d4f':'#fff'; c.font='900 14px '+TC; c.textAlign='left'; c.fillText(G.bad>0?'要在 '+G.lo+' ～ '+G.hi+' 裡面喔！':'猜一個 '+G.lo+' ～ '+G.hi+' 的數字',36,H-90);
+      c.fillStyle=G.bad>0?'#ff5d4f':'#fff'; c.font='900 14px '+TC; c.textAlign='left'; const [klo,khi]=rng(); c.fillText(G.bad>0?'要在 '+klo+' ～ '+khi+' 裡面喔！':mySet()?'出一個 1 ～ '+MAX+' 的密碼':'猜一個 '+klo+' ～ '+khi+' 的數字',36,H-90);
       c.fillStyle='#0c1a0c'; rr(c,W/2-70,H-104,140,42,10); c.fill(); c.fillStyle='#7aff7a'; c.font='900 28px "Courier New",monospace'; c.textAlign='center'; c.fillText(buf||(Math.sin(t*6)>0?'_':''),W/2,H-82);
       c.fillStyle='rgba(255,255,255,.55)'; c.font='700 12px '+TC; c.textAlign='right'; c.fillText(env.touch?'點數字、按確定':'數字鍵輸入、Enter 確定',W-36,H-90);
       for(let k=0;k<12;k++){ const [x,y,w,h]=kRect(k),on=pressK===k&&pressT>0; c.fillStyle=k===11?'#ff5a9a':k===10?'#8a8aa8':'#f4f4f8'; rr(c,x,y+(on?2:0),w,h,10); c.fill(); c.fillStyle='rgba(0,0,0,.25)'; if(!on) { rr(c,x,y+h-4,w,4,2); c.fill(); } c.fillStyle='#14122b'; c.font='900 '+(k===11?16:20)+'px '+TC; c.textAlign='center'; c.fillText(KEYS[k],x+w/2,y+h/2+(on?3:1)); } } }
-  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',pd); },_dbg:{get G(){return G;},get secret(){return secret;},guess}};
+  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',pd); },_dbg:{get G(){return G;},get secret(){return secret;},guess,setSecret}};
 }
 function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); bg(ctx,si,t); const lo=10+Math.floor(t)%20,hi=90-Math.floor(t*1.3)%30; ctx.fillStyle='#8a5a34'; ctx.fillRect(260,240,280,22); bombArt(ctx,400,160,92,t,.4+.3*Math.sin(t),lo,hi,0,0);
   const C=window.ARCADE_CHAR; if(C) for(let i=0;i<5;i++){ const u=i/4,x=90+u*620,y=420-Math.sin(u*Math.PI)*50,L=BOTLOOK(i); C.drawChar(ctx,x,y-30,PCOL[i],1,i===Math.floor(t)%5,t+i,1.4,L.char,L.deco); } ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).boomcode={
   name:'密碼炸彈大挑戰',tag:'CODE BOMB',color:'#7aff7a',online:true,maxPlayers:8,minPlayers:2,bots:true,
   coin:o=>({verb:'先猜',names:o.net?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:o.mode==='2p'?['1P','2P']:[o.name||'你','電腦']}),
-  desc:'炸彈裡藏了一個密碼數字，大家輪流猜，每猜一次範圍就縮小，猜中密碼的人就被炸！越到後面越緊張，被炸最少次的人贏。',
-  goal:'輪到你時猜一個範圍內的數字。猜中密碼會被炸，被炸最少次的人贏。',
+  desc:'炸彈裡藏了一個密碼數字，大家輪流猜，每猜一次範圍就縮小，猜中密碼的人就被炸！玩到有人被炸為止。連線時可以讓大家輪流出密碼。',
+  goal:'輪到你時猜一個範圍內的數字，猜中密碼就被炸，別當那個人！',
   stages:SCN.map(s=>s.name),stageLabel:'選擇場景',stageShow,thumb:(c,w,h,t)=>stageShow(c,w,h,0,t),
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人同一台'}],
   options:[{key:'max',label:'密碼範圍',def:'100',opts:[{id:'50',label:'1～50（簡單）'},{id:'100',label:'1～100'},{id:'500',label:'1～500（困難）'}]},
-    {key:'rounds',label:'回合數',def:'5',opts:[{id:'3',label:'3 回合'},{id:'5',label:'5 回合'},{id:'8',label:'8 回合'}]},
+    {key:'setter',label:'連線時誰出密碼',def:'turn',opts:[{id:'turn',label:'玩家輪流出'},{id:'cpu',label:'電腦出'}]},
     {key:'time',label:'每次思考時間',def:'12',opts:[{id:'8',label:'8 秒'},{id:'12',label:'12 秒'},{id:'20',label:'20 秒'},{id:'0',label:'不限'}]},
     {key:'seats',label:'單機人數',def:'5',opts:[{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'}]}],
   help:[['數字鍵','輸入數字，Enter 確定'],['↑↓ ←→','加減 1、加減 10'],['雙人','輪到誰就誰按']],
   touchHelp:[['數字鍵盤','點數字，再點「確定」']],touch:null,
   looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'},{id:'chef',label:'廚師'},{id:'pirate',label:'海盜'},{id:'ninja',label:'忍者'},{id:'bow',label:'蝴蝶結'}]},{key:'color',label:'人物顏色',type:'color',opts:['auto','#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6']}],
   preview:(ctx,w,h,L,t)=>{ ctx.save(); ctx.scale(w/W,h/H); bg(ctx,0,t); ctx.restore(); const C=window.ARCADE_CHAR; if(C) C.drawChar(ctx,w/2,h*.6,!L||!L.color||L.color==='auto'?PCOL[0]:L.color,1,false,t,2.6,(L&&L.char)||'cap',(L&&L.deco)||''); },
-  best:{label:'被炸次數',fmt:v=>v+' 次',lower:true},create};
+  hubBest:()=>{ let v=0; try{ v=+localStorage.getItem('arcade.boomcode.safe')||0; }catch(e){} return v?'平安沒被炸 <b>'+v+'</b> 局':'尚無紀錄'; },
+  create};
 })();
