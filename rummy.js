@@ -207,7 +207,7 @@ function create(env,opts){
     else if(!isMyTurn()){ // 別人的回合：自己的手牌可以照樣排，但桌面跟著最新狀態
       E.table=G.table.map(s=>s.slice()); const mine=G.racks[me]; if(E.rack.length!==mine.length||mine.some(id=>!E.rack.includes(id))){ E.rack=mine.slice(); sortRack(); } E.startRack=mine.slice(); E.start=G.table.map(s=>s.slice()); }
     if(TURN_SEC&&isMyTurn()&&!E.sent){ turnT-=dt; if(turnT<=0){ say('時間到，自動摸一張牌',2); doUndo(); doDraw(); } }
-    if(!client&&isAI(G.turn)&&!G.gone[G.turn]){ aiT+=dt; if(aiT>1.1){ const mv=aiMove(G.turn); if(mv){ applyPlay(G.turn,mv.table,mv.rack); } else drawPass(G.turn); broadcast(); } }
+    if(!client&&isAI(G.turn)&&!G.gone[G.turn]){ aiT+=dt; if(aiT>1.8){ const mv=aiMove(G.turn); if(mv){ applyPlay(G.turn,mv.table,mv.rack); } else drawPass(G.turn); broadcast(); } }
     if(net&&net.host){ sendT-=dt; if(sendT<=0){ sendT=2; broadcast(); } }
   }
 

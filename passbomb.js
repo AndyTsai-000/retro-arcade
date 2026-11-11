@@ -84,16 +84,16 @@ function create(env,opts){
   const nextAlive=i=>{ for(let k=1;k<=n;k++){ const q=((i+G.dir*k)%n+n)%n; if(G.lv[q]>0) return q; } return i; };
   function newSeq(){ const len=clamp(2+Math.floor((G.round-1)/2)+Math.floor(G.pass/5),2,7),a=[]; for(let i=0;i<len;i++) a.push(Math.floor(Math.random()*4)); G.seq=a; G.pos=0; G.wrong=0; }
   function newRound(){ G.fuseM=G.fuse=7+Math.random()*(13-Math.min(4,G.round*.6)); G.pass=0; G.phase='hold'; newSeq(); G.msg=''; aiT=aiDelay(); sfx('go'); }
-  const aiDelay=()=>.5+G.seq.length*(.2+Math.random()*.22);
+  const aiDelay=()=>.9+G.seq.length*(.32+Math.random()*.25);
   function advance(i){ if(G.phase!=='hold'||i!==G.h||G.pos<G.seq.length) return; const to=nextAlive(G.h); G.fly={from:G.h,to,u:0}; G.phase='fly'; G.pass++; sfx('click'); }
   function press(i,k){ if(G.phase!=='hold'||i!==G.h) return; if(G.seq[G.pos]===k){ G.pos++; sfx('item'); if(G.pos>=G.seq.length) advance(i); } else { G.pos=0; G.wrong=.45; G.fuse=Math.max(.4,G.fuse-.6); sfx('bump'); } }
   function boom(){ G.phase='boom'; G.T=2.3; const v=G.h; G.lv[v]--; G.soot[v]=1; G.boomAt=v; G.boom++; G.msg=names[v]+' 被炸到了！'+(G.lv[v]<=0?'出局！':''); sfx('boom'); sfx('hurt'); }
   function stepHost(dt){ if(G.phase==='ready'){ G.T-=dt; if(G.T<=0) newRound(); return; }
     if(G.wrong>0) G.wrong-=dt;
     if(G.phase==='hold'||G.phase==='fly'){ G.fuse-=dt; if(G.fuse<=0&&G.phase==='fly'){ const f=G.fly; G.h=f.u>.5?f.to:f.from; G.fly=null; boom(); return; } if(G.fuse<=0){ boom(); return; } }
-    if(G.phase==='fly'){ const f=G.fly; f.u+=dt*2.8; if(f.u>=1){ G.h=f.to; G.fly=null; G.phase='hold'; newSeq(); aiT=aiDelay(); } return; }
-    if(G.phase==='hold'&&G.h>=humans){ aiT-=dt; if(aiT<=0){ if(Math.random()<.08+G.round*.005){ G.wrong=.4; G.fuse=Math.max(.4,G.fuse-.6); sfx('bump'); aiT=.6; } else { G.pos=G.seq.length; sfx('item'); advance(G.h); } } }
-    if(G.phase==='boom'){ G.T-=dt; if(G.T<=0){ const a=aliveI(); if(a.length<=1){ G.phase='end'; G.win=a.length?a[0]:-1; G.T=2; sfx('win'); return; } G.round++; if(G.lv[G.h]<=0) G.h=nextAlive(G.h); G.soot=G.soot.map(v=>G.lv[G.soot.indexOf(v)]>0?v:v); G.phase='ready'; G.T=1.5; } }
+    if(G.phase==='fly'){ const f=G.fly; f.u+=dt*2; if(f.u>=1){ G.h=f.to; G.fly=null; G.phase='hold'; newSeq(); aiT=aiDelay(); } return; }
+    if(G.phase==='hold'&&G.h>=humans){ aiT-=dt; if(aiT<=0){ if(Math.random()<.08+G.round*.005){ G.wrong=.4; G.fuse=Math.max(.4,G.fuse-.6); sfx('bump'); aiT=.9; } else { G.pos=G.seq.length; sfx('item'); advance(G.h); } } }
+    if(G.phase==='boom'){ G.T-=dt; if(G.T<=0){ const a=aliveI(); if(a.length<=1){ G.phase='end'; G.win=a.length?a[0]:-1; G.T=2; sfx('win'); return; } G.round++; if(G.lv[G.h]<=0) G.h=nextAlive(G.h); G.soot=G.soot.map(v=>G.lv[G.soot.indexOf(v)]>0?v:v); G.phase='ready'; G.T=2.2; } }
     if(G.phase==='end'){ G.T-=dt; if(G.T<=0&&!ended){ ended=true; if(net) net.send({st:G}); finish(); } } }
   function finish(){ const w=G.win,meWin=w===(local2?-9:me)||local2&&w<2; env.sfx(meWin?'win':'lose'); env.end({title:w>=0?names[w]+' 活到最後！':'全部炸光了',big:meWin?'你贏了':'第 '+G.round+' 回合結束',html:'<table class="ls"><tr><th>玩家</th><th>剩下的命</th></tr>'+names.map((m,i)=>'<tr><td>'+m+'</td><td>'+'♥'.repeat(Math.max(0,G.lv[i]))+'</td></tr>').join('')+'</table>',text:'撐過 '+G.round+' 回合',score:!net&&!local2&&meWin?G.round:null}); }
   if(net){ if(client) net.onmsg=m=>{ if(m.st){ const was=G.boom; G=m.st; if(G.boom>was) bigBoom(); if(G.phase==='end'&&!ended&&G.T<=0){ ended=true; finish(); } } if(m.ev) for(const k of m.ev) env.sfx(k); }; else net.onmsg=(m,from)=>{ if(m.k!=null) press(from,m.k); }; }
@@ -103,7 +103,7 @@ function create(env,opts){
     // 按鍵：單人、連線用方向鍵或 WASD；同機 1P WASD、2P 方向鍵
     const send=(pl,k)=>{ if(client) net.send({k}); else press(pl,k); };
     for(let k=0;k<4;k++){ if(local2){ if(env.hit(ARK[k][1])) send(0,k); if(env.hit(ARK[k][0])) send(1,k); } else if(ARK[k].some(q=>env.hit(q))) send(me,k); }
-    if(client){ if(G.fly) G.fly.u=Math.min(1,G.fly.u+dt*2.8); return; }
+    if(client){ if(G.fly) G.fly.u=Math.min(1,G.fly.u+dt*2); return; }
     const was=G.boom; stepHost(dt); if(G.boom>was) bigBoom();
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/12; net.send({st:G}); if(evq.length){ net.send({ev:evq}); evq=[]; } } } }
   function draw(){ c.save(); if(shake>0) c.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake); background(c,sc,t);

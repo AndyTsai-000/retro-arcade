@@ -230,7 +230,7 @@ function create(env,opts){
   const humans=net?net.count:local2?2:1;
   const np=TWO?2:kind==='cc'?(net?clamp(net.count+(net.bots||0),2,6):clamp(+OP.ccn||3,2,6)):(net?clamp(net.count+(net.bots||0),2,4):clamp(+OP.mjn||4,2,4));
   const LV=Math.max(0,['easy','normal','hard'].indexOf(OP.lv||'normal')),SP=Math.max(0,['slow','normal','fast'].indexOf(OP.speed||'normal'));
-  const AID=kind==='mj'?[2.6,1.6,.8][SP]:[2,1.1,.5][SP],first=opts.first===1?1:0,L=themed(opts.look,kind);
+  const AID=kind==='mj'?[2.6,1.6,.8][SP]:[2.6,1.6,.8][SP],first=opts.first===1?1:0,L=themed(opts.look,kind);
   const {ctx:c,canvas}=env.canvas2d(W,H);
   const left=new Set(),isAI=p=>p>=humans||left.has(p),sfx=n=>env.sfx(n);
   const names=[]; for(let i=0;i<np;i++) names.push(i<humans?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i?'2P':'1P'):(opts.name||'你')):(np-humans>1?'電腦 '+(i-humans+1):'電腦'));
