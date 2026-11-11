@@ -58,7 +58,7 @@ function bombArt(c,x,y,R,t,hot,lo,hi,flash,boomT){ c.save(); c.translate(x+(hot>
 let SET_ROT=0; // 連線輪流出密碼：房主記到第幾個人了（重玩時換下一個）
 function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,two=!net&&opts.mode==='2p',pv=!!opts.preview,OP=opts.options||{},sc=clamp(opts.stage|0,0,SCN.length-1);
-  const MAX=+OP.max||100,TL=OP.time==null?15:+OP.time,ST=30;
+  const MAX=+OP.max||100,TL=0,ST=30; // 喊密碼不限時間（TL=0）；出密碼還是 30 秒
   const humans=net?net.count:pv?0:two?2:1,n=net?clamp(net.count+(net.bots||0),2,8):clamp(+OP.seats||5,2,8),me=net?net.me:0;
   const names=[],looks=[]; for(let i=0;i<n;i++){ if(i<humans){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:i===0?opts.look||{}:{}); } else { names.push(BOTN[(i-humans+sc*2)%BOTN.length]); looks.push(BOTLOOK(i+sc)); } }
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%8]:L.color; };
@@ -164,7 +164,6 @@ function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); bg(ctx,si,t); 
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人同一台'}],
   options:[{key:'max',label:'密碼範圍',def:'100',opts:[{id:'50',label:'1～50（簡單）'},{id:'100',label:'1～100'},{id:'500',label:'1～500（困難）'}]},
     {key:'setter',label:'連線時誰出密碼',def:'turn',opts:[{id:'turn',label:'玩家輪流出'},{id:'cpu',label:'電腦出'}]},
-    {key:'time',label:'每次思考時間',def:'12',opts:[{id:'8',label:'8 秒'},{id:'12',label:'12 秒'},{id:'20',label:'20 秒'},{id:'0',label:'不限'}]},
     {key:'seats',label:'單機人數',def:'5',opts:[{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'}]}],
   help:[['數字鍵','輸入數字，Enter 確定'],['↑↓ ←→','加減 1、加減 10'],['雙人','輪到誰就誰按']],
   touchHelp:[['數字鍵盤','點數字，再點「確定」']],touch:null,
