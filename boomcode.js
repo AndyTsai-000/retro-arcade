@@ -58,33 +58,35 @@ function bombArt(c,x,y,R,t,hot,lo,hi,flash,boomT){ c.save(); c.translate(x+(hot>
 let SET_ROT=0; // 連線輪流出密碼：房主記到第幾個人了（重玩時換下一個）
 function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,two=!net&&opts.mode==='2p',pv=!!opts.preview,OP=opts.options||{},sc=clamp(opts.stage|0,0,SCN.length-1);
-  const MAX=+OP.max||100,TL=OP.time==null?12:+OP.time,ST=30;
+  const MAX=+OP.max||100,TL=OP.time==null?15:+OP.time,ST=30;
   const humans=net?net.count:pv?0:two?2:1,n=net?clamp(net.count+(net.bots||0),2,8):clamp(+OP.seats||5,2,8),me=net?net.me:0;
   const names=[],looks=[]; for(let i=0;i<n;i++){ if(i<humans){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:i===0?opts.look||{}:{}); } else { names.push(BOTN[(i-humans+sc*2)%BOTN.length]); looks.push(BOTLOOK(i+sc)); } }
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%8]:L.color; };
   const mine=i=>two?i<2:i===me;
   let secret=0,t=0,ended=false,sendT=0,evq=[],shake=0,fx=[],buf='',aiT=1,aiN=0,aiTxt='',flash=0,pops=[];
   let mySec=0; const setter=net&&host&&OP.setter!=='cpu'&&!pv?(SET_ROT++)%net.count:-1;
-  let G={ph:'intro',T:pv?.4:2.2,lo:1,hi:MAX,cur:0,setter,turnT:TL,boom:Array(n).fill(0),last:null,hits:0,boomAt:-1,boomN:0,msg:'',guessN:0,typing:'',hist:[]};
+  let G={ph:'intro',T:pv?.4:3,lo:1,hi:MAX,dlo:1,dhi:MAX,wait:0,cur:0,setter,turnT:TL,boom:Array(n).fill(0),last:null,hits:0,boomAt:-1,boomN:0,msg:'',guessN:0,typing:'',hist:[]};
   const nxt=i=>{ let q=(i+1)%n; if(q===G.setter) q=(q+1)%n; return q; }; G.cur=(opts.first||0)%n; if(G.cur===G.setter) G.cur=nxt(G.cur);
   const sfx=k=>{ if(pv) return; env.sfx(k); if(net&&host) evq.push(k); };
   const tone=(f,d,type,v)=>{ const A=env.audio&&env.audio(); if(!A||pv) return; try{ const o=A.createOscillator(),g=A.createGain(),t0=A.currentTime; o.type=type||'square'; o.frequency.value=f; g.gain.setValueAtTime(v||.05,t0); g.gain.exponentialRampToValueAtTime(.001,t0+d); o.connect(g); g.connect((env.out&&env.out())||A.destination); o.start(t0); o.stop(t0+d+.02); }catch(e){} };
   const hot=()=>1-clamp((G.hi-G.lo)/(MAX-1),0,1);
-  function newRound(){ if(G.setter>=0&&!secret){ G.ph='set'; G.turnT=ST; return; } if(!secret) secret=1+Math.floor(Math.random()*MAX); G.lo=1; G.hi=MAX; G.last=null; G.ph='turn'; G.turnT=TL; G.msg=''; startTurn(); sfx('go'); }
-  function startTurn(){ G.turnT=TL; G.typing=''; buf=''; aiT=.9+Math.random()*1.2; aiN=pickBot(); aiTxt=''; }
+  function newRound(){ if(G.setter>=0&&!secret){ G.ph='set'; G.turnT=ST; return; } if(!secret) secret=1+Math.floor(Math.random()*MAX); G.lo=1; G.hi=MAX; G.dlo=1; G.dhi=MAX; G.wait=0; G.last=null; G.ph='turn'; G.turnT=TL; G.msg=''; startTurn(); sfx('go'); }
+  function startTurn(){ G.turnT=TL; G.typing=''; buf=''; aiT=1.8+Math.random()*1.6; aiN=pickBot(); aiTxt=''; }
   /* 電腦：大多猜中間附近，有時故意只縮一點點、有時大膽砍一刀 */
   function pickBot(){ const lo=G.lo,hi=G.hi,sz=hi-lo; if(sz<=0) return lo; const r=Math.random(); let g; if(sz<=3) g=lo+Math.floor(Math.random()*(sz+1)); else if(r<.25) g=Math.random()<.5?lo+1+Math.floor(Math.random()*2):hi-1-Math.floor(Math.random()*2); else if(r<.5) g=Math.round(lo+sz*(.5+(Math.random()-.5)*.3)); else g=Math.round(lo+sz*(.2+Math.random()*.6)); return clamp(g,lo,hi); }
   function guess(who,g){ if(G.ph!=='turn'||who!==G.cur) return false; g=Math.round(+g); if(!(g>=G.lo&&g<=G.hi)) return false;
     G.guessN++; G.last={who,g,dir:0}; G.hist.push([who,g]);
-    if(g===secret){ G.ph='boom'; G.T=3; G.boom[who]++; G.boomAt=who; G.boomN++; G.hits=secret; G.msg=names[who]+' 猜中密碼 '+secret+'！'; sfx('boom'); sfx('hurt'); return true; }
-    if(g<secret){ G.lo=g+1; G.last.dir=1; } else { G.hi=g-1; G.last.dir=-1; }
+    if(g===secret){ G.ph='boom'; G.T=4; G.boom[who]++; G.boomAt=who; G.boomN++; G.hits=secret; G.msg=names[who]+' 猜中密碼 '+secret+'！'; sfx('boom'); sfx('hurt'); return true; }
+    if(g<secret){ G.lo=g+1; G.dlo=g; G.last.dir=1; } else { G.hi=g-1; G.dhi=g; G.last.dir=-1; }
+    G.wait=1.4; // 猜完停一下，讓大家看清楚
     sfx('place'); G.cur=nxt(G.cur); startTurn(); return true; }
   function setSecret(who,v){ if(G.ph!=='set'||who!==G.setter) return; v=Math.round(+v); if(!(v>=1&&v<=MAX)) return; secret=v; newRound(); }
   function stepHost(dt){
     if(G.ph==='intro'){ G.T-=dt; if(G.T<=0) newRound(); return; }
     if(G.ph==='set'){ G.turnT-=dt; if(G.turnT<=0){ secret=1+Math.floor(Math.random()*MAX); newRound(); } return; }
+    if(G.ph==='turn'&&G.wait>0){ G.wait-=dt; return; }
     if(G.ph==='turn'){ if(TL>0){ G.turnT-=dt; if(G.turnT<=0){ const g=G.lo+Math.floor(Math.random()*(G.hi-G.lo+1)); G.msg='時間到！自動猜 '+g; guess(G.cur,g); return; } }
-      if(G.cur>=humans){ aiT-=dt; const s=String(aiN); G.typing=s.slice(0,clamp(Math.floor((1.6-aiT)*4),0,s.length)); if(aiT<=0) guess(G.cur,aiN); } }
+      if(G.cur>=humans){ aiT-=dt; const s=String(aiN); G.typing=s.slice(0,clamp(Math.floor((1.3-aiT)*3)+1,0,s.length)*(aiT<1.3?1:0)); if(aiT<=0) guess(G.cur,aiN); } }
     if(G.ph==='boom'){ G.T-=dt; if(G.T<=0){ G.ph='end'; G.T=.3; } }
     if(G.ph==='end'){ G.T-=dt; if(G.T<=0&&!ended){ ended=true; if(net) net.send({st:G}); finish(); } } }
   function finish(){ const L=G.boomAt,meLose=two?L<2:L===me,iSet=!two&&G.setter===me&&me>=0; if(!net&&!pv&&!(two?false:meLose)) try{ localStorage.setItem('arcade.boomcode.safe',(+localStorage.getItem('arcade.boomcode.safe')||0)+1); }catch(e){}
@@ -97,12 +99,12 @@ function create(env,opts){
     else net.onmsg=(m,from)=>{ if(m.g!=null) guess(from,m.g); if(m.sec!=null) setSecret(from,m.sec); }; }
   const BX=400,BY=150,BR=86;
   function bigBoom(){ shake=18; flash=0; for(let i=0;i<90;i++){ const a=Math.random()*TAU,s=80+Math.random()*420; fx.push({x:BX,y:BY,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,l:.5+Math.random()*.9,c:['#ffd23f','#ff7a3d','#ff3b3b','#fff','#55505a'][i%5],s:3+Math.random()*7}); } fx.push({ring:1,x:BX,y:BY,l:.6,L:.6}); const p=seat(G.boomAt); for(let i=0;i<14;i++) fx.push({smoke:1,x:p[0]+(Math.random()-.5)*30,y:p[1]-90,vx:(Math.random()-.5)*30,vy:-30-Math.random()*30,l:1.4+Math.random(),c:'#3a3438',s:10+Math.random()*10}); }
-  function pop(){ flash=.18; if(G.last){ const p=seat(G.last.who); pops.push({x:p[0],y:p[1]-80,g:G.last.g,dir:G.last.dir,l:1.1}); } tone(500+hot()*700,.08,'square',.05); }
+  function pop(){ flash=.18; if(G.last){ const p=seat(G.last.who); pops.push({x:p[0],y:p[1]-80,g:G.last.g,dir:G.last.dir,l:2}); } tone(500+hot()*700,.08,'square',.05); }
   const seat=i=>{ const u=n<2?.5:i/(n-1),x=70+u*660,y=420-Math.sin(u*Math.PI)*50; return [x,y]; };
   /* 數字鍵盤（在自己回合才出現） */
   const KEYS=['1','2','3','4','5','6','7','8','9','0','⌫','確定'],kRect=k=>{ const w=58,gp=6,x0=W/2-(12*(w+gp)-gp)/2; return [x0+k*(w+gp),H-50,w+(k===11?0:0),42]; };
   const toG=e=>{ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H); return [(e.clientX-r.left-(r.width-W*s)/2)/s,(e.clientY-r.top-(r.height-H*s)/2)/s]; };
-  const mySet=()=>G.ph==='set'&&G.setter===me&&!pv&&!mySec,myTurn=()=>!pv&&(mySet()||G.ph==='turn'&&(two?G.cur<2:G.cur===me));
+  const mySet=()=>G.ph==='set'&&G.setter===me&&!pv&&!mySec,myTurn=()=>!pv&&(mySet()||G.ph==='turn'&&!(G.wait>0)&&(two?G.cur<2:G.cur===me));
   const rng=()=>mySet()?[1,MAX]:[G.lo,G.hi];
   function type(k){ if(!myTurn()) return; if(k==='⌫'){ buf=buf.slice(0,-1); tone(300,.04); return; } if(k==='確定'){ submit(); return; } if(buf.length>=String(MAX).length) return; buf=(buf+k).replace(/^0+/,''); tone(700,.04); }
   function submit(){ if(!buf) return; const g=+buf,[lo,hi]=rng(); if(!(g>=lo&&g<=hi)){ G.bad=.6; buf=''; env.sfx('bump'); return; }
@@ -122,9 +124,9 @@ function create(env,opts){
   function draw(){ c.save(); if(shake>0) c.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake); bg(c,sc,t);
     /* 桌子 */ c.fillStyle='rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(BX,BY+BR+26,150,26,0,0,TAU); c.fill(); c.fillStyle='#8a5a34'; rr(c,BX-140,BY+BR+4,280,22,10); c.fill(); c.fillStyle='#a8744a'; rr(c,BX-140,BY+BR,280,12,6); c.fill();
     const H0=hot(),boomNow=G.ph==='boom'&&G.T>1.2;
-    if(!boomNow) bombArt(c,BX,BY,BR,t,H0,G.lo,G.hi,flash,0);
+    if(!boomNow) bombArt(c,BX,BY,BR,t,H0,G.dlo,G.dhi,flash,0);
     /* 範圍條 */ const bx0=150,bw=500,by=BY+BR+44; c.fillStyle='rgba(11,10,28,.6)'; rr(c,bx0-8,by-8,bw+16,30,10); c.fill(); c.fillStyle='rgba(255,255,255,.12)'; rr(c,bx0,by,bw,14,7); c.fill();
-    const X=v=>bx0+(v-1)/(MAX-1||1)*bw,x1=X(G.lo),x2=X(G.hi); const gg=c.createLinearGradient(x1,0,x2+1,0); gg.addColorStop(0,H0>.7?'#ff5d4f':'#ffd23f'); gg.addColorStop(1,H0>.7?'#ff9d3d':'#5fd068'); c.fillStyle=gg; rr(c,x1,by,Math.max(8,x2-x1),14,7); c.fill();
+    const X=v=>bx0+(v-1)/(MAX-1||1)*bw,x1=X(G.dlo),x2=X(G.dhi); const gg=c.createLinearGradient(x1,0,x2+1,0); gg.addColorStop(0,H0>.7?'#ff5d4f':'#ffd23f'); gg.addColorStop(1,H0>.7?'#ff9d3d':'#5fd068'); c.fillStyle=gg; rr(c,x1,by,Math.max(8,x2-x1),14,7); c.fill();
     c.fillStyle='#fff'; c.font='700 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('1',bx0-1,by+28); c.fillText(String(MAX),bx0+bw,by+28); if(G.last&&G.ph==='turn'){ const lx=X(G.last.g); c.fillStyle='#ff5a9a'; c.beginPath(); c.moveTo(lx,by-2); c.lineTo(lx-6,by-12); c.lineTo(lx+6,by-12); c.fill(); }
     /* 人物 */ const C=window.ARCADE_CHAR; for(let i=0;i<n;i++){ const [x,y]=seat(i),cur=G.cur===i&&(G.ph==='turn'),L=looks[i]||{},hitMe=G.boomAt===i&&(G.ph==='boom'||G.ph==='end');
       if(cur){ c.fillStyle='rgba(255,210,63,.35)'; c.beginPath(); c.ellipse(x,y+4,40,12,0,0,TAU); c.fill(); c.fillStyle='#ffd23f'; c.beginPath(); const by2=y-124+Math.sin(t*6)*4; c.moveTo(x,by2+12); c.lineTo(x-9,by2); c.lineTo(x+9,by2); c.fill(); }
@@ -133,7 +135,7 @@ function create(env,opts){
       if(G.setter===i){ c.fillStyle='#ffd23f'; rr(c,x-34,y+28,68,18,9); c.fill(); c.fillStyle='#14122b'; c.font='900 11px '+TC; c.fillText('🔑 出密碼',x,y+37); }
       if(cur&&i>=humans&&G.typing){ c.fillStyle='#fff'; rr(c,x-30,y-148,60,28,10); c.fill(); c.fillStyle='#14122b'; c.font='900 18px "Courier New",monospace'; c.fillText(G.typing,x,y-134); }
       else if(cur&&i>=humans){ c.fillStyle='rgba(255,255,255,.9)'; rr(c,x-24,y-146,48,24,10); c.fill(); c.fillStyle='#14122b'; c.font='900 16px sans-serif'; c.fillText('.'.repeat(1+Math.floor(t*3)%3),x,y-134); } }
-    /* 猜的數字飛出來 */ for(const p of pops){ const a=Math.min(1,p.l*2),u=1-p.l/1.1; c.globalAlpha=a; c.font='900 26px "Courier New",monospace'; c.lineWidth=5; c.strokeStyle='#14122b'; c.textAlign='center'; const y=p.y-u*30; c.strokeText(p.g,p.x,y); c.fillStyle='#fff'; c.fillText(p.g,p.x,y); c.font='900 14px '+TC; const s=p.dir>0?'密碼比較大 ▲':'密碼比較小 ▼'; c.strokeText(s,p.x,y+22); c.fillStyle=p.dir>0?'#7aff7a':'#7ac8ff'; c.fillText(s,p.x,y+22); c.globalAlpha=1; }
+    /* 猜的數字飛出來 */ for(const p of pops){ const a=Math.min(1,p.l*2),u=1-p.l/2; c.globalAlpha=a; c.font='900 26px "Courier New",monospace'; c.lineWidth=5; c.strokeStyle='#14122b'; c.textAlign='center'; const y=p.y-u*30; c.strokeText(p.g,p.x,y); c.fillStyle='#fff'; c.fillText(p.g,p.x,y); c.font='900 14px '+TC; const s=p.dir>0?'密碼比較大 ▲':'密碼比較小 ▼'; c.strokeText(s,p.x,y+22); c.fillStyle=p.dir>0?'#7aff7a':'#7ac8ff'; c.fillText(s,p.x,y+22); c.globalAlpha=1; }
     for(const f of fx){ if(f.ring){ const a=f.l/f.L; c.globalAlpha=a; c.strokeStyle='#ffd23f'; c.lineWidth=12*a+1; c.beginPath(); c.arc(f.x,f.y,(1-a)*260,0,TAU); c.stroke(); c.globalAlpha=1; } else if(f.smoke){ c.globalAlpha=Math.min(.6,f.l*.5); c.fillStyle=f.c; c.beginPath(); c.arc(f.x,f.y,f.s,0,TAU); c.fill(); c.globalAlpha=1; } else { c.globalAlpha=Math.min(1,f.l*2); c.fillStyle=f.c; c.fillRect(f.x,f.y,f.s,f.s); c.globalAlpha=1; } }
     if(boomNow){ const k=(G.T-1.2)/1.8; c.fillStyle='rgba(255,240,180,'+Math.max(0,k-.6)*2+')'; c.fillRect(0,0,W,H); bombArt(c,BX,BY,BR*.9,t,1,0,0,0,1); }
     c.restore();
@@ -143,9 +145,9 @@ function create(env,opts){
     /* 左上：回合、計時 */ c.fillStyle='rgba(11,10,28,.75)'; rr(c,10,10,176,30,10); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.fillText('密碼 1～'+MAX+'　已猜 '+G.hist.length+' 次',20,25);
     if(mySec&&G.setter===me){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,10,46,176,28,10); c.fill(); c.fillStyle='#7aff7a'; c.fillText('🔑 你出的密碼：'+mySec,20,60); }
     if(G.ph==='set'){ const s=G.setter===me?(mySec?'密碼設好了！':'偷偷輸入一個密碼，別人看不到！'):names[G.setter]+' 正在出密碼…',yy=BY-BR-14>30?BY-BR-14:40; c.textAlign='center'; c.font='900 24px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(s,W/2,yy); c.fillStyle='#ffd23f'; c.fillText(s,W/2,yy); c.font='700 13px '+TC; c.textAlign='right'; c.fillStyle='#fff'; c.fillText('剩 '+Math.ceil(Math.max(0,G.turnT))+' 秒',W-20,25); }
-    if(G.ph==='turn'){ const nm=names[G.cur],s=mine(G.cur)?(two?(G.cur+1)+'P 輪到你了！':'輪到你了！'):'輪到 '+nm; c.fillStyle='rgba(11,10,28,.75)'; rr(c,W-196,10,186,30,10); c.fill(); c.fillStyle=mine(G.cur)?'#ffd23f':'#fff'; c.textAlign='left'; c.fillText(s,W-186,25); if(TL>0){ const u=clamp(G.turnT/TL,0,1); c.fillStyle=u<.3&&Math.sin(t*16)>0?'#ff5d4f':'#ffd23f'; c.beginPath(); c.moveTo(W-28,25); c.arc(W-28,25,10,-Math.PI/2,-Math.PI/2+u*TAU); c.fill(); } }
+    if(G.ph==='turn'&&!(G.wait>0)){ const nm=names[G.cur],s=mine(G.cur)?(two?(G.cur+1)+'P 輪到你了！':'輪到你了！'):'輪到 '+nm; c.fillStyle='rgba(11,10,28,.75)'; rr(c,W-196,10,186,30,10); c.fill(); c.fillStyle=mine(G.cur)?'#ffd23f':'#fff'; c.textAlign='left'; c.fillText(s,W-186,25); if(TL>0){ const u=clamp(G.turnT/TL,0,1); c.fillStyle=u<.3&&Math.sin(t*16)>0?'#ff5d4f':'#ffd23f'; c.beginPath(); c.moveTo(W-28,25); c.arc(W-28,25,10,-Math.PI/2,-Math.PI/2+u*TAU); c.fill(); } }
     /* 鍵盤 */ if(myTurn()){ c.fillStyle='rgba(11,10,28,.82)'; rr(c,18,H-110,W-36,104,16); c.fill();
-      c.fillStyle=G.bad>0?'#ff5d4f':'#fff'; c.font='900 14px '+TC; c.textAlign='left'; const [klo,khi]=rng(); c.fillText(G.bad>0?'要在 '+klo+' ～ '+khi+' 裡面喔！':mySet()?'出一個 1 ～ '+MAX+' 的密碼':'猜一個 '+klo+' ～ '+khi+' 的數字',36,H-90);
+      c.fillStyle=G.bad>0?'#ff5d4f':'#fff'; c.font='900 14px '+TC; c.textAlign='left'; const [klo,khi]=rng(); c.fillText(G.bad>0?'要在 '+klo+' ～ '+khi+' 裡面喔！':mySet()?'出一個 1 ～ '+MAX+' 的密碼':G.dlo===klo&&G.dhi===khi?'猜一個 '+klo+' ～ '+khi+' 的數字':'猜 '+G.dlo+' 和 '+G.dhi+' 中間的數字（'+(klo===khi?'只剩 '+klo:klo+' ～ '+khi)+'）',36,H-90);
       c.fillStyle='#0c1a0c'; rr(c,W/2-70,H-104,140,42,10); c.fill(); c.fillStyle='#7aff7a'; c.font='900 28px "Courier New",monospace'; c.textAlign='center'; c.fillText(buf||(Math.sin(t*6)>0?'_':''),W/2,H-82);
       c.fillStyle='rgba(255,255,255,.55)'; c.font='700 12px '+TC; c.textAlign='right'; c.fillText(env.touch?'點數字、按確定':'數字鍵輸入、Enter 確定',W-36,H-90);
       for(let k=0;k<12;k++){ const [x,y,w,h]=kRect(k),on=pressK===k&&pressT>0; c.fillStyle=k===11?'#ff5a9a':k===10?'#8a8aa8':'#f4f4f8'; rr(c,x,y+(on?2:0),w,h,10); c.fill(); c.fillStyle='rgba(0,0,0,.25)'; if(!on) { rr(c,x,y+h-4,w,4,2); c.fill(); } c.fillStyle='#14122b'; c.font='900 '+(k===11?16:20)+'px '+TC; c.textAlign='center'; c.fillText(KEYS[k],x+w/2,y+h/2+(on?3:1)); } } }
