@@ -211,7 +211,7 @@ function make(T,o){
   // 關節：先移到關節位置，再繞 X 軸轉（正值往前抬）
   const joint=(parent,x,y,z,rx,rz,out)=>{ MT.makeTranslation(x,y,z); e4.set(rx,0,rz||0); MR.makeRotationFromEuler(e4); return out.multiplyMatrices(parent,MT).multiply(MR); };
   const shadeP=(hex,k)=>{ c4.set(hex); c4.multiplyScalar(1+k); return '#'+c4.getHexString(); };
-  function ped(q,t){ if(pedN>=MAXP) return; const lk=q.lk||{},yaw=-(q.a||0)-PI/2,sc=(q.sc||1)*.86,run=q.run,lie=!!q.lying,ph=q.ph||0,sw=lie?0:Math.sin(ph)*(run?.75:.42),X=q.x,Z=q.y;
+  function ped(q,t){ if(pedN>=MAXP) return; const lk=q.lk||{},yaw=-(q.a||0)-PI/2,sc=(q.sc||1)*.86,run=q.run,lie=!!q.lying,ph=q.ph||0,sw=lie?0:Math.sin(ph)*(run?.75:.42),X=q.x+(q.vx||0)*LAG,Z=q.y+(q.vy||0)*LAG;
     const skin=lk.skin||'#e0b48e',shirt=lk.shirt||'#888',pants=lk.pants||'#333',hair=lk.hair||'#222',shoe=lk.me?'#1a1a20':shadeP(pants,-.4);
     const bob=lie?0:Math.abs(Math.sin(ph))*(run?.55:.25);
     e4.set(0,yaw,0); MR.makeRotationFromEuler(e4); MB.makeTranslation(X,lie?1.5:0,Z).multiply(MR);
@@ -250,9 +250,9 @@ function make(T,o){
   /* ---------- 鏡頭 ---------- */
   const cams=[0,1].map(()=>{ const c=new T.PerspectiveCamera(62,W/H,1,9000); c.rotation.order='YXZ'; return c; }),VS={};
   function blockedAt(x,z,h){ const i=Math.floor(x/P),j=Math.floor(z/P),b=Wd.blk(i,j); if(!b||x<b.x0||x>b.x1||z<b.y0||z>b.y1) return false; for(const bd of b.blds) if(x>bd.x0-3&&x<bd.x1+3&&z>bd.y0-3&&z<bd.y1+3&&(bd.h3||60)>h-6) return true; for(const tr of b.trees) if(Math.hypot(tr.x-x,tr.y-z)<tr.r+4&&h<26+tr.r*1.7) return true; return false; }
-  let frame=0,lastNow=0,tSum=0,tN=0,lvlQ=0,lastSig=-1;
+  let frame=0,lastNow=0,tSum=0,tN=0,lvlQ=0,lastSig=-1,LAG=0; /* LAG：畫面往前補的秒數（物理是固定步長，補上才不會一頓一頓） */
   const G={canvas:cv,get q(){ return Q; },
-    render(st){ frame++; const now=performance.now()/1000,e=st.env; setSky(e); const t=st.t;
+    render(st){ frame++; const now=performance.now()/1000,e=st.env; setSky(e); const t=st.t; LAG=st.lag||0;
       // 光線、霧、夜燈
       const day=1-e.dark,wet=e.rain>.3;
       hemi.intensity=lerp(.78,.36,e.dark)*(1-e.rain*.22)+e.flash*1.6; hemi.color.set(e.dark>.5?0x8a90c8:e.dusk>.4?0xffd8c0:0xf0f6ff);
@@ -267,7 +267,7 @@ function make(T,o){
       for(const k in POOL) POOL[k].used=0; pedN=0; umbN=0; for(const k in CNT) CNT[k]=0;
       const fx0=st.views[0].focus,near=(x,y,R0)=>{ for(const vw of st.views){ const f=vw.focus; if(Math.abs(x-f.x)<R0&&Math.abs(y-f.y)<R0) return true; } return false; };
       const sir=Math.sin(t*14)>0; sirenM[0].color.set(sir?0xffffff:0x401010); sirenM[1].color.set(sir?0x303060:0xffffff);
-      for(const v of st.V){ if(!near(v.x,v.y,1500)) continue; const m=getVeh(v.ty); m.position.set(v.x,0,v.y); m.rotation.set(0,-v.a,v.ty==='scooter'||v.ty==='bike'?-(v.lean||0):0); m.bodyM.color.set(v.col||'#ccc'); if(v.hp<30) m.bodyM.color.multiplyScalar(.6);
+      for(const v of st.V){ if(!near(v.x,v.y,1500)) continue; const m=getVeh(v.ty); m.position.set(v.x+(v.vx||0)*LAG,0,v.y+(v.vy||0)*LAG); m.rotation.set(0,-v.a,v.ty==='scooter'||v.ty==='bike'?-(v.lean||0):0); m.bodyM.color.set(v.col||'#ccc'); if(v.hp<30) m.bodyM.color.multiplyScalar(.6);
         if(m.brakeM) m.brakeM.visible=!!v.brake; if(m.s0){ const on=!!v.siren||v.ty==='police'&&v.drv>=0; m.s0.visible=m.s1.visible=true; m.s0.material=on?sirenM[0]:lampM; m.s1.material=on?sirenM[1]:lampM; }
         if(m.rider){ const lk=v.lk||{}; m.rider.visible=v.role!=='parked'||v.drv>=0; m.shirtM.color.set(lk.shirt||'#3a5a8a'); m.helM.color.set(v.ty==='bike'?(lk.hair||'#222'):(lk.helm||'#e8e8e8')); m.skinM.color.set(lk.skin||'#e0b48e'); }
         if(m.gl){ const on=e.dark>.25&&v.role!=='parked'&&v.role!=='wreck'&&v.role!=='traffic_dead'; for(const g of m.gl) g.visible=on; } }

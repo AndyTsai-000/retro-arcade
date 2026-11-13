@@ -5,7 +5,7 @@ const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PIX='"Pres
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,k)=>a+(b-a)*k,TAU=Math.PI*2;
 function mul(seed){ let a=seed>>>0||1; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
-// 50 關：難度照關卡平滑上升；原本的十關保留原紀錄（rec）
+// 100 關：難度照關卡平滑上升；原本的十關保留原紀錄（rec）
 const OLD10=[0,5,11,16,22,27,33,38,44,49];
 const STAGES=[
   ['初航星帶','#050a24','#10245a','#3d6bff','#6fb4ff','#4f9dff'],
@@ -57,8 +57,58 @@ const STAGES=[
   ['時空亂流','#08021c','#240a50','#c04aff','#e0a0ff','#d050ff'],
   ['超新星遺跡','#10021a','#380a40','#ff6ac0','#ffb8e0','#ff70c8'],
   ['皇家艦隊','#0a0218','#28104a','#e0b040','#f0d890','#ffc840'],
-  ['銀河終戰','#080218','#2a0a4a','#ff5ad4','#ffb0ec','#ff5ad4']
-].map((a,i)=>({name:a[0],sky:[a[1],a[2]],neb:a[3],pl:a[4],boss:a[5],stars:Math.ceil((i+1)/10),k:.5+.88*i/49,len:Math.round(42+i*.6),rec:OLD10.includes(i)?OLD10.indexOf(i):10+i}));
+  ['銀河終戰','#080218','#2a0a4a','#ff5ad4','#ffb0ec','#ff5ad4'],
+  ['彩虹星橋','#05141a','#143f52','#1fb8f9','#86c2f9','#33f3ff'],
+  ['珍珠星環','#050d1a','#142d51','#1f76f9','#869ff9','#33b6ff'],
+  ['薄荷星海','#051a10','#145134','#1ff991','#86f9d6','#33ff6c'],
+  ['蜂巢小行星','#191404','#503f14','#f9bc1f','#f9ed86','#ff9533'],
+  ['棉花糖星雲','#190413','#50143f','#f91fbc','#f986c4','#ff33f7'],
+  ['鏡面星域','#040f19','#143350','#1f91f9','#86adf9','#33ceff'],
+  ['琉璃航道','#040519','#14164f','#1f28f9','#9686f9','#336cff'],
+  ['海妖星系','#041919','#144f4f','#1ff9f9','#86e4f9','#33ffce'],
+  ['螺旋星系','#0e0419','#31144e','#8c1ff9','#d486f9','#6833ff'],
+  ['雙子太陽','#181004','#4e3613','#f9a21f','#f9df86','#ff7c33'],
+  ['雷霆雲海','#040a18','#13244d','#1f5cf9','#8691f9','#339dff'],
+  ['寶瓶星流','#041418','#13434d','#1fd2f9','#86cff9','#33fff3'],
+  ['孔雀星雲','#041812','#134d3b','#1ff9b8','#86f9eb','#33ff91'],
+  ['橘子行星','#180c04','#4c2b13','#f97b1f','#f9cb86','#ff5833'],
+  ['楓紅星帶','#180604','#4c1a13','#f9391f','#f9a886','#ff334b'],
+  ['薰衣草星原','#110417','#39134b','#b31ff9','#e986f9','#8d33ff'],
+  ['冰晶彗尾','#041017','#13374b','#1fabf9','#86bbf9','#33e7ff'],
+  ['金屬雨區','#040c17','#13294b','#1f76f9','#869ff9','#33b6ff'],
+  ['磁暴深淵','#060417','#17134a','#311ff9','#a486f9','#3354ff'],
+  ['碧海衛星','#041714','#124a43','#1ff9df','#86f2f9','#33ffb6'],
+  ['沙暴星球','#160f04','#493312','#f9a21f','#f9df86','#ff7c33'],
+  ['翠羽星團','#041609','#124922','#1ff95c','#86f9bb','#33ff3b'],
+  ['糖霜星環','#16040d','#48122c','#f91f88','#f986a8','#ff33c6'],
+  ['暮光航線','#120416','#3d1248','#ce1ff9','#f686f9','#a533ff'],
+  ['天鵝星座','#040b16','#122748','#1f76f9','#869ff9','#33b6ff'],
+  ['獵戶星門','#040716','#121a47','#1f42f9','#8886f9','#3385ff'],
+  ['赤焰彗星','#150704','#471b12','#f9461f','#f9af86','#ff333f'],
+  ['霓虹星港','#150413','#461241','#f91fe3','#f986d8','#e233ff'],
+  ['光子迴廊','#041315','#114046','#1fdff9','#86d6f9','#33ffe7'],
+  ['星塵沙漠','#150f04','#463411','#f9af1f','#f9e686','#ff8933'],
+  ['暗礁星帶','#040d15','#112c45','#1f91f9','#86adf9','#33ceff'],
+  ['玫瑰星雲','#150409','#451121','#f91f61','#f98694','#ff33a1'],
+  ['雪豹冰原','#040f14','#113544','#1fb8f9','#86c2f9','#33f3ff'],
+  ['鋼鐵巨城','#040a14','#112544','#1f76f9','#869ff9','#33b6ff'],
+  ['閃電峽谷','#141204','#433e11','#f9e31f','#eff986','#ffba33'],
+  ['幽藍星海','#030814','#111f43','#1f5cf9','#8691f9','#339dff'],
+  ['翡翠王城','#03140a','#114325','#1ff976','#86f9c8','#33ff54'],
+  ['紫電風暴','#0d0313','#2f1142','#a61ff9','#e286f9','#8133ff'],
+  ['流浪行星','#031313','#104242','#1ff9f9','#86e4f9','#33ffce'],
+  ['熾焰日冕','#130803','#411f10','#f9611f','#f9bd86','#ff3f33'],
+  ['冥王邊境','#050313','#141041','#311ff9','#a486f9','#3354ff'],
+  ['星門迷宮','#080313','#201041','#651ff9','#bf86f9','#4333ff'],
+  ['暗物質帶','#0a0313','#251040','#7f1ff9','#cd86f9','#5c33ff'],
+  ['白矮星墓園','#030912','#102340','#1f76f9','#869ff9','#33b6ff'],
+  ['脈衝星燈塔','#030e12','#10313f','#1fb8f9','#86c2f9','#33f3ff'],
+  ['黑曜石帶','#060312','#19103f','#4b1ff9','#b186f9','#333bff'],
+  ['星雲王座','#110312','#3b103e','#e81ff9','#f986ed','#be33ff'],
+  ['宇宙裂口','#0e0312','#32103e','#c11ff9','#ef86f9','#9933ff'],
+  ['終焉星環','#12030c','#3e0f2b','#f91fa2','#f986b6','#ff33de'],
+  ['銀河之心','#110311','#3c0f3d','#f51ff9','#f986e6','#ca33ff']
+].map((a,i,A)=>({name:a[0],sky:[a[1],a[2]],neb:a[3],pl:a[4],boss:a[5],stars:Math.min(5,Math.ceil((i+1)/20)),k:.5+.88*i/(A.length-1),len:Math.round(42+i*.3),rec:OLD10.includes(i)?OLD10.indexOf(i):10+i}));
 const COL=['#3ddbd9','#ffd23f','#ff7eb6','#86dc4f'];
 /* ---------- 精靈圖快取（有光暈的東西先畫好，畫面才順） ---------- */
 const CACHE={};
@@ -125,7 +175,19 @@ function planet(c,x,y,r,col,ring){ const ag=c.createRadialGradient(x,y,r*.9,x,y,
   const sh=c.createLinearGradient(x-r,y-r,x+r,y+r); sh.addColorStop(.45,'rgba(0,0,10,0)'); sh.addColorStop(1,'rgba(0,0,10,.75)'); c.fillStyle=sh; c.fillRect(x-r,y-r,r*2,r*2); c.restore();
   if(ring){ c.strokeStyle='rgba(255,255,255,.4)'; c.lineWidth=r*.09; c.beginPath(); c.ellipse(x,y,r*1.6,r*.34,-.3,0,Math.PI); c.stroke(); } }
 const ROCKS=[]; function rockSpr(k){ return spr('rock'+k,40,40,c=>{ const R=mul(k*31+7),n=9,pts=[]; for(let i=0;i<n;i++){ const a=i/n*TAU,r=11+R()*6; pts.push([Math.cos(a)*r,Math.sin(a)*r]); } const g=c.createRadialGradient(-5,-5,2,0,0,18); g.addColorStop(0,'#a8a0b8'); g.addColorStop(1,'#3a3448'); c.fillStyle=g; c.beginPath(); pts.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y)); c.closePath(); c.fill(); c.strokeStyle='rgba(0,0,0,.45)'; c.lineWidth=1.2; c.stroke(); c.fillStyle='rgba(0,0,0,.25)'; for(let i=0;i<3;i++){ c.beginPath(); c.arc(-6+R()*12,-6+R()*12,2+R()*3,0,TAU); c.fill(); } }); }
-function drawBg(c,si,t){ const e=bg(si),y=(t*22)%1000; c.drawImage(e,0,y-1000,800,1000); c.drawImage(e,0,y,800,1000); const S=STAGES[si],py=((t*9)%(H+500))-250; planet(c,160+si%10*60,py,70+si%10*6,S.pl,si%2===0);
+const galSpr=col=>spr('gal'+col,300,300,c=>{ c.globalCompositeOperation='lighter'; const g=c.createRadialGradient(0,0,0,0,0,40); g.addColorStop(0,'rgba(255,250,230,.9)'); g.addColorStop(1,'rgba(255,250,230,0)'); c.fillStyle=g; c.fillRect(-40,-40,80,40*2); const R=mul(col.length*13+7);
+  for(let arm=0;arm<3;arm++) for(let i=0;i<160;i++){ const u=i/160,a=arm/3*TAU+u*4.4,r=14+u*130,x=Math.cos(a)*r+(R()-.5)*14*(1+u),y=(Math.sin(a)*r+(R()-.5)*14*(1+u))*.5; c.globalAlpha=(1-u)*.55; c.fillStyle=i%5?col:'#ffffff'; c.beginPath(); c.arc(x,y,1+R()*2*(1-u),0,TAU); c.fill(); } c.globalAlpha=1; },1);
+const stnSpr=spr.bind(null,'stn',220,120,c=>{ c.fillStyle='#1a1e2a'; c.fillRect(-100,-6,200,12); for(const x of [-90,-60,60,90]){ c.fillStyle='#232a3c'; c.fillRect(x-12,-36,24,72); c.strokeStyle='rgba(120,160,220,.35)'; c.lineWidth=1; for(let y=-32;y<36;y+=8){ c.beginPath(); c.moveTo(x-12,y); c.lineTo(x+12,y); c.stroke(); } }
+  c.fillStyle='#2c3448'; c.beginPath(); c.arc(0,0,30,0,TAU); c.fill(); c.strokeStyle='#4a5a7a'; c.lineWidth=5; c.beginPath(); c.ellipse(0,0,46,18,0,0,TAU); c.stroke(); c.fillStyle='#ffd88a'; for(let k=-2;k<=2;k++) c.fillRect(k*9-2,-4,4,4); });
+function deco(c,si,t,S){ const k=si%6; c.save();
+  if(k===0){ c.globalAlpha=.55; put(c,galSpr(S.neb),620-si%4*90,((t*5+si*90)%(H+300))-150,t*.03+si); }
+  else if(k===1){ const u=((t*.07+si*.13)%1),x=-120+u*(W+240),y=80+u*260+(si%3)*40,a=Math.atan2(260,W+240); const g=c.createLinearGradient(x,y,x-Math.cos(a)*220,y-Math.sin(a)*220); g.addColorStop(0,'rgba(255,255,255,.75)'); g.addColorStop(.2,S.pl); g.addColorStop(1,'rgba(0,0,0,0)'); c.strokeStyle=g; c.lineCap='round'; c.lineWidth=10; c.globalAlpha=.6; c.beginPath(); c.moveTo(x,y); c.lineTo(x-Math.cos(a)*220,y-Math.sin(a)*220); c.stroke(); c.globalAlpha=1; c.fillStyle='#fff'; c.beginPath(); c.arc(x,y,5,0,TAU); c.fill(); }
+  else if(k===2){ const yy=((t*6+si*70)%(H+400))-200; c.globalAlpha=.8; planet(c,W-120,yy,34,S.boss,false); planet(c,W-200,yy+70,20,S.pl,false); }
+  else if(k===3){ const yy=((t*12+si*60)%(H+300))-150; c.globalAlpha=.45; put(c,stnSpr(),180+si%5*100,yy); c.globalAlpha=Math.sin(t*4)>0?.9:.2; c.fillStyle='#ff4a4a'; c.beginPath(); c.arc(180+si%5*100-100,yy,3,0,TAU); c.arc(180+si%5*100+100,yy,3,0,TAU); c.fill(); }
+  else if(k===4){ c.globalCompositeOperation='lighter'; for(let b=0;b<3;b++){ c.strokeStyle=b===1?S.pl:S.neb; c.globalAlpha=.06+b*.02; c.lineWidth=60-b*16; c.beginPath(); for(let x=0;x<=W;x+=40) c.lineTo(x,200+b*120+Math.sin(x*.008+t*.5+b+si)*60); c.stroke(); } }
+  else { c.globalCompositeOperation='lighter'; const cx=200+si%7*60,cy=((t*4+si*50)%(H+200))-100; for(let i=0;i<40;i++){ const a=i*2.4,r=Math.sqrt(i)*12; c.globalAlpha=.25+.5*Math.abs(Math.sin(t*1.3+i)); c.fillStyle=i%4?'#fff':S.pl; c.beginPath(); c.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,1.2+(i%3)*.6,0,TAU); c.fill(); } }
+  c.restore(); }
+function drawBg(c,si,t){ const e=bg(si),y=(t*22)%1000; c.drawImage(e,0,y-1000,800,1000); c.drawImage(e,0,y,800,1000); const S=STAGES[si],py=((t*9)%(H+500))-250; deco(c,si,t,S); planet(c,160+si%10*60,py,70+si%10*6,S.pl,si%2===0);
   for(let i=0;i<7;i++){ const v=34+(i%3)*14,yy=((t*v+i*173)%(H+80))-40,x=((i*271+si*53)%W),sp=rockSpr(i%4),sz=.32+(i%3)*.14; c.save(); c.translate(x,yy); c.rotate(t*(.3+i*.1)*(i%2?1:-1)); c.globalAlpha=.22+(i%3)*.06; c.drawImage(sp,-20*sz,-20*sz,40*sz,40*sz); c.restore(); } c.globalAlpha=1;
   c.fillStyle='rgba(255,255,255,.75)'; for(let i=0;i<34;i++){ const v=70+(i%5)*55,yy=((t*v+i*97)%(H+20))-10,x=(i*233)%W; c.fillRect(x,yy,1.3,v/22); }
   const vg=c.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.85); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.45)'); c.fillStyle=vg; c.fillRect(0,0,W,H); }
@@ -238,7 +300,7 @@ function thumb(ctx,w,h,t){ stageShow(ctx,w,h,16,t); }
 function preview(ctx,w,h,L,t){ L=L||{}; ctx.save(); ctx.scale(w/W,h/H); drawBg(ctx,0,t); put(ctx,shipSpr(L.color||'#3ddbd9',L.ship||'0'),W/2,H/2,0,3); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).space={
   name:'太空艦隊',tag:'STAR FLEET',color:'#6fb4ff',
-  desc:'縱向捲軸射擊：戰機會自動開火，你只要閃子彈、撿武器，每個星域的最後打巨大的王。共 50 關，過一關開下一關。',
+  desc:'縱向捲軸射擊：戰機會自動開火，你只要閃子彈、撿武器，每個星域的最後打巨大的王。共 100 關，過一關開下一關。',
   goal:'躲開子彈撐到王出現，打倒王就過關。撿「武」升級武器、「盾」擋一次、「爆」多一顆炸彈。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),stageShow,stageGoal:si=>STAGES[si].name+'：撐過敵機，打倒最後的王。白點是你的中彈位置，只有那裡被打到才算。',
   stageBest:i=>{ try{ const v=localStorage.getItem('arcade.space.w.'+STAGES[i].rec); return v?'最高 '+v:''; }catch(e){ return ''; } },

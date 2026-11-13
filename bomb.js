@@ -114,6 +114,21 @@ const STAGES=[
   {name:'水球王決戰',info:'最終決戰場：柱子最密、箱子最多，每一步都要小心。',solid:(x,y)=>(x%2===1&&y%2===1)||(x%4===0&&y%4===2&&x>0&&x<14)||(x%4===2&&y%4===0&&y>0&&y<12),box:.8,drop:.42,
    g:['#3a2a50','#34264a'],s:['#ffd23f','#fff3c8'],b:['#c56bff','#8a3ad8'],rocks:16,rk:'tower'}
 ];
+/* 第 51～100 關：沿用前面的場景，換一種新的柱子排法（路線完全不同），越後面箱子越多、柱子越密 */
+{ const H2=(x,y,s)=>{ let h=(x*73856093)^(y*19349663)^(s*83492791); h=Math.imul(h^h>>>13,1274126177); return ((h^h>>>16)>>>0)/4294967296; },
+    mx=x=>Math.min(x,14-x),my=y=>Math.min(y,12-y);
+  const FAM={
+    sym:[(s,d)=>(x,y)=>H2(mx(x),my(y),s)<d,'柱子上下左右對稱散落，每一區的走法都不一樣。'],
+    ring:[(s,d)=>{ const g=1+s%3; return (x,y)=>{ const c=Math.max(Math.abs(x-7),Math.abs(y-6)); return c%3===g%3&&c>0&&(x+y+s)%((s%2)+3)!==0; }; },'柱子圍成一圈一圈的回字形，缺口要找一下。'],
+    diag:[(s,d)=>(x,y)=>((x+y)%4===s%4||(x-y+40)%4===s%4)&&x%2!==y%2&&H2(x,y,s)<d*2.4,'柱子排成斜斜的菱形格，要走 Z 字形前進。'],
+    cross:[(s,d)=>(x,y)=>(Math.abs(x-7)===Math.abs(y-6)||x===7||y===6)&&(x+y)%2===0&&!(x===7&&y===6)||H2(mx(x),my(y),s)<d*.7,'中間一個大 X 字和十字，四塊區域靠缺口連起來。'],
+    rooms:[(s,d)=>{ const px=4+s%2,py=4; return (x,y)=>(x%px===px-1||y%py===py-1)&&H2(x,y,s)>.3; },'用牆隔成一間一間小房間，門口很窄。'],
+    lanes:[(s,d)=>{ const vert=s%2===0; return (x,y)=>{ const a=vert?x:y,b=vert?y:x,n=vert?13:15; return a%3===1&&(b+Math.floor(a/3)*2+s)%5!==0&&b>0&&b<n-1; }; },'長長的柱子排成一條條走道，要找空隙換道。'],
+    dots:[(s,d)=>(x,y)=>x%2===1&&y%2===1&&H2(x,y,s)>.25||x%2===0&&y%2===0&&H2(mx(x),my(y),s+9)<d*.5,'經典的棋盤柱子，又多了幾根擋在路口。'],
+    spiral:[(s,d)=>(x,y)=>{ const dx=x-7,dy=y-6,c=Math.max(Math.abs(dx),Math.abs(dy)); if(c===0||c%2) return false; const gx=c%4===0?(s%2?c:-c):(s%2?-c:c); return !(dx===gx&&Math.abs(dy)<=1||dy===gx&&Math.abs(dx)<=1); },'柱子繞成螺旋，越往中間越難走。']};
+  const ORDER=['sym','rooms','diag','ring','lanes','cross','dots','spiral'];
+  for(let k=0;k<50;k++){ const sc=(k*17+3)%50,b=STAGES[sc],fam=ORDER[k%ORDER.length],u=k/49,f=FAM[fam];
+    STAGES.push(Object.assign({},b,{name:b.name+'Ⅱ',info:f[1]+'（'+b.name+'的場景）',solid:f[0](k*31+7,.2+u*.14),box:+(.68+u*.14).toFixed(2),drop:+(.46-u*.06).toFixed(2),rocks:Math.round(10+u*6)})); } }
 // 電腦強度：想多久出手一次、看到機會放水球的機率、一開始的水球威力與數量
 // hunt：會不會瞄準玩家放水球、去刺破被困的人；itemR：多遠內的道具會去撿；cap：水球數與威力上限；slow：移動速度倍率；flee：看到危險後多久才反應
 const DIFF={easy:{think:[.55,.9],bombP:.3,power:1,maxB:1,hunt:0,itemR:3,cap:2,slow:.82,flee:.3},normal:{think:[.15,.28],bombP:.75,power:1,maxB:1,hunt:1,itemR:8,cap:7,slow:1,flee:.08},hard:{think:[.07,.14],bombP:.97,power:2,maxB:2,hunt:1,itemR:8,cap:7,slow:1,flee:.08}};
@@ -668,7 +683,7 @@ function thumb(ctx,w,h,t){
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={_draw:drawChar,_item:drawItem,
   name:'水球炸翻天',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
-  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。50 個場景（村莊、沙漠、冰原、海盜船、海底、萬聖節、雪人村、天空之城、夜市廟會、熊貓竹林、恐龍谷、外星基地、童話城堡、星空遊樂園…）、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
+  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。100 關、50 個場景（村莊、沙漠、冰原、海盜船、海底、萬聖節、雪人村、天空之城、夜市廟會、熊貓竹林、恐龍谷、外星基地、童話城堡、星空遊樂園…）、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
   goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困。沒有針被困住就會出局。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一定一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多）。分隊時隊友被困住，走過去碰一下就能救出來。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
   variants:[{id:'easy',label:'電腦：簡單'},{id:'normal',label:'電腦：中等',def:true},{id:'hard',label:'電腦：困難'}],

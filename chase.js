@@ -406,7 +406,7 @@ function create(env,opts){
     if(thr>0){ if(vf<-5){ vf+=Math.min(-vf,900*dt); brake=true; } else if(vf<vmax) vf+=v.acc*(boost?1.6:1)*Math.max(.15,1-vf/vmax)*dt; else vf-=Math.min(vf-vmax,500*dt); }
     else if(thr<0){ if(vf>5){ vf-=Math.min(vf,880*dt); brake=true; } else if(vf>-v.vmax*.3) vf-=v.acc*.55*dt; }
     else { const dec=(150+Math.abs(vf)*.35)*dt; vf=Math.abs(vf)<=dec?0:vf-Math.sign(vf)*dec; }
-    v.sti=(v.sti||0)+((steer||0)-(v.sti||0))*Math.min(1,dt*(steer?6.5:9)); steer=Math.abs(v.sti)<.03?0:v.sti; /* 方向盤有輸入時慢慢打到底、放開慢慢回正，比較順 */
+    v.sti=(v.sti||0)+((steer||0)-(v.sti||0))*Math.min(1,dt*(steer?8.5:10)); steer=Math.abs(v.sti)<.03?0:v.sti; /* 方向盤有輸入時慢慢打到底、放開慢慢回正，比較順 */
     const sp=Math.abs(vf),two=v.ty==='scooter'||v.ty==='bike',rate=sp<4?0:Math.min(1,sp/70)*(sp<220?(two?3:2.6):Math.max(1.4,2.6-(sp-220)/320));
     if(steer) v.a+=steer*rate*dt*Math.sign(vf); else if(sp>60){ const q=Math.round(v.a/(PI/2))*(PI/2),d=wrapA(q-v.a),hk=onH(v.y),vk=onV(v.x); if(Math.abs(d)<.16&&!(hk>=0&&vk>=0)) v.a+=clamp(d,-.9*dt,.9*dt); } /* 沒轉方向盤時，車頭慢慢對正道路 */
     v.lean=lerp(v.lean||0,two?clamp(-steer*Math.min(1,sp/150)*.45,-.45,.45):0,Math.min(1,dt*6));
@@ -725,7 +725,7 @@ function create(env,opts){
   function footHints(p){ const f=p.foot; if(!f) return; const K=KN[Math.min(p.i,KN.length-1)].f; if(Wd.mrt.some(e=>Math.hypot(e.x-f.x,e.y-f.y)<70)) hint(p,'mrt','捷運站入口！按 '+K+' 進站，可以搭到其他捷運站',[K]);
     for(const b of nearBlocks(f.x,f.y)){ if(b.scoot.some(q=>!q.taken&&Math.hypot(q.x-f.x,q.y-f.y)<40)) hint(p,'scoot','騎樓前的機車按 '+K+' 就能騎走',[K]); if((b.bikes||[]).some(q=>!q.taken&&Math.hypot(q.x-f.x,q.y-f.y)<40)) hint(p,'bike','公共單車站！按 '+K+' 借一台腳踏車',[K]); } }
   /* ---- 畫面要用的清單 ---- */
-  function people(){ const o=[],add=(q,ex)=>o.push(Object.assign({x:q.x,y:q.y,a:q.a||0,lk:q.lk,ph:q.ph||0},ex||{}));
+  function people(){ const o=[],add=(q,ex)=>o.push(Object.assign({x:q.x,y:q.y,vx:q.vx||0,vy:q.vy||0,a:q.a||0,lk:q.lk,ph:q.ph||0},ex||{}));
     for(const q of PD) add(q,{run:q.st==='flee'||q.jay,umb:q.umb&&q.st!=='down'&&TH.rain,phone:q.phone,lying:q.st==='down'});
     for(const e of EV){ if(e.worker) add(e.worker,{ph:t*2}); if(e.ped&&e.k==='dpark') add(e.ped,{phone:1}); if(e.peds) for(const q of e.peds) add(q); }
     const sc=M.scene&&M.scene(); if(sc){ if(sc.vic) add(sc.vic,{lying:1}); add(sc.cop,{wave:Math.sin(t*5)>0}); }
@@ -821,11 +821,11 @@ function create(env,opts){
   /* ---------- 畫面 ---------- */
   function draw(){ if(G3&&!G3fail&&VIEW!=='2d'){ try{ draw3D(); return; }catch(e){ console.error(e); G3fail=true; VIEW='2d'; } } draw2D(); }
   function envNow(){ return {dark:ST.th===3?1:0,dusk:ST.th===1?1:0,rain:WX.rain,fog:Math.max(WX.fog,ST.th===2&&WX.rain<.2?.22:0),flash:WX.flash,storm:WX.storm}; }
-  function draw3D(){ const vs=local2?[{x:0,y:0,w:W/2-2,h:H,p:PL[0]},{x:W/2+2,y:0,w:W/2-2,h:H,p:PL[1]}]:[{x:0,y:0,w:W,h:H,p:PL[0]}],cones=[],route=[];
+  function draw3D(){ const LAG=prev||over||cd>0?0:Math.min(.02,Math.max(0,window.__arcadeLag||0)),vs=local2?[{x:0,y:0,w:W/2-2,h:H,p:PL[0]},{x:W/2+2,y:0,w:W/2-2,h:H,p:PL[1]}]:[{x:0,y:0,w:W,h:H,p:PL[0]}],cones=[],route=[];
     for(const e of EV) if(e.cones) for(const q of e.cones) cones.push(q);
     for(const p of PL){ if(p.mrt) continue; const r2=p.route||[]; for(let k=1;k<r2.length&&k<44;k++) route.push(r2[k]); }
     const st={t,env:envNow(),V,parked:parkedList(vs),people:people(),markers:M.markers?M.markers():[],route,cones,FX,heli:WT.heli,parkVer,shake:Math.min(shake,6),
-      views:vs.map(v=>{ const o=me(v.p),car=!!o.ty; return {vx:v.x,vw:v.w,key:v.p.i,mode:VIEW==='high'?'high':'chase',focus:{x:o.x,y:o.y,a:o.a||0,car,sp:car?Math.abs(o.vf||0):0,rev:car&&o.vf<-5,big:o.ty==='bus'||o.ty==='garbage'||o.ty==='truck'||o.ty==='amb'}}; })};
+      lag:LAG,views:vs.map(v=>{ const o=me(v.p),car=!!o.ty; return {vx:v.x,vw:v.w,key:v.p.i,mode:VIEW==='high'?'high':'chase',focus:{x:o.x+(o.vx||0)*LAG,y:o.y+(o.vy||0)*LAG,a:o.a||0,car,sp:car?Math.abs(o.vf||0):0,rev:car&&o.vf<-5,big:o.ty==='bus'||o.ty==='garbage'||o.ty==='truck'||o.ty==='amb'}}; })};
     G3.render(st); c.fillStyle='#111'; c.fillRect(0,0,W,H); c.drawImage(G3.canvas,0,0,G3.canvas.width,G3.canvas.height,0,0,W,H);
     vs.forEach((vw,i)=>{ c.save(); c.beginPath(); c.rect(vw.x,0,vw.w,H); c.clip();
       const pr=(x,y,h)=>{ const q=G3.project(x,y,h,i); return q?[vw.x+q[0]*vw.w,q[1]*H]:null; };

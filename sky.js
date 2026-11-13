@@ -7,11 +7,31 @@ const W=800,H=450,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.P
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,r1=v=>Math.round(v*10)/10,hyp=Math.hypot;
 function shade(hex,k){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&255,b=n&255; const f=v=>clamp(Math.round(k>0?v+(255-v)*k:v*(1+k)),0,255); return 'rgb('+f(r)+','+f(g)+','+f(b)+')'; }
 const ST0=[['晨曦海灣','sea','王牌小鷹','#ffb02a'],['棉花糖雲海','cloud','泡泡機長','#ff7eb6'],['夕陽群島','sunset','赤尾燕','#ff5a3a'],['沙漠熱流','desert','黃沙蠍','#d8a040'],['冰山海域','ice','雪鴞','#9adcff'],
-  ['雷雨雲層','storm','雷霆鷲','#8a96a8'],['火山灰天空','volcano','熔岩隼','#c8202a'],['極光夜空','night','夜梟','#b98cff'],['颱風眼','typhoon','颶風號','#3ddbd9'],['平流層決戰','strato','天空王者','#ffd23f']];
+  ['雷雨雲層','storm','雷霆鷲','#8a96a8'],['火山灰天空','volcano','熔岩隼','#c8202a'],['極光夜空','night','夜梟','#b98cff'],['颱風眼','typhoon','颶風號','#3ddbd9'],
+  ['櫻花山谷','spring','花瓣號','#ff8ab8'],['紅楓林地','autumn','楓葉隼','#e0602a'],['港灣城市','city','霓虹鴿','#4ab0ff'],['彩虹雲海','rainbow','彩虹號','#ffd23f'],['雪原小鎮','snow','雪球機長','#e8f4ff'],
+  ['紅岩峽谷','canyon','赤岩鷹','#d8602a'],['熱帶雨林','jungle','叢林鸚鵡','#3ac84a'],['晨光海灣','dawn','曙光燕','#ffb07a'],['城市夜景','cityNight','夜行蝙蝠','#8a6aff'],['極光冰原','aurora','極光狐','#5affc8'],
+  ['向日葵花田','farm','向日葵號','#ffc02a'],['黃昏沙漠','duskDesert','落日駱駝','#e8803a'],['暴雨海岸','rainSea','暴雨鯊','#5a7a9a'],['夜櫻庭園','springNight','月光蛾','#ffb0d8'],['秋日黃昏','autumnDusk','晚霞鷺','#ff9a5a'],
+  ['冰晶峽灣','fjord','冰牙號','#7ad0ff'],['雷鳴城市','cityStorm','雷電鼠','#c8d040'],['熔岩峽谷','canyonLava','火蜥蜴','#ff4a1a'],['星空沙漠','desertNight','星光蠍','#c8a8ff'],['雨林夜晚','jungleNight','螢火蟲','#c8ff6a'],
+  ['暴雪之境','blizzard','暴雪熊','#c8e0ff'],['夕照雲海','duskCloud','粉紅雲雀','#ff7ab8'],['颶風城市','cityTyphoon','颶風鷗','#2ac8d8'],['深秋夜色','autumnNight','貓頭鷹','#a07a5a'],['火山島嶼','volcanoIsle','火山龜','#ff6a3a'],
+  ['黎明雪峰','dawnSnow','晨霜鶴','#ffd0e0'],['彩虹瀑布','rainbowJungle','彩虹鳥','#ff5ad4'],['黑夜雷暴','stormNight','黑雷鷲','#5a6a8a'],['金色麥浪','farmDusk','稻穗號','#e8b040'],['極光峽灣','fjordNight','北極星','#7affe0'],
+  ['霓虹港口','cityNeon','霓虹鯨','#ff4ad8'],['沙暴峽谷','canyonDust','沙暴狼','#c89050'],['冰火之境','iceVolcano','冰火龍','#ff5a8a'],['月下雲海','moonCloud','月兔號','#e0e0ff'],['風暴雨林','jungleStorm','暴風猩','#4a8a4a'],
+  ['夜空城塔','cityTower','鐵塔鷹','#ffa82a'],['極夜冰原','iceNight','冰原狼','#9ac8ff'],['火山雷雲','volcanoStorm','雷火鳳','#ff2a4a'],['星河平流層','stratoNight','銀河號','#b0c8ff'],['日冕高空','stratoDawn','太陽鳥','#ffb83a'],
+  ['平流層決戰','strato','天空王者','#ffd23f']];
 // 難度：前面敵人少、子彈慢，後面慢慢變多變快；關底王牌血量、招式也越來越多
-const STAGES=ST0.map(([name,th,opp,col],i)=>{ const k=i/9; return {name,th,opp,col,stars:1+Math.round(k*4),k,len:70+k*30,wave:2.6-1.2*k,efire:.35+.5*k,bspd:170+75*k,bossHp:150+190*k}; });
+const STAGES=ST0.map(([name,th,opp,col],i)=>{ const k=i/(ST0.length-1); return {name,th,opp,col,stars:1+Math.round(k*4),k,len:70+k*30,wave:2.6-1.2*k,efire:.35+.5*k,bspd:170+75*k,bossHp:150+190*k}; });
 const TIPS=['敵機很少、子彈很慢，練習用。','雲很多，雲裡的敵機看不清楚。','開始有俯衝的敵機，記得上下閃。','地上會有防空砲，貼地飛要小心。','冰山很高，別撞到地形。',
-  '暴風雨會打雷，敵機也變多了。','火山灰裡有轟炸機，先打掉牠們。','夜裡看不清楚，跟著敵機的燈打。','颱風會把飛機上下吹動。','最強的王牌：彈幕、導彈、俯衝全都有。'];
+  '暴風雨會打雷，敵機也變多了。','火山灰裡有轟炸機，先打掉牠們。','夜裡看不清楚，跟著敵機的燈打。','颱風會把飛機上下吹動。',
+  '櫻花花瓣飄滿天，小心別看花了眼。','紅葉林上空風很穩，適合練習閃避。','城市大樓很高，別飛太低。','彩虹雲裡會冒出敵機。','雪花紛飛，敵機的白色機身不好認。',
+  '峽谷岩壁起伏大，跟著地形飛。','雨林上空濕氣重，敵機會從樹梢衝出來。','朝陽刺眼，敵機會從太陽方向來。','城市夜晚燈火通明，敵機的燈混在裡面。','極光下的冰原又冷又暗。',
+  '花田上空很開闊，敵機成群出現。','黃昏沙漠熱氣升騰，地上有防空砲。','暴雨打在海面，視線很差。','夜晚的櫻花庭園，只看得到敵機的燈。','秋天的黃昏，晚霞很美但敵機很多。',
+  '峽灣冰壁很高，轉彎要早。','雷雨中的城市，閃電會照亮敵機。','峽谷底下是熔岩，別飛太低。','星空下的沙漠，跟著敵機的燈打。','雨林夜晚到處是螢火蟲，別被騙了。',
+  '暴雪讓視線很短，敵機會突然出現。','夕陽把雲染成粉紅色，敵機開始俯衝。','颶風吹過城市，飛機會被上下吹動。','秋夜很暗，敵機悄悄靠近。','火山島噴發中，熔岩不能碰。',
+  '黎明的雪峰又高又尖。','彩虹瀑布旁亂流很多。','黑夜雷暴，只有閃電時看得清楚。','黃昏麥田，轟炸機一波接一波。','極光峽灣，王牌會躲在冰壁後面。',
+  '霓虹港口很亮，敵機子彈也很多。','沙暴吹進峽谷，視線變差。','一邊是冰山一邊是火山，地形很危險。','月光下的雲海，敵機在雲裡穿梭。','暴風雨林，敵機又快又多。',
+  '高塔林立的夜空，敵機彈幕變密。','極夜冰原幾乎全黑，靠敵機的燈。','火山雷雲，最混亂的天空之一。','星河下的平流層，王牌們都是高手。','高空的日冕，陽光刺眼、敵機很準。',
+  '最強的王牌：彈幕、導彈、俯衝全都有。'];
+/* 舊版第 10 關（平流層決戰）的過關紀錄搬到新的最後一關 */
+try{ if(!localStorage.getItem('arcade.sky.mig50')){ if(localStorage.getItem('arcade.sky.w.9')==='1') localStorage.setItem('arcade.sky.w.'+(ST0.length-1),'1'); localStorage.removeItem('arcade.sky.w.9'); localStorage.setItem('arcade.sky.mig50','1'); } }catch(e){}
 const hasWin=i=>{ try{ return localStorage.getItem('arcade.sky.w.'+i)==='1'; }catch(e){ return false; } };
 const recWin=i=>{ try{ localStorage.setItem('arcade.sky.w.'+i,'1'); }catch(e){} };
 const TH={sea:{sky:['#7cc8ff','#d8f0ff'],far:'#7aa8c8',land:'#5fbf60',land2:'#3f8f40',water:'#2a8ad8'},cloud:{sky:['#ffd8ef','#e8f0ff'],far:'#c8b8e8',land:'#c8e8a0',land2:'#9ac870'},
@@ -19,6 +39,47 @@ const TH={sea:{sky:['#7cc8ff','#d8f0ff'],far:'#7aa8c8',land:'#5fbf60',land2:'#3f
   ice:{sky:['#a8d8ff','#f0faff'],far:'#c8e0f0',land:'#f4fbff',land2:'#a8c8e0',water:'#4a8ab8'},storm:{sky:['#4a5a6a','#7a8a98'],far:'#3a4450',land:'#3a6a4a',land2:'#24402e',storm:1},
   volcano:{sky:['#4a2a2a','#a0583a'],far:'#3a2020',land:'#3a2a2a',land2:'#1a1010',lava:1},night:{sky:['#0a1030','#2a3060'],far:'#1a2040',land:'#1a3a2a',land2:'#0a1a12',night:1},
   typhoon:{sky:['#3a6a8a','#7aa0b8'],far:'#2a4a5a',land:'#2a6a4a',land2:'#1a4030',water:'#2a5a7a',storm:1},strato:{sky:['#0a1a5a','#5a8ad8'],far:'#3a5aa0',land:'#e8f0ff',land2:'#b8c8e8',high:1}};
+/* 新場景：sun 太陽、moon 月亮、city 遠方高樓、snow 下雪、petal 花瓣、leaf 落葉、aurora 極光、rainbow 彩虹、fire 火星 */
+{ const X=(b,o)=>Object.assign({__b:b},o),NT={sky:['#0a1030','#2a3060'],night:1,moon:1,sun:0};
+  Object.assign(TH,{
+    spring:{sky:['#8ad0ff','#fff0f6'],far:'#d8a8c8',land:'#a8e08a',land2:'#6ab05a',petal:1,sun:1},
+    autumn:{sky:['#6ab0f0','#ffe8c8'],far:'#c8784a',land:'#e8903a',land2:'#a84a1a',leaf:1,sun:1},
+    city:{sky:['#5aa8f0','#e0f0ff'],far:'#8aa0b8',land:'#7a8a7a',land2:'#4a5a4a',water:'#2a7ac0',city:1,sun:1},
+    rainbow:X('cloud',{rainbow:1,sun:1,sky:['#a8d8ff','#fff0f8']}),
+    snow:{sky:['#a8c8e8','#eef6ff'],far:'#b8c8d8',land:'#ffffff',land2:'#c8d8e8',snow:1},
+    canyon:{sky:['#5aa0e0','#ffe0b0'],far:'#c87a5a',land:'#d8783a',land2:'#a04a2a',sun:1},
+    jungle:{sky:['#5ab0d0','#d8f4e0'],far:'#3a8a6a',land:'#3aa84a',land2:'#1a6a2a',water:'#2a8a7a'},
+    dawn:X('sea',{sky:['#5a7ad0','#ffd0b0'],water:'#4a7ab8',sun:1}),
+    cityNight:X('city',Object.assign({},NT,{far:'#1a2040',water:'#0a1a3a'})),
+    aurora:X('ice',Object.assign({},NT,{aurora:1,far:'#2a3a5a',land:'#c8d8e8',land2:'#6a7a98',water:'#0a2a4a'})),
+    farm:{sky:['#5ab8ff','#e8f8ff'],far:'#8ac07a',land:'#ffd23f',land2:'#c89a2a',sun:1},
+    duskDesert:X('desert',{sky:['#c84a6a','#ffb070'],far:'#8a4a5a',sun:1}),
+    rainSea:X('sea',{sky:['#4a5a6a','#8a9aa8'],far:'#4a5a68',water:'#2a4a6a',storm:1}),
+    springNight:X('spring',NT),autumnDusk:X('autumn',{sky:['#ff7a5a','#ffd8a0'],far:'#8a4a4a'}),
+    fjord:X('ice',{far:'#8aa8c8',water:'#1a4a6a'}),cityStorm:X('city',{sky:['#3a4a5a','#6a7a88'],far:'#3a4450',storm:1,sun:0}),
+    canyonLava:X('canyon',{sky:['#4a2a2a','#a0583a'],far:'#5a2a20',lava:1,fire:1,sun:0}),desertNight:X('desert',NT),jungleNight:X('jungle',Object.assign({},NT,{fire:1})),
+    blizzard:X('snow',{sky:['#8a9aa8','#d8e0e8'],far:'#9aa8b8',storm:1}),duskCloud:X('cloud',{sky:['#ff8aa8','#ffd8c0'],far:'#c87aa0',sun:1}),
+    cityTyphoon:X('city',{sky:['#3a6a8a','#7aa0b8'],far:'#2a4a5a',storm:1,sun:0}),autumnNight:X('autumn',NT),volcanoIsle:X('volcano',{water:'#3a5a8a',fire:1}),
+    dawnSnow:X('snow',{sky:['#7a8ad8','#ffd8e0'],sun:1}),rainbowJungle:X('jungle',{rainbow:1}),stormNight:X('storm',NT),farmDusk:X('farm',{sky:['#ff8a5a','#ffe0a0'],far:'#a86a4a'}),
+    fjordNight:X('fjord',Object.assign({},NT,{aurora:1})),cityNeon:X('cityNight',{sky:['#1a0a3a','#5a1a6a'],neon:1}),canyonDust:X('canyon',{sky:['#c8a070','#f0d8a8'],far:'#b8885a',storm:1,sun:0}),
+    iceVolcano:X('ice',{lava:1,fire:1,far:'#6a5a6a'}),moonCloud:X('cloud',Object.assign({},NT,{far:'#4a4a7a'})),jungleStorm:X('jungle',{sky:['#3a5a4a','#7a9a88'],storm:1}),
+    cityTower:X('cityNight',{tower:1}),iceNight:X('ice',NT),volcanoStorm:X('volcano',{storm:1,fire:1}),stratoNight:X('strato',Object.assign({},NT,{high:1})),stratoDawn:X('strato',{sky:['#3a3a9a','#ffc890'],sun:1})});
+  const res=k=>{ const v=TH[k]; if(v.__b){ const {__b,...o}=v; TH[k]=Object.assign({},res(__b),o); } return TH[k]; }; for(const k in TH) res(k); }
+/* 共用背景景物：back 在遠山前面畫、front 在最前面畫 */
+function deco(c,T,t,cx,layer){
+  if(layer==='back'){
+    if(T.sun){ const sg=c.createRadialGradient(620,120,10,620,120,100); sg.addColorStop(0,'rgba(255,250,210,.95)'); sg.addColorStop(.3,'rgba(255,240,180,.6)'); sg.addColorStop(1,'rgba(255,220,150,0)'); c.fillStyle=sg; c.fillRect(500,10,240,230); }
+    if(T.moon){ c.fillStyle='rgba(255,250,220,.95)'; c.beginPath(); c.arc(640,90,30,0,TAU); c.fill(); c.fillStyle=T.sky[0]; c.beginPath(); c.arc(654,82,26,0,TAU); c.fill(); }
+    if(T.aurora){ c.save(); c.globalCompositeOperation='lighter'; for(let k=0;k<3;k++){ c.strokeStyle=['rgba(80,255,180,.16)','rgba(120,160,255,.14)','rgba(200,120,255,.1)'][k]; c.lineWidth=44-k*10; c.beginPath(); for(let x=0;x<=W;x+=20) c.lineTo(x,60+k*34+Math.sin(x*.01+t*.4+k)*26); c.stroke(); } c.restore(); }
+    if(T.rainbow){ c.save(); c.globalAlpha=.4; ['#ff4a4a','#ffa23a','#ffe03a','#5ad84a','#3aa8ff','#8a5aff'].forEach((col,k)=>{ c.strokeStyle=col; c.lineWidth=10; c.beginPath(); c.arc(W*.55,H*.95,300-k*10,Math.PI,TAU); c.stroke(); }); c.restore(); }
+    if(T.city){ const off=cx*.35; for(let i=-1;i<16;i++){ const k=Math.floor(i+off/60),x=i*60-off%60,hh=90+((k*37)%7)*22+(T.tower&&k%5===0?120:0); c.fillStyle=T.night?'#141a34':shade(T.far,-.1); c.fillRect(x,H-140-hh,52,hh+140);
+        if(T.tower&&k%5===0){ c.fillRect(x+22,H-140-hh-50,8,50); c.fillStyle=Math.sin(t*4+k)>0?'#ff3a3a':'#5a1a1a'; c.beginPath(); c.arc(x+26,H-140-hh-52,3,0,TAU); c.fill(); }
+        if(T.night){ for(let wy=H-130-hh;wy<H-150;wy+=14) for(let wx=x+6;wx<x+46;wx+=12){ if(((wx*7+wy*3+k)%5)<2) continue; c.fillStyle=T.neon?['#ff4ad8','#3af0ff','#ffe066'][(wx+wy)%3]:'rgba(255,220,130,.85)'; c.fillRect(wx,wy,6,7); } }
+        else { c.fillStyle='rgba(255,255,255,.25)'; for(let wy=H-130-hh;wy<H-150;wy+=16) c.fillRect(x+6,wy,40,4); } } } }
+  else {
+    if(T.snow){ c.fillStyle='rgba(255,255,255,.9)'; for(let i=0;i<60;i++){ const x=((i*97-t*40-cx*.2)%W+W)%W,y=(i*53+t*(40+i%4*12))%H; c.beginPath(); c.arc(x+Math.sin(t+i)*6,y,1.4+i%3,0,TAU); c.fill(); } }
+    if(T.petal||T.leaf){ for(let i=0;i<26;i++){ const x=((i*131-t*60-cx*.3)%W+W)%W,y=(i*67+t*(30+i%5*8))%H; c.save(); c.translate(x,y); c.rotate(t*2+i); c.fillStyle=T.petal?['#ffb0c8','#ffd0e0','#ff8ab0'][i%3]:['#e8602a','#ffa02a','#c83a1a'][i%3]; c.beginPath(); c.ellipse(0,0,T.petal?5:6,T.petal?3:3.4,0,0,TAU); c.fill(); c.restore(); } }
+    if(T.fire){ for(let i=0;i<30;i++){ const x=((i*83-cx*.4)%W+W)%W,y=H-((t*50+i*37)%H); c.globalAlpha=.4+.4*Math.abs(Math.sin(t*3+i)); c.fillStyle=T.lava?'#ff8a3a':'#d8ff6a'; c.fillRect(x,y,2.4,2.4); } c.globalAlpha=1; } } }
 // 地形高度：每關固定（同一個種子），海面關卡有平的水面
 function terr(si,x){ const s=si*13.7,k=STAGES[si].k; let h=48+26*Math.sin(x*.0042+s)+18*Math.sin(x*.011+s*2)+(TH[STAGES[si].th].ice?Math.max(0,Math.sin(x*.0023+s))*120:0)*(.6+k*.4);
   if(TH[STAGES[si].th].high) h=26+10*Math.sin(x*.006+s); return H-h; }
@@ -171,6 +232,7 @@ function create(env,opts){
   function draw(){ c.save(); if(shake>0) c.translate((Math.random()-.5)*shake*20,(Math.random()-.5)*shake*20);
     const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,T.sky[0]); g.addColorStop(1,T.sky[1]); c.fillStyle=g; c.fillRect(0,0,W,H);
     if(T.night||T.high){ for(let i=0;i<70;i++){ c.fillStyle='rgba(255,255,255,'+(.3+.5*Math.abs(Math.sin(t+i)))+')'; c.fillRect(((i*137)-cx*.05)%W+(i*137-cx*.05<0?W:0),(i*53)%(H*.6),1.6,1.6); } }
+    deco(c,T,t,cx,'back');
     if(ST.th==='sunset'||ST.th==='sea'){ const sg=c.createRadialGradient(620,120,10,620,120,90); sg.addColorStop(0,'rgba(255,250,210,.95)'); sg.addColorStop(1,'rgba(255,220,150,0)'); c.fillStyle=sg; c.fillRect(500,20,240,220); }
     // 遠山
     c.fillStyle=T.far; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=20){ const wx=x+cx*.25; c.lineTo(x,H-120-50*Math.sin(wx*.006)-30*Math.sin(wx*.017)); } c.lineTo(W,H); c.fill();
@@ -208,6 +270,7 @@ function create(env,opts){
     if(T.storm){ c.strokeStyle='rgba(220,235,255,.3)'; c.lineWidth=1.5; for(let i=0;i<40;i++){ const x=(i*53-t*300)%W+(i*53-t*300<0?W:0),y=(i*97+t*700)%H; c.beginPath(); c.moveTo(x,y); c.lineTo(x-8,y+16); c.stroke(); } }
     if(T.lava){ for(let i=0;i<24;i++){ c.fillStyle='rgba(255,120,40,.6)'; c.fillRect((i*83-t*60+W*4)%W,(i*47-t*20+H*4)%H,2,2); } }
     if(flash>0){ c.fillStyle='rgba(255,255,255,'+flash*2+')'; c.fillRect(0,0,W,H); }
+    deco(c,T,t,cx,'front');
     if(T.night){ c.fillStyle='rgba(6,8,30,.3)'; c.fillRect(0,0,W,H); }
     c.restore(); hud(); }
   function hud(){ P.forEach((p,i)=>{ const x=8+i*250; c.fillStyle='rgba(10,14,30,.72)'; c.fillRect(x,8,238,46); c.fillStyle=p.col; c.fillRect(x,8,6,46);
@@ -222,16 +285,25 @@ function create(env,opts){
   return {update,draw,destroy(){},_dbg:{P,get E(){return E;},get boss(){return boss;},get phase(){return phase;},get dist(){return dist;},set dist(v){dist=v;},get EB(){return EB;}}};
 }
 function stageShow(ctx,w,h,si,t){ const S=STAGES[si],T=TH[S.th]; ctx.save(); ctx.scale(w/W,h/H); const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,T.sky[0]); g.addColorStop(1,T.sky[1]); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-  const cx=t*90; ctx.fillStyle=T.far; ctx.beginPath(); ctx.moveTo(0,H); for(let x=0;x<=W;x+=20){ const wx=x+cx*.25; ctx.lineTo(x,H-120-50*Math.sin(wx*.006)-30*Math.sin(wx*.017)); } ctx.lineTo(W,H); ctx.fill();
-  ctx.fillStyle=T.land; ctx.beginPath(); ctx.moveTo(0,H); for(let x=0;x<=W;x+=8) ctx.lineTo(x,terr(si,cx+x)); ctx.lineTo(W,H); ctx.fill();
+  const cx=t*90; if(T.night||T.high){ for(let i=0;i<70;i++){ ctx.fillStyle='rgba(255,255,255,'+(.3+.5*Math.abs(Math.sin(t+i)))+')'; ctx.fillRect((i*137)%W,(i*53)%(H*.6),1.6,1.6); } }
+  deco(ctx,T,t,cx,'back'); if(!T.sun&&(S.th==='sunset'||S.th==='sea')){ const sg=ctx.createRadialGradient(620,120,10,620,120,90); sg.addColorStop(0,'rgba(255,250,210,.95)'); sg.addColorStop(1,'rgba(255,220,150,0)'); ctx.fillStyle=sg; ctx.fillRect(500,20,240,220); }
+  if(!T.city){ ctx.fillStyle=T.far; ctx.beginPath(); ctx.moveTo(0,H); for(let x=0;x<=W;x+=20){ const wx=x+cx*.25; ctx.lineTo(x,H-120-50*Math.sin(wx*.006)-30*Math.sin(wx*.017)); } ctx.lineTo(W,H); ctx.fill(); }
+  const cl=(x,y,s2,a)=>{ ctx.globalAlpha=a; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,26*s2,0,TAU); ctx.arc(x+28*s2,y-10*s2,32*s2,0,TAU); ctx.arc(x+60*s2,y,24*s2,0,TAU); ctx.arc(x+30*s2,y+8*s2,26*s2,0,TAU); ctx.fill(); ctx.globalAlpha=1; };
+  for(let i=0;i<5;i++){ const x=((i*230-cx*.4)%(W+300)+W+300)%(W+300)-150; cl(x,70+(i*67)%200,.8+(i%3)*.3,T.night?.25:.6); }
+  if(T.water){ ctx.fillStyle=T.water; ctx.fillRect(0,H-46,W,46); ctx.fillStyle='rgba(255,255,255,.35)'; for(let x=0;x<W;x+=30) ctx.fillRect((x-cx*.9%30+30)%W,H-40+Math.sin(x+t*2)*2,14,2); }
+  ctx.fillStyle=T.land2; ctx.beginPath(); ctx.moveTo(0,H); for(let x=0;x<=W;x+=8) ctx.lineTo(x,terr(si,cx+x)+6); ctx.lineTo(W,H); ctx.fill();
+  const lg=ctx.createLinearGradient(0,H-200,0,H); lg.addColorStop(0,shade(T.land,.15)); lg.addColorStop(1,T.land2); ctx.fillStyle=lg; ctx.beginPath(); ctx.moveTo(0,H); for(let x=0;x<=W;x+=8) ctx.lineTo(x,terr(si,cx+x)); ctx.lineTo(W,H); ctx.fill();
+  if(T.lava){ ctx.fillStyle='rgba(255,90,26,.7)'; for(let x=0;x<W;x+=60){ if(Math.sin((x+cx)*.01)>.6){ ctx.beginPath(); ctx.arc(x,terr(si,cx+x)+4,8,0,TAU); ctx.fill(); } } }
+  if(!T.high&&!T.lava&&!T.ice&&!T.snow) for(let x=-((cx)%70);x<W;x+=70){ const y=terr(si,cx+x); ctx.fillStyle=shade(T.land,-.3); ctx.beginPath(); ctx.arc(x,y-6,9,0,TAU); ctx.arc(x+8,y-10,8,0,TAU); ctx.fill(); }
   planeSide(ctx,230,190+Math.sin(t*2)*30,Math.cos(t*2)*.25,'#ff5d4f',t,{light:T.night}); planeSide(ctx,600,150+Math.sin(t*1.5+1)*40,0,S.col,t,{dir:-1,s:1.35,mark:'#14122b',scarf:'#14122b',light:T.night});
   for(let i=0;i<5;i++){ const q=(t*2+i/5)%1; ctx.fillStyle='#fff3a0'; ctx.fillRect(270+q*280,190+Math.sin(t*2)*30,10,3); }
+  deco(ctx,T,t,cx,'front'); if(T.storm){ ctx.strokeStyle='rgba(220,235,255,.3)'; ctx.lineWidth=1.5; for(let i=0;i<40;i++){ const x=((i*53-t*300)%W+W)%W,y=(i*97+t*700)%H; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-6,y+18); ctx.stroke(); } if(Math.sin(t*1.3)>.97){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.fillRect(0,0,W,H); } }
   if(T.night){ ctx.fillStyle='rgba(6,8,30,.35)'; ctx.fillRect(0,0,W,H); }
   ctx.font='900 22px '+TC; ctx.textAlign='center'; ctx.lineWidth=6; ctx.strokeStyle='#14122b'; ctx.strokeText('關底王牌：'+S.opp,W/2,40); ctx.fillStyle='#ffd23f'; ctx.fillText('關底王牌：'+S.opp,W/2,40); ctx.restore(); }
 function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#7cc8ff'); g.addColorStop(1,'#d8f0ff'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
   const s=h/80; planeSide(ctx,w/2,h/2+Math.sin(t*2)*6,Math.sin(t)*.15,(L&&L.color)||'#ff5d4f',t,{s}); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).sky={name:'雲端纏鬥',tag:'SKY DOGFIGHT',color:'#3d8bff',online:true,maxPlayers:2,
-  desc:'橫向捲軸空戰！Q 版小飛機自動開火往前飛，打下敵機群、防空砲和轟炸機，撿補給升級火力、補導彈，最後跟關底的王牌一對一纏鬥。兩個人可以一起合作，10 片天空一關比一關難。',
+  desc:'橫向捲軸空戰！Q 版小飛機自動開火往前飛，打下敵機群、防空砲和轟炸機，撿補給升級火力、補導彈，最後跟關底的王牌一對一纏鬥。兩個人可以一起合作，50 片天空（海灣、雲海、城市、雪原、極光…）一關比一關難。',
   goal:'一路往前飛到關底，打下王牌就過關；三架飛機都被打下來就失敗。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:i=>STAGES[i].name+'（關底王牌：'+STAGES[i].opp+'）：'+TIPS[i]+' 打下王牌就過關。',

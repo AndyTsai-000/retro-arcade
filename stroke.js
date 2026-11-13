@@ -2,7 +2,7 @@
 // 100 關：每關是用亂數「真的畫一筆」產生的，保證有解。第 40 關起有要畫兩次的粗線（×2），第 70 關起有單向箭頭線。
 (function(){
 'use strict';
-const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LV=100;
+const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LV=200;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 function rng(a){ return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -12,12 +12,17 @@ const THEMES=[
  {n:'星座夜空',bg:'#0e1238',grid:'rgba(255,255,255,0)',line:'rgba(160,180,255,.3)',ink:['#9ad8ff','#ffffff'],dot:'#ffe9a8',dark:true},
  {n:'花園藤蔓',bg:'#e8f6d8',grid:'rgba(80,160,80,.1)',line:'#b8d0a8',ink:['#3aa84a','#ff7aa8'],dot:'#6a4a2a',dark:false},
  {n:'霓虹街頭',bg:'#14081e',grid:'rgba(255,90,200,.06)',line:'rgba(255,255,255,.18)',ink:['#ff4ad8','#3af0ff'],dot:'#ffffff',dark:true},
+ {n:'木頭書桌',bg:'#a8703e',grid:'rgba(60,30,10,.18)',line:'rgba(255,240,210,.55)',ink:['#2a6aff','#ff4a6a'],dot:'#3a1e0a',dark:false},
+ {n:'海底珊瑚',bg:'#0a4a78',grid:'rgba(255,255,255,0)',line:'rgba(200,240,255,.35)',ink:['#ffe066','#ff8ac8'],dot:'#e8fbff',dark:true},
+ {n:'雪地冰晶',bg:'#e4f2fb',grid:'rgba(120,170,220,.12)',line:'#b0c8dc',ink:['#2a8aff','#9a4aff'],dot:'#2a3a5a',dark:false},
+ {n:'沙漠夕陽',bg:'#f4a860',grid:'rgba(120,50,20,.1)',line:'rgba(120,60,30,.4)',ink:['#7a1a5a','#2a2a8a'],dot:'#4a1a1a',dark:false},
+ {n:'銀河太空',bg:'#06041a',grid:'rgba(255,255,255,0)',line:'rgba(200,180,255,.28)',ink:['#ffd23f','#ff6af0'],dot:'#ffffff',dark:true},
 ];
-const starsOf=i=>Math.min(5,1+Math.floor(i/20));
+const starsOf=i=>Math.min(5,1+Math.floor(i/40));
 const DIRS=[[1,0],[0,1],[-1,0],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 /* ---------- 出題：在格子點上隨機「畫一筆」，畫過的線就是題目 ---------- */
-function levelOf(i){ const d=i/(LV-1),cols=clamp(3+Math.floor(i/14),3,6),rows=clamp(3+Math.floor((i+7)/16),3,6),E=Math.round(5+d*25+(i%5===4?2:0));
-  const dbl=i>=40?Math.min(.22,.06+(i-40)*.003):0,one=i>=70?Math.min(.25,.08+(i-70)*.005):0,diag=i>=6;
+function levelOf(i){ const d=i/(LV-1),cols=clamp(3+Math.floor(i/26),3,7),rows=clamp(3+Math.floor((i+12)/34),3,6),E=Math.round(5+d*31+(i%5===4?2:0));
+  const dbl=i>=70?Math.min(.22,.06+(i-70)*.0016):0,one=i>=130?Math.min(.25,.08+(i-130)*.0028):0,diag=i>=8;
   for(let seed=1;seed<400;seed++){ const r=rng(i*7907+seed*131),key=(a,b)=>a<b?a+'-'+b:b+'-'+a,id=(x,y)=>y*cols+x,ed=new Map(),walk=[];
     let cx=Math.floor(r()*cols),cy=Math.floor(r()*rows); walk.push(id(cx,cy));
     const cross=(x,y,dx,dy)=>{ if(!dx||!dy) return false; const k=key(id(x+dx,y),id(x,y+dy)); return ed.has(k); };
@@ -30,7 +35,7 @@ function levelOf(i){ const d=i/(LV-1),cols=clamp(3+Math.floor(i/14),3,6),rows=cl
     /* 雙線不能是單向；只留有用到的點 */ for(const e of ed.values()) if(e.n===2) e.dir=null;
     const used=[...deg.keys()].sort((a,b)=>a-b),nodes=used.map(v=>({v,x:v%cols,y:Math.floor(v/cols)})),idx=new Map(used.map((v,k)=>[v,k]));
     const edges=[...ed.values()].map(e=>({a:idx.get(e.a),b:idx.get(e.b),n:e.n,dir:e.dir?[idx.get(e.dir[0]),idx.get(e.dir[1])]:null}));
-    return {i,cols,rows,nodes,edges,sol:walk.map(v=>idx.get(v)),theme:THEMES[Math.floor(i/20)%5],stars:starsOf(i),E:edges.reduce((a,e)=>a+e.n,0)}; }
+    return {i,cols,rows,nodes,edges,sol:walk.map(v=>idx.get(v)),theme:THEMES[Math.floor(i/20)%THEMES.length],stars:starsOf(i),E:edges.reduce((a,e)=>a+e.n,0)}; }
   return null; }
 /* 從目前狀態找一個解（提示用）：深度優先，邊數不多很快 */
 function solveFrom(L,path,used){ const adj=L.nodes.map(()=>[]); L.edges.forEach((e,k)=>{ if(!e.dir||e.dir[0]===e.a) adj[e.a].push([e.b,k]); if(!e.dir||e.dir[0]===e.b) adj[e.b].push([e.a,k]); });
@@ -50,6 +55,28 @@ function paper(c,T,t,w,h){ c.fillStyle=T.bg; c.fillRect(0,0,w,h); if(T===THEMES[
   else if(T===THEMES[1]){ c.strokeStyle='#8a5a2a'; c.lineWidth=14; c.strokeRect(0,0,w,h); for(let i=0;i<30;i++){ c.fillStyle='rgba(255,255,255,.04)'; c.beginPath(); c.ellipse((i*137)%w,(i*71)%h,60,14,i,0,TAU); c.fill(); } }
   else if(T===THEMES[2]){ for(let i=0;i<120;i++){ c.fillStyle='rgba(255,255,255,'+(.25+.5*Math.abs(Math.sin(t*.8+i)))+')'; c.fillRect((i*197)%w,(i*83)%h,1.6,1.6); } const g=c.createRadialGradient(w*.8,h*.2,10,w*.8,h*.2,260); g.addColorStop(0,'rgba(120,90,255,.25)'); g.addColorStop(1,'rgba(120,90,255,0)'); c.fillStyle=g; c.fillRect(0,0,w,h); }
   else if(T===THEMES[3]){ c.strokeStyle='rgba(80,160,80,.25)'; c.lineWidth=6; c.lineCap='round'; for(let i=0;i<6;i++){ c.beginPath(); c.moveTo(0,i*90+20); c.bezierCurveTo(140,i*90-30,260,i*90+70,w,i*90+10); c.stroke(); } for(let i=0;i<24;i++){ c.fillStyle=['#ff9ac8','#ffd23f','#fff'][i%3]; c.beginPath(); c.arc((i*131)%w,(i*57)%h,4,0,TAU); c.fill(); } }
+  else if(T===THEMES[5]){ /* 木頭書桌：木紋＋便條紙＋橡皮擦 */ for(let y=0;y<h;y+=22){ c.strokeStyle='rgba(70,35,10,'+(.08+.08*Math.sin(y*.37))+')'; c.lineWidth=2+((y*7)%5); c.beginPath(); c.moveTo(0,y); for(let x=0;x<=w;x+=40) c.lineTo(x,y+Math.sin(x*.012+y*.05)*6); c.stroke(); }
+    c.fillStyle='rgba(60,25,5,.25)'; c.beginPath(); c.ellipse(120,410,26,10,.3,0,TAU); c.ellipse(700,90,18,7,-.4,0,TAU); c.fill();
+    c.save(); c.translate(70,90); c.rotate(-.12); c.fillStyle='rgba(0,0,0,.18)'; c.fillRect(4,6,120,110); c.fillStyle='#fff48a'; c.fillRect(0,0,120,110); c.fillStyle='rgba(255,90,90,.6)'; c.fillRect(46,-8,28,16); c.restore();
+    c.save(); c.translate(150,445); c.rotate(.2); c.fillStyle='#ff8aa8'; rr(c,0,0,60,24,5); c.fill(); c.fillStyle='#4a8aff'; rr(c,40,0,20,24,4); c.fill(); c.restore(); }
+  else if(T===THEMES[6]){ /* 海底：光柱、氣泡、珊瑚、海草 */ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1a7ab8'); g.addColorStop(1,'#062a4a'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    for(let i=0;i<5;i++){ c.fillStyle='rgba(255,255,255,.05)'; c.beginPath(); const x=i*180+Math.sin(t*.4+i)*20; c.moveTo(x,0); c.lineTo(x+70,0); c.lineTo(x+160,h); c.lineTo(x+40,h); c.fill(); }
+    for(let i=0;i<9;i++){ const x=i*97+20; c.strokeStyle=['#3ac87a','#2aa86a'][i%2]; c.lineWidth=5; c.lineCap='round'; c.beginPath(); c.moveTo(x,h); for(let k=1;k<6;k++) c.lineTo(x+Math.sin(t*1.5+i+k*.8)*8,h-k*18); c.stroke(); }
+    for(const [x,col] of [[60,'#ff6a8a'],[250,'#ffa84a'],[720,'#ff6ac8']]){ c.fillStyle=col; for(let k=0;k<5;k++){ c.beginPath(); c.ellipse(x+(k-2)*11,h-26+Math.abs(k-2)*6,6,26,(k-2)*.3,0,TAU); c.fill(); } }
+    for(let i=0;i<22;i++){ const y=(h-((t*30+i*61)%h)),x=(i*131)%w+Math.sin(t*2+i)*6; c.strokeStyle='rgba(255,255,255,.45)'; c.lineWidth=1.5; c.beginPath(); c.arc(x,y,2+i%4,0,TAU); c.stroke(); } }
+  else if(T===THEMES[7]){ /* 雪地：雪花飄、冰晶、雪堆 */ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#cfe6f8'); g.addColorStop(1,'#f6fbff'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    c.fillStyle='#fff'; c.beginPath(); c.moveTo(0,h); for(let x=0;x<=w;x+=50) c.quadraticCurveTo(x+25,h-40-Math.sin(x)*12,x+50,h-18); c.lineTo(w,h); c.fill();
+    const flake=(x,y,r,a)=>{ c.save(); c.translate(x,y); c.rotate(a); c.strokeStyle='rgba(120,170,230,.55)'; c.lineWidth=2; for(let k=0;k<6;k++){ c.rotate(TAU/6); c.beginPath(); c.moveTo(0,0); c.lineTo(0,r); c.moveTo(0,r*.6); c.lineTo(r*.22,r*.8); c.moveTo(0,r*.6); c.lineTo(-r*.22,r*.8); c.stroke(); } c.restore(); };
+    flake(80,80,30,t*.2); flake(720,420,26,-t*.25); flake(250,440,16,t*.3);
+    for(let i=0;i<40;i++){ c.fillStyle='rgba(255,255,255,.95)'; c.beginPath(); c.arc((i*157+Math.sin(t+i)*14+w)%w,(t*26+i*53)%h,1.5+i%3,0,TAU); c.fill(); } }
+  else if(T===THEMES[8]){ /* 沙漠夕陽：漸層天空、太陽、沙丘、仙人掌 */ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#ff7a5a'); g.addColorStop(.55,'#ffc070'); g.addColorStop(1,'#e8a050'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    c.fillStyle='rgba(255,240,180,.85)'; c.beginPath(); c.arc(150,300,70,0,TAU); c.fill();
+    c.fillStyle='#d88840'; c.beginPath(); c.moveTo(0,h); c.quadraticCurveTo(200,330,420,400); c.quadraticCurveTo(620,460,w,360); c.lineTo(w,h); c.fill(); c.fillStyle='#c07030'; c.beginPath(); c.moveTo(0,h); c.quadraticCurveTo(300,410,w,470); c.lineTo(w,h); c.fill();
+    c.fillStyle='#3a6a3a'; for(const [x,y,s] of [[60,430,1],[260,450,.7]]){ rr(c,x-7*s,y-60*s,14*s,60*s,7*s); c.fill(); rr(c,x-24*s,y-44*s,10*s,24*s,5*s); c.fill(); rr(c,x+14*s,y-50*s,10*s,22*s,5*s); c.fill(); c.fillRect(x-20*s,y-26*s,14*s,6*s); c.fillRect(x+6*s,y-32*s,12*s,6*s); } }
+  else if(T===THEMES[9]){ /* 銀河：星雲、星星閃爍、行星、流星 */ const g=c.createRadialGradient(w*.3,h*.6,20,w*.3,h*.6,420); g.addColorStop(0,'rgba(170,60,255,.35)'); g.addColorStop(.5,'rgba(40,80,200,.2)'); g.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    for(let i=0;i<160;i++){ c.fillStyle='rgba(255,255,255,'+(.2+.6*Math.abs(Math.sin(t*1.1+i*1.7)))+')'; const s=i%9===0?2.4:1.3; c.fillRect((i*211)%w,(i*97)%h,s,s); }
+    c.fillStyle='#ff9a5a'; c.beginPath(); c.arc(80,420,34,0,TAU); c.fill(); c.strokeStyle='rgba(255,220,160,.8)'; c.lineWidth=4; c.beginPath(); c.ellipse(80,420,56,12,-.3,0,TAU); c.stroke();
+    const sx=(t*120)%(w+200)-100; c.strokeStyle='rgba(255,255,255,.7)'; c.lineWidth=2; c.beginPath(); c.moveTo(sx,60+sx*.15); c.lineTo(sx-50,60+(sx-50)*.15-8); c.stroke(); }
   else { c.strokeStyle=T.grid; c.lineWidth=1; for(let x=0;x<w;x+=40){ c.beginPath(); c.moveTo(x,0); c.lineTo(x,h); c.stroke(); } for(let i=0;i<8;i++){ c.fillStyle=['rgba(255,74,216,.12)','rgba(58,240,255,.12)'][i%2]; c.fillRect((i*113)%w,(i*61)%h,60,6); } } }
 /* 小幫手：Q 版鉛筆「小筆」 */
 function pencil(c,x,y,t,mood,ang){ c.save(); c.translate(x,y); c.rotate(ang||0); const INK='#2a1a26',b=Math.sin(t*4)*2; c.translate(0,b); c.lineJoin='round'; c.strokeStyle=INK; c.lineWidth=2.2;
@@ -124,7 +151,7 @@ function stageShow(ctx,w,h,si,t){ const L=lvl(si); ctx.save(); ctx.scale(w/W,h/H
   const dk=L.theme.dark; ctx.fillStyle=dk?'rgba(10,8,24,.72)':'rgba(255,255,255,.86)'; rr(ctx,14,14,262,120,18); ctx.fill(); ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillStyle=dk?'#ffd23f':'#e8892a'; ctx.font='900 30px '+TC; ctx.fillText('第 '+(si+1)+' 關',34,52); ctx.fillStyle=dk?'#fff':'#2a2a3a'; ctx.font='700 16px '+TC; ctx.fillText(L.theme.n+'　'+L.E+' 條線',34,96); pencil(ctx,200,340,t,'happy',0); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).stroke={
   name:'一筆畫連連看',tag:'ONE STROKE',color:'#ffb02a',
-  desc:'從一個點出發，沿著線一筆把所有線畫完，每條線只能畫一次！100 關從簡單的小圖形到滿滿的星座，後面還有要畫兩次的粗線和單向箭頭。',
+  desc:'從一個點出發，沿著線一筆把所有線畫完，每條線只能畫一次！200 關從簡單的小圖形到滿滿的星座，後面還有要畫兩次的粗線和單向箭頭。',
   goal:'從任一個點開始，一筆把所有線都畫過一次就過關。不用提示就能拿 3 顆星。',
   stages:Array.from({length:LV},(_,i)=>'第 '+(i+1)+' 關'),stars:Array.from({length:LV},(_,i)=>starsOf(i)),stageGrid:true,
   stageGoal:i=>{ const L=lvl(i); return '第 '+(i+1)+' 關（'+L.theme.n+'，'+L.E+' 條線）：一筆把所有線畫完。'+(L.edges.some(e=>e.n===2)?'粗線 ×2 要畫兩次。':'')+(L.edges.some(e=>e.dir)?'紅箭頭只能照方向畫。':''); },

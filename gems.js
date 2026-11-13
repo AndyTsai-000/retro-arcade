@@ -1,7 +1,7 @@
 // 寶石三連閃：交換相鄰寶石，三顆以上同色連成一線就消掉。四連、L 形、五連會做出特殊寶石。單人 100 關，過一關開下一關。
 (function(){
 'use strict';
-const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LV=100,N=8,CS=56,BX=324,BY=26;
+const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LV=200,N=8,CS=56,BX=324,BY=26;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 function mul(seed){ let a=seed>>>0||1; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -25,20 +25,25 @@ const THEMES=[
  {n:'皇家城堡',a:'#5a1a2a',b:'#200810',acc:'#ffd23f'},
  {n:'螢光森林',a:'#0e3a2a',b:'#04140e',acc:'#b8ff6a'},
  {n:'星空神殿',a:'#141a4a',b:'#05061a',acc:'#9ad0ff'},
+ {n:'熔岩火山',a:'#4a1408',b:'#160402',acc:'#ff8a3a'},
+ {n:'糖果王國',a:'#ff9ac8',b:'#a84a8a',acc:'#fff06a'},
+ {n:'冰雪宮殿',a:'#4a8ac8',b:'#0e2a4a',acc:'#e0f6ff'},
+ {n:'金字塔遺跡',a:'#c8823a',b:'#4a2410',acc:'#ffe08a'},
+ {n:'櫻花庭園',a:'#ffc8d8',b:'#7a3a5a',acc:'#ff6a9a'},
 ];
 /* ---------- 關卡：前面步數多、顏色少、目標低，後面慢慢變難 ---------- */
-const starsOf=i=>Math.min(5,1+Math.floor(i/20));
+const starsOf=i=>Math.min(5,1+Math.floor(i/40));
 function levelOf(i){ const r=mul(i*977+13),d=i/(LV-1);
-  const nc=i<20?5:i<50?(i%3===2?6:5):(i%4===3?5:6);
-  const mask=i<6?0:[0,1,2,3,4,5,6,7,1,3][(i*7)%10];
+  const nc=i<40?5:i<100?(i%3===2?6:5):(i%4===3?5:6);
+  const mask=i<12?0:[0,1,2,3,4,5,6,7,1,3][(i*7)%10];
   const moves=Math.round(30-d*6);
-  const kind=i<3?'score':['ice','collect','score','ice','collect'][i%5],goals=[];
+  const kind=i<5?'score':['ice','collect','score','ice','collect'][i%5],goals=[];
   if(kind==='score') goals.push({k:'score',n:Math.round((1600+d*2600+(nc-5)*-400)/100)*100});
-  if(kind==='ice'||(i>=60&&kind==='collect'&&i%2===0)) goals.push({k:'ice'});
-  const cm=goals.length?.7:1; if(kind==='collect'){ const c1=Math.floor(r()*nc); goals.push({k:'col',c:c1,n:Math.round((16+d*12)*cm)}); if(i>=45){ let c2=(c1+1+Math.floor(r()*(nc-1)))%nc; goals.push({k:'col',c:c2,n:Math.round((10+d*6)*cm)}); } }
+  if(kind==='ice'||(i>=120&&kind==='collect'&&i%2===0)) goals.push({k:'ice'});
+  const cm=goals.length?.7:1; if(kind==='collect'){ const c1=Math.floor(r()*nc); goals.push({k:'col',c:c1,n:Math.round((16+d*12)*cm)}); if(i>=90){ let c2=(c1+1+Math.floor(r()*(nc-1)))%nc; goals.push({k:'col',c:c2,n:Math.round((10+d*6)*cm)}); } }
   const M=MASKS[mask],ice=[]; for(let y=0;y<N;y++){ const row=[]; for(let x=0;x<N;x++) row.push(0); ice.push(row); }
-  if(goals.some(g=>g.k==='ice')){ const pat=mask===5?0:i%4,cnt=Math.round((10+d*16)*(mask===5||mask===6?.6:1)); const cells=[]; for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(M[y][x]!=='#'&&M[y].split('').filter(ch=>ch!=='#').length>=5){ const cx=Math.abs(x-3.5),cy=Math.abs(y-3.5); const w=pat===0?(8-cx-cy):pat===1?(y):pat===2?(6-Math.abs(cx+cy-3.5)*2):(Math.abs(cx-cy)<1?6:0); cells.push([w+r()*3,x,y]); } cells.sort((a,b)=>b[0]-a[0]); const two=i>=40?.08+d*.22:0; for(let k=0;k<Math.min(cnt,cells.length);k++){ const [,x,y]=cells[k]; ice[y][x]=r()<two?2:1; } }
-  return {i,nc,mask,M,moves:moves+(goals.some(g=>g.k==='ice')&&(mask===5||mask===6)?3:0),goals,ice,theme:THEMES[Math.floor(i/20)%5],stars:starsOf(i)}; }
+  if(goals.some(g=>g.k==='ice')){ const pat=mask===5?0:i%4,cnt=Math.round((10+d*16)*(mask===5||mask===6?.6:1)); const cells=[]; for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(M[y][x]!=='#'&&M[y].split('').filter(ch=>ch!=='#').length>=5){ const cx=Math.abs(x-3.5),cy=Math.abs(y-3.5); const w=pat===0?(8-cx-cy):pat===1?(y):pat===2?(6-Math.abs(cx+cy-3.5)*2):(Math.abs(cx-cy)<1?6:0); cells.push([w+r()*3,x,y]); } cells.sort((a,b)=>b[0]-a[0]); const two=i>=80?.08+d*.22:0; for(let k=0;k<Math.min(cnt,cells.length);k++){ const [,x,y]=cells[k]; ice[y][x]=r()<two?2:1; } }
+  return {i,nc,mask,M,moves:moves+(goals.some(g=>g.k==='ice')&&(mask===5||mask===6)?3:0),goals,ice,theme:THEMES[Math.floor(i/20)%THEMES.length],stars:starsOf(i)}; }
 
 /* ---------- 規則（純資料，畫面和測試共用） ---------- */
 function newState(L,rand){ const S={L,g:[],ice:L.ice.map(r=>r.slice()),score:0,moves:L.moves,got:[0,0,0,0,0,0],nid:1}; const ok=okOf(L);
@@ -127,6 +132,25 @@ function bgOf(T){ if(BGC[T.n]) return BGC[T.n]; const e=document.createElement('
   else if(T===THEMES[1]){ /* 海底：光束、珊瑚、海草 */ c.globalAlpha=.12; c.fillStyle='#bff8ff'; for(let i=0;i<6;i++){ const x=i*150+40; c.beginPath(); c.moveTo(x,0); c.lineTo(x+60,0); c.lineTo(x+170,H); c.lineTo(x+90,H); c.fill(); } c.globalAlpha=1; c.fillStyle='#d8c08a'; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=20) c.lineTo(x,H-22-Math.sin(x*.02)*8); c.lineTo(W,H); c.fill(); for(let i=0;i<10;i++){ const x=r()*W,col=['#ff7a9a','#ffb05a','#c88aff','#ff5a7a'][i%4]; coral(c,x,H-24,30+r()*40,col,r); } c.strokeStyle='#2a9a6a'; c.lineWidth=5; c.lineCap='round'; for(let i=0;i<14;i++){ const x=r()*W; c.beginPath(); c.moveTo(x,H-20); c.bezierCurveTo(x-14,H-60,x+14,H-90,x-6,H-120-r()*40); c.stroke(); } }
   else if(T===THEMES[2]){ /* 城堡：石牆、拱窗、旗幟 */ c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=1; for(let y=0;y<H;y+=28){ for(let x=(y/28)%2*30;x<W;x+=60){ c.strokeRect(x,y,60,28); } } for(const x of [70,W-70]){ const wg=c.createLinearGradient(0,60,0,260); wg.addColorStop(0,'#3a5aa8'); wg.addColorStop(1,'#a8c8ff'); c.fillStyle=wg; c.beginPath(); c.moveTo(x-40,260); c.lineTo(x-40,110); c.arc(x,110,40,Math.PI,0); c.lineTo(x+40,260); c.fill(); c.strokeStyle='#d8b060'; c.lineWidth=6; c.stroke(); c.lineWidth=3; c.beginPath(); c.moveTo(x,70); c.lineTo(x,260); c.moveTo(x-40,170); c.lineTo(x+40,170); c.stroke(); } for(const x of [20,W-50]){ c.fillStyle='#c8202a'; c.beginPath(); c.moveTo(x,290); c.lineTo(x+30,290); c.lineTo(x+30,430); c.lineTo(x+15,410); c.lineTo(x,430); c.fill(); c.fillStyle='#ffd23f'; star4(c,x+15,340,10); } c.fillStyle='#3a0e14'; c.fillRect(0,H-30,W,30); }
   else if(T===THEMES[3]){ /* 森林：樹影、螢光蘑菇 */ for(let i=0;i<12;i++){ const x=r()*W,w=30+r()*40; c.fillStyle='rgba(2,20,12,'+(.5+r()*.4)+')'; c.fillRect(x,0,w*.4,H); c.beginPath(); c.arc(x+w*.2,40,w,0,TAU); c.fill(); } c.fillStyle='#062a18'; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=20) c.lineTo(x,H-30-Math.sin(x*.03)*10); c.lineTo(W,H); c.fill(); for(let i=0;i<12;i++){ const x=r()*W,y=H-30-r()*10,s=8+r()*14,col=['#b8ff6a','#6affd8','#ff9aea'][i%3]; c.fillStyle='#e8f0d0'; c.fillRect(x-s*.15,y-s*.8,s*.3,s*.8); const mg=c.createRadialGradient(x,y-s,1,x,y-s,s*2.2); mg.addColorStop(0,col+'88'); mg.addColorStop(1,col+'00'); c.fillStyle=mg; c.fillRect(x-s*2.2,y-s*3.2,s*4.4,s*4.4); c.fillStyle=col; c.beginPath(); c.ellipse(x,y-s*.8,s*.7,s*.45,0,Math.PI,0); c.fill(); } }
+  else if(T===THEMES[5]){ /* 火山：熔岩河、黑岩、遠方火山噴發 */ c.fillStyle='#2a0a04'; c.beginPath(); c.moveTo(0,260); c.lineTo(140,120); c.lineTo(190,130); c.lineTo(330,270); c.fill(); const lg=c.createRadialGradient(165,120,4,165,120,70); lg.addColorStop(0,'rgba(255,200,80,.9)'); lg.addColorStop(1,'rgba(255,80,0,0)'); c.fillStyle=lg; c.fillRect(80,40,180,160);
+    c.fillStyle='#ff5a1a'; for(let k=0;k<3;k++){ c.beginPath(); c.moveTo(150+k*6,124); c.quadraticCurveTo(120+k*30,200,100+k*50,270); c.lineTo(108+k*50,270); c.quadraticCurveTo(130+k*30,200,158+k*6,124); c.fill(); }
+    for(let i=0;i<10;i++){ c.fillStyle='#1a0602'; const x=r()*W,y=H-r()*90; c.beginPath(); c.moveTo(x-40,H); c.lineTo(x-10,y); c.lineTo(x+30,y+10); c.lineTo(x+50,H); c.fill(); }
+    const rg=c.createLinearGradient(0,H-40,0,H); rg.addColorStop(0,'#ff8a1a'); rg.addColorStop(1,'#c82a0a'); c.fillStyle=rg; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=20) c.lineTo(x,H-26-Math.sin(x*.03)*6); c.lineTo(W,H); c.fill(); }
+  else if(T===THEMES[6]){ /* 糖果王國：彩色條紋地、棒棒糖、甜甜圈雲 */ for(let i=0;i<8;i++){ c.fillStyle=i%2?'rgba(255,255,255,.12)':'rgba(255,120,180,.12)'; c.beginPath(); c.moveTo(i*120-200,H); c.lineTo(i*120,0); c.lineTo(i*120+60,0); c.lineTo(i*120-140,H); c.fill(); }
+    for(const [x,y,col] of [[60,300,'#ff4a8a'],[W-60,280,'#4ac8ff'],[150,380,'#ffd23f']]){ c.fillStyle='#fff'; c.fillRect(x-4,y,8,H-y); c.fillStyle=col; c.beginPath(); c.arc(x,y,38,0,TAU); c.fill(); c.strokeStyle='#fff'; c.lineWidth=7; c.beginPath(); for(let a=0;a<12;a+=.2){ const rr2=a*3.1; c.lineTo(x+Math.cos(a)*rr2,y+Math.sin(a)*rr2); } c.stroke(); }
+    for(const [x,y] of [[200,60],[600,90]]){ c.fillStyle='#fff6f0'; c.beginPath(); c.arc(x,y,26,0,TAU); c.arc(x+30,y+6,22,0,TAU); c.arc(x-28,y+8,20,0,TAU); c.fill(); }
+    c.fillStyle='#8a4a2a'; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=24) c.lineTo(x,H-20-((x/24)%2)*10); c.lineTo(W,H); c.fill(); c.fillStyle='#fff'; for(let x=10;x<W;x+=48){ c.beginPath(); c.arc(x,H-24,5,0,TAU); c.fill(); } }
+  else if(T===THEMES[7]){ /* 冰雪宮殿：冰柱、雪山、極光 */ for(let k=0;k<3;k++){ c.strokeStyle=['rgba(120,255,200,.25)','rgba(160,120,255,.2)','rgba(90,220,255,.2)'][k]; c.lineWidth=40-k*10; c.beginPath(); for(let x=0;x<=W;x+=20) c.lineTo(x,70+k*30+Math.sin(x*.012+k)*30); c.stroke(); }
+    c.fillStyle='#d8eeff'; c.beginPath(); c.moveTo(0,H); c.lineTo(0,320); c.lineTo(120,220); c.lineTo(220,330); c.lineTo(330,250); c.lineTo(460,H); c.fill(); c.beginPath(); c.moveTo(W,H); c.lineTo(W,300); c.lineTo(W-110,210); c.lineTo(W-260,H); c.fill();
+    c.fillStyle='rgba(220,245,255,.85)'; for(let x=0;x<W;x+=34){ const hh=20+((x*13)%40); c.beginPath(); c.moveTo(x,0); c.lineTo(x+14,0); c.lineTo(x+7,hh); c.fill(); }
+    c.fillStyle='#f4fbff'; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=40) c.quadraticCurveTo(x+20,H-34,x+40,H-16); c.lineTo(W,H); c.fill(); }
+  else if(T===THEMES[8]){ /* 金字塔：夕陽、金字塔、棕櫚樹 */ const sg=c.createRadialGradient(W*.75,150,10,W*.75,150,120); sg.addColorStop(0,'rgba(255,240,180,.95)'); sg.addColorStop(1,'rgba(255,200,100,0)'); c.fillStyle=sg; c.fillRect(0,0,W,320);
+    for(const [x,b,h2] of [[120,220,170],[300,150,110],[W-150,240,190]]){ c.fillStyle='#a8601e'; c.beginPath(); c.moveTo(x-b/2,H-40); c.lineTo(x,H-40-h2); c.lineTo(x+b/2,H-40); c.fill(); c.fillStyle='#7a400e'; c.beginPath(); c.moveTo(x,H-40-h2); c.lineTo(x+b/2,H-40); c.lineTo(x+b*.1,H-40); c.fill(); c.strokeStyle='rgba(60,30,10,.3)'; c.lineWidth=1; for(let k=1;k<6;k++){ const yy=H-40-h2*k/6; c.beginPath(); c.moveTo(x-b/2*(1-k/6),yy); c.lineTo(x+b/2*(1-k/6),yy); c.stroke(); } }
+    c.fillStyle='#e0a050'; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=30) c.lineTo(x,H-40-Math.sin(x*.01)*10); c.lineTo(W,H); c.fill();
+    c.strokeStyle='#4a2a10'; c.lineWidth=7; c.beginPath(); c.moveTo(40,H); c.quadraticCurveTo(50,H-80,30,H-150); c.stroke(); c.fillStyle='#2a6a2a'; for(let a=0;a<6;a++){ c.beginPath(); c.ellipse(30+Math.cos(a)*30,H-150+Math.sin(a)*12,34,8,a,0,TAU); c.fill(); } }
+  else if(T===THEMES[9]){ /* 櫻花庭園：櫻花樹、紙燈籠、小橋 */ for(const [x,s2] of [[70,1],[W-60,1.2]]){ c.strokeStyle='#5a2a2a'; c.lineWidth=14*s2; c.beginPath(); c.moveTo(x,H); c.quadraticCurveTo(x+20,H-140*s2,x-10,H-260*s2); c.stroke(); for(let i=0;i<26;i++){ c.fillStyle=['#ffb0c8','#ff8aaa','#ffd8e4'][i%3]; c.globalAlpha=.85; c.beginPath(); c.arc(x-60*s2+r()*120*s2,H-300*s2+r()*120*s2,16+r()*16,0,TAU); c.fill(); } c.globalAlpha=1; }
+    for(let i=0;i<4;i++){ const x=180+i*150,y=40+(i%2)*20; c.strokeStyle='#3a2a2a'; c.lineWidth=1; c.beginPath(); c.moveTo(x,0); c.lineTo(x,y); c.stroke(); c.fillStyle='#ff4a3a'; c.beginPath(); c.ellipse(x,y+18,14,20,0,0,TAU); c.fill(); c.fillStyle='rgba(255,230,140,.5)'; c.beginPath(); c.ellipse(x,y+18,7,14,0,0,TAU); c.fill(); }
+    c.fillStyle='#4a2a3a'; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=30) c.lineTo(x,H-18-Math.sin(x*.02)*5); c.lineTo(W,H); c.fill(); }
   else { /* 星空神殿：月亮、柱子、雲 */ for(let i=0;i<160;i++){ c.fillStyle='rgba(255,255,255,'+(.3+r()*.7)+')'; c.fillRect(r()*W,r()*H*.8,1.4,1.4); } const mg=c.createRadialGradient(720,80,10,720,80,90); mg.addColorStop(0,'rgba(255,250,220,.9)'); mg.addColorStop(.3,'rgba(255,250,220,.6)'); mg.addColorStop(1,'rgba(255,250,220,0)'); c.fillStyle=mg; c.fillRect(620,0,180,180); c.fillStyle='#fffbe8'; c.beginPath(); c.arc(720,80,30,0,TAU); c.fill(); for(const x of [40,110,W-130,W-60]){ c.fillStyle='#d8dcf0'; c.fillRect(x,180,34,H-180); c.fillStyle='#a8b0d0'; c.fillRect(x+22,180,12,H-180); c.fillStyle='#e8ecff'; c.fillRect(x-6,170,46,14); c.fillRect(x-6,H-40,46,14); } c.fillStyle='rgba(200,210,255,.18)'; for(let i=0;i<6;i++){ const x=r()*W,y=H-40-r()*80; c.beginPath(); c.ellipse(x,y,90,18,0,0,TAU); c.fill(); } }
   return BGC[T.n]=e; }
 function crystal(c,x,y,h,col){ for(let k=-1;k<=1;k++){ const hh=h*(k?0.65:1),xx=x+k*h*.18,ww=h*.13; const g=c.createLinearGradient(xx-ww,0,xx+ww,0); g.addColorStop(0,col); g.addColorStop(.5,'#ffffff'); g.addColorStop(1,col); c.globalAlpha=.85; c.fillStyle=g; c.beginPath(); c.moveTo(xx-ww,y); c.lineTo(xx-ww,y-hh*.75); c.lineTo(xx+k*4,y-hh); c.lineTo(xx+ww,y-hh*.75); c.lineTo(xx+ww,y); c.closePath(); c.fill(); c.globalAlpha=1; } const lg=c.createRadialGradient(x,y-h*.5,2,x,y-h*.5,h); lg.addColorStop(0,col+'55'); lg.addColorStop(1,col+'00'); c.fillStyle=lg; c.fillRect(x-h,y-h*1.5,h*2,h*2); }
@@ -134,6 +158,10 @@ function coral(c,x,y,h,col,r){ c.strokeStyle=col; c.lineCap='round'; const br=(x
 function ambient(c,T,t){ const k=THEMES.indexOf(T);
   if(k===1){ c.fillStyle='rgba(220,255,255,.55)'; for(let i=0;i<18;i++){ const x=(i*97)%W+Math.sin(t+i)*8,y=H-((t*40+i*61)%H); c.beginPath(); c.arc(x,y,2+(i%3),0,TAU); c.fill(); } }
   else if(k===3){ for(let i=0;i<20;i++){ const x=(i*131+Math.sin(t*.5+i)*40)%W,y=80+(i*53)%360+Math.cos(t*.7+i)*20,a=.4+.6*Math.abs(Math.sin(t*2+i)); c.fillStyle='rgba(200,255,120,'+a+')'; c.beginPath(); c.arc(x,y,2.2,0,TAU); c.fill(); } }
+  else if(k===5){ for(let i=0;i<22;i++){ const x=(i*109+Math.sin(t+i)*14)%W,y=H-((t*50+i*43)%H),a=Math.max(0,1-(H-y)/H); c.fillStyle='rgba(255,'+(120+(i%4)*30)+',40,'+a+')'; c.beginPath(); c.arc(x,y,1.6+(i%3),0,TAU); c.fill(); } }
+  else if(k===7){ c.fillStyle='rgba(255,255,255,.9)'; for(let i=0;i<34;i++){ c.beginPath(); c.arc((i*157+Math.sin(t+i)*16+W)%W,(t*28+i*53)%H,1.4+i%3,0,TAU); c.fill(); } }
+  else if(k===9){ for(let i=0;i<20;i++){ const x=(i*143+t*30+Math.sin(t+i)*30)%W,y=(t*36+i*67)%H; c.save(); c.translate(x,y); c.rotate(t*2+i); c.fillStyle='rgba(255,170,200,.85)'; c.beginPath(); c.ellipse(0,0,5,3,0,0,TAU); c.fill(); c.restore(); } }
+  else if(k===8){ c.fillStyle='rgba(255,220,160,.35)'; for(let i=0;i<24;i++){ c.fillRect((i*131+t*60)%W,300+(i*29)%180,2,1.4); } }
   else { c.fillStyle=k===4?'rgba(255,255,255,.9)':'rgba(255,230,255,.8)'; for(let i=0;i<14;i++){ const a=Math.max(0,Math.sin(t*1.6+i*1.7)); if(a<.2) continue; c.globalAlpha=a; star4(c,(i*173)%W,(i*71)%H,3+a*4); } c.globalAlpha=1; } }
 /* 小幫手「晶晶」：Q 版寶石精靈 */
 function fairy(c,x,y,t,mood){ c.save(); c.translate(x,y+Math.sin(t*2.4)*3); const INK='#2a1438',blink=Math.sin(t*1.3)>.985,happy=mood==='happy'||mood==='win',sad=mood==='sad';
@@ -259,7 +287,7 @@ function wrap(c,s,x,y,w,lh){ let line='',yy=y; for(const ch of s){ if(c.measureT
 function thumb(ctx,w,h,t){ const L=levelOf(41); if(!SHOWC.th){ const S=newState(L,mul(77)); S.g[2][3]={c:1,s:1,id:999}; S.g[4][5]={c:-1,s:4,id:998}; S.g[5][2]={c:3,s:3,id:997}; SHOWC.th=S; } const S=SHOWC.th; ctx.save(); ctx.scale(w/W,h/H); ctx.drawImage(bgOf(L.theme),0,0); ambient(ctx,L.theme,t); boardFrame(ctx,S,t); for(let y=0;y<N;y++) for(let x=0;x<N;x++){ const o=S.g[y][x]; if(o) drawGem(ctx,o,BX+x*CS+CS/2,BY+y*CS+CS/2+Math.sin(t*3+x+y)*1.5,1,t); } fairy(ctx,160,H/2+30,t,Math.sin(t*.8)>0?'happy':'idle'); ctx.fillStyle='#fff'; ctx.font='900 46px '+TC; ctx.textAlign='center'; ctx.lineWidth=8; ctx.strokeStyle='#2a1438'; ctx.strokeText('三連閃！',160,120); const g=ctx.createLinearGradient(0,96,0,140); g.addColorStop(0,'#fff6a8'); g.addColorStop(1,'#ff7ab8'); ctx.fillStyle=g; ctx.fillText('三連閃！',160,120); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).gems={
   name:'寶石三連閃',tag:'GEM TRIO',color:'#b45cff',
-  desc:'交換相鄰寶石，三顆以上同色連成一線就消掉！四連、L 形、五連會變出特殊寶石，連鎖越多分數越高。共 100 關，五個寶石世界。',
+  desc:'交換相鄰寶石，三顆以上同色連成一線就消掉！四連、L 形、五連會變出特殊寶石，連鎖越多分數越高。共 200 關，十個寶石世界。',
   goal:'交換相鄰的寶石，讓三顆以上同色連成一線就會消掉。步數用完前完成過關目標就過關。',
   stages:Array.from({length:LV},(_,i)=>'第 '+(i+1)+' 關'),stars:Array.from({length:LV},(_,i)=>starsOf(i)),stageGrid:true,
   stageGoal:i=>{ const L=levelOf(i); return '第 '+(i+1)+' 關（'+L.theme.n+'，'+L.moves+' 步）：'+goalText(L)+'。四顆一排變「光束寶石」、L／T 形變「爆裂寶石」、五顆一排變「彩虹球」。'; },

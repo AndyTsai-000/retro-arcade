@@ -10,13 +10,33 @@ function shade(hex,k){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&255
 const THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 function load(){ const K=window.ARCADE_GAMES&&window.ARCADE_GAMES.kart; if(window.THREE) return Promise.resolve(); if(K&&K.load) return K.load();
   return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=THREE_URL; s.onload=()=>res(); s.onerror=()=>{ s.remove(); rej(new Error('three')); }; document.head.appendChild(s); }); }
-// 10 關：名稱、場景、王牌名字、王牌顏色、王牌機種
+// 50 關：名稱、場景、王牌名字、王牌顏色、王牌機種（最後一關固定是天際決戰）
 const AS=[['晴空海峽','sea','銀翼','#c8d0dc','jet'],['翡翠群島','isle','紅隼','#e04a3a','prop'],['黃昏峽谷','canyon','赤狐','#ff7a2a','jet'],['沙丘風暴','desert','沙暴','#d8a040','prop'],['雪峰冰原','ice','白狼','#e8f0ff','jet'],
-  ['雷暴前線','storm','雷公','#6a7a90','stealth'],['火山熔岩','volcano','炎魔','#c8202a','jet'],['極光夜航','night','夜鴉','#3a3a4a','stealth'],['颶風之眼','typhoon','風神','#3ddbd9','jet'],['天際決戰','strato','蒼穹之王','#ffd23f','stealth']];
-const STAGES=AS.map((a,i)=>{ const k=i/9; return {name:a[0],th:a[1],ace:a[2],acol:a[3],am:a[4],k,stars:1+Math.round(k*4),kills:5+Math.round(k*5),maxE:2+Math.round(k*2.4),
+  ['雷暴前線','storm','雷公','#6a7a90','stealth'],['火山熔岩','volcano','炎魔','#c8202a','jet'],['極光夜航','night','夜鴉','#3a3a4a','stealth'],['颶風之眼','typhoon','風神','#3ddbd9','jet'],
+  ['楓紅山谷','autumn','楓葉','#d8502a','prop'],['熱帶雨林','jungle','翠蛇','#3a8a3a','jet'],['珊瑚環礁','reef','海燕','#3ac8e8','prop'],['晨曦海岸','seaDawn','曙光','#ffb07a','jet'],['紫霞峽谷','canyonDusk','紫鳶','#a85ad8','stealth'],
+  ['冰河峽灣','fjord','冰隼','#a8d8f0','jet'],['月夜沙海','desertNight','月狐','#c8b88a','prop'],['薄霧群島','isleFog','霧鷹','#9aa8b8','jet'],['黃金麥田','farm','麥穗','#e8c040','prop'],['極地暴雪','blizzard','雪鴞','#f0f4ff','stealth'],
+  ['夕陽海峽','seaDusk','落日','#ff7a3a','jet'],['翡翠夜島','isleNight','螢火','#7aff8a','stealth'],['赤岩高原','mesa','赤鷲','#c8502a','jet'],['雷雨群島','isleStorm','雷鳥','#8a9ab8','jet'],['櫻花山脈','sakura','櫻吹雪','#ff8ab8','prop'],
+  ['熔岩之夜','volcanoNight','冥火','#ff3a1a','stealth'],['北極光海','auroraSea','極光','#3dffb0','jet'],['沙塵峽谷','canyonDust','沙蠍','#d89a50','jet'],['秋日湖畔','autumnLake','紅楓','#e86a3a','prop'],['雨林瀑布','jungleRain','雨蛙','#4aa84a','stealth'],
+  ['冰原夕照','iceDusk','霜狼','#ffc8a8','jet'],['颱風外圍','typhoonEdge','旋風','#5ab0c8','jet'],['黑夜雷暴','stormNight','黑雷','#4a5a7a','stealth'],['金色沙漠','desertGold','金鷹','#ffc040','jet'],['環礁黃昏','reefDusk','晚霞','#ff8a6a','prop'],
+  ['雪山星空','iceNight','星狼','#c8d8ff','stealth'],['火山群島','volcanoIsle','火鳥','#ff6a2a','jet'],['峽灣極光','fjordNight','北辰','#7affd8','stealth'],['高原風暴','mesaStorm','狂風','#8a6a5a','jet'],['麥田黃昏','farmDusk','稻草人','#d8a040','prop'],
+  ['暴雪之夜','blizzardNight','白夜','#e0e8ff','stealth'],['颶風雷鳴','typhoonStorm','雷神','#2adbd9','jet'],['熔岩峽谷','canyonLava','熔岩','#ff4a1a','jet'],['平流層晨光','stratoDawn','晨星','#ffd8a0','stealth'],['夜色海峽','seaNight','暗影','#3a4a6a','stealth'],
+  ['雲海之上','stratoDusk','雲龍','#ff9ac8','jet'],['極光風暴','auroraStorm','電光','#5affe0','stealth'],['火山雷暴','volcanoStorm','火雷','#ff2a2a','stealth'],['星海天頂','stratoNight','天狼','#9ab8ff','stealth'],['峽谷星夜','canyonNight','夜梟','#5a4a8a','stealth'],
+  ['天際決戰','strato','蒼穹之王','#ffd23f','stealth']];
+const STAGES=AS.map((a,i)=>{ const k=i/(AS.length-1); return {name:a[0],th:a[1],ace:a[2],acol:a[3],am:a[4],k,stars:1+Math.round(k*4),kills:5+Math.round(k*5),maxE:2+Math.round(k*2.4),
   eturn:.62+.32*k,espd:112+18*k,eacc:.05-.032*k,edmg:1.6+2.4*k,efire:.75+.5*k,ahp:60+110*k,amis:k>.15?11-5*k:0,aspd:126+16*k,jcd:2.6-1.1*k}; });
 const TIPS=['敵機飛得慢、很少開火，先熟悉轉彎和自動開火。','小島很多，低空飛行小心別撞山。','峽谷的岩壁很高，敵機會躲在裡面。','沙塵讓視線變差，敵機開始會發射導彈。','雪山又高又尖，拉高才安全。',
-  '雷雨雲裡看不清楚，還會打雷。','火山灰天空，熔岩海不能碰。','夜裡只看得到敵機的航行燈，跟著雷達找。','颶風會把飛機吹偏，敵機又快又準。','最強的王牌：又快又會閃，導彈一直來。'];
+  '雷雨雲裡看不清楚，還會打雷。','火山灰天空，熔岩海不能碰。','夜裡只看得到敵機的航行燈，跟著雷達找。','颶風會把飛機吹偏，敵機又快又準。',
+  '紅葉山谷起伏大，貼著山腰飛最好找敵機。','雨林濕氣重、視線短，注意雷達。','環礁海面很亮，敵機的影子很好認。','朝陽在正前方，逆光時跟著準星。','峽谷黃昏光線斜，岩壁影子很深。',
+  '峽灣兩邊是高聳冰壁，轉彎要早。','月光下的沙丘看不太清楚，靠航行燈找敵機。','霧裡的小島突然冒出來，飛高一點。','平原很開闊，敵機無處可躲。','暴雪讓視線很短，敵機會突然出現。',
+  '夕陽很刺眼，背對太陽比較好瞄準。','夜晚的群島只剩航行燈，跟著雷達。','高原上的岩柱很多，低空要小心。','群島下著雷雨，雲裡會打雷。','山脈很高，拉高高度比較安全。',
+  '夜裡的熔岩很亮，但地形看不清楚。','極光下的海面很暗，敵機開始常發導彈。','沙塵吹進峽谷，視線變差。','湖面很平，低空飛行很快。','瀑布附近有亂流，飛機會晃。',
+  '冰原夕陽低垂，冰山的影子很長。','颱風邊緣風很大，飛機會被吹偏。','黑夜雷暴，只有閃電時看得清楚。','金色沙漠很熱，敵機飛得很快。','黃昏的環礁，敵機會從夕陽方向來。',
+  '雪山夜空，雷達是你最好的朋友。','火山島到處噴發，熔岩不能碰。','峽灣夜空有極光，敵機很會閃。','高原起風暴了，敵機又快又準。','黃昏麥田，敵機成群出現。',
+  '暴雪之夜幾乎看不見，跟著鎖定框。','颶風加上雷鳴，最混亂的天空。','峽谷底下是熔岩，千萬別飛太低。','平流層的晨光，敵機都是高手。','夜色海峽，敵機導彈一直來。',
+  '雲海上沒有地形，只有高手對決。','極光加雷暴，敵機又快又會閃。','火山雷暴，最危險的天空之一。','星空下的天頂，王牌們都在這裡。','峽谷夜裡岩壁看不清楚，拉高才安全。',
+  '最強的王牌：又快又會閃，導彈一直來。'];
+/* 舊版第 10 關（天際決戰）的過關紀錄搬到新的第 50 關 */
+try{ if(!localStorage.getItem('arcade.ace.mig50')){ if(localStorage.getItem('arcade.ace.w.9')==='1') localStorage.setItem('arcade.ace.w.49','1'); localStorage.removeItem('arcade.ace.w.9'); localStorage.setItem('arcade.ace.mig50','1'); } }catch(e){}
 const hasWin=i=>{ try{ return localStorage.getItem('arcade.ace.w.'+i)==='1'; }catch(e){ return false; } };
 const recWin=i=>{ try{ localStorage.setItem('arcade.ace.w.'+i,'1'); }catch(e){} };
 // 場景：天空上下顏色、霧、水（熔岩）、地面四層顏色、地形高度、太陽位置
@@ -31,6 +51,29 @@ const TH={
   night:{sky:['#030718','#1a2450'],fog:'#0c1430',fogF:2400,water:'#0a1a30',land:['#3a4050','#1a3024','#14241c','#3a3c48'],base:-70,amp:170,ridge:150,sun:[.45,4],sunC:'#c8d4ff',hemi:.42,cloud:'#3a4a6a',cn:.7,night:1},
   typhoon:{sky:['#34546a','#8aa8b8'],fog:'#6a8a98',fogF:2200,water:'#22465a',land:['#7a8a70','#3a6a4a','#2a5038','#5a6060'],base:-80,amp:150,ridge:80,sun:[.6,.4],sunC:'#e0eaf0',hemi:.65,cloud:'#c0ccd4',cn:1.3,rain:1,wind:1},
   strato:{sky:['#061650','#6a9ae0'],fog:'#c8dcf4',fogF:3600,water:'#f2f6ff',cloudFloor:1,land:['#f2f6ff','#f2f6ff','#f2f6ff','#f2f6ff'],base:-600,amp:10,ridge:0,sun:[.3,1.8],sunC:'#ffffff',hemi:1,cloud:'#ffffff',cn:.7,stars:1}};
+/* 新場景：用原本的地形做底，換季節、時段、天氣 */
+{ const X=(b,o)=>Object.assign({},TH[b],o),DUSK={sky:['#2a2a6a','#ff9a6a'],fog:'#e8a088',sunC:'#ffb070',hemi:.7,cloud:'#ffc8b0'},NIGHT={sky:['#030718','#1a2450'],fog:'#0c1430',sunC:'#c8d4ff',hemi:.42,cloud:'#3a4a6a',night:1},DAWN={sky:['#3a5aa8','#ffd0b0'],fog:'#f4d0c0',sunC:'#ffe0c0',hemi:.8,cloud:'#ffe8e0'},STORM={sky:['#262e38','#5a6470'],fog:'#4c5560',fogF:1900,sunC:'#aab4c0',hemi:.55,cloud:'#8a929c',cn:1.6,rain:1,storm:1};
+  Object.assign(TH,{
+    autumn:X('isle',{sky:['#3a7ad0','#f8e0b8'],fog:'#f0dcc0',water:'#2a6a8a',land:['#e8c890','#d8702a','#a83a1a','#8a6a50'],ridge:200,base:-20}),
+    jungle:X('isle',{sky:['#3a8ab0','#d8f0d8'],fog:'#bcd8c0',fogF:2400,water:'#2a7a6a',land:['#c8b880','#2a8a2a','#1a5a1a','#4a6a3a'],ridge:180,cn:1.4}),
+    reef:X('sea',{sky:['#1a90e8','#d8f8ff'],water:'#14c0c8',land:['#fff0c0','#6ac850','#3a9a3a','#9aa880'],base:-110,amp:120}),
+    seaDawn:X('sea',DAWN),seaDusk:X('sea',DUSK),seaNight:X('sea',NIGHT),
+    canyonDusk:X('canyon',{sky:['#3a2a7a','#ff8ab0'],fog:'#d890a8',sunC:'#ffa0c0'}),canyonDust:X('canyon',{dust:1,fog:'#e0b888',fogF:2000}),canyonLava:X('canyon',{water:'#ff5a1a',lava:1,sky:['#2a100e','#a84a2a'],fog:'#7a3a24',ash:1,base:60}),
+    fjord:X('ice',{sky:['#4a84c8','#d8ecff'],water:'#1a4a6a',land:['#8a9aa8','#5a7a6a','#e8f0f8','#6a7a88'],base:-90,ridge:400}),fjordNight:X('ice',Object.assign({},NIGHT,{water:'#0a1a30',ridge:400})),
+    desertNight:X('desert',NIGHT),desertGold:X('desert',{sky:['#e89a3a','#ffe8a8'],fog:'#f8d890',sunC:'#fff0c0'}),
+    isleFog:X('isle',{fog:'#e0e8f0',fogF:1500,sky:['#a8b8c8','#e8eef4'],cn:1.6}),isleNight:X('isle',NIGHT),isleStorm:X('isle',STORM),
+    farm:X('sea',{sky:['#3a8ae0','#e0f0ff'],water:'#3a7ab0',land:['#d8c070','#e8c84a','#8ab040','#7a6a40'],base:-10,amp:60,ridge:0}),farmDusk:X('sea',Object.assign({},DUSK,{water:'#3a5a8a',land:['#d8b060','#d8a03a','#7a9a3a','#6a5a3a'],base:-10,amp:60,ridge:0})),
+    blizzard:X('ice',{fog:'#e8eef4',fogF:1300,rain:1,cn:1.4,sky:['#a8b8c8','#e8f0f8']}),blizzardNight:X('ice',Object.assign({},NIGHT,{fogF:1500,rain:1})),
+    iceDusk:X('ice',DUSK),iceNight:X('ice',NIGHT),
+    mesa:X('canyon',{sky:['#3a8ad8','#f8d8a8'],fog:'#f0c8a0',land:['#d8a070','#c0603a','#a04a2a','#e8b080'],ridge:280,base:40}),mesaStorm:X('canyon',Object.assign({},STORM,{wind:1})),
+    sakura:X('ice',{sky:['#6aa0e0','#ffe8f0'],fog:'#f8e0ea',water:'#3a6aa0',land:['#e8d8c8','#ff9ac0','#ff7aa8','#8a7a80'],sunC:'#fff0f4',cloud:'#fff4f8'}),
+    volcanoNight:X('volcano',NIGHT),volcanoIsle:X('volcano',{sky:['#4a6aa8','#e8a07a'],fog:'#c8907a',base:-80}),volcanoStorm:X('volcano',{storm:1,rain:1,sky:['#1a0a0a','#4a2a2a'],cn:1.4}),
+    auroraSea:X('night',{base:-120,amp:100,ridge:0}),auroraStorm:X('night',{storm:1,rain:1}),
+    autumnLake:X('isle',{sky:['#5a8ad8','#ffe8c8'],water:'#3a8ac8',land:['#e8d0a0','#e8803a','#c04a2a','#8a7060'],base:-60,ridge:100}),
+    jungleRain:X('isle',{sky:['#4a6a6a','#a8c0b0'],fog:'#90a898',fogF:1800,water:'#2a6a5a',land:['#a8a070','#2a7a2a','#1a4a1a','#3a5a3a'],rain:1,cn:1.6}),
+    typhoonEdge:X('typhoon',{sky:['#4a7aa0','#c0d8e8'],fog:'#a0b8c8',fogF:2800}),typhoonStorm:X('typhoon',{storm:1}),stormNight:X('storm',NIGHT),canyonNight:X('canyon',NIGHT),
+    reefDusk:X('sea',Object.assign({},DUSK,{water:'#1a8aa8',land:['#ffe0b0','#5ab048','#3a8a3a','#8a9a70'],base:-110,amp:120})),
+    stratoDawn:X('strato',{sky:['#2a3a8a','#ffc8a0'],sunC:'#ffd8b0',stars:0}),stratoDusk:X('strato',{sky:['#3a1a6a','#ff8aa8'],sunC:'#ffa0b0',water:'#ffe0e8'}),stratoNight:X('strato',{sky:['#020414','#18265a'],water:'#8a9ac8',hemi:.5,sunC:'#c8d4ff',night:1})}); }
 function mkHgt(si){ const T0=TH[STAGES[si].th],s=si*7.31+1.7;
   return (x,z)=>{ let h=T0.base+T0.amp*(Math.sin(x*.0011+s)*Math.cos(z*.0013-s*.7)+.45*Math.sin(x*.0029-z*.0021+s*2.1)+.18*Math.sin(x*.0083+z*.0067+s));
     if(T0.ridge){ const q=1-Math.abs(Math.sin(x*.0017+z*.0009+s)*Math.cos(z*.0012-x*.0004)); h+=Math.pow(q,5)*T0.ridge; }
@@ -398,7 +441,7 @@ function viewer(host,look){ const T=window.THREE; if(!T) return null; const r=ne
     destroy(){ cv.removeEventListener('wheel',wh); scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); r.dispose(); try{ r.forceContextLoss(); }catch(e){} cv.remove(); }}; }
 function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#2f74cc'); g.addColorStop(1,'#bfe0f8'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); jet2d(ctx,w/2,h/2,h/160,(L&&L.color)||'#5a8ad8',Math.sin(t)*.2,t,true); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).ace={name:'蒼穹王牌',tag:'SKY ACE 3D',color:'#2f74cc',online:true,maxPlayers:2,
-  desc:'3D 追尾視角空戰！鏡頭跟在飛機後面，在海峽、群島、峽谷、雪山、雷雨、火山和極光夜空裡跟敵機纏鬥。機槍對準就自動開火，導彈會追蹤，被鎖定時翻滾閃避。打下敵機群後，王牌就會出現。可以兩個人一起合作。',
+  desc:'3D 追尾視角空戰！鏡頭跟在飛機後面，在海峽、群島、峽谷、雪山、雨林、雷雨、火山和極光夜空等 50 個戰場跟敵機纏鬥。機槍對準就自動開火，導彈會追蹤，被鎖定時翻滾閃避。打下敵機群後，王牌就會出現。可以兩個人一起合作。',
   goal:'打下指定數量的敵機，再擊落關底王牌就過關；三架飛機都被打下來就失敗。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:i=>STAGES[i].name+'（王牌：'+STAGES[i].ace+'）：'+TIPS[i]+' 先打下 '+STAGES[i].kills+' 架敵機。',

@@ -7,10 +7,12 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 /* 關卡：bpm 節奏、ai 對手準度（0～1）、foe 對手隊名 */
 const ST=[{name:'校園運動會',bpm:84,ai:.38,foe:'隔壁班',fl:'#c84a3a'},{name:'夏日沙灘',bpm:88,ai:.46,foe:'衝浪隊',fl:'#f0d898'},{name:'農場泥巴池',bpm:92,ai:.54,foe:'農夫隊',fl:'#7ab84a',mud:1},{name:'雪地冰原',bpm:98,ai:.6,foe:'雪人隊',fl:'#eef6ff'},
-  {name:'古代競技場',bpm:104,ai:.66,foe:'角鬥士',fl:'#d8b47a'},{name:'大樓屋頂',bpm:110,ai:.72,foe:'城市隊',fl:'#6a7488'},{name:'火山口',bpm:118,ai:.78,foe:'熔岩隊',fl:'#4a2a24',mud:2},{name:'冠軍大賽',bpm:126,ai:.84,foe:'拔河冠軍隊',fl:'#3a8a4a'}];
+  {name:'古代競技場',bpm:104,ai:.66,foe:'角鬥士',fl:'#d8b47a'},{name:'大樓屋頂',bpm:110,ai:.72,foe:'城市隊',fl:'#6a7488'},{name:'火山口',bpm:118,ai:.78,foe:'熔岩隊',fl:'#4a2a24',mud:2},{name:'叢林瀑布',bpm:121,ai:.8,foe:'猴子隊',fl:'#5a8a3a',mud:1},{name:'櫻花神社',bpm:124,ai:.82,foe:'武士隊',fl:'#d8c8b0'},{name:'冠軍大賽',bpm:126,ai:.84,foe:'拔河冠軍隊',fl:'#3a8a4a'}];
 const PCOL=['#ff5d4f','#4f9dff','#ff9d3d','#3ddbd9','#ffd23f','#c56bff','#ff7eb6','#5fd068'],BOTN=['小胖','阿美','大雄','小綠','阿花','鐵蛋','小豆','阿強'];
 const BOTLOOK=i=>({char:['cat','bunny','chef','pirate','ninja','crown','bow','cap'][i%8],color:'auto',deco:['','shades','scarf','cape','blush','tie'][i%6]});
 const RED=['#ff5d4f','#ff7e6a','#ff9d3d','#ff6a8a'],BLUE=['#4f9dff','#3ddbd9','#6a7aff','#5ab8ff'];
+/* 新增兩個場地插在冠軍大賽前面：舊的冠軍大賽紀錄（第 8 個）搬到新的第 10 個 */
+try{ if(!localStorage.getItem('arcade.tug.mig10')){ if(localStorage.getItem('arcade.tug.w.7')) localStorage.setItem('arcade.tug.w.9','1'); localStorage.setItem('arcade.tug.mig10','1'); } }catch(e){}
 const getW=i=>{ try{ return +localStorage.getItem('arcade.tug.w.'+i)||0; }catch(e){ return 0; } },setW=i=>{ try{ localStorage.setItem('arcade.tug.w.'+i,'1'); }catch(e){} };
 /* ---------- 背景 ---------- */
 function cloud(c,x,y,s){ c.fillStyle='rgba(255,255,255,.92)'; c.beginPath(); c.arc(x,y,16*s,0,TAU); c.arc(x+18*s,y-8*s,20*s,0,TAU); c.arc(x+40*s,y,15*s,0,TAU); c.fill(); }
@@ -34,12 +36,26 @@ function bg(c,s,t){ const S=ST[s],g=c.createLinearGradient(0,0,0,GY);
     c.fillStyle='#8a94a8'; c.fillRect(0,300,W,GY-300); c.fillStyle='#5a6478'; c.fillRect(0,296,W,6); c.fillStyle='#c8ccd8'; for(let x=10;x<W;x+=60) c.fillRect(x,276,4,24); c.fillRect(0,276,W,4); c.fillStyle='#e8e8e8'; c.fillRect(620,230,80,50); c.fillStyle='#888'; c.fillRect(640,250,40,30); c.fillStyle='#ff5d4f'; c.beginPath(); c.arc(660,236+Math.sin(t*4)*2,3,0,TAU); c.fill(); }
   else if(s===6){ g.addColorStop(0,'#2a0a0a'); g.addColorStop(1,'#7a2a14'); c.fillStyle=g; c.fillRect(0,0,W,H); c.fillStyle='#3a1a14'; c.beginPath(); c.moveTo(120,300); c.lineTo(330,70); c.lineTo(470,70); c.lineTo(680,300); c.fill(); c.fillStyle='#ff6a1a'; c.beginPath(); c.ellipse(400,72,70,12,0,0,TAU); c.fill();
     for(let i=0;i<10;i++){ const u=(t*.4+i*.1)%1; c.fillStyle='rgba(255,'+Math.round(120+u*100)+',40,'+(1-u)+')'; c.beginPath(); c.arc(400+Math.sin(i*2.3)*40*u,72-u*80,4+u*6,0,TAU); c.fill(); } c.fillStyle='rgba(80,60,60,.5)'; for(let i=0;i<5;i++){ c.beginPath(); c.arc(380+i*12+Math.sin(t+i)*8,30-((t*12+i*20)%40),18,0,TAU); c.fill(); } c.fillStyle='#4a2a24'; c.fillRect(0,300,W,GY-300); }
+  else if(s===7){ /* 叢林瀑布：瀑布、藤蔓、大葉子、水霧 */ g.addColorStop(0,'#6ac0a0'); g.addColorStop(1,'#c8f0d8'); c.fillStyle=g; c.fillRect(0,0,W,H);
+    c.fillStyle='#4a7a5a'; c.beginPath(); c.moveTo(250,300); c.lineTo(280,40); c.lineTo(520,40); c.lineTo(550,300); c.fill(); c.fillStyle='#3a6a4a'; c.fillRect(270,30,260,20);
+    const wg=c.createLinearGradient(330,0,470,0); wg.addColorStop(0,'rgba(220,245,255,.7)'); wg.addColorStop(.5,'#fff'); wg.addColorStop(1,'rgba(220,245,255,.7)'); c.fillStyle=wg; c.fillRect(330,46,140,250);
+    c.strokeStyle='rgba(160,210,240,.8)'; c.lineWidth=2; for(let i=0;i<10;i++){ const x=336+i*14,y=((t*160+i*37)%250)+46; c.beginPath(); c.moveTo(x,y); c.lineTo(x,y+30); c.stroke(); }
+    c.fillStyle='rgba(255,255,255,.55)'; for(let i=0;i<8;i++){ c.beginPath(); c.arc(330+i*20,296+Math.sin(t*3+i)*4,18,0,TAU); c.fill(); }
+    for(const [x,d] of [[0,1],[W,-1]]){ for(let k=0;k<4;k++){ c.save(); c.translate(x,60+k*60); c.scale(d,1); c.rotate(.3+k*.15+Math.sin(t+k)*.05); c.fillStyle=k%2?'#2a8a3a':'#3aa84a'; c.beginPath(); c.ellipse(80,0,90,24,0,0,TAU); c.fill(); c.strokeStyle='#1a6a2a'; c.lineWidth=2; c.beginPath(); c.moveTo(0,0); c.lineTo(160,0); c.stroke(); c.restore(); } }
+    c.strokeStyle='#4a7a2a'; c.lineWidth=4; for(let i=0;i<6;i++){ const x=160+i*100; c.beginPath(); c.moveTo(x,0); c.quadraticCurveTo(x+Math.sin(t+i)*14,60,x+4,110+(i%3)*20); c.stroke(); }
+    c.fillStyle='#8a5a2a'; c.beginPath(); c.arc(140,40+Math.sin(t*2)*6,12,0,TAU); c.fill(); c.fillStyle='#e8c090'; c.beginPath(); c.arc(140,44+Math.sin(t*2)*6,7,0,TAU); c.fill(); }
+  else if(s===8){ /* 櫻花神社：鳥居、櫻花樹、石燈籠、花瓣 */ g.addColorStop(0,'#9ad0ff'); g.addColorStop(1,'#ffe8f0'); c.fillStyle=g; c.fillRect(0,0,W,H);
+    c.fillStyle='#a8b8c8'; c.beginPath(); c.moveTo(0,240); c.lineTo(200,120); c.lineTo(400,230); c.lineTo(600,110); c.lineTo(W,220); c.lineTo(W,300); c.lineTo(0,300); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.moveTo(170,138); c.lineTo(200,120); c.lineTo(230,138); c.fill(); c.beginPath(); c.moveTo(570,128); c.lineTo(600,110); c.lineTo(630,128); c.fill();
+    c.fillStyle='#d83a2a'; c.fillRect(300,90,16,210); c.fillRect(484,90,16,210); c.fillRect(270,76,260,16); c.fillRect(290,112,220,12); c.fillStyle='#2a2a2a'; c.fillRect(262,68,276,10);
+    for(const [x,sc] of [[90,1],[710,1.1]]){ c.strokeStyle='#5a3a3a'; c.lineWidth=12*sc; c.beginPath(); c.moveTo(x,300); c.quadraticCurveTo(x+16,200,x-6,120); c.stroke(); for(let i=0;i<22;i++){ c.fillStyle=['#ffb0c8','#ff8ab0','#ffd8e4'][i%3]; c.globalAlpha=.88; c.beginPath(); c.arc(x-70*sc+((i*53)%140)*sc,90+((i*31)%70)*sc,16+i%4*4,0,TAU); c.fill(); } c.globalAlpha=1; }
+    for(const x of [230,570]){ c.fillStyle='#9a9aa0'; c.fillRect(x-6,240,12,60); c.fillRect(x-16,232,32,8); c.fillRect(x-12,212,24,22); c.fillStyle='rgba(255,220,140,.8)'; c.fillRect(x-6,218,12,10); c.fillStyle='#8a8a90'; c.beginPath(); c.moveTo(x-20,212); c.lineTo(x,198); c.lineTo(x+20,212); c.fill(); }
+    for(let i=0;i<24;i++){ const x=(i*131+t*40)%W,y=(i*47+t*36)%300; c.save(); c.translate(x,y); c.rotate(t*2+i); c.fillStyle='rgba(255,160,190,.9)'; c.beginPath(); c.ellipse(0,0,5,3,0,0,TAU); c.fill(); c.restore(); } }
   else { g.addColorStop(0,'#0a1a3a'); g.addColorStop(1,'#2a4a8a'); c.fillStyle=g; c.fillRect(0,0,W,H); for(let i=0;i<4;i++){ const x=100+i*200; c.fillStyle='#5a6a8a'; c.fillRect(x-3,0,6,60); c.fillStyle='#fff'; rr(c,x-30,52,60,20,4); c.fill(); c.save(); c.globalAlpha=.12; c.fillStyle='#fff6c8'; c.beginPath(); c.moveTo(x-20,70); c.lineTo(x+20,70); c.lineTo(x+120*Math.sin(i+1),GY); c.lineTo(x-120,GY); c.fill(); c.restore(); }
     crowd(c,170,t,['#ff5d4f','#4f9dff','#ffd23f','#fff']); crowd(c,232,t+1,['#4f9dff','#ff5d4f','#fff','#5fd068']); c.fillStyle='#14122b'; rr(c,300,90,200,56,10); c.fill(); c.fillStyle='#ffd23f'; c.font='900 20px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('🏆 CHAMPION 🏆',400,118); }
   /* 地面 */ const fg=c.createLinearGradient(0,300,0,H); fg.addColorStop(0,S.fl); fg.addColorStop(1,'#00000055'); c.fillStyle=S.fl; c.fillRect(0,GY-50,W,H-GY+50); c.fillStyle=fg; c.fillRect(0,GY-50,W,H-GY+50); c.fillStyle='rgba(0,0,0,.15)'; c.fillRect(0,GY-50,W,3);
   if(s===0){ c.strokeStyle='rgba(255,255,255,.55)'; c.lineWidth=3; for(let k=0;k<3;k++){ c.beginPath(); c.moveTo(0,GY-30+k*44); c.lineTo(W,GY-30+k*44); c.stroke(); } }
   if(s===3){ c.fillStyle='rgba(180,210,255,.35)'; c.beginPath(); c.ellipse(400,GY+20,260,30,0,0,TAU); c.fill(); }
-  if(s===7){ c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=2; for(let x=0;x<W;x+=50){ c.beginPath(); c.moveTo(x,GY-48); c.lineTo(x-30,H); c.stroke(); } } }
+  if(s===9){ c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=2; for(let x=0;x<W;x+=50){ c.beginPath(); c.moveTo(x,GY-48); c.lineTo(x-30,H); c.stroke(); } } }
 /* 中間的泥巴池／岩漿／中線 */
 function pit(c,s,t){ const m=ST[s].mud; if(m){ c.fillStyle=m===2?'#ff5a1a':'#6a4a2a'; c.beginPath(); c.ellipse(400,GY+6,70,20,0,0,TAU); c.fill(); c.fillStyle=m===2?'#ffd23f':'#5a3a1a'; for(let i=0;i<5;i++){ const u=(t*.8+i*.2)%1; c.globalAlpha=1-u; c.beginPath(); c.arc(360+i*20,GY+6-u*6,3+u*5,0,TAU); c.fill(); } c.globalAlpha=1; c.fillStyle='rgba(255,255,255,.2)'; c.beginPath(); c.ellipse(384,GY,30,6,0,0,TAU); c.fill(); }
   else { c.fillStyle='#fff'; c.fillRect(397,GY-46,6,96); } }
@@ -149,7 +165,7 @@ function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); bg(ctx,si,t); 
   ctx.textAlign='center'; ctx.font='900 40px '+TC; ctx.lineWidth=8; ctx.strokeStyle='#14122b'; const s=Math.sin(t*5)>0?'嘿～':'咻！'; ctx.strokeText(s,400,120); ctx.fillStyle='#ffd23f'; ctx.fillText(s,400,120); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).tug={
   name:'拔河拔起來',tag:'TUG OF WAR',color:'#ff8a3d',online:true,maxPlayers:8,minPlayers:2,bots:true,ownMusic:true,
-  desc:'全隊一起喊「嘿～咻！」，在鼓點上按鍵才拉得動！按得越準力氣越大，亂按會滑倒。把對手拉過線就拿下一局，8 個場地、對手越來越強。',
+  desc:'全隊一起喊「嘿～咻！」，在鼓點上按鍵才拉得動！按得越準力氣越大，亂按會滑倒。把對手拉過線就拿下一局，10 個場地、對手越來越強。',
   goal:'在「咻！」（圈圈縮到中間）的時候按鍵拉繩子，把對手拉過自己這邊的線。',
   stages:ST.map(s=>s.name),stageLabel:'選擇場地',stageShow,thumb:(c,w,h,t)=>stageShow(c,w,h,0,t),
   stageLocked:i=>i>0&&!getW(i-1),
