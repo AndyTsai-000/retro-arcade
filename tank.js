@@ -5,15 +5,16 @@ const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.P
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 function mul(seed){ let a=seed>>>0||1; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
-const S=18,N=26,FW=S*N,FX=12,FY=16,TS=15,LV=30; // 26×26 小格，坦克半徑 15
+const S=18,N=26,FW=S*N,FX=12,FY=16,TS=15,LV=200; // 26×26 小格，坦克半徑 15
 const EMPTY=0,BRICK=1,STEEL=2,WATER=3,BUSH=4,ICE=5;
 const COL=['#ffc83f','#5fd068','#4f9dff','#ff7eb6'];
 const ETYPE={basic:{sp:62,hp:1,cd:1.5,pts:100,col:'#9aa4b8',bs:250},fast:{sp:112,hp:1,cd:1.3,pts:200,col:'#e8a860',bs:300},power:{sp:70,hp:1,cd:.95,pts:300,col:'#c56bff',bs:390},armor:{sp:54,hp:4,cd:1.3,pts:400,col:'#5aa86a',bs:290}};
 const THEME=[{n:'草地前線',g:'#3a4a2e',g2:'#42523a'},{n:'沙漠基地',g:'#6a5636',g2:'#745e3c'},{n:'雪原要塞',g:'#7a8a98',g2:'#8494a2'},{n:'工業廢墟',g:'#3e3e46',g2:'#46464e'},{n:'午夜戰場',g:'#1e2238',g2:'#262a42'}];
+const KOF=i=>i<30?i/29:.55+.45*(i-30)/169; /* 前 200 關難度不變，之後在中後段慢慢升 */
 const starsOf=i=>Math.min(5,1+Math.floor(i/6));
 /* 地圖：左右對稱，用亂數加上幾種地形帶；底部中央是基地 */
 function makeMap(si,vs){ const R=mul(si*57+11),m=Array.from({length:N},()=>Array(N).fill(EMPTY)),set=(x,y,w,h,v)=>{ for(let b=y;b<y+h;b++) for(let a=x;a<x+w;a++) if(a>=0&&b>=0&&a<N&&b<N){ m[b][a]=v; m[b][N-1-a]=v; } };
-  const lvl=si/(LV-1),style=si%5;
+  const lvl=KOF(si),style=si%5;
   for(let y=4;y<22;y+=4){ for(let x=2;x<12;x+=4){ const r=R(); if(r<.16) continue; const hh=R()<.5?2:4+Math.floor(R()*2)*2,v=r<.2+lvl*.22?STEEL:BRICK; set(x,y,2,hh,v); } }
   if(style===1||style===4) set(0,12,6,2,WATER); if(style===2||style===4) set(5,8,4,4,BUSH); if(style===3) set(2,14,10,2,ICE); if(style===0&&si>0) set(9,12,4,2,BUSH); if(si>=8&&si%3===0) set(10,6,3,2,STEEL);
   set(11,5,2,2,BRICK); set(11,11,2,2,lvl>.3?STEEL:BRICK); set(11,18,2,2,BRICK);
@@ -69,7 +70,7 @@ const lKey='arcade.tank.w.',getR=i=>{ try{ const v=localStorage.getItem(lKey+i);
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,host=!client,OP=opts.options||{},vs=!!net&&OP.netmode==='vs',local2=!net&&opts.mode==='2p',np=net?net.count:local2?2:1,me=net?net.me:0,si=clamp(opts.stage|0,0,LV-1),T=THEME[si%5];
   const {ctx:c,canvas}=env.canvas2d(W,H),sfx=n=>{ env.sfx(n); if(net&&host) evq.push(n); },R=mul((net?net.seed:Date.now())>>>0||9);
-  const K=(si/(LV-1)),TOTAL=vs?0:Math.round(10+K*14),MAXON=Math.min(6,3+Math.floor(si/8)+(np>1?1:0));
+  const K=(KOF(si)),TOTAL=vs?0:Math.round(10+K*14),MAXON=Math.min(6,3+Math.floor(si/8)+(np>1?1:0));
   let m=makeMap(si,vs),evq=[],t=0,E=[],B=[],FXL=[],PW=[],spawned=0,killed=0,spawnT=1,baseAlive=!vs,freeze=0,shake=0,over=null,ended=false,sendT=0,seqN=0,mapDirty=[],shovel=0,bannerT=2.4,inN=[],saved=null;
   const SPAWN=[[1*S,1*S],[13*S,1*S],[25*S,1*S]],PS=vs?[[1*S,25*S],[25*S,1*S],[25*S,25*S],[1*S,1*S]]:[[9*S,25*S],[17*S,25*S],[9*S,23*S],[17*S,23*S]];
   const looks=[]; for(let i=0;i<np;i++) looks.push(Object.assign({color:COL[i%4]},(net?net.looks&&net.looks[i]:i===0?opts.look:null)||{}));
@@ -124,7 +125,7 @@ function stageShow(ctx,w,h,si,t){ const T=THEME[si%5],m=makeMap(si,false); ctx.f
 function preview(ctx,w,h,L,t){ ctx.fillStyle='#3a4a2e'; ctx.fillRect(0,0,w,h); const s=Math.min(w,h)/70; ctx.save(); ctx.translate(w/2,h/2); ctx.scale(s,s); tankDraw(ctx,0,0,0,(L&&L.color)||COL[0],{tr:t*30,t}); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).tank={
   name:'鐵甲守城戰',tag:'IRON DEFENSE',color:'#86dc4f',online:true,maxPlayers:4,minPlayers:2,netVariants:false,
-  desc:'開坦克守基地！打破磚牆、躲進草叢、撿道具升級砲彈。30 關單人或雙人合作，也能開房間連線對戰。',
+  desc:'開坦克守基地！打破磚牆、躲進草叢、撿道具升級砲彈。200 關單人或雙人合作，也能開房間連線對戰。',
   goal:'打光所有敵軍坦克就過關；下方的★基地被打中，或坦克命用完就輸。閃爍的敵軍會掉道具。',
   stages:Array.from({length:LV},(_,i)=>THEME[i%5].n+' '+(i+1)),stars:Array.from({length:LV},(_,i)=>starsOf(i)),stageLabel:'選擇關卡',
   stageLocked:i=>i>0&&getR(i-1)==null,stageBest:i=>{ const v=getR(i); return v==null?'':'最高 '+v; },

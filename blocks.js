@@ -1,4 +1,4 @@
-// 方塊疊疊樂：掉落方塊消行。30 關（六個世界各 5 關，每關消掉指定行數就過關，越後面越快、底下先有垃圾行），
+// 方塊疊疊樂：掉落方塊消行。200 關（六個世界各 5 關，每關消掉指定行數就過關，越後面越快、底下先有垃圾行），
 // 雙人同機或連線對戰（一次消 2 行以上把垃圾行丟給對方，先堆到頂的輸）。
 (function(){
 'use strict';
@@ -23,7 +23,9 @@ const WORLDS=[
   {name:'星空太空站',sky:['#0b0a2e','#2b1f5e'],frame:'#9a7aff'}];
 const STAGES=Array.from({length:30},(_,i)=>{ const w=Math.floor(i/5),k=i%5;
   return {w,name:WORLDS[w].name+' '+(k+1),lines:6+w*2+k*2,fall:1.05*Math.pow(.912,i),junk:w>=1&&k>=3?1+w+(k-3)*2:0, // 前面的關卡慢、行數少、沒有垃圾行
-    iExtra:i<5?2:i<10?1.3:i<15?.8:i<20?.4:i<25?0:-.3}; }); // 每 7 塊多給幾條長條（負數＝有時候少一條）
+    iExtra:i<5?2:i<10?1.3:i<15?.8:i<20?.4:i<25?0:-.3}; });
+/* 第 31～200 關：六個世界輪流，每 5 關一組由慢到快；整體行數、垃圾行慢慢增加 */
+for(let i=30;i<200;i++){ const w=Math.floor(i/5)%6,k=i%5,u=(i-30)/169,n=Math.floor(i/30)*5+k+1; STAGES.push({w,name:WORLDS[w].name+' '+n,lines:10+k*3+Math.floor(u*12),fall:Math.max(.055,(.34-.22*u)*Math.pow(.9,k)),junk:Math.min(12,2+Math.floor(u*7)+k),iExtra:+(.6-u*.9).toFixed(2)}); } // 每 7 塊多給幾條長條（負數＝有時候少一條）
 // 對戰：一開始長條多、掉得慢，時間越久長條越少、掉得越快
 const vsExtra=T=>T<60?2:T<120?1.2:T<180?.6:T<240?0:-.35,vsFall=T=>Math.max(.1,.9*Math.pow(.88,T/30));
 const recKey=i=>'arcade.blocks.s'+i,getRec=i=>{ try{ const v=localStorage.getItem(recKey(i)); return v==null?null:+v; }catch(e){ return null; } };
@@ -114,7 +116,7 @@ function Board(rnd,o){ const b={grid:new Uint8Array(COLS*ROWS),bag:[],queue:[],c
 
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
-  const net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,29),ST=STAGES[si],L=opts.look||{},skin=L.skin||'candy';
+  const net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,STAGES.length-1),ST=STAGES[si],L=opts.look||{},skin=L.skin||'candy';
   const vs=two||!!net,me=net?net.me:0,seed=net?Number(net.seed)||1:Math.floor(Math.random()*1e9);
   const {ctx:c}=env.canvas2d(W,H),sfx=n=>env.sfx(n);
   const boards=[]; const nb=vs?2:1; let playT=0; for(let i=0;i<nb;i++){ const b=Board(rng(seed+(net?0:i*7)),{level:si,iExtra:()=>vs?vsExtra(playT):ST.iExtra}); boards.push(b); }
@@ -159,7 +161,7 @@ function create(env,opts){
   let done=false;
   function finish(){ if(done) return; done=true; const b=boards[net?me:0];
     if(!vs){ if(winner===0){ const old=getRec(si),rec=old==null||b.score>old; if(rec) try{ localStorage.setItem(recKey(si),String(b.score)); }catch(e){}
-        env.end({title:'過關！',big:b.score+' 分',text:'第 '+(si+1)+' 關「'+ST.name+'」消了 '+b.lines+' 行。'+(rec?'這關的新紀錄！':'這關最高 '+old+' 分'),score:b.score,next:si<29}); }
+        env.end({title:'過關！',big:b.score+' 分',text:'第 '+(si+1)+' 關「'+ST.name+'」消了 '+b.lines+' 行。'+(rec?'這關的新紀錄！':'這關最高 '+old+' 分'),score:b.score,next:si<STAGES.length-1}); }
       else env.end({title:'方塊堆滿了',big:b.score+' 分',text:'消了 '+b.lines+' / '+ST.lines+' 行。先把底下的洞補平，再一次消好幾行！',score:null}); return; }
     const sc=boards.map(x=>x.score);
     env.end({title:net?(winner===me?'你贏了！':names[1-me]+' 獲勝'):(names[winner]+' 獲勝'),big:sc.join(' ： '),text:'先堆到頂的人輸。一次消 2 行以上會把垃圾行丟給對方。',score:null}); }
@@ -220,10 +222,10 @@ function preview(ctx,w,h,L,t){ bg(ctx,w,h,0,t); const s=22; ['I','T','O','S'].fo
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).blocks={
   name:'方塊疊疊樂',tag:'BLOCK STACK',color:'#ff7eb6',online:true,maxPlayers:2,
-  desc:'七種方塊從上面掉下來，排滿一整行就消掉。30 關闖關，或兩個人對戰互丟垃圾行。',
+  desc:'七種方塊從上面掉下來，排滿一整行就消掉。200 關闖關，或兩個人對戰互丟垃圾行。',
   goal:'把方塊排滿一整行就會消掉，消到指定行數就過關；方塊堆到頂就輸了。',
   stageGoal:si=>{ const S=STAGES[si]; return '消掉 '+S.lines+' 行就過關'+(S.junk?'，一開始底下有 '+S.junk+' 行垃圾':'')+'。方塊堆到頂就輸了；一次消越多行分數越高。雙人對戰時一次消 2 行以上會把垃圾行丟給對方。'; },
-  stages:STAGES.map(s=>s.name),stars:STAGES.map((s,i)=>1+Math.floor(i/6)),stageLabel:'選擇關卡',
+  stages:STAGES.map(s=>s.name),stars:STAGES.map((s,i)=>i<30?1+Math.floor(i/6):Math.min(5,3+Math.floor((i-30)/57))),stageLabel:'選擇關卡',
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v+' 分'; },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   modes:[{id:'1p',label:'單人闖關'},{id:'2p',label:'雙人對戰',kb:true}],

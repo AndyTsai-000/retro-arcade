@@ -1,4 +1,4 @@
-// 密室解謎屋：點東西調查、撿道具、用道具、解密碼鎖，逃出 30 間房間（第 7 間起用謎題零件組成）。單人或連線 2～4 人一起解（道具和機關大家共用）。
+// 密室解謎屋：點東西調查、撿道具、用道具、解密碼鎖，逃出 200 間房間（第 7 間起用謎題零件組成）。單人或連線 2～4 人一起解（道具和機關大家共用）。
 (function(){
 'use strict';
 const W=800,H=450,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,FY=330;
@@ -276,6 +276,38 @@ const GEN=[
  {n:'銀行金庫',stars:5,th:'vault',steps:[['find','A','cabinet',0,'note:k1'],['dial','c','safe','k1','screw'],['use','G','vent','screw','note:k2'],['dial','F','locker','k2','card']],clues:[['C','calendar','k1'],['e','books','k2']],codes:{k1:{kind:'cal',v:[12,31]},k2:{kind:'books',v:[['yellow',4],['red',0],['green',7],['blue',5]],use:['red','blue','yellow','green']}},door:{lock:'card'}},
  {n:'時光機實驗室',stars:5,th:'timelab',power:4,steps:[['find','D','locker',0,'note:k1'],['dial','B','safe','k1','flash'],['light','G','darkwall','k2'],['dial','g','safe','k2','fuse'],['power','C','fusebox'],['find','F','cabinet',0,'note:k3']],clues:[['E','clock','k1'],['G','darkwall','k2'],['c','mirror','k3']],codes:{k1:{kind:'clock',v:[10,8]},k2:{kind:'dark',v:[2,0,4,9]},k3:{kind:'mirror',v:[1,9,8,5]}},door:{code:'k3'}}];
 GEN.forEach(S=>ROOMS.push(mkRoom(S)));
+/* ---------- 第 31～200 間：用同樣的謎題零件自動組房間（固定種子）----------
+   從頭往後串：每一段先拿到「入口道具」（第一段在房間裡找），解完這段得到下一段的入口道具，最後一段得到開門的東西，所以一定解得開 */
+const GENX=(()=>{ const TN={}; GEN.forEach(S=>{ if(!TN[S.th]) TN[S.th]=S.n; }); const THS=Object.keys(TN),CK=Object.keys(COLS),RN=['','Ⅱ','Ⅲ','Ⅳ','Ⅴ','Ⅵ','Ⅶ','Ⅷ','Ⅸ','Ⅹ'],cnt={};
+  const rnd=seed=>{ let a=seed>>>0||1; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; };
+  const CLUE={clock:'clock',cal:'calendar',count:'shelfc',books:'books',color:'poster',sym:'board',mirror:'mirror'};
+  function code(r,kind){ const dg=()=>Math.floor(r()*10),pk=a=>a[Math.floor(r()*a.length)],mix=a=>{ const b=a.slice(); for(let i=b.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } return b; };
+    if(kind==='clock') return {kind,v:[1+Math.floor(r()*12),Math.floor(r()*12)*5]}; if(kind==='cal') return {kind,v:[1+Math.floor(r()*12),1+Math.floor(r()*28)]};
+    if(kind==='count'||kind==='books'){ const cs=mix(CK).slice(0,4); return {kind,v:cs.map(c=>[c,dg()]),use:mix(cs).slice(0,3)}; }
+    if(kind==='color') return {kind,v:[0,0,0,0].map(()=>pk(CK))}; if(kind==='sym') return {kind,v:[0,0,0,0].map(()=>pk(SYM))};
+    return {kind,v:[dg(),dg(),dg(),dg()]}; }
+  function one(idx,seed){ const r=rnd(idx*7919+seed*104729+11),u=(idx-30)/169,pk=a=>a[Math.floor(r()*a.length)],mix=a=>{ const b=a.slice(); for(let i=b.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } return b; };
+    const free={W:['C','E','G'],M:['B','c','e','g'],F:['A','D','F']},take=cats=>{ for(const c of cats){ const L=free[c]; if(L.length){ const s=L.splice(Math.floor(r()*L.length),1)[0]; return s; } } throw 0; };
+    const steps=[],clues=[],codes={}; let kn=0,hole=null; const used=new Set();
+    const give=E=>{ if(hole) hole[4]=E; else { const cat=pk(['F','M','F']),s=take([cat,cat==='F'?'M':'F']),ob=cat==='F'?pk(['crate','plant','barrel','bed','cabinet','locker','sofa']):pk(['trash','crate','barrel','toolbox']); steps.push(['find',s,ob,0,E]); } hole=null; };
+    const lockStep=()=>{ const cat=pk(['F','M']),s=take([cat,cat==='F'?'M':'F']),ob=cat==='F'?pk(['cabinet','locker']):pk(['chest','safe']); return s+'|'+ob; };
+    const newCode=kinds=>{ const kind=pk(kinds.filter(q=>!used.has(q))); used.add(kind); const k='k'+(++kn); codes[k]=code(r,kind); return k; };
+    const nB=Math.min(4,2+Math.floor(u*2.4+r()*.9)),types=mix(['code','code','dark','radio','key','screw','hammer']).slice(0,nB);
+    for(const ty of types){
+      if(ty==='code'){ const k=newCode(['clock','cal','count','books','color','sym','mirror']),kind=codes[k].kind; give('note:'+k); const cs=take(kind==='count'||kind==='books'||kind==='mirror'?['W','M']:['W']); clues.push([cs,CLUE[kind],k]); const [s,ob]=lockStep().split('|'); const st=['dial',s,ob,k,null]; steps.push(st); hole=st; }
+      else if(ty==='dark'){ const k=newCode(['dark']); give('flash'); const s=take(['W']); steps.push(['light',s,'darkwall',k]); clues.push([s,'darkwall',k]); const [s2,ob]=lockStep().split('|'); const st=['dial',s2,ob,k,null]; steps.push(st); hole=st; }
+      else if(ty==='radio'){ const k=newCode(['radio']); give('bat'); const s=take(['M']); steps.push(['use',s,'radio','bat']); clues.push([s,'radio',k]); const [s2,ob]=lockStep().split('|'); const st=['dial',s2,ob,k,null]; steps.push(st); hole=st; }
+      else if(ty==='key'){ give('skey'); const cat=pk(['F','M','W']),s=take([cat,'F','M']),ob=VIEW_OF(s)===0&&'C'===s||'EG'.includes(s)?'wallcab':'ABCcDF'.includes(s)&&'ADF'.includes(s)?pk(['cabinet','locker']):pk(['chest','toolbox']); const st=['use',s,ob,'skey',null]; steps.push(st); hole=st; }
+      else if(ty==='screw'){ give('screw'); const s=take(['W']); const st=['use',s,'vent','screw',null]; steps.push(st); hole=st; }
+      else { give('hammer'); const s=take(['F','M']); const st=['use',s,'crate','hammer',null]; steps.push(st); hole=st; } }
+    let door; const fin=pk(['code','code','key','bigkey','card']);
+    if(fin==='code'){ const k=newCode(['clock','cal','count','books','color','sym','mirror']),kind=codes[k].kind; give('note:'+k); const cs=take(kind==='count'||kind==='books'||kind==='mirror'?['W','M']:['W']); clues.push([cs,CLUE[kind],k]); door={code:k}; }
+    else if(fin==='card'){ give('card'); door={lock:'card'}; } else { give(fin); door={item:fin}; }
+    for(const st of steps) if(st[4]===null) st.length=4;
+    const th=THS[(idx*7)%THS.length]; cnt[th]=(cnt[th]||1)+1;
+    return {n:TN[th]+' '+(RN[cnt[th]-1]||cnt[th]),stars:Math.min(5,3+Math.floor(u*2.99)),th,steps,clues,codes,door}; }
+  const out=[]; for(let idx=30;idx<200;idx++){ let S=null; for(let seed=0;seed<60&&!S;seed++){ try{ S=one(idx,seed); }catch(e){ if(e!==0) throw e; } } out.push(S); } return out; })();
+GENX.forEach(S=>ROOMS.push(mkRoom(S)));
 
 /* ---------- 立體房間：正面牆在中間，左右兩面牆斜著延伸（透視），換牆時像轉身 ---------- */
 const K3=.8,HO=H*1.5,OC=[];
@@ -371,10 +403,10 @@ function stageShow(c,w,h,i,t){ c.save(); c.scale(w/W,h/H); render3D(c,ROOMS[i],0
 function thumb(c,w,h,t){ stageShow(c,w,h,5,t); c.save(); c.scale(w/W,h/H); itemIcon(c,'bigkey',400,380,70); c.font='900 46px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=9; c.strokeStyle='#14122b'; c.strokeText('密室解謎屋',W/2,60); c.fillStyle='#ffd23f'; c.fillText('密室解謎屋',W/2,60); c.restore(); }
 const bestOf=i=>+LS('arcade.room.t.'+i)||0,fmtS=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).room={name:'密室解謎屋',tag:'ESCAPE ROOM',color:'#e8b830',online:true,maxPlayers:4,
-  desc:'被關在房間裡了！點東西找線索、撿道具、解開密碼鎖，打開門逃出去。從書房、地下室、船艙、金字塔到時光機實驗室共 30 間，越後面越燒腦。房間是立體的，移動滑鼠可以轉頭看，點左右兩邊的牆就轉過去。可以和朋友連線一起找。',
+  desc:'被關在房間裡了！點東西找線索、撿道具、解開密碼鎖，打開門逃出去。從書房、地下室、船艙、金字塔到時光機實驗室共 200 間，越後面越燒腦。房間是立體的，移動滑鼠可以轉頭看，點左右兩邊的牆就轉過去。可以和朋友連線一起找。',
   goal:'找出線索打開門逃出房間，越快越好。卡關可以按「💡 提示」。',
   stages:ROOMS.map(r=>r.n),stars:ROOMS.map(r=>r.stars),stageLabel:'選擇房間',
-  stageGoal:i=>'第 '+(i+1)+' 間「'+ROOMS[i].n+'」：逃出這個房間。',
+  _specs:GENX,stageGoal:i=>'第 '+(i+1)+' 間「'+ROOMS[i].n+'」：逃出這個房間。',
   stageLocked:i=>i>0&&!bestOf(i-1),stageBest:i=>bestOf(i)?'最快 '+fmtS(bestOf(i)):'',
   hubBest:()=>{ const n=ROOMS.filter((r,i)=>bestOf(i)).length; return n?'逃出 <b>'+n+' / '+ROOMS.length+'</b> 間':'尚無紀錄'; },
   help:[['點畫面','調查東西、撿道具'],['移動滑鼠','轉頭看房間'],['道具列','點道具選起來，再點要用的地方'],['◀ ▶ 或點兩側','轉身看另一面牆'],['💡 提示','卡關時給你方向']],touchHelp:[['點畫面','調查、撿道具'],['道具列','選道具再點要用的地方'],['◀ ▶','看另一面牆']],

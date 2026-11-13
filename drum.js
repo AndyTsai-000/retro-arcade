@@ -17,7 +17,7 @@ const RHY=(()=>{
     [[[0,3],[3,3],[6,2],[8,2],[10,2],[12,4]],[[0,2],[2,2],[4,2],[6,2],[8,2],[10,2],[12,4]],[[0,2],[2,2],[4,4],[8,2],[10,2],[12,2],[14,2]],[[0,3],[3,1],[4,2],[6,2],[8,4],[12,2],[14,2]]],
     [[[0,1],[1,1],[2,2],[4,2],[6,2],[8,1],[9,1],[10,2],[12,2],[14,2]],[[0,2],[2,1],[3,1],[4,2],[6,2],[8,2],[10,1],[11,1],[12,2],[14,2]],[[0,2],[2,2],[4,1],[5,1],[6,2],[8,2],[10,2],[12,1],[13,1],[14,2]],[[0,2],[2,2],[4,2],[6,2],[8,1],[9,1],[10,1],[11,1],[12,4]]]];
   function makeSong(i,kind){
-    const r=rng(9973*(i+1)+(kind==='dance'?77:0)),tier=i<6?0:i<12?1:i<20?2:3,d=i/29;
+    const ii=i<30?i:12+Math.floor(((i-30)%30)*17/29)+Math.min(0,0),r=rng(9973*(i+1)+(kind==='dance'?77:0)),tier=ii<6?0:ii<12?1:ii<20?2:3,d=ii/29; /* 第 31 首起：每 30 首一輪，難度落在中後段，旋律用新種子 */
     const bpm=Math.round((kind==='dance'?90:80)+d*(kind==='dance'?82:92)+r()*6); // 第 1 首慢一點，最後一首差不多
     const scn=kind==='drum'&&r()<.5?'penta':r()<.5?'major':'minor',scale=SC[scn],root=55+Math.floor(r()*9);
     const pick=a=>a[Math.floor(r()*a.length)];
@@ -25,7 +25,7 @@ const RHY=(()=>{
     const pool=[]; for(let oc=0;oc<3;oc++) for(const iv of scale){ const m=root+12+oc*12+iv; if(m>=root+10&&m<=root+31) pool.push(m); }
     const chordOf=(pr,b)=>{ const [o,q]=pr[b%4].split(':'); return {o:+o,q:Q[q]}; };
     const isCT=(m,ch)=>ch.q.some(iv=>((m-root-ch.o-iv)%12+12)%12===0);
-    const T0=[0,6,12,20][tier],T1=[5,11,19,29][tier],pos=(i-T0)/Math.max(1,T1-T0); // 同一層裡越前面的關卡，越常混用上一層比較簡單的節奏型
+    const T0=[0,6,12,20][tier],T1=[5,11,19,29][tier],pos=(ii-T0)/Math.max(1,T1-T0); // 同一層裡越前面的關卡，越常混用上一層比較簡單的節奏型
     function phrase(pr,seedShift){ for(let k=0;k<seedShift;k++) r(); const bars=[]; let idx=Math.floor(pool.length*.4);
       for(let b=0;b<4;b++){ const ch=chordOf(pr,b),set=tier>0&&r()>.35+.6*pos?RH[tier-1]:RH[tier],pat=set[Math.floor(r()*set.length)],notes=[];
         for(const [st,len] of pat){ idx=clamp(idx+[-2,-1,-1,0,1,1,2][Math.floor(r()*7)],0,pool.length-1);
@@ -76,7 +76,7 @@ const RHY=(()=>{
       ka(){ if(!AC||!bus) return; const t=AC.currentTime; osc('square',1250,t,.05,.12,.001); noise(t,.04,.1,3000); },
       clap(){ if(!AC||!bus) return; const t=AC.currentTime; noise(t,.06,.1,2000); } }; }
   const WIN={perfect:.045,great:.09,good:.135};
-  let ease=1; const setEase=i=>{ ease=1+Math.max(0,1-i/12)*.35; WIN.good=.135*ease; }; // 前 12 首判定比較寬
+  let ease=1; const setEase=i=>{ ease=1+Math.max(0,1-(i<30?i:12)/12)*.35; WIN.good=.135*ease; }; // 前 12 首判定比較寬
   const judgeOf=dt=>{ const a=Math.abs(dt); return a<=WIN.perfect*ease?'perfect':a<=WIN.great*ease?'great':a<=WIN.good?'good':null; };
   const JTXT={perfect:'完美！',great:'很好',good:'不錯',miss:'MISS'},JCOL={perfect:'#ffd23f',great:'#7af0ff',good:'#86dc4f',miss:'#ff6b7d'},JPT={perfect:100,great:70,good:40,miss:0};
   const grade=a=>a>=95?'S':a>=85?'A':a>=70?'B':a>=60?'C':'D';
@@ -161,7 +161,8 @@ const SONGS=['金魚撈撈舞','棉花糖遊行','風車轉呀轉','烤魷魚恰
   '櫻花飄飄','鳥居下的約定','狐狸面具舞','春風太鼓','花見糰子',
   '紅葉翻翻','山寺鐘聲','秋月搗麻糬','楓林追風','落葉進行曲',
   '雪燈籠之夜','暖暖甜酒','雪人大合唱','冰雕嘉年華','北風快板',
-  '星空大舞台','流星連打','銀河祭典','月亮兔太鼓','最終大祭典'];
+  '星空大舞台','流星連打','銀河祭典','月亮兔太鼓','最終大祭典',
+  '金魚之舞','星光小夜曲','花火連打','煙火嘉年華','月亮狂想曲','竹林快板','燈籠祭','夜市進行曲','稻穗大合奏','太鼓節拍','神轎之舞','狐狸小夜曲','櫻花連打','鯉魚嘉年華','招財貓狂想曲','紅葉快板','團扇祭','彈珠汽水進行曲','雪花大合奏','風鈴節拍','金魚進行曲','星光大合奏','花火節拍','煙火之舞','月亮小夜曲','竹林連打','燈籠嘉年華','夜市狂想曲','稻穗快板','太鼓祭','神轎進行曲','狐狸大合奏','櫻花節拍','鯉魚之舞','招財貓小夜曲','紅葉連打','團扇嘉年華','彈珠汽水狂想曲','雪花快板','風鈴祭','金魚狂想曲','星光快板','花火祭','煙火進行曲','月亮大合奏','竹林節拍','燈籠之舞','夜市小夜曲','稻穗連打','太鼓嘉年華','神轎狂想曲','狐狸快板','櫻花祭','鯉魚進行曲','招財貓大合奏','紅葉節拍','團扇之舞','彈珠汽水小夜曲','雪花連打','風鈴嘉年華','金魚小夜曲','星光連打','花火嘉年華','煙火狂想曲','月亮快板','竹林祭','燈籠進行曲','夜市大合奏','稻穗節拍','太鼓之舞','神轎小夜曲','狐狸連打','櫻花嘉年華','鯉魚狂想曲','招財貓快板','紅葉祭','團扇進行曲','彈珠汽水大合奏','雪花節拍','風鈴之舞','金魚大合奏','星光節拍','花火之舞','煙火小夜曲','月亮連打','竹林嘉年華','燈籠狂想曲','夜市快板','稻穗祭','太鼓進行曲','神轎大合奏','狐狸節拍','櫻花之舞','鯉魚小夜曲','招財貓連打','紅葉嘉年華','團扇狂想曲','彈珠汽水快板','雪花祭','風鈴進行曲','金魚快板','星光祭','花火進行曲','煙火大合奏','月亮節拍','竹林之舞','燈籠小夜曲','夜市連打','稻穗嘉年華','太鼓狂想曲','神轎快板','狐狸祭','櫻花進行曲','鯉魚大合奏','招財貓節拍','紅葉之舞','團扇小夜曲','彈珠汽水連打','雪花嘉年華','風鈴狂想曲','金魚連打','星光嘉年華','花火狂想曲','煙火快板','月亮祭','竹林進行曲','燈籠大合奏','夜市節拍','稻穗之舞','太鼓小夜曲','神轎連打','狐狸嘉年華','櫻花狂想曲','鯉魚快板','招財貓祭','紅葉進行曲','團扇大合奏','彈珠汽水節拍','雪花之舞','風鈴小夜曲','金魚節拍','星光之舞','花火小夜曲','煙火連打','月亮嘉年華','竹林狂想曲','燈籠快板','夜市祭','稻穗進行曲','太鼓大合奏','神轎節拍','狐狸之舞','櫻花小夜曲','鯉魚連打','招財貓嘉年華','紅葉狂想曲','團扇快板','彈珠汽水祭','雪花進行曲','風鈴大合奏','金魚祭','星光進行曲','花火大合奏','煙火節拍','月亮之舞','竹林小夜曲','燈籠連打','夜市嘉年華','稻穗狂想曲','太鼓快板'];
 const THEMES=[{name:'夏日祭典',sky:['#1a1240','#3a2a6a']},{name:'海邊煙火',sky:['#0b1c3a','#1f4a7a']},{name:'櫻花神社',sky:['#ff9ec4','#ffd9a8']},{name:'楓葉山寺',sky:['#ff8a4d','#ffd27a']},{name:'雪祭典',sky:['#1f2f5a','#5a7ab0']},{name:'星空大舞台',sky:['#140a30','#4a1f6a']}];
 const recKey=i=>'arcade.drum.s'+i,getRec=i=>{ try{ const v=localStorage.getItem(recKey(i)); return v==null?null:+v; }catch(e){ return null; } };
 function scene(c,w,h,th,t,fw){ const T=THEMES[th],k=w/800,g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,T.sky[0]); g.addColorStop(1,T.sky[1]); c.fillStyle=g; c.fillRect(0,0,w,h);
@@ -210,7 +211,7 @@ function drawNote(c,x,y,k,big,alpha){ const r=big?30:21,col=k==='d'?'#ff4d4d':'#
   c.fillStyle='#fff'; c.font='900 '+Math.round(r*.95)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(k==='d'?'咚':'咔',x,y+1); c.globalAlpha=1; }
 
 function create(env,opts){
-  const si=clamp(opts.stage|0,0,29),th=Math.floor(si/5),PR=RHY.pracOf(opts),song0=RHY.makeSong(si,'drum'),song=PR?RHY.practice(song0,PR.part,PR.rate):song0,L=opts.look||{}; RHY.setEase(si);
+  const si=clamp(opts.stage|0,0,SONGS.length-1),th=Math.floor(si/5)%THEMES.length,PR=RHY.pracOf(opts),song0=RHY.makeSong(si,'drum'),song=PR?RHY.practice(song0,PR.part,PR.rate):song0,L=opts.look||{}; RHY.setEase(si);
   const spdMul=({slow:.8,normal:1,fast:1.3})[(opts.options||{}).speed||'normal']||1,SPEED=(300+song.bpm*1.1)*spdMul;
   // 譜面：重拍或往下走的音是「咚」，往上走的是「咔」；後面的關卡在樂句開頭放大音符、在樂句尾巴放連打
   const notes=RHY.makeChart(song,(o,prev,r)=>{ if(o.last){ o.k='d'; o.big=true; return; }
@@ -243,7 +244,7 @@ function create(env,opts){
     const rate=P.rate(),clear=rate>=60,g=RHY.grade(rate),old=getRec(si),rec=clear&&(old==null||P.score>old);
     if(rec) try{ localStorage.setItem(recKey(si),String(P.score)); }catch(e){}
     const C=P.cnt,html='<table class="ls"><tr><th>完美</th><th>很好</th><th>不錯</th><th>MISS</th><th>最高連擊</th><th>連打</th></tr><tr><td>'+C.perfect+'</td><td>'+C.great+'</td><td>'+C.good+'</td><td>'+C.miss+'</td><td>'+P.maxCombo+'</td><td>'+rollCount+'</td></tr></table>';
-    env.end({title:clear?'演奏成功！評價 '+g:'差一點點…',big:P.score+' 分',html,text:'「'+SONGS[si]+'」達成率 '+rate.toFixed(1)+'%（60% 以上過關）。'+(rec?'這關的新紀錄！':old!=null?'這關最高 '+old+' 分':''),score:clear?P.score:null,next:clear&&si<29}); }
+    env.end({title:clear?'演奏成功！評價 '+g:'差一點點…',big:P.score+' 分',html,text:'「'+SONGS[si]+'」達成率 '+rate.toFixed(1)+'%（60% 以上過關）。'+(rec?'這關的新紀錄！':old!=null?'這關最高 '+old+' 分':''),score:clear?P.score:null,next:clear&&si<SONGS.length-1}); }
   function draw(){ const T=P.time(); scene(c,W,H,th,t);
     // 上方：曲名、分數
     c.fillStyle='rgba(11,10,28,.72)'; rr(c,12,10,320,52,14); c.fill(); c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 18px '+TC; c.fillText('♪ '+SONGS[si],26,30); c.fillStyle='#cfd0ff'; c.font='700 11px '+TC; c.fillText(PR?'練習第 '+(PR.part+1)+' 段・速度 '+Math.round(PR.rate*100)+'%・第 '+(RHY.loopNow(song,Math.max(0,T))+1)+' / 4 次':'第 '+(si+1)+' 關・'+THEMES[th].name+'・'+song.bpm+' BPM',26,50);
@@ -277,7 +278,7 @@ function create(env,opts){
   return {update,draw,pause(p){ if(p===paused) return; paused=p; P.pause(p); },destroy(){ P.syn.stop(); },_dbg:{chart,P,song,press,get T(){ return P.time(); }}};
 }
 
-function stageShow(ctx,w,h,si,t){ scene(ctx,w,h,Math.floor(si/5),t); const k=w/800,song=RHY.makeSong(si,'drum');
+function stageShow(ctx,w,h,si,t){ scene(ctx,w,h,Math.floor(si/5)%6,t); const k=w/800,song=RHY.makeSong(si,'drum');
   ctx.save(); ctx.scale(k,k); ctx.fillStyle='rgba(20,12,30,.78)'; rr(ctx,40,170,720,90,20); ctx.fill(); ctx.strokeStyle='rgba(255,210,63,.65)'; ctx.lineWidth=3; ctx.stroke();
   ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(110,215,26,0,7); ctx.stroke();
   const pat='dkddkdkkdd'; for(let i=0;i<pat.length;i++){ const x=110+((i*70-t*140)%700+700)%700; if(x<740) drawNote(ctx,x,215,pat[i],i%5===0); }
@@ -292,10 +293,10 @@ function preview(ctx,w,h,L,t){ scene(ctx,w,h,2,t); const hit=Math.sin(t*6)>.5,si
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).drum={
   name:'節奏小鼓手',tag:'DRUM BEAT',color:'#ff5d4f',ownMusic:true,
-  desc:'祭典的夜晚來打鼓！跟著原創曲子，紅色「咚」敲鼓面、藍色「咔」敲鼓邊，30 首曲子一首比一首快。',
+  desc:'祭典的夜晚來打鼓！跟著原創曲子，紅色「咚」敲鼓面、藍色「咔」敲鼓邊，200 首曲子，前 30 首一首比一首快。',
   goal:'音符滑到左邊的圓圈時敲下去：紅色「咚」按 ←、藍色「咔」按 →，黃色長條用空白鍵連續狂敲。達成率 60% 以上過關。',
   stageGoal:si=>{ const s=RHY.makeSong(si,'drum'); return '「'+SONGS[si]+'」'+s.bpm+' BPM。音符滑到左邊圓圈時敲：紅色「咚」、藍色「咔」'+(s.tier>=1?'，大顆的音符分數加倍，黃色長條用空白鍵連續狂敲':'')+'。達成率 60% 以上就過關，解鎖下一首。'; },
-  stages:SONGS,stars:SONGS.map((s,i)=>1+Math.floor(i/6)),stageLabel:'選擇曲子',
+  stages:SONGS,stars:SONGS.map((s,i)=>i<30?1+Math.floor(i/6):Math.min(5,3+Math.floor((i-30)%30/10))),stageLabel:'選擇曲子',
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v+' 分'; },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   modes:[{id:'1p',label:'開始演奏'}],

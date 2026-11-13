@@ -1,4 +1,4 @@
-// 舞動踩踩樂：箭頭從下往上升，碰到上面的框時按對應的方向鍵。30 首原創曲（用 drum.js 的節奏引擎 window.__RHY），
+// 舞動踩踩樂：箭頭從下往上升，碰到上面的框時按對應的方向鍵。200 首原創曲（用 drum.js 的節奏引擎 window.__RHY），
 // 雙人同機（1P WASD、2P 方向鍵）或連線比分數；舞台上的 Q 版舞者照你按的方向跳舞。
 (function(){
 'use strict';
@@ -10,7 +10,8 @@ const SONGS=['霓虹第一步','閃亮亮滑步','迪斯可貓咪','彩虹轉轉
   '星光大道','麥克風派對','螢光棒揮揮','安可安可','舞台中央',
   '棉花糖踢踏','巧克力旋風','果凍彈彈跳','甜甜圈迴旋','糖果大遊行',
   '霓虹高速公路','機器人電音','飛天滑板','數位心跳','未來節拍',
-  '月光摩天輪','旋轉木馬快跑','星月雙人舞','嘉年華狂歡','最終舞王'];
+  '月光摩天輪','旋轉木馬快跑','星月雙人舞','嘉年華狂歡','最終舞王',
+  '霓虹滑步','電音狂歡','鏡球搖擺','閃光派對','街頭跳跳','爵士舞步','迪斯可風暴','月光旋轉','派對節拍','雷射律動','火焰滑步','未來狂歡','銀河搖擺','冰晶派對','星球跳跳','午夜舞步','泡泡風暴','螢光旋轉','彩虹節拍','糖果律動','霓虹旋轉','電音節拍','鏡球律動','閃光滑步','街頭狂歡','爵士搖擺','迪斯可派對','月光跳跳','派對舞步','雷射風暴','火焰旋轉','銀河律動','冰晶滑步','星球狂歡','午夜搖擺','泡泡派對','螢光跳跳','彩虹舞步','糖果風暴','霓虹跳跳','電音舞步','鏡球風暴','閃光旋轉','街頭節拍','爵士律動','迪斯可滑步','月光狂歡','派對搖擺','雷射派對','火焰跳跳','未來舞步','銀河風暴','冰晶旋轉','星球節拍','午夜律動','泡泡滑步','螢光狂歡','彩虹搖擺','糖果派對','霓虹狂歡','電音搖擺','鏡球派對','閃光跳跳','街頭舞步','爵士風暴','迪斯可旋轉','月光節拍','派對律動','雷射滑步','火焰狂歡','未來搖擺','銀河派對','冰晶跳跳','星球舞步','午夜風暴','泡泡旋轉','螢光節拍','彩虹律動','糖果滑步','霓虹節拍','電音律動','鏡球滑步','閃光狂歡','街頭搖擺','爵士派對','迪斯可跳跳','月光舞步','派對風暴','雷射旋轉','火焰節拍','未來律動','銀河滑步','冰晶狂歡','星球搖擺','午夜派對','泡泡跳跳','螢光舞步','彩虹風暴','糖果旋轉','霓虹舞步','電音風暴','鏡球旋轉','閃光節拍','街頭律動','爵士滑步','迪斯可狂歡','月光搖擺','派對派對','雷射跳跳','火焰舞步','未來風暴','銀河旋轉','冰晶節拍','星球律動','午夜滑步','泡泡狂歡','螢光搖擺','彩虹派對','糖果跳跳','霓虹搖擺','電音派對','鏡球跳跳','閃光舞步','街頭風暴','爵士旋轉','迪斯可節拍','月光律動','派對滑步','雷射狂歡','火焰搖擺','未來派對','銀河跳跳','冰晶舞步','星球風暴','午夜旋轉','泡泡節拍','螢光律動','彩虹滑步','糖果狂歡','霓虹律動','電音滑步','鏡球狂歡','閃光搖擺','街頭派對','爵士跳跳','迪斯可舞步','月光風暴','派對旋轉','雷射節拍','火焰律動','未來滑步','銀河狂歡','冰晶搖擺','星球派對','午夜跳跳','泡泡舞步','螢光風暴','彩虹旋轉','糖果節拍','霓虹風暴','電音旋轉','鏡球節拍','閃光律動','街頭滑步','爵士狂歡','迪斯可搖擺','月光派對','派對跳跳','雷射舞步','火焰風暴'];
 const THEMES=[{name:'霓虹舞廳',sky:['#1a0a3a','#3a0f5a'],floor:['#ff3ea5','#3ad8ff','#ffd23f','#7aff6b']},{name:'海灘派對',sky:['#ff8a5d','#ffd27a'],floor:['#ffd23f','#ff7eb6','#5ec8ff','#86dc4f']},
   {name:'星光演唱會',sky:['#0b0a2e','#2b1f5e'],floor:['#b77bff','#ffd23f','#5ec8ff','#ff7eb6']},{name:'糖果樂園',sky:['#ffb3d9','#ffe6f2'],floor:['#ff7eb6','#ffd23f','#7af0ff','#b77bff']},
   {name:'未來城市',sky:['#06142e','#103a5a'],floor:['#3ad8ff','#7a5cff','#3aff9a','#ff3ea5']},{name:'月光嘉年華',sky:['#140a30','#3a1f5a'],floor:['#ffd23f','#ff6b7d','#7af0ff','#c08aff']}];
@@ -53,7 +54,7 @@ function dancer(c,x,y,s,o){ const P=o.pose,u=o.pt>0?1:0,b=Math.sin(o.beat*Math.P
   const L=o.L||{}; R().drawChibi(c,x,y,s,Object.assign({t:o.t,body:L.color||'#7a5cff',pants:'#2b2b44',shoe:'#fff',acc:L.acc||'phones',hairStyle:L.hair||'girl',capCol:L.color||'#ff5d8f',hair:L.hairCol},a)); }
 
 function create(env,opts){
-  const RHY=R(),net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,29),_e=RHY.setEase(si),th=Math.floor(si/5),PR=RHY.pracOf(opts),song0=RHY.makeSong(si,'dance'),song=PR?RHY.practice(song0,PR.part,PR.rate):song0,L=opts.look||{};
+  const RHY=R(),net=opts.net,two=!net&&opts.mode==='2p',si=clamp(opts.stage|0,0,SONGS.length-1),_e=RHY.setEase(si),th=Math.floor(si/5)%6,PR=RHY.pracOf(opts),song0=RHY.makeSong(si,'dance'),song=PR?RHY.practice(song0,PR.part,PR.rate):song0,L=opts.look||{};
   const me=net?net.me:0,np=two||net?2:1,names=net?(net.names||['玩家 1','玩家 2']):two?['1P','2P']:[opts.name||'你'];
   const SPEED=(250+song.bpm*1.3)*(({slow:.8,normal:1,fast:1.3})[(opts.options||{}).speed]||1);
   // 譜面：旋律往上走就按 ↑／→，往下走按 ↓／←，一樣高就左右換；後面的關卡在樂句開頭加「雙踩」
@@ -89,7 +90,7 @@ function create(env,opts){
     const row=pl=>{ const C=pl.cnt; return '<tr><td>'+names[pl.p]+'</td><td>'+pl.score+'</td><td>'+RHY.grade(rate(pl))+'</td><td>'+rate(pl).toFixed(1)+'%</td><td>'+C.perfect+' / '+C.great+' / '+C.good+' / '+C.miss+'</td><td>'+pl.maxCombo+'</td></tr>'; };
     const html='<table class="ls"><tr><th>玩家</th><th>分數</th><th>評價</th><th>達成率</th><th>完美／很好／不錯／MISS</th><th>最高連擊</th></tr>'+players.map(row).join('')+'</table>';
     if(np===1){ const pl=players[0],r2=rate(pl),clear=r2>=60,old=getRec(si),rec=clear&&(old==null||pl.score>old); if(rec) try{ localStorage.setItem(recKey(si),String(pl.score)); }catch(e){}
-      env.end({title:clear?'跳得好！評價 '+RHY.grade(r2):'差一點點…',big:pl.score+' 分',html,text:'「'+SONGS[si]+'」達成率 '+r2.toFixed(1)+'%（60% 以上過關）。'+(rec?'這關的新紀錄！':old!=null?'這關最高 '+old+' 分':''),score:clear?pl.score:null,next:clear&&si<29}); return; }
+      env.end({title:clear?'跳得好！評價 '+RHY.grade(r2):'差一點點…',big:pl.score+' 分',html,text:'「'+SONGS[si]+'」達成率 '+r2.toFixed(1)+'%（60% 以上過關）。'+(rec?'這關的新紀錄！':old!=null?'這關最高 '+old+' 分':''),score:clear?pl.score:null,next:clear&&si<SONGS.length-1}); return; }
     const a=players[0].score,b=players[1].score,w=a===b?-1:a>b?0:1;
     env.end({title:w<0?'平手！':net?(w===me?'你贏了！':names[w]+' 獲勝'):names[w]+' 獲勝！',big:a+' ： '+b,html,text:'兩個人跳同一首「'+SONGS[si]+'」，分數高的贏。',score:null}); }
 
@@ -114,7 +115,7 @@ function create(env,opts){
   return {update,draw,pause(p){ if(p===paused) return; paused=p; P.pause(p); },destroy(){ P.syn.stop(); },_dbg:{chart,players,song,press,get T(){ return P.time(); }}};
 }
 
-function stageShow(ctx,w,h,si,t){ const RHY=R(); if(!RHY) return; const song=RHY.makeSong(si,'dance'),beat=t*song.bpm/60; stage(ctx,w,h,Math.floor(si/5),t,beat); const k=w/800;
+function stageShow(ctx,w,h,si,t){ const RHY=R(); if(!RHY) return; const song=RHY.makeSong(si,'dance'),beat=t*song.bpm/60; stage(ctx,w,h,Math.floor(si/5)%6,t,beat); const k=w/800;
   ctx.save(); ctx.scale(k,k); ctx.fillStyle='rgba(8,4,20,.55)'; rr(ctx,40,20,256,460,16); ctx.fill();
   for(let l=0;l<4;l++) arrow(ctx,40+30+l*64,70,1.1,l,{target:true}); for(let i=0;i<8;i++){ const y=70+((i*70-t*200)%560+560)%560; arrow(ctx,40+30+(i*3%4)*64,y,1,(i*3)%4); }
   const pose=Math.floor(beat)%4; dancer(ctx,560,430,3.2,{t,beat,pose,pt:(beat%1)<.4?1:0,miss:0});
@@ -128,10 +129,10 @@ function preview(ctx,w,h,L,t){ if(!R()) return; const beat=t*2; stage(ctx,w,h,3,
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).dance={
   name:'舞動踩踩樂',tag:'DANCE STEP',color:'#ff5da8',ownMusic:true,online:true,maxPlayers:2,
-  desc:'箭頭從下面升上來，碰到上面的框就按方向鍵！30 首原創舞曲，舞台上的小舞者跟著你跳；可以兩個人比分數。',
+  desc:'箭頭從下面升上來，碰到上面的框就按方向鍵！200 首原創舞曲，舞台上的小舞者跟著你跳；可以兩個人比分數。',
   goal:'箭頭碰到上面的框時按對應的方向鍵，越準分數越高。達成率 60% 以上過關；雙人比分數。',
   stageGoal:si=>{ const s=R()?R().makeSong(si,'dance'):null; return '「'+SONGS[si]+'」'+(s?s.bpm+' BPM。':'')+'箭頭碰到上面的框時按方向鍵'+(s&&s.tier>=2?'，兩個箭頭一起來就兩個鍵一起按':'')+'。達成率 60% 以上過關，解鎖下一首；雙人時分數高的贏。'; },
-  stages:SONGS,stars:SONGS.map((s,i)=>1+Math.floor(i/6)),stageLabel:'選擇曲子',
+  stages:SONGS,stars:SONGS.map((s,i)=>i<30?1+Math.floor(i/6):Math.min(5,3+Math.floor((i-30)%30/10))),stageLabel:'選擇曲子',
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v+' 分'; },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人比賽',kb:true}],

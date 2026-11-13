@@ -1,4 +1,4 @@
-// 蹦蹦果凍島：橫向跳躍闖關。遊戲裡有一張世界地圖（六個區域、30 關），主角在地圖上走到關卡按空白鍵進去；
+// 蹦蹦果凍島：橫向跳躍闖關。遊戲裡有一張世界地圖（40 個區域、200 關），主角在地圖上走到關卡按空白鍵進去；
 // 關卡是用亂數種子拼出來的區塊（斷崖、台階、問號糖果盒、柱子、移動平台、尖刺），每個世界第 5 關是城堡，最後打果凍大王。
 (function(){
 'use strict';
@@ -15,7 +15,8 @@ const WORLDS=[
   {name:'冰淇淋雪山',sky:['#9fc8ff','#f4f9ff'],top:'#ffffff',top2:'#d6e8ff',dirt:'#9ab8e0',dirt2:'#7a98c8',far:'#c6dcf5',mid:'#e8f2ff',accent:'#ff7eb6'},
   {name:'巧克力火山',sky:['#3a1a2a','#a84a2a'],top:'#7a4a2a',top2:'#5a3018',dirt:'#4a2a18',dirt2:'#3a1e10',far:'#6a2a2a',mid:'#4a1e1e',accent:'#ff7a2a'},
   {name:'雲端城堡',sky:['#b8a8ff','#ffe0f4'],top:'#fff4ff',top2:'#e8d0f8',dirt:'#c8b0e8',dirt2:'#a890d0',far:'#ffffff',mid:'#e8e0ff',accent:'#ffd23f'}];
-const LEVELS=Array.from({length:30},(_,i)=>({i,w:Math.floor(i/5),k:i%5,castle:i%5===4,name:WORLDS[Math.floor(i/5)].name+' '+(i%5===4?'城堡':(i%5+1))}));
+/* 200 關＝40 個區域，每區 5 關；第 7 區起六個世界輪流出現，名稱加上第幾輪 */
+const NREG=40,LEVELS=Array.from({length:NREG*5},(_,i)=>{ const rg=Math.floor(i/5),w=rg%6,lap=Math.floor(rg/6),k=i%5; return {i,w,rg,k,castle:k===4,name:WORLDS[w].name+(lap?' '+(lap+1)+'-':' ')+(k===4?'城堡':(k+1))}; });
 const recKey=i=>'arcade.jelly.s'+i,getRec=i=>{ try{ const v=localStorage.getItem(recKey(i)); return v==null?null:+v; }catch(e){ return null; } }; // 值＝收集到的星星金幣（位元）＋8（過關）
 const setRec=(i,v)=>{ try{ localStorage.setItem(recKey(i),String(v)); }catch(e){} };
 const starsOf=v=>v==null?0:((v&1)+(v>>1&1)+(v>>2&1));
@@ -23,7 +24,7 @@ const starsOf=v=>v==null?0:((v&1)+(v>>1&1)+(v>>2&1));
 /* ---------- 關卡產生：一塊一塊拼，每塊都照跳得到的距離做 ---------- */
 // 格子：0 空、1 地面、2 餅乾磚、3 問號糖果盒、4 用過的盒子、5 尖刺、6 可以從下面穿過的果凍平台、7 糖果柱
 const SOLID=v=>v===1||v===2||v===3||v===4||v===7;
-function makeLevel(i){ const L=LEVELS[i],r=rng(4421*(i+1)),d=i/29,cols=[],ents=[],coins=[],stars=[],movers=[];
+function makeLevel(i){ const L=LEVELS[i],r=rng(4421*(i+1)),d=i<30?i/29:Math.min(1,.55+.45*(i-30)/169),cols=[],ents=[],coins=[],stars=[],movers=[];
   let gy=12; const col=()=>{ const a=new Array(ROWS).fill(0); cols.push(a); return a; };
   const ground=(h)=>{ const a=col(); for(let y=h;y<ROWS;y++) a[y]=1; return a; };
   const X=()=>cols.length;
@@ -142,21 +143,21 @@ function flagPole(c,x,yb,t,up){ c.fillStyle='#e8e8f8'; c.fillRect(x-3,yb-280,6,2
 function miniCastle(c,x,yb,dark){ c.fillStyle=dark?'#6a5a8a':'#ffe0ee'; c.fillRect(x,yb-90,120,90); c.fillStyle=dark?'#4a3a6a':'#ff9ec8'; for(let k=0;k<5;k++) c.fillRect(x+k*26,yb-104,16,14); c.fillStyle='#5a3a2a'; rr(c,x+44,yb-50,32,50,14); c.fill(); c.fillStyle=dark?'#ffd23f':'#5ec8ff'; rr(c,x+14,yb-70,16,20,8); c.fill(); rr(c,x+90,yb-70,16,20,8); c.fill(); }
 
 /* ---------- 世界地圖 ---------- */
-const MAPW=2400;
-const NODES=LEVELS.map(l=>{ const bx=l.w*400+70,k=l.k; return {x:bx+k*66+(k%2)*10,y:[330,250,330,230,300][k]+(l.w%2?-30:0)}; });
+const MAPW=NREG*400;
+const NODES=LEVELS.map(l=>{ const bx=l.rg*400+70,k=l.k; return {x:bx+k*66+(k%2)*10,y:[330,250,330,230,300][k]+(l.rg%2?-30:0)}; });
 function worldMap(c,cam,t,cur,avatar,L){ // 六個區域連成一條路
-  for(let w=0;w<6;w++){ const x0=w*400-cam,Wd=WORLDS[w]; if(x0>W||x0+400<0) continue; const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,Wd.sky[0]); g.addColorStop(1,Wd.sky[1]); c.fillStyle=g; c.fillRect(x0,0,401,H);
+  for(let rg=0;rg<NREG;rg++){ const w=rg%6,x0=rg*400-cam,Wd=WORLDS[w]; if(x0>W||x0+400<0) continue; const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,Wd.sky[0]); g.addColorStop(1,Wd.sky[1]); c.fillStyle=g; c.fillRect(x0,0,401,H);
     c.fillStyle=Wd.top; c.beginPath(); c.moveTo(x0,H); c.lineTo(x0,180); for(let x=0;x<=400;x+=20) c.lineTo(x0+x,170+Math.sin((x+w*130)/60)*18); c.lineTo(x0+400,H); c.fill();
     c.fillStyle=Wd.top2; c.beginPath(); c.moveTo(x0,H); c.lineTo(x0,420); for(let x=0;x<=400;x+=20) c.lineTo(x0+x,420+Math.sin((x+w*90)/40)*10); c.lineTo(x0+400,H); c.fill();
     // 區域裝飾
-    const r=rng(w*77+3); for(let k=0;k<10;k++){ const x=x0+20+r()*360,y=200+r()*220; if(NODES.some(n=>Math.hypot(n.x-cam-x,n.y-y)<40)) continue;
+    const r=rng(rg*77+3); for(let k=0;k<10;k++){ const x=x0+20+r()*360,y=200+r()*220; if(NODES.some(n=>Math.hypot(n.x-cam-x,n.y-y)<40)) continue;
       if(w===1){ c.fillStyle='#5ec8ff'; c.beginPath(); c.ellipse(x,y,26,10,0,0,7); c.fill(); }
       else if(w===3){ c.fillStyle='#fff'; c.beginPath(); c.moveTo(x-20,y+10); c.lineTo(x,y-24); c.lineTo(x+20,y+10); c.fill(); }
       else if(w===4){ c.fillStyle='#5a2a1a'; c.beginPath(); c.moveTo(x-22,y+12); c.lineTo(x-6,y-20); c.lineTo(x+6,y-20); c.lineTo(x+22,y+12); c.fill(); c.fillStyle='#ff7a2a'; c.fillRect(x-6,y-22,12,5); }
       else if(w===5){ c.fillStyle='#fff'; for(const [dx,r2] of [[-10,10],[0,13],[11,10]]){ c.beginPath(); c.arc(x+dx,y,r2,0,7); c.fill(); } }
       else if(w===2){ c.fillStyle='#fff'; c.fillRect(x-2,y-20,4,20); c.fillStyle=['#ff5d8f','#7a5cff','#3ddbd9'][k%3]; c.beginPath(); c.arc(x,y-26,10,0,7); c.fill(); }
       else { c.fillStyle='#4fae3a'; c.beginPath(); c.arc(x,y-10,12,0,7); c.fill(); c.fillStyle='#ff5d6d'; c.beginPath(); c.arc(x-4,y-12,2.4,0,7); c.fill(); } }
-    c.fillStyle='rgba(11,10,28,.6)'; rr(c,x0+130,50,140,30,15); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(Wd.name,x0+200,66); }
+    c.fillStyle='rgba(11,10,28,.6)'; rr(c,x0+130,50,140,30,15); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(Wd.name+(rg>=6?' '+(Math.floor(rg/6)+1):''),x0+200,66); }
   // 路
   c.strokeStyle='rgba(255,255,255,.9)'; c.lineWidth=8; c.setLineDash([2,12]); c.lineCap='round'; c.beginPath(); NODES.forEach((n,i)=>i?c.lineTo(n.x-cam,n.y):c.moveTo(n.x-cam,n.y)); c.stroke(); c.setLineDash([]);
   NODES.forEach((n,i)=>{ const x=n.x-cam; if(x<-40||x>W+40) return; const rec=getRec(i),open=i===0||getRec(i-1)!=null,cl=rec!=null&&rec>=8,castle=LEVELS[i].castle;
@@ -174,7 +175,7 @@ function worldMap(c,cam,t,cur,avatar,L){ // 六個區域連成一條路
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
   const {ctx:c}=env.canvas2d(W,H),L=opts.look||{},sfx=n=>env.sfx(n);
-  let mode='map',cur=clamp(opts.stage|0,0,29),t=0,lives=5,totalCoins=0,ended=false,endT=0,mapCam=0,avatar={x:NODES[cur].x,y:NODES[cur].y,face:1,moving:false,target:cur};
+  let mode='map',cur=clamp(opts.stage|0,0,LEVELS.length-1),t=0,lives=5,totalCoins=0,ended=false,endT=0,mapCam=0,avatar={x:NODES[cur].x,y:NODES[cur].y,face:1,moving:false,target:cur};
   let lv=null,P=null,cam=0,ents=[],coins=[],stars=[],movers=[],items=[],fx=[],gotStars=0,cpOn=false,clearT=0,deathT=0,bossObj=null,coinsLv=0,msg='',msgT=0,introT=0;
   const unlocked=i=>i===0||getRec(i-1)!=null;
   function enter(i){ lv=makeLevel(i); ents=lv.ents.map(e=>Object.assign({vx:-40,vy:0,dead:0,y0:e.y,home:e.x},e)); coins=lv.coins.map(o=>Object.assign({},o)); stars=lv.stars.map(o=>Object.assign({},o)); movers=lv.movers.map(o=>Object.assign({},o));
@@ -220,8 +221,8 @@ function create(env,opts){
     if(mode==='map'){ const goal=NODES[avatar.target]; const dx=goal.x-avatar.x,dy=goal.y-avatar.y,d=Math.hypot(dx,dy);
       if(d>2){ const sp=260*dt; avatar.x+=dx/d*Math.min(sp,d); avatar.y+=dy/d*Math.min(sp,d); avatar.moving=true; avatar.face=dx<0?-1:1; }
       else { avatar.moving=false; avatar.x=goal.x; avatar.y=goal.y; cur=avatar.target;
-        if((env.hit('ArrowRight')||env.hit('KeyD'))&&cur<29&&unlocked(cur+1)){ avatar.target=cur+1; sfx('click'); }
-        else if((env.hit('ArrowRight')||env.hit('KeyD'))&&cur<29){ msg='先過這一關才能往前走'; msgT=1.4; sfx('bump'); }
+        if((env.hit('ArrowRight')||env.hit('KeyD'))&&cur<LEVELS.length-1&&unlocked(cur+1)){ avatar.target=cur+1; sfx('click'); }
+        else if((env.hit('ArrowRight')||env.hit('KeyD'))&&cur<LEVELS.length-1){ msg='先過這一關才能往前走'; msgT=1.4; sfx('bump'); }
         if((env.hit('ArrowLeft')||env.hit('KeyA'))&&cur>0){ avatar.target=cur-1; sfx('click'); }
         if(env.hit('Space')||env.hit('Enter')||env.hit('KeyJ')||env.hit('ArrowUp')) enter(cur); }
       mapCam+=(clamp(avatar.x-W/2,0,MAPW-W)-mapCam)*Math.min(1,dt*5); return; }
@@ -251,11 +252,11 @@ function create(env,opts){
       const atGoal=lv.boss?(bossObj&&bossObj.dead&&P.x>lv.goal):(P.x>=lv.goal-6);
       if(!P.goal&&!P.dead&&atGoal){ P.goal=true; P.vx=0; clearT=0; sfx('win'); }
       if(P.goal&&clearT>2.6) levelClear(); } }
-  function levelClear(){ const i=lv.L.i,old=getRec(i),v=8|((old||0)&7)|gotStars; setRec(i,v); mode='map'; const next=Math.min(29,i+1);
-    if(i===29){ ended=true; endT=0; mode='win'; finish(); return; }
+  function levelClear(){ const i=lv.L.i,old=getRec(i),v=8|((old||0)&7)|gotStars; setRec(i,v); mode='map'; const next=Math.min(LEVELS.length-1,i+1);
+    if(i===LEVELS.length-1){ ended=true; endT=0; mode='win'; finish(); return; }
     avatar.target=next; avatar.x=NODES[i].x; avatar.y=NODES[i].y; cur=i; msg='第 '+(i+1)+' 關過關！星星金幣 '+starsOf(v)+' / 3'; msgT=2.4; }
   let done=false;
-  function finish(){ if(done) return; done=true; let far=-1; for(let i=0;i<30;i++) if(getRec(i)!=null) far=i; let st=0; for(let i=0;i<30;i++) st+=starsOf(getRec(i));
+  function finish(){ if(done) return; done=true; let far=-1; for(let i=0;i<LEVELS.length;i++) if(getRec(i)!=null) far=i; let st=0; for(let i=0;i<LEVELS.length;i++) st+=starsOf(getRec(i));
     env.end({title:mode==='win'?'果凍島全破了！':'命用完了…',big:'最遠第 '+(far+1)+' 關',text:'星星金幣 '+st+' / 90，這次撿了 '+totalCoins+' 枚金幣。'+(mode==='win'?'':'過的關卡都會記住，下次從地圖接著玩。'),score:far+1}); }
 
   /* ---------- 畫面 ---------- */
@@ -312,7 +313,7 @@ function preview(ctx,w,h,L,t){ const k=h/H; ctx.save(); ctx.scale(k,k); backdrop
   desc:'在世界地圖上一關一關往前走！跳過斷崖、踩扁果凍史萊姆、頂問號糖果盒（偶爾會出無敵星星糖和愛心），每個世界最後到城堡打果凍大王。六個世界共 30 關。',
   goal:'往右走到終點旗子就過關；掉下去或被怪物撞到會少一條命。每關藏著 3 枚星星金幣。',
   stageGoal:si=>{ const l=LEVELS[si]; return l.name+'：'+(l.castle?'城堡關，走到最後的大王房間，踩果凍大王的頭三次。':'走到最右邊的終點旗。')+'踩怪物的頭可以打倒牠（刺刺栗不能踩），頂問號糖果盒有金幣或果凍果（吃了變大，被撞只會變小）。進遊戲後在世界地圖上選關。'; },
-  stages:LEVELS.map(l=>l.name),stars:LEVELS.map((l,i)=>1+Math.floor(i/6)),stageLabel:'選擇關卡',
+  stages:LEVELS.map(l=>l.name),stars:LEVELS.map((l,i)=>i<30?1+Math.floor(i/6):Math.min(5,3+Math.floor((i-30)/57))),stageLabel:'選擇關卡',
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+'★'.repeat(starsOf(v)); },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   help:[['← →','走路（地圖上選關卡）'],['空白鍵 或 ↑','跳（按越久跳越高）；地圖上進入關卡'],['踩頭','打倒怪物（刺刺栗不能踩）']],

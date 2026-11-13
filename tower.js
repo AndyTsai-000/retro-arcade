@@ -1,5 +1,5 @@
 // 糖果城保衛戰：塔防。怪物沿著道路走向糖果城堡，在路邊的空地蓋塔擋住牠們。
-// 六張地圖各 5 關共 30 關；四種塔（棒棒糖砲、冰淇淋塔、汽水火箭、彩虹光束）各能升到 3 級；剩下的愛心決定星星數。
+// 六張地圖共 200 關；四種塔（棒棒糖砲、冰淇淋塔、汽水火箭、彩虹光束）各能升到 3 級；剩下的愛心決定星星數。
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PIX='"Press Start 2P","Noto Sans TC",monospace';
@@ -26,6 +26,8 @@ function buildMap(mi){ const M=MAPS[mi],pts=M.path,segs=[]; let total=0;
   for(const p of pads){ let n=0; for(let d=0;d<total;d+=10){ const [x,y]=posAt(d); if(dist(x,y,p.x,p.y)<115) n++; } p.cov=n; } // 這塊空地能打到多少路（電腦示範和測試用）
   return {M,segs,total,posAt,segDist,pads,end}; }
 const STAGES=Array.from({length:30},(_,i)=>{ const m=Math.floor(i/5),k=i%5; return {i,map:m,name:MAPS[m].name+' '+(k+1),waves:5+Math.floor(i/4),gold:250+i*12+Math.max(0,6-i)*25,hp:(1+i*.075)*(i<4?.75+i*.06:1),boss:k===4}; });
+/* 第 31～200 關：六張地圖輪流，每 5 關一組（第 5 關有大胃王），怪越來越硬 */
+for(let i=30;i<200;i++){ const m=Math.floor(i/5)%6,k=i%5,u=(i-30)/169,n=Math.floor(i/30)*5+k+1; STAGES.push({i,map:m,name:MAPS[m].name+' '+n,waves:10+Math.floor(u*8)+k,gold:Math.round(560+u*260+k*20),hp:+(2.2+u*1.6+k*.1).toFixed(2),e:22+Math.floor(u*10),boss:k===4}); }
 const recKey=i=>'arcade.tower.s'+i,getRec=i=>{ try{ const v=localStorage.getItem(recKey(i)); return v==null?null:+v; }catch(e){ return null; } };
 
 /* ---------- 塔與怪物 ---------- */
@@ -43,7 +45,7 @@ const FOES={
   jelly:{name:'果凍胖胖',hp:140,speed:36,gold:14,r:16,col:'#ff7eb6'},
   beetle:{name:'盔甲甲蟲',hp:80,speed:46,armor:7,gold:12,r:13,col:'#3a5ad8'},
   boss:{name:'大胃王',hp:1100,speed:27,armor:5,gold:120,r:26,col:'#8a4ad8',lives:5}};
-function waveList(S,w){ const r=rng(S.i*977+w*31),list=[],n=7+w*2+Math.floor(S.i*.35),last=w===S.waves-1;
+function waveList(S,w){ const r=rng(S.i*977+w*31),list=[],n=7+w*2+Math.floor((S.e!=null?S.e:S.i)*.35),last=w===S.waves-1;
   for(let k=0;k<n;k++){ const roll=r(); let f='bug'; if(S.i>=1&&roll<.22+w*.02) f='ant'; else if(S.i>=3&&roll>.82-w*.015) f='jelly'; else if(S.i>=7&&roll>.6&&roll<.75) f='beetle'; list.push({f,gap:f==='ant'?.45:f==='jelly'?1.1:.75}); }
   if(last&&S.boss) list.push({f:'boss',gap:2}); return list; }
 
@@ -140,7 +142,7 @@ function drawFoe(c,e,t){ const F=FOES[e.f],x=e.x,y=e.y,r=F.r,bob=Math.abs(Math.s
 
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
-  const si=clamp(opts.stage|0,0,29),END=(opts.options||{}).mode==='endless',S=END?Object.assign({},STAGES[si],{waves:9999,boss:false}):STAGES[si],B=buildMap(S.map),{ctx:c,canvas}=env.canvas2d(W,H),bgc=typeof document!=='undefined'?bgCanvas(S.map):null,sfx=n=>env.sfx(n);
+  const si=clamp(opts.stage|0,0,STAGES.length-1),END=(opts.options||{}).mode==='endless',S=END?Object.assign({},STAGES[si],{waves:9999,boss:false}):STAGES[si],B=buildMap(S.map),{ctx:c,canvas}=env.canvas2d(W,H),bgc=typeof document!=='undefined'?bgCanvas(S.map):null,sfx=n=>env.sfx(n);
   let gold=S.gold,lives=20,wave=-1,phase='prep',betweenT=0,spawnQ=[],spawnT=0,t=0,speed=1,ended=false,endT=0,won=false;
   const towers=[],foes=[],shots=[],fx=[],pops=[],parts=[],decals=[]; let sel=null,menu=null,hover=null,eid=0,msg='',msgT=0,shake=0;
   // 粒子：火花、煙、泡泡、冰晶、雪花、彩色碎紙、星星
@@ -204,7 +206,7 @@ function create(env,opts){
   let done=false;
   function finish(){ if(done) return; done=true;
     if(won){ const stars=lives>=18?3:lives>=10?2:1,old=getRec(si); if(old==null||stars>old) try{ localStorage.setItem(recKey(si),String(stars)); }catch(e){}
-      env.end({title:'守住糖果城了！',big:'★'.repeat(stars)+'☆'.repeat(3-stars),text:'第 '+(si+1)+' 關「'+S.name+'」剩下 '+lives+' 顆愛心（18 顆以上三星、10 顆以上兩星）。',score:si+1,next:si<29}); }
+      env.end({title:'守住糖果城了！',big:'★'.repeat(stars)+'☆'.repeat(3-stars),text:'第 '+(si+1)+' 關「'+S.name+'」剩下 '+lives+' 顆愛心（18 顆以上三星、10 顆以上兩星）。',score:si+1,next:si<STAGES.length-1}); }
     else if(END){ const k='arcade.tower.endless.'+si; let old=null; try{ old=+localStorage.getItem(k)||null; }catch(e){} const rec=old==null||wave>old; if(rec) try{ localStorage.setItem(k,String(wave)); }catch(e){}
       env.end({title:'無盡模式結束',big:'撐過 '+wave+' 波',text:'「'+S.name+'」無盡模式'+(rec?'，新紀錄！':'，最高撐過 '+old+' 波。')+'怪物每一波都會變更強。',score:null}); }
     else env.end({title:'城堡被攻破了…',big:'撐到第 '+(wave+1)+' / '+S.waves+' 波',text:'冰淇淋塔讓怪物變慢、汽水火箭一次打一群，蓋在轉彎的地方最有效。',score:null}); }
@@ -287,11 +289,11 @@ function thumb(ctx,w,h,t){ const B=buildMap(0); ctx.save(); ctx.scale(w/W,h/H); 
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).tower={
   name:'糖果城保衛戰',tag:'CANDY DEFENSE',color:'#ff9ec8',
-  desc:'貪吃的蛀牙小怪要來偷吃糖果城了！在路邊蓋棒棒糖砲、冰淇淋塔、汽水火箭和彩虹光束擋住牠們。六張地圖共 30 關。',
+  desc:'貪吃的蛀牙小怪要來偷吃糖果城了！在路邊蓋棒棒糖砲、冰淇淋塔、汽水火箭和彩虹光束擋住牠們。六張地圖共 200 關。',
   goal:'在路邊空地蓋塔，別讓怪物走到城堡。撐過每一波就過關，剩下的愛心越多星星越多。',
   stageGoal:si=>{ const S=STAGES[si]; return S.name+'：共 '+S.waves+' 波'+(S.boss?'，最後一波有大胃王（愛心一次扣 5 顆）':'')+'，起始金幣 '+S.gold+'。打倒怪物拿金幣，用來蓋新塔或升級（最高 3 級）。剩 18 顆愛心以上三星。'; },
   options:[{key:'mode',label:'玩法',def:'stage',opts:[{id:'stage',label:'關卡模式'},{id:'endless',label:'無盡模式（撐越多波越好）'}]}],
-  stages:STAGES.map(s=>s.name),stars:STAGES.map((s,i)=>1+Math.floor(i/6)),stageLabel:'選擇關卡',
+  stages:STAGES.map(s=>s.name),stars:STAGES.map((s,i)=>i<30?1+Math.floor(i/6):Math.min(5,3+Math.floor((i-30)/57))),stageLabel:'選擇關卡',
   stageBest:i=>{ const v=getRec(i); return v==null?'':'★'.repeat(v); },
   stageLocked:i=>i>0&&getRec(i-1)==null,
   help:[['點「+」空地','選一種塔蓋下去'],['點塔','升級（最高 3 級）或賣掉'],['右上角','▶ 加速（F）、開始／下一波（空白鍵）']],
