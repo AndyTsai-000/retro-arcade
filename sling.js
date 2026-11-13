@@ -205,10 +205,10 @@ function create(env,opts){
     if(!duel){ if(!slimes().length){ win(); return; } ammoI++; if(ammoI>=ST.am.length){ lose(); return; } ammoT=ST.am[ammoI]; phase='aim'; armed=true; return; }
     const a0=slimes(0).length,a1=slimes(1).length; if(!a0||!a1||(shots[0]>=10&&shots[1]>=10)){ winSide=a0===a1?-1:a0>a1?0:1; endDuel(); return; }
     turn=1-turn; ammoT=pick(['red','red','blue','yellow','black']); phase='aim'; armed=true; cpuT=1.2; say(names[turn]+(turn===0?'（左）':'（右）')+' 發射！',turn?'#ff9a6a':'#7ae8ff'); if(host) push(true); }
-  function win(){ phase='done'; const left=ST.am.length-ammoI-1; score+=left*2000; const stars=1+(left>=1?1:0)+(left>=2?1:0); sfx('win'); say('全部消滅！');
+  function win(){ phase='done'; const left=Math.max(0,ST.am.length-ammoI-1); score+=left*2000; const stars=1+(left>=1?1:0)+(left>=2?1:0); sfx('win'); say('全部消滅！');
     const k='arcade.sling.s.'+si; if(stars>(+LS(k)||0)) LS(k,stars); const kb='arcade.sling.b.'+si; if(score>(+LS(kb)||0)) LS(kb,score);
     later(()=>{ if(ended) return; ended=true; env.end({title:'城堡攻下了！',big:'★'.repeat(stars)+'☆'.repeat(3-stars),text:ST.n+'：'+score+' 分'+(left?'（剩 '+left+' 顆毛球 +'+left*2000+'）':''),score,next:si<STAGES.length-1}); },1.6); }
-  function lose(){ phase='done'; sfx('lose'); const n=slimes().length; later(()=>{ if(ended) return; ended=true; env.end({title:'毛球用完了',big:'還剩 '+n+' 隻史萊姆',text:'試試打城堡的支柱，或用炸彈毛球炸開石頭。'}); },1.4); }
+  function lose(){ phase='done'; let wait=0; /* 城堡可能還在倒：多等一下，最後一隻被壓死也算過關 */ const chk=()=>{ if(ended) return; if(!slimes().length){ win(); return; } wait+=.5; if(wait<3&&!settled()){ later(chk,.5); return; } sfx('lose'); const n=slimes().length; later(()=>{ if(ended) return; if(!slimes().length){ win(); return; } ended=true; env.end({title:'毛球用完了',big:'還剩 '+n+' 隻史萊姆',text:'試試打城堡的支柱，或用炸彈毛球炸開石頭。'}); },1.4); }; later(chk,.5); }
   function endDuel(){ phase='done'; if(host) push(true); const me=net?net.me:0,txt=winSide<0?'平手！':names[winSide]+' 贏了！'; sfx(winSide<0||(mode==='2p')||winSide===me?'win':'lose'); later(()=>{ if(ended) return; ended=true; env.end({title:txt,big:slimesN(0)+' ： '+slimesN(1),text:'剩下的史萊姆數（左：右）'}); },1.5); }
   const slimesN=s=>client&&snap?snap.it.filter(o=>o[0]===1&&o[8]===s).length:slimes(s).length;
   /* ---- 電腦瞄準：只算拋物線，找最接近目標的角度與力道，再加上誤差 ---- */
