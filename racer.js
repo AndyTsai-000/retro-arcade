@@ -989,7 +989,10 @@ function makeCreate(G){ return function create(env,opts){
 /* ================= 四款遊戲的設定 ================= */
 // 原本 15 關平均穿插在 50 關裡（第 1 關還是新手關），新關卡依序補空位
 const weave=names=>{ if(names.length!==50) return names; const o=names.slice(0,15),m=names.slice(15),out=Array(50),pos=o.map((_,i)=>Math.round(i*48/14)); pos.forEach((p,i)=>out[p]=o[i]); let k=0; for(let i=0;i<50;i++) if(!out[i]) out[i]=m[k++]; return out; };
-const mkStages=(names,base)=>weave(names).map((n,i)=>{ const d=1+4*i/Math.max(1,names.length-1); return Object.assign({name:n[0],stars:Math.min(5,Math.floor(i*5/names.length)+1),th:n[1]},base(d,i),n[2]||{}); }); /* d：難度 1～5，照關卡順序慢慢變難 */
+const mkStages0=(names,base)=>weave(names).map((n,i)=>{ const d=1+4*i/Math.max(1,names.length-1); return Object.assign({name:n[0],stars:Math.min(5,Math.floor(i*5/names.length)+1),th:n[1]},base(d,i),n[2]||{}); });
+/* 第 51～200 關：前 50 關的場景各再跑三次（Ⅱ、Ⅲ、Ⅳ），賽道用新的種子，難度在 3～5 之間慢慢升 */
+const mkStages=(names,base)=>{ const first=mkStages0(names,base); if(names.length!==50) return first; const L=weave(names),RX=['Ⅱ','Ⅲ','Ⅳ'];
+  for(let j=0;j<150;j++){ const n=L[(j*13+7)%50],d=3+2*j/149; first.push(Object.assign({name:n[0]+' '+RX[Math.floor(j/50)],stars:Math.min(5,4+Math.floor(j/75)),th:n[1]},base(d,50+j),n[2]||{})); } return first; }; /* d：難度 1～5，照關卡順序慢慢變難 */
 // 延伸關卡：沿用前面某一關的場景（b＝關卡編號），可再加修飾
 const ext=(list,more)=>list.concat(more.map(([n,b,x])=>{ const o=list[b]||list[0],y=Object.assign({},o[2]||{},x||{}); if(x&&x.mod&&o[2]&&o[2].mod) y.mod=o[2].mod+' '+x.mod; return [n,o[1],y]; }));
 // ---- 1. 飆風機車王 ----

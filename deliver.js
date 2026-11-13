@@ -75,6 +75,10 @@ const STAGES=[
   {name:'台北・跨年夜',stars:5,orders:6,traffic:.8,onc:.8,scoot:1,bus:.6,peds:1,cam:.6,jay:.5,runner:.45,park:.4,taxi:.5,night:1,pal:'tw',land:'fireworks',target:650,shop:TW_SHOP,cus:TW_CUS,sign:TW_SIGN,desc:'跨年人潮擠爆街頭，煙火一放大家都停下來看，單子卻一直來。'}
 ];
 STAGES.sort((a,b)=>a.stars-b.stars);
+/* 第 31～200 關：同樣 30 座城市再跑（Ⅱ～Ⅶ），訂單更多、車更多、時間更緊；路線用新種子產生；關卡預覽用原本那座城市的圖 */
+{ const RN=['','Ⅱ','Ⅲ','Ⅳ','Ⅴ','Ⅵ','Ⅶ'],cnt={};
+  for(let j=0;j<170;j++){ const src=(j*7+3)%30,b=STAGES[src],u=j/169; cnt[src]=(cnt[src]||0)+1; const k=Math.min(1.35,1+.12+u*.25);
+    STAGES.push(Object.assign({},b,{name:b.name+' '+RN[cnt[src]],stars:Math.min(5,Math.max(b.stars,3+Math.floor(u*2.99))),orders:Math.min(7,b.orders+1+Math.floor(u*1.6)),traffic:+Math.min(1.15,b.traffic*k).toFixed(2),onc:+Math.min(1.1,(b.onc||.5)*k).toFixed(2),peds:+Math.min(1.2,(b.peds||.5)*k).toFixed(2),jay:+Math.min(.7,(b.jay||.2)*k).toFixed(2),target:Math.round(b.target*(1.15+u*.35)/10)*10,src,desc:b.desc+'（第 '+(cnt[src]+1)+' 輪：單更多、車更多）'})); } }
 /* 紀錄改用城市名字存（舊的照順序存，搬過去） */
 const OLD10=['台北・西門町','台中・逢甲夜市','高雄・愛河晚風','台南・府城巷弄','新竹・風城午後','台北・信義尖峰','東京・澀谷十字路口','首爾・弘大雨夜','紐約・時代廣場','曼谷・考山路'];
 try{ if(!localStorage.getItem('arcade.deliver.mig30')){ OLD10.forEach((n,i)=>{ const v=localStorage.getItem('arcade.deliver.b.'+i); if(v!=null) localStorage.setItem('arcade.deliver.bn.'+n,v); }); localStorage.setItem('arcade.deliver.mig30','1'); } }catch(e){}
@@ -1164,6 +1168,6 @@ function preview(ctx,w,h,L,t){ // 我的造型：正面＋側面（寫實）
     {key:'shirt',label:'衣服',type:'color',opts:['#2f8a5a','#4f9dff','#ffd23f','#ff9d3d','#e23b3b','#7a4ac8','#2b2b36','#f0f0e8']},
     {key:'bike',label:'機車',type:'color',opts:['#e23b3b','#f0f0e8','#2b2b36','#2f6fd0','#86dc4f','#ff7eb6','#f5a623','#9aa0a8']},
     {key:'box',label:'外送箱',type:'color',opts:['#ff7a3d','#3ddbd9','#ff5d8f','#86dc4f','#ffd23f','#7a4ac8','#2f6fd0','#e23b3b']}],
-  stageShow,thumb,preview,create,_art:{vehBack,vehSide,pedFront,scootSide,scooterSide,dogSide,drawCockpit,preview,thumb}
+  stageShot:i=>STAGES[i]&&STAGES[i].src!=null?STAGES[i].src:i,stageShow,thumb,preview,create,_art:{vehBack,vehSide,pedFront,scootSide,scooterSide,dogSide,drawCockpit,preview,thumb}
 };
 })();

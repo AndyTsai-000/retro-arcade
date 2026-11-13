@@ -1,14 +1,14 @@
 // 鋼琴音樂家：黑色琴鍵磚從上往下掉，掉到琴鍵上時按下對應的鍵（D F J K 或點琴鍵），按對才會彈出那個音。
-// 100 首原創曲（每首用種子即時作曲）；第 15 關起有長按音，第 40 關起有雙音和弦。達成率 60% 以上過關，過一關開下一關。
+// 200 首原創曲（每首用種子即時作曲）；第 15 關起有長按音，第 40 關起有雙音和弦。達成率 60% 以上過關，過一關開下一關。
 (function(){
 'use strict';
-const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LV=100;
+const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LV=200;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 function rng(a){ return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 const LX=230,LW=85,NL=4,JY=402,KEYS=[['KeyD','Digit1','ArrowLeft'],['KeyF','Digit2','ArrowDown'],['KeyJ','Digit3','ArrowUp'],['KeyK','Digit4','ArrowRight']],KL=['D','F','J','K'];
 const W1=['晨光','月光','星空','花園','雨滴','海風','森林','雪花','彩虹','夏夜'],W2=['小步舞曲','練習曲','圓舞曲','夜曲','進行曲','奏鳴曲','幻想曲','搖籃曲','狂想曲','前奏曲'];
-const titleOf=i=>W1[(i*3)%10]+W2[(i*7+Math.floor(i/10))%10];
+const titleOf=i=>i>=100?titleOf(i-100)+' Ⅱ':W1[(i*3)%10]+W2[(i*7+Math.floor(i/10))%10];
 const HALLS=[{n:'音樂教室',a:'#f4e4c8',b:'#d8b88a',wall:'#e8d4b0',acc:'#8a5a2a'},{n:'花園露台',a:'#bfe8ff',b:'#e8f8d8',wall:'#cfeac0',acc:'#3a8a4a'},{n:'金色音樂廳',a:'#5a1a22',b:'#2a0a10',wall:'#7a2a30',acc:'#ffd23f'},{n:'星空舞台',a:'#141a48',b:'#05061a',wall:'#20286a',acc:'#9ad0ff'},{n:'水晶宮殿',a:'#2a4a7a',b:'#0e1a3a',wall:'#3a5a9a',acc:'#c8f0ff'}];
 const starsOf=i=>Math.min(5,1+Math.floor(i/20));
 /* ---------- 作曲：原創旋律（鋼琴右手）＋伴奏（左手） ---------- */
@@ -19,7 +19,7 @@ const RHY=[ /* 一小節 16 格：[開始, 長度] */
  [[[0,4],[4,2],[6,2],[8,4],[12,4]],[[0,2],[2,2],[4,4],[8,8]],[[0,4],[4,4],[8,2],[10,2],[12,4]],[[0,6],[6,2],[8,8]],[[0,4],[4,4],[8,4],[12,2],[14,2]]],
  [[[0,2],[2,2],[4,2],[6,2],[8,4],[12,4]],[[0,3],[3,3],[6,2],[8,2],[10,2],[12,4]],[[0,2],[2,2],[4,4],[8,2],[10,2],[12,2],[14,2]],[[0,4],[4,2],[6,2],[8,2],[10,2],[12,4]]],
  [[[0,2],[2,1],[3,1],[4,2],[6,2],[8,2],[10,2],[12,2],[14,2]],[[0,1],[1,1],[2,2],[4,2],[6,2],[8,2],[10,2],[12,4]],[[0,2],[2,2],[4,1],[5,1],[6,2],[8,2],[10,1],[11,1],[12,4]],[[0,2],[2,2],[4,2],[6,2],[8,1],[9,1],[10,2],[12,2],[14,2]]]];
-function makeSong(i){ const r=rng(7919*(i+1)+11),d=i/(LV-1),tier=i<15?0:i<40?1:i<70?2:3;
+function makeSong(i){ const r=rng(7919*(i+1)+11),d=i<100?i/99:.55+.45*(i-100)/99,tier=i<15?0:i<40?1:i<70?2:i<100?3:(d<.75?2:3); /* 第 101 首起：難度在中後段，旋律用新種子 */
   const bpm=Math.round(70+d*62+r()*6),scn=r()<.62?'major':'minor',scale=SC[scn],root=58+Math.floor(r()*7),pick=a=>a[Math.floor(r()*a.length)];
   const pa=pick(PROGS[scn]),pb=pick(PROGS[scn].filter(p=>p!==pa));
   const pool=[]; for(let oc=0;oc<3;oc++) for(const iv of scale){ const m=root+12+oc*12+iv; if(m>=root+12&&m<=root+31) pool.push(m); }
@@ -136,7 +136,7 @@ function stageShow(ctx,w,h,si,t){ const song=makeSong(si),hk=Math.floor(si/20)%5
   ctx.fillStyle='rgba(10,8,24,.78)'; rr(ctx,W-250,20,230,70,14); ctx.fill(); ctx.fillStyle='#ffd23f'; ctx.font='900 18px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('第 '+(si+1)+' 首',W-135,42); ctx.fillStyle='#fff'; ctx.font='900 16px '+TC; ctx.fillText('《'+song.title+'》',W-135,68); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).piano={
   name:'鋼琴音樂家',tag:'PIANO MAESTRO',color:'#2a2a40',ownMusic:true,
-  desc:'黑色琴鍵磚往下掉，掉到琴鍵時按下去就會彈出旋律！100 首原創曲、五個舞台，從慢慢的小品彈到快速的狂想曲。',
+  desc:'黑色琴鍵磚往下掉，掉到琴鍵時按下去就會彈出旋律！200 首原創曲、五個舞台，從慢慢的小品彈到快速的狂想曲。',
   goal:'琴鍵磚掉到琴鍵上時按對應的鍵，按對才會彈出那個音。整首彈完達成率 60% 以上就過關。',
   stages:Array.from({length:LV},(_,i)=>'第 '+(i+1)+' 首'),stars:Array.from({length:LV},(_,i)=>starsOf(i)),stageGrid:true,
   stageGoal:i=>{ const s=makeSong(i); return '第 '+(i+1)+' 首《'+s.title+'》（'+HALLS[Math.floor(i/20)%5].n+'，♩='+s.bpm+'）：琴鍵磚掉到琴鍵上時按下去。'+(i>=40?'有長按音（按住到結束）和粉紅色雙音（兩個一起按）。':i>=15?'金色的是長按音，要按住到結束。':'')+' 達成率 60% 過關。'; },

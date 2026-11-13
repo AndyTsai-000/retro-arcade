@@ -1,4 +1,4 @@
-// 果嶺推桿王：俯視角迷你高爾夫。30 座球場、每座 6 洞，草皮、沙坑、水池、斜坡、冰面、風車、移動閘門、地道。
+// 果嶺推桿王：俯視角迷你高爾夫。200 座球場、每座 6 洞，草皮、沙坑、水池、斜坡、冰面、風車、移動閘門、地道。
 // 畫面走寫實風（割草紋路、木頭／石頭圍欄、旗桿影子），推桿的是真人比例的球員。
 // 同一台 1～4 人輪流，也可以連線（最多 4 人）：擊球的人送出方向和力道，大家各自模擬，球停下後由擊球的人送出結果對齊。
 (function(){
@@ -95,6 +95,13 @@ COURSES.forEach((c,i)=>c.id=i);
   NEWC.forEach(([name,th,stars],j)=>{ const pool=[]; base.forEach((c,ci)=>{ if(c.stars>=stars-1&&c.stars<=stars) pool.push(ci); }); const holes=[];
     for(let k=0;k<6;k++) for(let q=0;q<300;q++){ const ci=pool[(j+k+q)%pool.length],hi=(k+j*5+q)%6,tf=['x','y','xy'][(j+k+(q/pool.length|0))%3],key=ci+'.'+hi+'.'+tf; if(used.has(key)) continue; used.add(key); const h=base[ci].holes[hi]; holes.push({par:h.par,m:flip(h.m,tf)}); break; }
     COURSES.push({name,th,stars,holes,id:10+j}); });
+  /* 第 31～200 座：同一個主題的球場名字加上Ⅱ、Ⅲ…，球洞從同難度的洞翻轉重組（同一座裡不重複），後面的偏難 */
+  const RN=['Ⅱ','Ⅲ','Ⅳ','Ⅴ','Ⅵ','Ⅶ','Ⅷ','Ⅸ','Ⅹ'],byTh={},cnt={}; COURSES.forEach(c=>{ (byTh[c.th]=byTh[c.th]||[]).push(c.name); });
+  const THS=Object.keys(byTh);
+  for(let j=0;j<170;j++){ const u=j/169,stars=Math.min(5,2+Math.floor(u*3.4)+(j%3===0?1:0)),pool=[]; base.forEach((c,ci)=>{ if(c.stars>=stars-1&&c.stars<=stars) pool.push(ci); });
+    const th=THS.filter(t=>base.some((c,ci)=>c.th===t&&pool.includes(ci)))[j%5]||base[pool[j%pool.length]].th,nm0=byTh[th][j%byTh[th].length]; cnt[nm0]=(cnt[nm0]||0)+1;
+    const holes=[],seen=new Set(); for(let k=0;k<6;k++) for(let q=0;q<400;q++){ const ci=pool[(j*3+k*7+q)%pool.length],hi=(k*5+j+q*3)%6,tf=['x','y','xy',''][(j+k*2+q)%4],key=ci+'.'+hi; if(seen.has(key)) continue; seen.add(key); const h=base[ci].holes[hi]; holes.push({par:h.par,m:tf?flip(h.m,tf):h.m.slice()}); break; }
+    COURSES.push({name:nm0+' '+RN[cnt[nm0]-1],th,stars,holes,id:30+j}); }
   COURSES.sort((a,b)=>a.stars-b.stars||a.id-b.id); })();
 const TH={
   park:{out:'#3f7a34',out2:'#4a8a3c',g1:'#5fb04c',g2:'#56a444',rail:'wood',railC:'#8a5a32',deco:'tree',haz:'water',sand:'#e2cf96',sky:'#9ad0f0'},
@@ -412,7 +419,7 @@ const getRec=i=>{ try{ const v=localStorage.getItem('arcade.golf.c'+COURSES[i].i
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).golf={
   coin:o=>{ const n=o.net?o.net.count:Math.max(1,Math.min(4,+(o.mode||1)||1)); return n===2?{verb:'先打第一洞',names:o.net?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:['玩家 1','玩家 2']}:null; },
   name:'果嶺推桿王',tag:'MINI GOLF',color:'#9cff6a',online:true,maxPlayers:4,
-  desc:'寫實風的迷你高爾夫：30 座主題球場、每座 6 洞，有沙坑、水池、斜坡、冰面、彈柱、風車、移動閘門和地道。調好方向、抓好力道，用最少桿數進洞。同一台 1～4 人輪流，也能連線最多 4 人。',
+  desc:'寫實風的迷你高爾夫：200 座主題球場、每座 6 洞，有沙坑、水池、斜坡、冰面、彈柱、風車、移動閘門和地道。調好方向、抓好力道，用最少桿數進洞。同一台 1～4 人輪流，也能連線最多 4 人。',
   goal:'每洞用最少的桿數把球推進洞。掉進水池（熔岩、太空）罰一桿回到原位；每洞最多打標準桿＋3 桿。6 洞打完總桿數最少的贏。',
   stages:COURSES.map(c=>c.name),stars:COURSES.map(c=>c.stars),stageLabel:'選擇球場',
   stageShow,

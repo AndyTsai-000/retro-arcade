@@ -350,7 +350,18 @@ const SD=[
  [5,'escape','證人再護送',2,1,'rain',{},[['wit','又有人要找我麻煩…阿傑，拜託再載我一程！']]],
  [5,'lose','深夜測車風波',1,3,'clear',{stars:3},[['scan','有車輛深夜高速行駛，各單位注意！'],['me','我只是在測新車啊…先甩掉再說！']]],
  [5,'catch','幕後黑手',4,3,'clear',{boss:2},[['chief','黑鯊幫真正的幕後老大要逃到碼頭了，撞停他的車！'],['boss','你以為抓到鯊哥就結束了？']]]];
-const NST=SD.length,STAGES=SD.map((q,s)=>({ch:q[0],type:q[1],n:q[2],di:q[3],th:q[4],wx:q[5],o:q[6],intro:q[7],tier:q[0],d:s/(SD.length-1)}));
+const NST0=SD.length,STAGES=SD.map((q,s)=>({ch:q[0],type:q[1],n:q[2],di:q[3],th:q[4],wx:q[5],o:q[6],intro:q[7],tier:q[0],d:s/(SD.length-1)}));
+/* 第 61～200 關：第七章「港都日常」自由任務——14 個地點 × 10 種任務，用主線同類型任務的設定，難度在後段慢慢升 */
+CHAP.push('第七章 港都日常');
+{ const PL=['港口','老街','夜市','河濱','科技園區','火車站','山路','海線','市中心','舊城區','工業區','大學城','機場','漁港'],
+    TY=[['run','急件','disp','有一批急件要送到{p}附近，路線你自己抓，別超時！'],['taxi','載客','taxi','{p}那邊有客人叫車，開穩一點，小費才會多。'],['catch','追緝','chief','{p}有台車撞了人就跑，開警車把它撞停！'],['park','停車','coach','今天到{p}練停車，位置很窄，慢慢來。'],
+        ['amb','急救','doc','{p}有人受傷了！開救護車過去，路上別讓病人顛到。'],['escape','護送','wit','我在{p}被盯上了，拜託帶我離開這裡！'],['race','夜賽','biao','今晚在{p}有一場比賽，敢不敢來？'],['tail','跟蹤','chief','有台可疑的車在{p}出沒，保持距離跟上去，別被發現。'],
+        ['repo','取車','k','{p}有台車欠款沒繳，去把它開回來，警察來了就快跑。'],['lose','脫逃','scan','你在{p}被警察盯上了，想辦法甩掉他們！']],TP={};
+  SD.forEach(q=>{ (TP[q[1]]=TP[q[1]]||[]).push(q); }); const WX=['clear','clear','clear','shower','rain','fog','clear','storm'];
+  for(let j=0;j<140;j++){ const p=PL[j%14],t=TY[(j*3+Math.floor(j/14))%10],src=TP[t[0]][j%TP[t[0]].length],o=Object.assign({},src[6]),u=j/139;
+    if(o.n&&t[0]!=='race') o.n=Math.min(o.n+Math.floor(u*2),t[0]==='run'?6:4); if(t[0]==='race') o.n=Math.min(10,(o.n||6)+Math.floor(u*2));
+    STAGES.push({ch:6,type:t[0],n:p+t[1],di:(j*5+3)%8,th:(j*7+1)%4,wx:t[0]==='park'?src[5]:WX[(j*3+1)%WX.length],o,intro:[[t[2],t[3].replace('{p}',p)]],tier:Math.min(5,3+Math.floor(j/47)),d:.6+.4*u}); } }
+const NST=STAGES.length;
 const lKey='arcade.chase.s.',getR=i=>{ try{ const v=localStorage.getItem(lKey+i); return v==null?null:+v; }catch(e){ return null; } },setR=(i,v)=>{ try{ const o=getR(i); if(o==null||v>o) localStorage.setItem(lKey+i,String(v)); }catch(e){} };
 const CH={me:{n:'阿傑',skin:'#e0b48e',hair:'#1a1410',shirt:'#2a4a7a'},biao:{n:'阿彪',skin:'#c99a74',hair:'#111',shirt:'#1e1e22'},k:{n:'車行 老K',skin:'#d8a882',hair:'#8a8a8a',shirt:'#6a4a2a'},fang:{n:'小芳',skin:'#f3cfb0',hair:'#3a2418',shirt:'#e88aa8',fem:1},boss:{n:'鯊哥',skin:'#d8a47c',hair:'#111',shirt:'#3a2a4a'},scan:{n:'警用無線電',skin:'#deb08a',hair:'#1c1c1c',shirt:'#1f2f4d',cap:'#1f2f4d',set:1},news:{n:'記者 林小姐',skin:'#f0c8a2',hair:'#2a1a12',shirt:'#c8402e',fem:1},disp:{n:'調度員 小美',skin:'#f3cfb0',hair:'#2a1a12',shirt:'#3d6fb3',fem:1,set:1},chief:{n:'林組長',skin:'#deb08a',hair:'#1c1c1c',shirt:'#1f2f4d',cap:'#1f2f4d'},doc:{n:'急診 陳醫師',skin:'#f0c8a2',hair:'#3a2a1c',shirt:'#f4f4f4',fem:1},coach:{n:'駕訓班 王教練',skin:'#d8a47c',hair:'#666',shirt:'#c0392b'},taxi:{n:'車隊台 阿雄',skin:'#e0b48e',hair:'#222',shirt:'#e8c21c',set:1},wit:{n:'證人 張先生',skin:'#e8bd98',hair:'#333',shirt:'#6b6b6b'}};
 function portrait(c,x,y,s,L,t,talk){ c.save(); c.translate(x,y); c.scale(s/60,s/60); const g=c.createLinearGradient(0,0,0,60); g.addColorStop(0,'#3a4a5e'); g.addColorStop(1,'#1c2430'); c.fillStyle=g; rr(c,0,0,60,60,8); c.fill(); c.save(); rr(c,0,0,60,60,8); c.clip();
