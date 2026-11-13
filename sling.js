@@ -241,7 +241,9 @@ function create(env,opts){
     stepWorld(dt);
     if(phase==='aim'){ const bot=pv||(mode==='cpu'&&turn===1); if(bot){ cpuT-=dt; if(cpuT<=0){ const v=aiShot(duel?turn:0); launch(duel?turn:0,v[0],v[1],ammoT); } } }
     if(phase==='fly'){ flyT+=dt; for(const b of live){ const u=b.getUserData(); if(!u.dead){ const p=b.getPosition(); if(!trail.length||Math.hypot(trail[trail.length-1][0]-p.x,trail[trail.length-1][1]-p.y)>.45) trail.push([p.x,p.y]); } }
-      if((flyT>2.2&&settled())||flyT>9) nextShot(); }
+      if((flyT>2.2&&settled())||flyT>9||(!duel&&flyT>1.4&&!slimes().length)) nextShot(); }
+    /* 瞄準的時候城堡才慢慢倒下、壓死最後一隻：也要馬上過關 */
+    if(phase==='aim'&&!aim){ if(!duel){ if(!slimes().length) nextShot(); } else if(!slimes(0).length||!slimes(1).length) nextShot(); }
     if(host){ sendT-=dt; if(sendT<=0){ sendT=1/15; push(); } } }
   /* ---- 畫面 ---- */
   function view(){ if(client){ if(!snap) return []; return snap.it.map(o=>o[0]===0?{k:'blk',x:o[1],y:o[2],a:o[3],id:o[4],m:o[5],w:o[6],h:o[7],hr:o[8]}:o[0]===1?{k:'slm',x:o[1],y:o[2],a:o[3],id:o[4],r:o[5],king:!!o[6],hr:o[7],side:o[8],helm:!!o[9]}:{k:'ammo',x:o[1],y:o[2],a:o[3],id:o[4],type:o[5],r:o[6],fuse:o[7]}); }
