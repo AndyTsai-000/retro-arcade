@@ -1,5 +1,5 @@
 // 彈弓攻城隊：拉彈弓把毛球射出去，打垮木頭、冰塊、石頭搭的城堡，消滅躲在裡面的壞史萊姆。
-// 物理用 planck.js（Box2D 的 JS 版，進遊戲才載入）。單人 12 關；雙人／對電腦／連線是「對轟」：兩邊各有城堡輪流射。
+// 物理用 planck.js（Box2D 的 JS 版，進遊戲才載入）。單人 200 關；雙人／對電腦／連線是「對轟」：兩邊各有城堡輪流射。
 (function(){
 'use strict';
 const W=800,H=450,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,GY=H-34;
@@ -37,11 +37,11 @@ const STAGES=[
   {n:'火山要塞',th:'volcano',am:['black','black','yellow','red'],b(a){ a.blk(16,0,7,.8,'stone'); let y=.8; for(let k=0;k<3;k++){ const w=6-k*1.4,x=16.5+k*.7; y=a.frame(x,y,w,1.5,k%2?'wood':'stone'); a.slime(x+w/2,y-1.84); } a.slime(19.5,y); a.post(24.5,0,3,'stone'); a.slime(24.67,3); }},
   {n:'雲端之城',th:'sky',am:['blue','yellow','black','red'],b(a){ a.blk(16.5,0,.8,4.4,'stone'); a.blk(21.5,0,.8,4.4,'stone'); a.beam(16.3,4.4,6.2,'stone'); let y=a.frame(16.8,4.74,2.4,1.5,'wood'); a.slime(18,4.74); a.frame(19.6,4.74,2.4,1.5,'ice'); a.slime(20.8,4.74); a.slime(18,y); a.slime(19.4,0); a.frame(18.2,0,2.4,1.6,'wood'); }},
   {n:'魔王城',th:'dark',am:['black','yellow','blue','red','black'],b(a){ a.blk(15.5,0,9.5,.6,'stone'); for(const x of [15.8,23.2]){ let y=.6; for(let k=0;k<3;k++){ y=a.frame(x,y,1.6,1.3,'stone'); } a.slime(x+.8,y); } let y=a.frame(18.2,.6,4.2,1.8,'wood'); a.slime(20.3,.6,1.6); y=a.frame(18.6,y,3.4,1.4,'ice'); a.slime(20.3,y-1.74); a.tri(18.8,y,3,'stone'); }}];
-/* ---- 第 13～50 關：城堡藍圖產生器（固定種子，每次都一樣） ---- */
+/* ---- 第 13～200 關：城堡藍圖產生器（固定種子，每次都一樣） ---- */
 function srng(seed){ let s=(seed*2654435761)>>>0||1; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
 const GTH=['meadow','forest','snow','desert','beach','canyon','night','ice','castle','volcano','sky','dark'];
 const GTN={meadow:'草原',forest:'森林',snow:'雪原',desert:'沙漠',beach:'海灘',canyon:'峽谷',night:'月夜',ice:'冰河',castle:'王城',volcano:'火山',sky:'天空',dark:'暗黑'};
-const GSN={tower:['高塔','雙塔','三塔'],pyr:'金字塔',bunker:'碉堡',bridge:'吊橋',stairs:'階梯城',wall:'城牆'};
+const GSN={tower:['高塔','雙塔','三塔'],pyr:'金字塔',bunker:'碉堡',bridge:'吊橋',stairs:'階梯城',wall:'城牆',arch:'拱門',spire:'尖塔'};
 function gTower(a,R,x,k,lv,w){ const ms=k<.3?['wood','wood','ice']:k<.65?['wood','stone','ice','wood']:['stone','wood','stone','ice']; let y=0; const helm=k>.45;
   for(let i=0;i<lv;i++){ const m=ms[Math.floor(R()*ms.length)],h=1.3+R()*.5,ww=Math.max(1.5,w-i*.3),xx=x+(w-ww)/2; if(R()<.75||i===0) a.slime(xx+ww/2,y,1,helm&&R()<.4); y=a.frame(xx,y,ww,h,m,R()<.3?'stone':m); }
   a.slime(x+w/2,y,R()<k*.8?1.6:1,helm&&R()<.5); return w; }
@@ -50,17 +50,21 @@ function gBunker(a,R,x,k){ const h=2.2+R()*.8; a.blk(x,0,.7,h,'stone'); a.beam(x
 function gBridge(a,R,x,k){ const span=3.6+R()*1.6,h=2.4+R()*1.2,m=k>.5?'stone':'wood'; a.blk(x,0,.8,h,'stone'); a.blk(x+span-.8,0,.8,h,'stone'); a.beam(x-.1,h,span+.2,m); a.slime(x+span/2,0,k>.55?1.6:1); a.frame(x+span/2-1.2,0,2.4,1.4,'ice'); let y=a.frame(x+span/2-1.1,h+.34,2.2,1.4,'wood'); a.slime(x+span/2,h+.34,1,k>.5); a.slime(x+span/2,y,1); return span; }
 function gStairs(a,R,x,k){ let y=0; for(let i=0;i<3;i++){ const xx=x+i*1.9; let yy=0; for(let j=0;j<=i;j++){ yy=a.frame(xx,yy,1.7,1.25,j===i?'ice':j%2?'stone':'wood'); } a.slime(xx+.85,yy,1,k>.5&&i===2); if(i>0) a.slime(xx+.85,0,.8); } return 5.6; }
 function gWall(a,R,x,k){ for(let i=0;i<3;i++) a.post(x+i*.5,0,2.6+R()*.6,'stone'); a.beam(x-.2,3.2,1.6,'stone'); return 1.6+gTower(a,R,x+2,k,2+Math.floor(k*2),2.4)*0+2.6; }
-function genStage(i){ const R=srng(i*97+13),k=i/49,th=GTH[(i*5+3)%GTH.length],pool=k<.35?['tower','tower','pyr','bunker','stairs']:['tower','pyr','bunker','bridge','stairs','wall','tower']; const used=[];
-  const b=a=>{ const R2=srng(i*97+13); R2(); let x=14.6+R2()*1.2; const want=k<.25?2:3; for(let n=0;n<want&&x<24.5;n++){ const kind=used[n]; let w=0;
-      if(kind==='tower'){ const lv=2+Math.floor(R2()*(1+k*2.2)); w=gTower(a,R2,x,k,Math.min(4,lv),2+R2()*.8); } else if(kind==='pyr') w=gPyr(a,R2,x,k); else if(kind==='bunker') w=gBunker(a,R2,x,k); else if(kind==='bridge') w=gBridge(a,R2,x,k); else if(kind==='stairs') w=gStairs(a,R2,x,k); else { gWall(a,R2,x,k); w=4.6; }
+function gArch(a,R,x,k){ a.blk(x,0,.6,2.6,'stone'); a.blk(x+3,0,.6,2.6,'stone'); a.beam(x-.1,2.6,3.8,k>.8?'stone':'wood'); a.slime(x+1.8,0,1,k>.5); a.tri(x+.3,2.94,3.2,'ice'); a.slime(x+1.9,2.94+1.02,R()<k*.6?1.6:1,k>.7&&R()<.5); return 3.6; }
+function gSpire(a,R,x,k){ return gTower(a,R,x,k,4+(R()<k*.6?1:0),1.9); }
+/* 第 51～200 關：難度從 0.62 慢慢升到 1，多了拱門、尖塔，第 101 關起每關最多四座 */
+function genStage(i){ const R=srng(i*97+13),k=i<50?i/49:.62+.38*(i-50)/149,th=GTH[(i*5+3)%GTH.length],pool=i>=50?['tower','pyr','bunker','bridge','stairs','wall','arch','spire','tower']:k<.35?['tower','tower','pyr','bunker','stairs']:['tower','pyr','bunker','bridge','stairs','wall','tower']; const used=[],WANT=i>=100?4:k<.25?2:3;
+  const b=a=>{ const R2=srng(i*97+13); R2(); let x=14.6+R2()*1.2; const want=WANT; for(let n=0;n<want&&x<(i>=50?23.6:24.5);n++){ const kind=used[n]; let w=0;
+      if(kind==='tower'){ const lv=2+Math.floor(R2()*(1+k*2.2)); w=gTower(a,R2,x,k,Math.min(4,lv),2+R2()*.8); } else if(kind==='pyr') w=gPyr(a,R2,x,k); else if(kind==='bunker') w=gBunker(a,R2,x,k); else if(kind==='bridge') w=gBridge(a,R2,x,k); else if(kind==='stairs') w=gStairs(a,R2,x,k); else if(kind==='arch') w=gArch(a,R2,x,k); else if(kind==='spire') w=gSpire(a,R2,x,k); else { gWall(a,R2,x,k); w=4.6; }
       x+=w+.9+R2()*.6; } };
-  const want=k<.25?2:3; let x=14.6+R()*1.2; for(let n=0;n<want;n++){ let kind=pool[Math.floor(R()*pool.length)]; const wEst={tower:2.8,pyr:7.2,bunker:3.9,bridge:5.2,stairs:5.6,wall:5}[kind]; if(x+wEst>27.4){ kind='tower'; if(x+2.8>27.4) break; } used.push(kind); x+=wEst+1.2; }
+  const want=WANT; let x=14.6+R()*1.2; for(let n=0;n<want;n++){ let kind=pool[Math.floor(R()*pool.length)]; const wEst={tower:2.8,pyr:7.2,bunker:3.9,bridge:5.2,stairs:5.6,wall:5,arch:3.6,spire:2.2}[kind]; const LIM=i>=50?26.6:27.4; if(x+wEst>LIM){ kind='tower'; if(x+2.8>LIM) break; } used.push(kind); x+=wEst+1.2; }
   const tmp=B(); b(tmp); const ns=tmp.L.filter(o=>o.k==='slm').length,hasStone=tmp.L.some(o=>o.m==='stone'),hasIce=tmp.L.some(o=>o.m==='ice');
   const nA=clamp(Math.ceil(ns*.55)+2-Math.floor(k*1.5),3,6),bag=['red','red'].concat(hasStone?['yellow','black']:[],hasIce?['blue']:[],k>.5?['black','yellow']:['red']),am=[]; for(let j=0;j<nA;j++) am.push(bag[Math.floor(R()*bag.length)]);
-  const main=used.includes('pyr')?'pyr':used.includes('bridge')?'bridge':used.includes('bunker')?'bunker':used.includes('wall')?'wall':used.includes('stairs')?'stairs':'tower';
-  let nm=GTN[th]+(main==='tower'?GSN.tower[Math.min(2,used.filter(q=>q==='tower').length-1)]:GSN[main]);
+  const main=used.includes('arch')?'arch':used.includes('pyr')?'pyr':used.includes('bridge')?'bridge':used.includes('bunker')?'bunker':used.includes('wall')?'wall':used.includes('stairs')?'stairs':'tower';
+  let nm=GTN[th]+(main==='spire'?GSN.spire:main==='tower'?GSN.tower[Math.min(2,used.filter(q=>q==='tower').length-1)]:GSN[main]);
   return {n:nm,th,am,b}; }
-for(let i=12;i<50;i++){ const g=genStage(i); let nm=g.n,q=2; while(STAGES.some(s=>s.n===nm)) nm=g.n+' '+['Ⅱ','Ⅲ','Ⅳ','Ⅴ'][q++-2]; g.n=nm; STAGES.push(g); }
+const RN=['Ⅱ','Ⅲ','Ⅳ','Ⅴ','Ⅵ','Ⅶ','Ⅷ','Ⅸ','Ⅹ','Ⅺ','Ⅻ'];
+for(let i=12;i<200;i++){ const g=genStage(i); let nm=g.n,q=2; while(STAGES.some(s=>s.n===nm)){ nm=g.n+' '+(RN[q-2]||q); q++; } g.n=nm; STAGES.push(g); }
 
 STAGES.forEach((s,i)=>{ s.k=i/(STAGES.length-1); s.stars=1+Math.round(s.k*4); });
 /* 對轟戰場：兩邊對稱的城堡 */
@@ -287,7 +291,7 @@ function stageShow(c,w,h,si,t){ c.save(); c.scale(w/W,h/H); const ST=STAGES[si],
 function thumb(c,w,h,t){ stageShow(c,w,h,6,t); c.save(); c.scale(w/W,h/H); c.font='900 46px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=9; c.strokeStyle='#14122b'; c.strokeText('彈弓攻城隊',W/2,70); c.fillStyle='#ffd23f'; c.fillText('彈弓攻城隊',W/2,70); c.restore(); }
 const starOf=i=>+LS('arcade.sling.s.'+i)||0;
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).sling={name:'彈弓攻城隊',tag:'SLING SIEGE',color:'#ff8a3d',online:true,maxPlayers:2,
-  desc:'拉開彈弓，把毛球射向木頭、冰塊、石頭搭的城堡，打垮城堡消滅壞史萊姆！四種毛球：紅色普通、藍色自動分三顆、黃色又重又猛、黑色會爆炸。50 關闖關（後面有戴頭盔的硬史萊姆），也能雙人或連線對轟。',
+  desc:'拉開彈弓，把毛球射向木頭、冰塊、石頭搭的城堡，打垮城堡消滅壞史萊姆！四種毛球：紅色普通、藍色自動分三顆、黃色又重又猛、黑色會爆炸。200 關闖關（後面有戴頭盔的硬史萊姆），也能雙人或連線對轟。',
   goal:'闖關：用手上的毛球消滅全部史萊姆，剩越多毛球星星越多。對轟：兩邊輪流射，先把對方史萊姆全部打倒的贏。',
   stages:STAGES.map(s=>s.n),stars:STAGES.map(s=>s.stars),
   stageGoal:i=>STAGES[i].n+'：史萊姆 '+specOf(i,false).filter(o=>o.k==='slm').length+' 隻，毛球 '+STAGES[i].am.map(a=>AMMO[a].n).join('、')+'。（對轟模式用這關的場景）',
