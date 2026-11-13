@@ -10,7 +10,7 @@ function shade(hex,k){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&255
 const THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 function load(){ const K=window.ARCADE_GAMES&&window.ARCADE_GAMES.kart; if(window.THREE) return Promise.resolve(); if(K&&K.load) return K.load();
   return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=THREE_URL; s.onload=()=>res(); s.onerror=()=>{ s.remove(); rej(new Error('three')); }; document.head.appendChild(s); }); }
-// 50 關：名稱、場景、王牌名字、王牌顏色、王牌機種（最後一關固定是天際決戰）
+// 前 50 關：名稱、場景、王牌名字、王牌顏色、王牌機種（最後一關固定是天際決戰）
 const AS=[['晴空海峽','sea','銀翼','#c8d0dc','jet'],['翡翠群島','isle','紅隼','#e04a3a','prop'],['黃昏峽谷','canyon','赤狐','#ff7a2a','jet'],['沙丘風暴','desert','沙暴','#d8a040','prop'],['雪峰冰原','ice','白狼','#e8f0ff','jet'],
   ['雷暴前線','storm','雷公','#6a7a90','stealth'],['火山熔岩','volcano','炎魔','#c8202a','jet'],['極光夜航','night','夜鴉','#3a3a4a','stealth'],['颶風之眼','typhoon','風神','#3ddbd9','jet'],
   ['楓紅山谷','autumn','楓葉','#d8502a','prop'],['熱帶雨林','jungle','翠蛇','#3a8a3a','jet'],['珊瑚環礁','reef','海燕','#3ac8e8','prop'],['晨曦海岸','seaDawn','曙光','#ffb07a','jet'],['紫霞峽谷','canyonDusk','紫鳶','#a85ad8','stealth'],
@@ -22,7 +22,12 @@ const AS=[['晴空海峽','sea','銀翼','#c8d0dc','jet'],['翡翠群島','isle'
   ['暴雪之夜','blizzardNight','白夜','#e0e8ff','stealth'],['颶風雷鳴','typhoonStorm','雷神','#2adbd9','jet'],['熔岩峽谷','canyonLava','熔岩','#ff4a1a','jet'],['平流層晨光','stratoDawn','晨星','#ffd8a0','stealth'],['夜色海峽','seaNight','暗影','#3a4a6a','stealth'],
   ['雲海之上','stratoDusk','雲龍','#ff9ac8','jet'],['極光風暴','auroraStorm','電光','#5affe0','stealth'],['火山雷暴','volcanoStorm','火雷','#ff2a2a','stealth'],['星海天頂','stratoNight','天狼','#9ab8ff','stealth'],['峽谷星夜','canyonNight','夜梟','#5a4a8a','stealth'],
   ['天際決戰','strato','蒼穹之王','#ffd23f','stealth']];
-const STAGES=AS.map((a,i)=>{ const k=i/(AS.length-1); return {name:a[0],th:a[1],ace:a[2],acol:a[3],am:a[4],k,stars:1+Math.round(k*4),kills:5+Math.round(k*5),maxE:2+Math.round(k*2.4),
+/* 200 關：前 49 關不變，第 50～199 關用前面的場景重新組合（王牌更強），第 200 關是天際決戰 */
+const RN=['','Ⅱ','Ⅲ','Ⅳ','Ⅴ','Ⅵ'];
+{ const fin=AS.pop(),cnt={},A1=['銀','赤','蒼','黑','金','白','紫','翠','雷','霜','焰','影','星','鐵','風'],A2=['隼','鷹','鷲','狐','狼','龍','鴉','蛇','豹','鯊','梟','蝠','虎','燕'],CC=['#c8d0dc','#e04a3a','#ff7a2a','#3a3a4a','#ffc040','#f0f4ff','#a85ad8','#3a8a3a','#6a7a90','#a8d8f0','#ff4a1a','#5a4a8a','#9ab8ff','#8a8a90','#3ddbd9'];
+  for(let j=49;j<199;j++){ const src=(j*10+3)%49,b=AS[src],u=(j-49)/150; cnt[src]=(cnt[src]||0)+1; const ai=(j*5)%A1.length,bi=(j*3+1)%A2.length; AS.push([b[0]+' '+RN[cnt[src]],b[1],A1[ai]+A2[bi],CC[ai],u<.3?['jet','prop','jet'][j%3]:u<.7?['jet','stealth','prop'][j%3]:['stealth','jet','stealth'][j%3],src,.5+.5*u]); }
+  AS.push(fin); }
+const STAGES=AS.map((a,i)=>{ const k=a[6]!=null?a[6]:i<49?i/49:1; return {name:a[0],src:a[5]!=null?a[5]:i<49?i:49,th:a[1],ace:a[2],acol:a[3],am:a[4],k,stars:1+Math.round(k*4),kills:5+Math.round(k*5),maxE:2+Math.round(k*2.4),
   eturn:.62+.32*k,espd:112+18*k,eacc:.05-.032*k,edmg:1.6+2.4*k,efire:.75+.5*k,ahp:60+110*k,amis:k>.15?11-5*k:0,aspd:126+16*k,jcd:2.6-1.1*k}; });
 const TIPS=['敵機飛得慢、很少開火，先熟悉轉彎和自動開火。','小島很多，低空飛行小心別撞山。','峽谷的岩壁很高，敵機會躲在裡面。','沙塵讓視線變差，敵機開始會發射導彈。','雪山又高又尖，拉高才安全。',
   '雷雨雲裡看不清楚，還會打雷。','火山灰天空，熔岩海不能碰。','夜裡只看得到敵機的航行燈，跟著雷達找。','颶風會把飛機吹偏，敵機又快又準。',
@@ -37,6 +42,7 @@ const TIPS=['敵機飛得慢、很少開火，先熟悉轉彎和自動開火。'
   '最強的王牌：又快又會閃，導彈一直來。'];
 /* 舊版第 10 關（天際決戰）的過關紀錄搬到新的第 50 關 */
 try{ if(!localStorage.getItem('arcade.ace.mig50')){ if(localStorage.getItem('arcade.ace.w.9')==='1') localStorage.setItem('arcade.ace.w.49','1'); localStorage.removeItem('arcade.ace.w.9'); localStorage.setItem('arcade.ace.mig50','1'); } }catch(e){}
+try{ if(!localStorage.getItem('arcade.ace.mig200')){ if(localStorage.getItem('arcade.ace.w.49')==='1') localStorage.setItem('arcade.ace.w.199','1'); localStorage.removeItem('arcade.ace.w.49'); localStorage.setItem('arcade.ace.mig200','1'); } }catch(e){}
 const hasWin=i=>{ try{ return localStorage.getItem('arcade.ace.w.'+i)==='1'; }catch(e){ return false; } };
 const recWin=i=>{ try{ localStorage.setItem('arcade.ace.w.'+i,'1'); }catch(e){} };
 // 場景：天空上下顏色、霧、水（熔岩）、地面四層顏色、地形高度、太陽位置
@@ -444,7 +450,7 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   desc:'3D 追尾視角空戰！鏡頭跟在飛機後面，在海峽、群島、峽谷、雪山、雨林、雷雨、火山和極光夜空等 50 個戰場跟敵機纏鬥。機槍對準就自動開火，導彈會追蹤，被鎖定時翻滾閃避。打下敵機群後，王牌就會出現。可以兩個人一起合作。',
   goal:'打下指定數量的敵機，再擊落關底王牌就過關；三架飛機都被打下來就失敗。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
-  stageGoal:i=>STAGES[i].name+'（王牌：'+STAGES[i].ace+'）：'+TIPS[i]+' 先打下 '+STAGES[i].kills+' 架敵機。',
+  stageGoal:i=>STAGES[i].name+'（王牌：'+STAGES[i].ace+'）：'+TIPS[STAGES[i].src]+' 先打下 '+STAGES[i].kills+' 架敵機。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人合作',kb:true}],
   help:[['← →','左右轉彎'],['↑ ↓','↑ 拉高、↓ 俯衝（放開會慢慢改平）'],['機槍','敵機在準星附近就自動開火'],['K 或 空白鍵','發射追蹤導彈（紅色菱形＝已鎖定）'],['J','翻滾閃避，甩掉來襲導彈'],['雙人','1P：WASD＋F 導彈、G 閃避　2P：方向鍵＋, 導彈、. 閃避']],
   touchHelp:[['方向盤','轉彎、拉高俯衝'],['導彈','發射追蹤導彈'],['閃避','翻滾甩掉導彈']],

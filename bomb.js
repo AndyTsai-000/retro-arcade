@@ -128,7 +128,10 @@ const STAGES=[
     spiral:[(s,d)=>(x,y)=>{ const dx=x-7,dy=y-6,c=Math.max(Math.abs(dx),Math.abs(dy)); if(c===0||c%2) return false; const gx=c%4===0?(s%2?c:-c):(s%2?-c:c); return !(dx===gx&&Math.abs(dy)<=1||dy===gx&&Math.abs(dx)<=1); },'柱子繞成螺旋，越往中間越難走。']};
   const ORDER=['sym','rooms','diag','ring','lanes','cross','dots','spiral'];
   for(let k=0;k<50;k++){ const sc=(k*17+3)%50,b=STAGES[sc],fam=ORDER[k%ORDER.length],u=k/49,f=FAM[fam];
-    STAGES.push(Object.assign({},b,{name:b.name+'Ⅱ',info:f[1]+'（'+b.name+'的場景）',solid:f[0](k*31+7,.2+u*.14),box:+(.68+u*.14).toFixed(2),drop:+(.46-u*.06).toFixed(2),rocks:Math.round(10+u*6)})); } }
+    STAGES.push(Object.assign({},b,{name:b.name+'Ⅱ',info:f[1]+'（'+b.name+'的場景）',solid:f[0](k*31+7,.2+u*.14),box:+(.68+u*.14).toFixed(2),drop:+(.46-u*.06).toFixed(2),rocks:Math.round(10+u*6)})); }
+  /* 第 101～200 關：同樣的場景換新的柱子排法，越後面箱子越多、道具越少 */
+  for(let k=50;k<150;k++){ const sc=(k*17+3)%50,b=STAGES[sc],fam=ORDER[(k*3+1)%ORDER.length],u=.45+.55*(k-50)/99,f=FAM[fam];
+    STAGES.push(Object.assign({},b,{name:b.name+(k<100?'Ⅲ':'Ⅳ'),info:f[1]+'（'+b.name+'的場景）',solid:f[0](k*31+7,.2+u*.14),box:+(.68+u*.14).toFixed(2),drop:+(.46-u*.06).toFixed(2),rocks:Math.round(10+u*6)})); } }
 // 電腦強度：想多久出手一次、看到機會放水球的機率、一開始的水球威力與數量
 // hunt：會不會瞄準玩家放水球、去刺破被困的人；itemR：多遠內的道具會去撿；cap：水球數與威力上限；slow：移動速度倍率；flee：看到危險後多久才反應
 const DIFF={easy:{think:[.55,.9],bombP:.3,power:1,maxB:1,hunt:0,itemR:3,cap:2,slow:.82,flee:.3},normal:{think:[.15,.28],bombP:.75,power:1,maxB:1,hunt:1,itemR:8,cap:7,slow:1,flee:.08},hard:{think:[.07,.14],bombP:.97,power:2,maxB:2,hunt:1,itemR:8,cap:7,slow:1,flee:.08}};
@@ -683,7 +686,7 @@ function thumb(ctx,w,h,t){
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={_draw:drawChar,_item:drawItem,
   name:'水球炸翻天',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
-  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。100 關、50 個場景（村莊、沙漠、冰原、海盜船、海底、萬聖節、雪人村、天空之城、夜市廟會、熊貓竹林、恐龍谷、外星基地、童話城堡、星空遊樂園…）、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
+  desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。200 關、50 個場景（村莊、沙漠、冰原、海盜船、海底、萬聖節、雪人村、天空之城、夜市廟會、熊貓竹林、恐龍谷、外星基地、童話城堡、星空遊樂園…）、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
   goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困。沒有針被困住就會出局。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一定一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多）。分隊時隊友被困住，走過去碰一下就能救出來。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
   variants:[{id:'easy',label:'電腦：簡單'},{id:'normal',label:'電腦：中等',def:true},{id:'hard',label:'電腦：困難'}],

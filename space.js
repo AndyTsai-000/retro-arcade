@@ -5,7 +5,7 @@ const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PIX='"Pres
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,k)=>a+(b-a)*k,TAU=Math.PI*2;
 function mul(seed){ let a=seed>>>0||1; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
-// 100 關：難度照關卡平滑上升；原本的十關保留原紀錄（rec）
+// 200 關：難度照關卡平滑上升；原本的十關保留原紀錄（rec）
 const OLD10=[0,5,11,16,22,27,33,38,44,49];
 const STAGES=[
   ['初航星帶','#050a24','#10245a','#3d6bff','#6fb4ff','#4f9dff'],
@@ -109,6 +109,8 @@ const STAGES=[
   ['終焉星環','#12030c','#3e0f2b','#f91fa2','#f986b6','#ff33de'],
   ['銀河之心','#110311','#3c0f3d','#f51ff9','#f986e6','#ca33ff']
 ].map((a,i,A)=>({name:a[0],sky:[a[1],a[2]],neb:a[3],pl:a[4],boss:a[5],stars:Math.min(5,Math.ceil((i+1)/20)),k:.5+.88*i/(A.length-1),len:Math.round(42+i*.3),rec:OLD10.includes(i)?OLD10.indexOf(i):10+i}));
+/* 第 101～200 關：用前面的星域重新組合，敵人更多更快 */
+{ const RN=['','Ⅱ','Ⅲ','Ⅳ'],cnt={}; for(let j=100;j<200;j++){ const src=(j*13+5)%100,b=STAGES[src]; cnt[src]=(cnt[src]||0)+1; STAGES.push(Object.assign({},b,{name:b.name+' '+RN[cnt[src]],stars:5,k:.95+.43*(j-100)/99,len:Math.round(72+(j-100)*.06),rec:10+j,src})); } }
 const COL=['#3ddbd9','#ffd23f','#ff7eb6','#86dc4f'];
 /* ---------- 精靈圖快取（有光暈的東西先畫好，畫面才順） ---------- */
 const CACHE={};
@@ -300,7 +302,7 @@ function thumb(ctx,w,h,t){ stageShow(ctx,w,h,16,t); }
 function preview(ctx,w,h,L,t){ L=L||{}; ctx.save(); ctx.scale(w/W,h/H); drawBg(ctx,0,t); put(ctx,shipSpr(L.color||'#3ddbd9',L.ship||'0'),W/2,H/2,0,3); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).space={
   name:'太空艦隊',tag:'STAR FLEET',color:'#6fb4ff',
-  desc:'縱向捲軸射擊：戰機會自動開火，你只要閃子彈、撿武器，每個星域的最後打巨大的王。共 100 關，過一關開下一關。',
+  desc:'縱向捲軸射擊：戰機會自動開火，你只要閃子彈、撿武器，每個星域的最後打巨大的王。共 200 關，過一關開下一關。',
   goal:'躲開子彈撐到王出現，打倒王就過關。撿「武」升級武器、「盾」擋一次、「爆」多一顆炸彈。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),stageShow,stageGoal:si=>STAGES[si].name+'：撐過敵機，打倒最後的王。白點是你的中彈位置，只有那裡被打到才算。',
   stageBest:i=>{ try{ const v=localStorage.getItem('arcade.space.w.'+STAGES[i].rec); return v?'最高 '+v:''; }catch(e){ return ''; } },

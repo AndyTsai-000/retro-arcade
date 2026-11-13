@@ -18,7 +18,11 @@ const ST0=[['晨曦海灣','sea','王牌小鷹','#ffb02a'],['棉花糖雲海','c
   ['夜空城塔','cityTower','鐵塔鷹','#ffa82a'],['極夜冰原','iceNight','冰原狼','#9ac8ff'],['火山雷雲','volcanoStorm','雷火鳳','#ff2a4a'],['星河平流層','stratoNight','銀河號','#b0c8ff'],['日冕高空','stratoDawn','太陽鳥','#ffb83a'],
   ['平流層決戰','strato','天空王者','#ffd23f']];
 // 難度：前面敵人少、子彈慢，後面慢慢變多變快；關底王牌血量、招式也越來越多
-const STAGES=ST0.map(([name,th,opp,col],i)=>{ const k=i/(ST0.length-1); return {name,th,opp,col,stars:1+Math.round(k*4),k,len:70+k*30,wave:2.6-1.2*k,efire:.35+.5*k,bspd:170+75*k,bossHp:150+190*k}; });
+/* 200 關：前 49 關不變，第 50～199 關用前面的場景重新組合（王牌更強），第 200 關是平流層決戰 */
+{ const RN=['','Ⅱ','Ⅲ','Ⅳ','Ⅴ','Ⅵ'],fin=ST0.pop(),cnt={},A1=['鋼翼','火焰','閃電','暗影','黃金','冰霜','烈風','星光','雷鳴','翡翠','赤紅','銀河','流星','暴風','月影'],A2=['鷹','隼','鯊','龍','狐','蝠','梟','鴉','豹','燕','鯨','狼','蜂','鷲'],CC=['#ffb02a','#ff7eb6','#ff5a3a','#8a6aff','#ffd23f','#9adcff','#3ddbd9','#c8ff6a','#c8d040','#3ac84a','#ff4a1a','#b0c8ff','#ff5ad4','#5a7a9a','#e0e0ff'];
+  for(let j=49;j<199;j++){ const src=(j*10+3)%49,b=ST0[src],u=(j-49)/150; cnt[src]=(cnt[src]||0)+1; const ai=(j*4+2)%A1.length,bi=(j*3+1)%A2.length; ST0.push([b[0]+' '+RN[cnt[src]],b[1],A1[ai]+A2[bi],CC[ai],src,.5+.5*u]); }
+  ST0.push(fin); }
+const STAGES=ST0.map(([name,th,opp,col,src,kk],i)=>{ const k=kk!=null?kk:i<49?i/49:1; return {name,th,opp,col,src:src!=null?src:i<49?i:49,stars:1+Math.round(k*4),k,len:70+k*30,wave:2.6-1.2*k,efire:.35+.5*k,bspd:170+75*k,bossHp:150+190*k}; });
 const TIPS=['敵機很少、子彈很慢，練習用。','雲很多，雲裡的敵機看不清楚。','開始有俯衝的敵機，記得上下閃。','地上會有防空砲，貼地飛要小心。','冰山很高，別撞到地形。',
   '暴風雨會打雷，敵機也變多了。','火山灰裡有轟炸機，先打掉牠們。','夜裡看不清楚，跟著敵機的燈打。','颱風會把飛機上下吹動。',
   '櫻花花瓣飄滿天，小心別看花了眼。','紅葉林上空風很穩，適合練習閃避。','城市大樓很高，別飛太低。','彩虹雲裡會冒出敵機。','雪花紛飛，敵機的白色機身不好認。',
@@ -32,6 +36,7 @@ const TIPS=['敵機很少、子彈很慢，練習用。','雲很多，雲裡的�
   '最強的王牌：彈幕、導彈、俯衝全都有。'];
 /* 舊版第 10 關（平流層決戰）的過關紀錄搬到新的最後一關 */
 try{ if(!localStorage.getItem('arcade.sky.mig50')){ if(localStorage.getItem('arcade.sky.w.9')==='1') localStorage.setItem('arcade.sky.w.'+(ST0.length-1),'1'); localStorage.removeItem('arcade.sky.w.9'); localStorage.setItem('arcade.sky.mig50','1'); } }catch(e){}
+try{ if(!localStorage.getItem('arcade.sky.mig200')){ if(localStorage.getItem('arcade.sky.w.49')==='1') localStorage.setItem('arcade.sky.w.199','1'); localStorage.removeItem('arcade.sky.w.49'); localStorage.setItem('arcade.sky.mig200','1'); } }catch(e){}
 const hasWin=i=>{ try{ return localStorage.getItem('arcade.sky.w.'+i)==='1'; }catch(e){ return false; } };
 const recWin=i=>{ try{ localStorage.setItem('arcade.sky.w.'+i,'1'); }catch(e){} };
 const TH={sea:{sky:['#7cc8ff','#d8f0ff'],far:'#7aa8c8',land:'#5fbf60',land2:'#3f8f40',water:'#2a8ad8'},cloud:{sky:['#ffd8ef','#e8f0ff'],far:'#c8b8e8',land:'#c8e8a0',land2:'#9ac870'},
@@ -306,7 +311,7 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   desc:'橫向捲軸空戰！Q 版小飛機自動開火往前飛，打下敵機群、防空砲和轟炸機，撿補給升級火力、補導彈，最後跟關底的王牌一對一纏鬥。兩個人可以一起合作，50 片天空（海灣、雲海、城市、雪原、極光…）一關比一關難。',
   goal:'一路往前飛到關底，打下王牌就過關；三架飛機都被打下來就失敗。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
-  stageGoal:i=>STAGES[i].name+'（關底王牌：'+STAGES[i].opp+'）：'+TIPS[i]+' 打下王牌就過關。',
+  stageGoal:i=>STAGES[i].name+'（關底王牌：'+STAGES[i].opp+'）：'+TIPS[STAGES[i].src]+' 打下王牌就過關。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人合作',kb:true}],
   help:[['↑ ↓ ← →','移動（飛機會自動開火）'],['K 或 空白鍵','發射追蹤導彈'],['J','翻滾閃避（翻滾時不會被打到）'],['雙人','1P：WASD＋F 導彈、G 閃避　2P：方向鍵＋, 導彈、. 閃避']],
   touchHelp:[['方向盤','移動，會自動開火'],['導彈','發射追蹤導彈'],['閃避','翻滾躲子彈']],
