@@ -1,7 +1,7 @@
-// 彩泡連連發：瞄準發射，三顆以上同色就消掉，懸空的一起掉。單人闖關 100 關，過一關開下一關。
+// 彩泡連連發：瞄準發射，三顆以上同色就消掉，懸空的一起掉。單人闖關 200 關，過一關開下一關。
 (function(){
 'use strict';
-const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LV=100;
+const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2,LV=200;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 function mul(seed){ let a=seed>>>0||1; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -10,9 +10,9 @@ const COL=['#ff5d6d','#4f9dff','#ffd23f','#5fd068','#c56bff','#ff9d3d'],MARK=['�
 const THEMES=[{n:'晴空草原',a:'#8fd8ff',b:'#d8f6c8',f:'#4f9a5a'},{n:'粉彩糖果',a:'#ffc4e0',b:'#fff0d8',f:'#e87aa8'},{n:'碧海沙灘',a:'#5ac8e8',b:'#f4e4b0',f:'#3a8aa8'},{n:'黃昏山谷',a:'#ff9a6a',b:'#ffe0a0',f:'#a8584a'},{n:'星空夜晚',a:'#141a48',b:'#4a3a8a',f:'#3a3a7a'}];
 /* 關卡：越後面排數、顏色越多，天花板降得越快 */
 const starsOf=i=>Math.min(5,1+Math.floor(i/20));
-function levelOf(i){ const r=mul(i*131+7),rows=Math.min(9,3+Math.floor(i/14)+(i%5===4?1:0)),nc=Math.min(6,3+Math.floor(i/22)),drop=Math.max(3,8-Math.floor(i/20)),kind=i%7,g=[];
+function levelOf(i){ const r=mul(i*131+7),rows=Math.min(9,3+Math.floor(i/14)+(i%5===4?1:0)),nc=Math.min(6,3+Math.floor(i/22)),drop=Math.max(3,8-Math.floor(i/20)),kind=i<100?i%7:i%10,g=[]; /* 第 101 關起多三種排法 */
   const pal=[]; const base=[0,1,2,3,4,5]; for(let k=5;k>0;k--){ const q=Math.floor(r()*(k+1)),t=base[k]; base[k]=base[q]; base[q]=t; } for(let k=0;k<nc;k++) pal.push(base[k]);
-  for(let y=0;y<rows;y++){ const n=y%2?COLS-1:COLS,row=[]; for(let x=0;x<n;x++){ const mx=(n-1)/2,dx=Math.abs(x-mx),ny=y/Math.max(1,rows-1); let on=true; if(kind===1) on=dx<=mx*(1-ny*.75)+.5; else if(kind===2) on=dx>=mx*ny*.72-.5; else if(kind===3) on=(x+(y>>1))%4!==3||y===0; else if(kind===4) on=y===0||dx>1.5; else if(kind===5) on=y<2||(x%3!==1); const block=Math.floor((x+y*(kind===6?1:0))/2)+Math.floor(y/2)*(kind===0?1:2); let v=on?pal[(r()<.62?block:Math.floor(r()*nc))%nc]:-1; if(on&&i>=40&&r()<Math.min(.08,(i-30)*.0012)&&y>0) v=9; row.push(v); } g.push(row); }
+  for(let y=0;y<rows;y++){ const n=y%2?COLS-1:COLS,row=[]; for(let x=0;x<n;x++){ const mx=(n-1)/2,dx=Math.abs(x-mx),ny=y/Math.max(1,rows-1); let on=true; if(kind===1) on=dx<=mx*(1-ny*.75)+.5; else if(kind===2) on=dx>=mx*ny*.72-.5; else if(kind===3) on=(x+(y>>1))%4!==3||y===0; else if(kind===4) on=y===0||dx>1.5; else if(kind===5) on=y<2||(x%3!==1); else if(kind===7) on=y<1||(x+y)%2===0||dx<1; else if(kind===8) on=y<2||dx>mx*.45||dx<1; else if(kind===9) on=((x+y*2)%5)!==0; const block=Math.floor((x+y*(kind===6?1:0))/2)+Math.floor(y/2)*(kind===0?1:2); let v=on?pal[(r()<.62?block:Math.floor(r()*nc))%nc]:-1; if(on&&i>=40&&r()<Math.min(.08,(i-30)*.0012)&&y>0) v=9; row.push(v); } g.push(row); }
   return {g,pal,drop,theme:THEMES[Math.floor(i/20)%5],stars:starsOf(i)}; }
 const nbr=(y,x)=>y%2?[[y,x-1],[y,x+1],[y-1,x],[y-1,x+1],[y+1,x],[y+1,x+1]]:[[y,x-1],[y,x+1],[y-1,x-1],[y-1,x],[y+1,x-1],[y+1,x]];
 const key=(y,x)=>y*100+x;
@@ -85,7 +85,7 @@ function create(env,opts){
 function stageShow(ctx,w,h,si,t){ const L=levelOf(si); ctx.save(); ctx.scale(w/W,h/H); scenery(ctx,L.theme,t,W,H); ctx.fillStyle='rgba(255,255,255,.42)'; rr(ctx,FX-6,FY-6,FW+12,H-FY,14); ctx.fill(); L.g.forEach((row,y)=>row.forEach((v,x)=>{ if(v>=0) ctx.drawImage(sprOf(v),FX+R+x*D+(y%2?R:0)-18,FY+R+y*ROWH-18,36,36); })); critter(ctx,SX+58,SY+6,t,false); const c0=L.pal[0]; ctx.drawImage(sprOf(c0),SX-18,SY-14,36,36); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bubble={
   name:'彩泡連連發',tag:'BUBBLE SHOT',color:'#ff7eb6',
-  desc:'瞄準發射，湊滿三顆同色泡泡就消掉，懸空的會一起掉下來！共 100 關，過一關開下一關。',
+  desc:'瞄準發射，湊滿三顆同色泡泡就消掉，懸空的會一起掉下來！共 200 關，過一關開下一關。',
   goal:'把彩色泡泡全部消掉就過關。連續沒消到，天花板會往下降，泡泡碰到紅線就失敗。灰色石頭消不掉，要讓它懸空掉下來。',
   stages:Array.from({length:LV},(_,i)=>'第 '+(i+1)+' 關'),stars:Array.from({length:LV},(_,i)=>starsOf(i)),stageGrid:true,
   stageLocked:i=>i>0&&getRec(i-1)==null,stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v; },
