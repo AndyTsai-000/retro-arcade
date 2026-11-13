@@ -879,10 +879,15 @@ function create(env,opts){
     // 風、水窪
     let push=0; if(S.wind&&windT>0) push=windDir*windF;
     let inP=false; for(const pd of lv.puddles) if(Math.hypot(p.x-pd.x,(p.d-pd.d)*.6)<pd.r&&p.v>40){ inP=true; p.vx+=(Math.random()-.5)*400*dt; } if(inP&&!p.wasIn) sfx(p,'pop'); p.wasIn=inP;
-    const gz=JOB==='walk'?null:gasAt(p.d); p.x=JOB==='walk'?clamp(p.x+(p.vx+push*.3)*dt,WALK0(),WALK0()+20):clamp(p.x+(p.vx+push)*dt,10,gz?GAS_X1:ROADW-10); p.lean=lerp(p.lean,I.dir*M,Math.min(1,dt*8));
+    const SWX=JOB==='car'?22:30,oldX=p.x,gz=JOB==='walk'?null:gasAt(p.d); p.x=JOB==='walk'?clamp(p.x+(p.vx+push*.3)*dt,ROADW-WALK0()-20,WALK0()+20):clamp(p.x+(p.vx+push)*dt,-SWX,gz?GAS_X1:ROADW+SWX); p.lean=lerp(p.lean,I.dir*M,Math.min(1,dt*8));
     const lastD=p.d; p.d=Math.max(-40,Math.min(lv.L+200,p.d+p.v*dt));
-    if(p.x>ROADW-10&&JOB!=='walk'){ const g=gz||gasAt(lastD); if(!g||p.d<g.d+GZ0||p.d>g.d+GZ1){ const gg=g||lv.gas.reduce((a,b)=>Math.abs(b.d-p.d)<Math.abs(a.d-p.d)?b:a); p.d=clamp(p.d,gg.d+GZ0,gg.d+GZ1); if(Math.abs(p.v)>40&&!p.bot) sfx(p,'bump'); p.v*=.2; } /* 站區出口外面是路緣 */
+    if(p.x>ROADW+SWX+.5&&JOB!=='walk'){ const g=gz||gasAt(lastD); if(!g||p.d<g.d+GZ0||p.d>g.d+GZ1){ const gg=g||lv.gas.reduce((a,b)=>Math.abs(b.d-p.d)<Math.abs(a.d-p.d)?b:a); p.d=clamp(p.d,gg.d+GZ0,gg.d+GZ1); if(Math.abs(p.v)>40&&!p.bot) sfx(p,'bump'); p.v*=.2; } /* 站區出口外面是路緣 */
       const g2=gasAt(p.d); if(g2&&Math.abs(p.d-g2.d)<26&&Math.abs(p.x-GAS_ISL)<13){ p.x=p.x<GAS_ISL?GAS_ISL-13:GAS_ISL+13; } } /* 加油島擋住 */
+    // 人行道：衝上去會震一下，有行人、電線桿、停著的機車，警察看到會開單
+    if(JOB!=='walk'&&!p.bot){ const sw=x=>x>ROADW+1||x<-1,onSW=sw(p.x)&&!(gz&&p.x>ROADW+SWX);
+      if(onSW&&!sw(oldX)&&Math.abs(p.v)>110){ p.v*=.7; sfx(p,'bump'); pop(p,'碰！衝上人行道','#ffb36b'); }
+      if(onSW&&!lv.inter.some(I=>p.d>I.d-38&&p.d<I.d+128)){ if(!p.warned.sw){ p.warned.sw=1; pop(p,(JOB==='car'?'開':'騎')+'上人行道！小心行人，警察會開單','#ffb36b'); } p.copCD=(p.copCD||0)-dt;
+        if(p.copCD<=0&&Math.abs(p.v)>20&&Math.random()<dt*(JOB==='car'?.22:.12)){ const fine=JOB==='car'?1200:600; p.copCD=10; p.money.fine+=fine; p.swFine=(p.swFine||0)+1; p.log.push((JOB==='car'?'開':'騎')+'上人行道被開單 $'+fine); pop(p,'🚓 人行道被警察開單 -$'+fine,'#ff5d5d'); sfx(p,'trap'); fx.push({k:'flash',t:0,n:p.n}); } } }
     if(JOB==='car'&&p.phase==='drop'&&p.brakeHard>.9&&p.v>120&&!p.bot){ p.brakeHard=-2; if(p.food>1){ p.food--; pop(p,'急煞！乘客往前撲','#ffb36b'); } }
     { const T=lv.turns.find(T=>p.d>T.d0-6&&p.d<T.e),lim=T?(T.big?150:205):0; if(T&&p.v>lim&&p.inv<=0&&!p.bot){ p.v-=260*dt; if(p.v>lim+45) crash(p,'轉彎太快，滑倒了！'); else if(!p.warned.turnSlip){ p.warned.turnSlip=1; pop(p,'轉彎太快了！放慢一點','#ffb36b'); } } if(!T) p.warned.turnSlip=0; }
     if(p.v>0&&JOB!=='walk') for(const q of ps){ if(q===p||q.done||q.fall>0||Math.abs(q.x-p.x)>18) continue; const g=q.d-p.d; if(g>=0&&g<28){ if(lastD<=q.d-28+1){ p.d=q.d-28; if(p.v>q.v+40&&!p.bot) sfx(p,'bump'); p.v=Math.min(p.v,Math.max(0,q.v)); } } } /* 外送員之間會擋住，不會穿過去 */
@@ -893,12 +898,14 @@ function create(env,opts){
     for(const h of lv.holes) if(Math.hypot(p.x-h.x,p.d-h.d)<h.r+5&&!(h.hit&1<<p.n)){ h.hit=(h.hit||0)|1<<p.n; if(p.v>140){ p.v*=.6; if(p.phase==='drop'&&p.inv<=0){ if(p.food>1){ p.food--; pop(p,JW.spill,'#ffb36b'); sfx(p,'bump'); } else crash(p,'坑洞'); } } else sfx(p,'land'); }
     // 撞車、撞人
     if(p.inv<=0){
-      for(const e of lv.veh) if(Math.abs(e.d-p.d)<80&&rectHit(p,e.x,e.d,e.w,e.h)){ crash(p,e.k==='bus'?'撞到公車':e.k==='scoot'||e.k==='tuk'?'撞到機車':'撞到車'); break; }
+      for(const e of lv.veh) if(Math.abs(e.d-p.d)<80&&rectHit(p,e.x,e.d,e.w,e.h)){ crash(p,JOB==='walk'?'被車撞到了！過馬路要看車':e.k==='bus'?'撞到公車':e.k==='scoot'||e.k==='tuk'?'撞到機車':'撞到車'); break; }
+      if(G3&&p.fall<=0&&(p.x>ROADW-12||p.x<12)){ const ob=G3.obs.find(o2=>Math.abs(o2.d-p.d)<70&&rectHit(p,o2.x,o2.d,o2.w,o2.h)); if(ob){ if(JOB==='walk'){ p.d=lastD; p.v=0; } else crash(p,{pole:'撞到電線桿',tree:'撞到路樹',scoot:'撞到停在路邊的機車',bus:'撞到公車亭'}[ob.k]||'撞到東西'); }
+        if(JOB!=='walk'&&p.fall<=0&&(p.x>ROADW+1||p.x<-1)){ let hit=false; G3.ambPeds(p.d-40,p.d+40,t,(x,d)=>{ if(!hit&&rectHit(p,x,d,7,7)) hit=true; }); if(hit){ p.money.fine+=300; p.log.push('撞到人行道上的行人，賠 $300'); crash(p,'撞到人行道上的行人！'); } } }
       const cr=[]; for(const I2 of lv.inter) if(Math.abs(I2.d-p.d)<200){ crossers(lv,I2,simT,cr); crossPeds(lv,I2,simT,cr); }
-      for(const e of cr){ if(e.k==='ped'){ if(rectHit(p,e.x,e.d,10,10)){ crash(p,'撞到行人'); break; } } else if(!e.warn&&rectHit(p,e.x,e.d,e.h,e.w)){ crash(p,e.k==='runner'?'闖紅燈的機車！':'撞到橫向來車'); break; } }
+      for(const e of cr){ if(e.k==='ped'){ if(JOB!=='walk'&&rectHit(p,e.x,e.d,10,10)){ crash(p,'撞到行人'); break; } } else if(!e.warn&&rectHit(p,e.x,e.d,e.h,e.w)){ crash(p,e.k==='runner'?'闖紅燈的機車！':'撞到橫向來車'); break; } }
       for(const pk of lv.parked){ if(rectHit(p,LANE[4]+6,pk.d,28,52)){ crash(p,'撞到路邊停車'); break; } if(pk.doorT>0&&rectHit(p,LANE[4]-20,pk.d-4,14,18)){ crash(p,'車門突然打開'); break; } }
       for(const st of lv.stalls) if(rectHit(p,LANE[4]-4,st.d,40,st.len)){ crash(p,'撞到攤販'); break; }
-      for(const lc of locals) if(lc.n===p.n&&rectHit(p,lc.x,lc.d,10,12)){ crash(p,lc.k==='dog'?'撞到狗狗':'撞到亂穿越的行人'); break; }
+      for(const lc of locals) if(lc.n===p.n&&!(JOB==='walk'&&lc.k==='ped')&&rectHit(p,lc.x,lc.d,10,12)){ crash(p,lc.k==='dog'?'撞到狗狗':'撞到亂穿越的行人'); break; }
       if(lv.parade){ const pd=lv.parade.d0+lv.parade.v*Math.max(0,simT); if(p.x>LANE[3]-40&&Math.abs(p.d-pd)<lv.parade.len/2+14) crash(p,'撞進廟會陣頭'); }
     }
     // 取餐、送餐、加油：在機車道停下來
