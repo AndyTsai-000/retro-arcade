@@ -1003,7 +1003,7 @@ function create(env,opts){
     if(G3){ for(const l of G3.labels()){ const q=G3.project(l.x,l.d,l.h,vx,vw); if(!q) continue; if(l.k==='warn'){ c.fillStyle='#ff3030'; c.strokeStyle='#fff'; c.lineWidth=3; c.font='900 34px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.strokeText('！',q[0],q[1]); c.fillText('！',q[0],q[1]); } else { c.globalAlpha=l.a; c.font='700 11px '+TC; const w2=c.measureText(l.txt).width+10; c.fillStyle='rgba(11,10,28,.6)'; rr(c,q[0]-w2/2,q[1]-16,w2,15,7); c.fill(); c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(l.txt,q[0],q[1]-8.5); c.globalAlpha=1; } } }
     else drawCockpit(c,vx,vw,p.look,p.v,p.lean,t,mL,mR,p.fuel,S.night,navI);
     if(p.fall>0){ c.fillStyle='rgba(255,60,60,'+Math.min(.35,p.fall*.3)+')'; c.fillRect(vx,0,vw,H); for(let i=0;i<5;i++){ const a=t*5+i*1.26; c.fillStyle='#ffd23f'; c.font='22px sans-serif'; c.textAlign='center'; c.fillText('★',vx+vw/2+Math.cos(a)*90,H*.42+Math.sin(a)*30); } }
-    if(G3&&JOB==='car') drawCab(vx,vw,p);
+    if(G3&&JOB==='car') drawCab(vx,vw,p,navI);
     // 取餐／送餐進度
     if(p.stopT>0){ const w2=160; c.fillStyle='rgba(11,10,28,.8)'; rr(c,vx+vw/2-w2/2-6,H*.6-6,w2+12,30,10); c.fill(); c.fillStyle='#3a3670'; rr(c,vx+vw/2-w2/2,H*.6+8,w2,10,5); c.fill(); c.fillStyle='#86dc4f'; rr(c,vx+vw/2-w2/2,H*.6+8,w2*p.stopT/.8,10,5); c.fill();
       c.fillStyle='#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(p.stopK==='gas'?'加油中…':(p.phase==='pick'?JW.pick:JW.drop)+'中…',vx+vw/2,H*.6); }
@@ -1015,17 +1015,46 @@ function create(env,opts){
     hud(p,vx,vw,n);
     c.restore(); }
   /* Uber 開車：車內儀表板、方向盤、A 柱、車內後照鏡（台灣方向盤在左，靠左行駛的城市在右） */
-  function drawCab(vx,vw,p){ const s=vw/800,wx=vx+vw/2+M*-vw*.2,top=H*.8,night=S.night,dash=night?'#141418':'#24252c';
-    c.save(); c.fillStyle=night?'#0c0c10':'#1c1d22'; c.beginPath(); c.moveTo(vx,0); c.lineTo(vx+60*s,0); c.lineTo(vx+130*s,H*.62); c.lineTo(vx,H*.66); c.closePath(); c.fill(); c.beginPath(); c.moveTo(vx+vw,0); c.lineTo(vx+vw-60*s,0); c.lineTo(vx+vw-130*s,H*.62); c.lineTo(vx+vw,H*.66); c.closePath(); c.fill();
-    c.fillStyle=dash; c.beginPath(); c.moveTo(vx,H); c.lineTo(vx,top+10); c.quadraticCurveTo(vx+vw/2,top-34*s,vx+vw,top+10); c.lineTo(vx+vw,H); c.closePath(); c.fill(); c.fillStyle='rgba(255,255,255,.06)'; c.fillRect(vx,top+6,vw,3);
-    // 儀表
-    c.fillStyle='#08090c'; rr(c,wx-62*s,top-4,124*s,40*s,10*s); c.fill(); c.fillStyle=night?'#8fd8ff':'#bdeaff'; c.font='700 '+Math.round(24*s)+'px monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(Math.round(Math.abs(p.v)/250*60)+' km/h',wx,top+16*s);
+  function drawCab(vx,vw,p,navI){ const s=vw/800,cx=vx+vw/2,wx=cx-M*vw*.16,night=S.night,top=H*.73,kmh=Math.round(Math.abs(p.v)/250*60),PI=Math.PI;
+    c.save();
+    // A 柱
+    c.fillStyle=night?'#0c0c10':'#1c1d22'; c.beginPath(); c.moveTo(vx,0); c.lineTo(vx+60*s,0); c.lineTo(vx+130*s,top); c.lineTo(vx,top+20*s); c.closePath(); c.fill(); c.beginPath(); c.moveTo(vx+vw,0); c.lineTo(vx+vw-60*s,0); c.lineTo(vx+vw-130*s,top); c.lineTo(vx+vw,top+20*s); c.closePath(); c.fill();
+    // 儀表板（擋風玻璃下緣反光一條）
+    let g=c.createLinearGradient(0,top-24*s,0,H); g.addColorStop(0,night?'#1d1e24':'#3c3d44'); g.addColorStop(.18,night?'#141418':'#26272d'); g.addColorStop(1,night?'#060608':'#111114'); c.fillStyle=g;
+    c.beginPath(); c.moveTo(vx,H); c.lineTo(vx,top+16*s); c.bezierCurveTo(vx+vw*.3,top-18*s,vx+vw*.7,top-18*s,vx+vw,top+16*s); c.lineTo(vx+vw,H); c.closePath(); c.fill();
+    c.strokeStyle='rgba(255,255,255,.09)'; c.lineWidth=2; c.beginPath(); c.moveTo(vx,top+14*s); c.bezierCurveTo(vx+vw*.3,top-20*s,vx+vw*.7,top-20*s,vx+vw,top+14*s); c.stroke();
+    // 冷氣出風口
+    for(const ax of [cx+M*vw*.06,cx+M*vw*.42]){ c.fillStyle='#0d0d10'; rr(c,ax-34*s,top+40*s,68*s,26*s,6*s); c.fill(); c.strokeStyle='#2c2d33'; c.lineWidth=2*s; for(let i=1;i<4;i++){ c.beginPath(); c.moveTo(ax-30*s,top+40*s+i*6.5*s); c.lineTo(ax+30*s,top+40*s+i*6.5*s); c.stroke(); } }
+    // 儀表罩＋兩個指針錶＋中間數字
+    const gy=top+30*s; c.fillStyle=night?'#09090c':'#18191d'; c.beginPath(); c.ellipse(wx,gy+4*s,150*s,52*s,0,PI,0); c.fill();
+    const gauge=(gx,val,max,lab,step)=>{ const R=40*s,a0=PI*.75,a1=PI*2.25; let gg=c.createRadialGradient(gx,gy,4*s,gx,gy,R); gg.addColorStop(0,night?'#1a2a3a':'#ffffff'); gg.addColorStop(1,night?'#0c141e':'#d4d8de'); c.fillStyle=gg; c.beginPath(); c.arc(gx,gy,R,0,7); c.fill(); c.strokeStyle='#9aa0a8'; c.lineWidth=3*s; c.stroke();
+      c.strokeStyle=night?'#8fd8ff':'#222'; c.fillStyle=night?'#8fd8ff':'#222'; c.font='700 '+Math.max(7,Math.round(8*s))+'px sans-serif'; c.textAlign='center'; c.textBaseline='middle';
+      for(let v=0;v<=max;v+=step/2){ const a=a0+(a1-a0)*v/max,big=v%step===0; c.lineWidth=(big?2:1)*s; c.beginPath(); c.moveTo(gx+Math.cos(a)*R*.86,gy+Math.sin(a)*R*.86); c.lineTo(gx+Math.cos(a)*R*(big?.7:.78),gy+Math.sin(a)*R*(big?.7:.78)); c.stroke(); if(big&&R>30) c.fillText(String(v/(max>20?1:1)),gx+Math.cos(a)*R*.52,gy+Math.sin(a)*R*.52); }
+      const a=a0+(a1-a0)*Math.min(1,val/max); c.strokeStyle='#e8302a'; c.lineWidth=2.6*s; c.beginPath(); c.moveTo(gx-Math.cos(a)*6*s,gy-Math.sin(a)*6*s); c.lineTo(gx+Math.cos(a)*R*.82,gy+Math.sin(a)*R*.82); c.stroke(); c.fillStyle='#333'; c.beginPath(); c.arc(gx,gy,4.5*s,0,7); c.fill();
+      c.fillStyle=night?'#6aa8c8':'#666'; c.font='700 '+Math.max(6,Math.round(7*s))+'px sans-serif'; c.fillText(lab,gx,gy+R*.5); };
+    gauge(wx-74*s,Math.min(7,.8+kmh/22+(p.v>5?Math.sin(simT*3)*.15:0)),8,'x1000rpm',1); gauge(wx+74*s,kmh,160,'km/h',20);
+    c.fillStyle='#050608'; rr(c,wx-28*s,gy-14*s,56*s,30*s,5*s); c.fill(); c.fillStyle=night?'#8fd8ff':'#e8f4ff'; c.font='700 '+Math.round(20*s)+'px "Courier New",monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(Math.min(999,kmh)).padStart(3,'0'),wx,gy+1*s);
+    c.font='900 '+Math.round(10*s)+'px sans-serif'; c.fillStyle='rgba(80,220,120,.35)'; c.fillText('◀',wx-20*s,gy-24*s); c.fillText('▶',wx+20*s,gy-24*s); c.fillStyle='rgba(255,80,60,.6)'; c.fillText('▲',wx,gy-24*s);
+    if(JB.fuel){ c.fillStyle=p.fuel<20?'#ff6a5a':'#ffd23f'; c.fillRect(wx-22*s,gy+19*s,44*s*Math.max(0,Math.min(1,p.fuel/100)),3*s); }
     // 方向盤（跟著轉）
-    c.save(); c.translate(wx,top+44*s); c.rotate(p.lean*.55*M); c.strokeStyle='#0d0d10'; c.lineWidth=16*s; c.beginPath(); c.arc(0,0,88*s,Math.PI*1.05,Math.PI*1.95); c.stroke(); c.lineWidth=12*s; c.beginPath(); c.moveTo(-80*s,-18*s); c.lineTo(80*s,-18*s); c.stroke(); c.fillStyle='#2a2b32'; c.beginPath(); c.arc(0,-8*s,24*s,0,7); c.fill(); c.fillStyle='#ffd23f'; c.font='900 '+Math.round(12*s)+'px '+TC; c.fillText('U',0,-8*s); c.restore();
+    const wy=top+178*s,R=124*s,rot=p.lean*.55*M; c.save(); c.translate(wx,wy); c.rotate(rot);
+    c.strokeStyle='#121215'; c.lineWidth=17*s; for(const a of [PI+.42,-.42]){ c.beginPath(); c.moveTo(0,0); c.lineTo(Math.cos(a)*R,Math.sin(a)*R); c.stroke(); } c.lineWidth=15*s; c.beginPath(); c.moveTo(0,0); c.lineTo(0,R); c.stroke();
+    c.lineWidth=24*s; c.beginPath(); c.arc(0,0,R,0,7); c.stroke(); c.strokeStyle='rgba(255,255,255,.1)'; c.lineWidth=3*s; c.beginPath(); c.arc(0,0,R-7*s,PI*1.15,PI*1.85); c.stroke();
+    c.fillStyle='#1c1d22'; c.beginPath(); c.ellipse(0,6*s,46*s,38*s,0,0,7); c.fill(); c.strokeStyle='#2c2d33'; c.lineWidth=2*s; c.stroke(); c.fillStyle='#8a8e96'; c.beginPath(); c.ellipse(0,4*s,12*s,8*s,0,0,7); c.fill();
+    c.restore();
+    // 手臂＋手（握在十點和兩點）
+    const skin=p.look&&p.look.char==='bear'?'#b88a60':p.look&&p.look.char==='cat'?'#f4e8da':'#efc29e',shirt=(p.look&&p.look.shirt)||'#4f9dff';
+    for(const [a,sd] of [[PI+.62,-1],[-.62,1]]){ const hx=wx+Math.cos(a+rot)*R,hy=wy+Math.sin(a+rot)*R,bx=wx+sd*210*s,by=H+20*s,dx=bx-hx,dy=by-hy,l=Math.hypot(dx,dy),nx=-dy/l,ny=dx/l,w0=17*s,w1=30*s;
+      g=c.createLinearGradient(hx,hy,bx,by); g.addColorStop(0,skin); g.addColorStop(1,shade(skin,.8)); c.fillStyle=g; c.beginPath(); c.moveTo(hx+nx*w0,hy+ny*w0); c.lineTo(bx+nx*w1,by+ny*w1); c.lineTo(bx-nx*w1,by-ny*w1); c.lineTo(hx-nx*w0,hy-ny*w0); c.closePath(); c.fill();
+      c.fillStyle=shirt; const sx=hx+dx*.82,sy=hy+dy*.82; c.beginPath(); c.moveTo(sx+nx*w1*1.05,sy+ny*w1*1.05); c.lineTo(bx+nx*w1*1.15,by+ny*w1*1.15); c.lineTo(bx-nx*w1*1.15,by-ny*w1*1.15); c.lineTo(sx-nx*w1*1.05,sy-ny*w1*1.05); c.closePath(); c.fill();
+      c.save(); c.translate(hx,hy); c.rotate(Math.atan2(dy,dx)-PI/2); c.fillStyle=skin; c.beginPath(); c.ellipse(0,2*s,22*s,24*s,0,0,7); c.fill(); c.strokeStyle=shade(skin,.72); c.lineWidth=2*s; c.stroke();
+      c.strokeStyle=shade(skin,.7); c.lineWidth=1.6*s; for(let i=0;i<4;i++){ c.beginPath(); c.moveTo((i-1.5)*9*s,-14*s); c.lineTo((i-1.5)*9.5*s,6*s); c.stroke(); } c.restore(); }
+    // 手機（導航）夾在冷氣口上
+    if(navI){ const phx=cx+M*vw*.38,phy=top-46*s,k=.72*s; c.fillStyle='#202126'; rr(c,phx-6*s,top-4*s,12*s,48*s,4*s); c.fill(); c.save(); c.translate(phx+122*k,phy+176*k); c.scale(k,k); phoneNav(c,navI,t,night); c.restore(); }
     // 車內後照鏡
-    c.fillStyle='#111'; rr(c,vx+vw/2-70*s,6*s,140*s,30*s,8*s); c.fill(); const g=c.createLinearGradient(0,8*s,0,34*s); g.addColorStop(0,night?'#2a3048':'#9ab8d8'); g.addColorStop(1,night?'#141824':'#5a6a7a'); c.fillStyle=g; rr(c,vx+vw/2-64*s,10*s,128*s,22*s,6*s); c.fill();
+    c.fillStyle='#111'; rr(c,cx-70*s,6*s,140*s,30*s,8*s); c.fill(); g=c.createLinearGradient(0,8*s,0,34*s); g.addColorStop(0,night?'#2a3048':'#9ab8d8'); g.addColorStop(1,night?'#141824':'#5a6a7a'); c.fillStyle=g; rr(c,cx-64*s,10*s,128*s,22*s,6*s); c.fill();
     // 乘客（後座）
-    if(p.phase==='drop'){ c.fillStyle='#e8c8a8'; c.beginPath(); c.arc(vx+vw/2+M*24*s,22*s,7*s,0,7); c.fill(); c.fillStyle='#3a2a1a'; c.beginPath(); c.arc(vx+vw/2+M*24*s,19*s,7*s,Math.PI,0); c.fill(); }
+    if(p.phase==='drop'){ c.fillStyle='#e8c8a8'; c.beginPath(); c.arc(cx+M*24*s,22*s,7*s,0,7); c.fill(); c.fillStyle='#3a2a1a'; c.beginPath(); c.arc(cx+M*24*s,19*s,7*s,PI,0); c.fill(); }
     c.restore(); }
   /* 導航：目的地頭上的標籤、下一個路口的紅綠燈、像手機地圖的小地圖（取餐橘色、送餐藍色） */
   const PCK='#ff7a2a',DRP='#2f7cf6';
