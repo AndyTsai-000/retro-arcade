@@ -4,6 +4,13 @@
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
+/* 工作種類：速度、加速、轉向、車身大小、要不要加油、訂單距離倍率、估時速度；JW 是畫面上用的字 */
+const JOBS={moto:{v:250,acc:150,steer:150,cw:12,cl:28,fuel:1,dist:1,est:150},bike:{v:165,acc:105,steer:135,cw:10,cl:26,fuel:0,dist:.62,est:100},walk:{v:78,acc:140,steer:120,cw:8,cl:10,fuel:0,dist:.36,est:50},car:{v:265,acc:115,steer:105,cw:22,cl:44,fuel:1,dist:1.2,est:150}};
+const JWS={moto:{app:'外送王',pick:'取餐',drop:'送餐',picked:'取到餐了！',ip:'🍱',id:'🏠',pp:'取',pd:'送',to:'送到：',from:'取餐：',spill:'坑洞！湯灑出來了',ruin:'餐點翻了',ruinPop:'餐點全毀！賠 $80',item:'餐點',done:'送達！'},
+  car:{app:'Uber 司機',pick:'接客',drop:'送客',picked:'乘客上車了！',ip:'🙋',id:'📍',pp:'接',pd:'下',to:'目的地：',from:'接乘客：',spill:'坑洞！乘客嚇一跳',ruin:'乘客氣到下車',ruinPop:'乘客下車了！賠 $80',item:'乘客心情',done:'送到了！'}};
+JWS.bike=Object.assign({},JWS.moto,{spill:'坑洞！餐點晃了一下'}); JWS.walk=Object.assign({},JWS.moto,{spill:'絆了一下，湯灑出來了'});
+let JW=JWS.moto,JOB='moto';
+const CAR_DEST=['台北車站','市立醫院','國際機場','百貨公司','捷運站出口','夜市入口','科技大樓','大學正門','體育館','美術館','高鐵站','飯店門口'];
 const GZ0=-90,GZ1=150,GAS_X1=560,GAS_ISL=485; /* 加油站站區：沿路 -90～+150、橫向到 560，中間的加油島在 485 */
 const ROADW=360,LANE=[36,108,180,252,324],SIM=1/60,CYC=16,G_END=9,Y_END=11; // 號誌：0～9 綠、9～11 黃、11～16 紅（橫向綠）
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,u)=>a+(b-a)*u;
@@ -14,7 +21,7 @@ function rr(c,x,y,w,h,r){ r=Math.min(r,w/2,h/2); c.beginPath(); c.moveTo(x+r,y);
 /* ---------- 三十個城市 ---------- */
 const TW_SHOP=['阿嬤滷肉飯','巷口牛肉麵','夜市雞排','珍奶工坊','早安蛋餅','鹽酥雞','蚵仔煎','臭豆腐','排骨便當','麻辣燙','豆花','肉圓'];
 const TW_CUS=['林小姐','陳先生','王同學','張阿姨','李大哥','黃老師','吳太太','蔡先生','許小姐','鄭阿伯'];
-const TW_SIGN=['便當','手搖飲','藥局','早餐','五金','診所','眼鏡','當舖','檳榔','電器','麵店','補習班'];
+const TW_SIGN=['阿美早餐','永和豆漿','大同電器','長春藥局','佳佳眼鏡','老王牛肉麵','幸福茶飲','順發機車行','仁愛診所','文華補習班','好運彩券','小林髮廊','金山銀樓','阿財五金','大樹書局','福利麵包','巷口咖啡','阿嬤滷味','中興牙醫','光明眼科','快樂KTV','溫州餛飩','黑糖珍奶','夜貓網咖','和平藥妝','好鄰居超商','元氣便當','如意當舖','美美服飾','平價超市','三商汽車','山東水餃','大來鞋店','小吃部','旅社','停車場']; /* 店名都是自己編的 */
 const STAGES=[
   {name:'台北・西門町',stars:1,orders:3,traffic:.55,onc:.5,scoot:.5,bus:.3,peds:.5,cam:.3,jay:.25,runner:.12,park:.35,pal:'tw',land:'redhouse',sky:'#9fd8ff',target:260,
    shop:TW_SHOP,cus:TW_CUS,sign:TW_SIGN,desc:'入門路線：車不多，先熟悉取餐、送餐和紅綠燈。'},
@@ -211,12 +218,12 @@ function drawLandmark(c,k,X,Y,s,t,night){
   c.restore(); }
 
 /* ---------- 關卡產生：店家、客人、加油站、路口、停車、障礙（同一個種子產生的都一樣） ---------- */
-function buildLevel(si,seed){
-  const S=STAGES[si],R=mul(seed*31+si*7+3),pick=a=>a[Math.floor(R()*a.length)];
+function buildLevel(si,seed,job){
+  const S=STAGES[si],R=mul(seed*31+si*7+3),pick=a=>a[Math.floor(R()*a.length)],JK=(JOBS[job]||JOBS.moto).dist;
   const stops=[],orders=[],gas=[],busStops=[],inter=[],parked=[],holes=[],stalls=[],puddles=[],steam=[],landmarks=[],signs=[];
   let d=320;
   const shops=S.shop.slice().sort(()=>R()-.5),cuses=S.cus.slice().sort(()=>R()-.5);
-  for(let i=0;i<S.orders;i++){ d+=480+R()*420; const shop={d,kind:'shop',name:shops[i%shops.length]}; d+=800+R()*700; const cus={d,kind:'cus',name:cuses[i%cuses.length]};
+  const dests=CAR_DEST.slice().sort(()=>R()-.5); for(let i=0;i<S.orders;i++){ d+=(480+R()*420)*JK; const shop={d,kind:'shop',name:job==='car'?cuses[i%cuses.length]:shops[i%shops.length]}; d+=(800+R()*700)*JK; const cus={d,kind:'cus',name:job==='car'?dests[i%dests.length]:cuses[i%cuses.length]};
     stops.push(shop,cus); orders.push({shop,cus,fee:Math.round(55+(cus.d-shop.d)/30)}); }
   const L=d+700;
   for(let g=1400+R()*600;g<L-300;g+=2200+R()*800){ let gg=g; for(let k=0;k<12&&stops.some(s=>Math.abs(s.d-gg)<360);k++) gg+=140; if(gg>L-300||stops.some(s=>Math.abs(s.d-gg)<360)) continue; const st={d:gg,kind:'gas',name:'加油站'}; stops.push(st); gas.push(st); g=gg; } /* 加油站不會跟取餐、送餐點擠在一起 */
@@ -511,9 +518,9 @@ function routeMap(c,X0,Y0,w,h,o){ const lv=o.lv; if(!lv||!lv.path) return; const
   if(tg){ const a=Math.min(o.pd,tg.d),b=Math.max(o.pd,tg.d),rt=[]; for(let d=a;d<=b;d+=20) rt.push(toS(P.at(SXm(LANE[3]),d))); rt.push(toS(P.at(SXm(LANE[3]),b))); if(rt.length>1) line(rt,o.phone?3:4,col); }
   const pin=(q,cl,txt,big)=>{ const r=big?(o.phone?6:8):(o.phone?4.5:5.5),x=q[0],y=q[1]; c.fillStyle=cl; c.beginPath(); c.arc(x,y-r-3,r,Math.PI*.8,Math.PI*2.2); c.lineTo(x,y); c.closePath(); c.fill(); c.strokeStyle='#fff'; c.lineWidth=1.3; c.stroke(); c.fillStyle='#fff'; c.font='900 '+(big?(o.phone?7:9):(o.phone?5.5:7))+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(txt,x,y-r-3); };
   for(const g of lv.gas) if(g.d>lo-300&&g.d<hi+300) pin(toS(P.at(SXm(ROADW+120),g.d)),'#2f9e6a','油');
-  lv.orders.forEach((od,k)=>{ if(k===o.oi) return; for(const st of [od.shop,od.cus]) if(st.d>lo&&st.d<hi){ c.globalAlpha=.3; pin(toS(P.at(SXm(ROADW+30),st.d)),st.kind==='shop'?'#ff7a2a':'#2f7cf6',st.kind==='shop'?'取':'送'); c.globalAlpha=1; } });
-  if(o.od&&pick){ const cq=toS(P.at(SXm(ROADW+30),o.od.cus.d)); if(cq[1]>Y0-10) pin(cq,'#2f7cf6','送'); }
-  if(tg){ let q=toS(P.at(SXm(ROADW+30),tg.d)); const off=q[1]<Y0+14||q[0]<X0+6||q[0]>X0+w-6; q=[clamp(q[0],X0+10,X0+w-10),clamp(q[1],Y0+16,Y0+h-6)]; pin(q,col,pick?'取':'送',true); if(off){ c.fillStyle=col; c.beginPath(); c.arc(q[0],q[1]+3,2,0,7); c.fill(); } }
+  lv.orders.forEach((od,k)=>{ if(k===o.oi) return; for(const st of [od.shop,od.cus]) if(st.d>lo&&st.d<hi){ c.globalAlpha=.3; pin(toS(P.at(SXm(ROADW+30),st.d)),st.kind==='shop'?'#ff7a2a':'#2f7cf6',st.kind==='shop'?JW.pp:JW.pd); c.globalAlpha=1; } });
+  if(o.od&&pick){ const cq=toS(P.at(SXm(ROADW+30),o.od.cus.d)); if(cq[1]>Y0-10) pin(cq,'#2f7cf6',JW.pd); }
+  if(tg){ let q=toS(P.at(SXm(ROADW+30),tg.d)); const off=q[1]<Y0+14||q[0]<X0+6||q[0]>X0+w-6; q=[clamp(q[0],X0+10,X0+w-10),clamp(q[1],Y0+16,Y0+h-6)]; pin(q,col,pick?JW.pp:JW.pd,true); if(off){ c.fillStyle=col; c.beginPath(); c.arc(q[0],q[1]+3,2,0,7); c.fill(); } }
   // 自己（前進方向朝上）
   const ax=cxm,ay=meY; c.fillStyle='rgba(47,124,246,.25)'; c.beginPath(); c.arc(ax,ay,o.phone?8:10,0,7); c.fill(); c.fillStyle='#ffd23f'; c.strokeStyle='#14122b'; c.lineWidth=1.5; c.beginPath(); c.moveTo(ax,ay-8); c.lineTo(ax+6,ay+6); c.lineTo(ax,ay+2); c.lineTo(ax-6,ay+6); c.closePath(); c.fill(); c.stroke();
   c.restore(); }
@@ -535,7 +542,7 @@ function phoneNav(c,nav,t,night){ c.save(); c.translate(-122,-176); c.rotate(.07
   const hh=String(17+Math.floor(t/60)%7).padStart(2,'0'),mm=String(Math.floor(t)%60).padStart(2,'0'); c.fillText(hh+':'+mm,X0+5,Y0+5.5);
   for(let i=0;i<4;i++) c.fillRect(X0+SW-26+i*3,Y0+7-i*1.3,2,1.3+i*1.3); c.strokeStyle=day?'#222':'#ddd'; c.lineWidth=.8; c.strokeRect(X0+SW-12,Y0+3,8,4.5); c.fillRect(X0+SW-11.5,Y0+3.5,5,3.5);
   // App 標題列
-  const hy=Y0+10; c.fillStyle=col; c.fillRect(X0,hy,SW,20); c.fillStyle='#fff'; c.font='900 9px '+TC; c.textAlign='left'; c.fillText(nav.done?'外送王・收工':pick?'外送王・前往取餐':'外送王・送餐中',X0+5,hy+10);
+  const hy=Y0+10; c.fillStyle=col; c.fillRect(X0,hy,SW,20); c.fillStyle='#fff'; c.font='900 9px '+TC; c.textAlign='left'; c.fillText(JW.app+'・'+(nav.done?'收工':pick?'前往'+JW.pick:JW.drop+'中'),X0+5,hy+10);
   if(nav.left!=null&&!nav.done){ const L=Math.ceil(nav.left),warn=L<10; c.fillStyle=warn&&Math.sin(t*10)>0?'#ffd23f':'#fff'; c.textAlign='right'; c.font='900 9px monospace'; c.fillText(L>=0?L+'s':'-'+(-L)+'s',X0+SW-5,hy+10); }
   // 地圖（跟畫面上的導航地圖一樣）
   const my=hy+20,mh=104,o=nav.o,tg=o?(pick?o.shop:o.cus):null;
@@ -545,7 +552,7 @@ function phoneNav(c,nav,t,night){ c.save(); c.translate(-122,-176); c.rotate(.07
   const cy0=my+mh; c.fillStyle=day?'#ffffff':'#0e1420'; c.fillRect(X0,cy0,SW,SH/2-(cy0)); c.fillStyle=col; c.fillRect(X0,cy0,3,SH/2-cy0);
   c.textAlign='left'; c.textBaseline='middle';
   if(nav.done){ c.fillStyle=day?'#222':'#fff'; c.font='900 9px '+TC; c.fillText('今天的單都送完了！',X0+7,cy0+16); }
-  else if(o){ c.fillStyle='#ff7a2a'; c.font='900 7.5px '+TC; c.fillText('取 '+o.shop.name,X0+7,cy0+9,SW-14); c.fillStyle='#2f7cf6'; c.fillText('送 '+o.cus.name,X0+7,cy0+20,SW-14);
+  else if(o){ c.fillStyle='#ff7a2a'; c.font='900 7.5px '+TC; c.fillText(JW.pp+' '+o.shop.name,X0+7,cy0+9,SW-14); c.fillStyle='#2f7cf6'; c.fillText(JW.pd+' '+o.cus.name,X0+7,cy0+20,SW-14);
     c.fillStyle=day?'#222':'#fff'; c.font='900 9px '+TC; const ds=Math.round(nav.dist); c.fillText(ds>=0?ds+' m':'回頭 '+(-ds)+' m',X0+7,cy0+33);
     c.textAlign='right'; c.fillStyle='#2f9e6a'; c.fillText('$'+(o.fee||0),X0+SW-6,cy0+33);
     if(!pick&&nav.food!=null){ for(let i=0;i<3;i++){ c.fillStyle=i<nav.food?'#ffb000':'#c8c8d0'; c.beginPath(); c.arc(X0+SW-28+i*9,cy0+20,3,0,7); c.fill(); } } }
@@ -599,7 +606,7 @@ function drawCockpit(c,vx,vw,L,speed,lean,t,mirrorL,mirrorR,fuel,night,nav){ con
 // 整個第一人稱世界
 function ensureBld(lv,S,pal,arc){
   if(!lv.bld){ lv.bld=[]; const sd0=Math.floor(lv.L)%997; for(const sd of [-1,1]){ let d=-400,i=0; while(d<lv.L+1600){ const w=56+hash(i,sd+3+sd0,201)*70,id=i*2+(sd>0?1:0)+sd0*1000;
-      const nf=S.pal==='us'?3+Math.floor(hash(id,21)*7):2+Math.floor(hash(id,21)*(S.pal==='jp'?6:5)); lv.bld.push({d,w,side:sd,id,nf,hh:(arc?54:46)+nf*34,col:hcol(pal.bld,id,202),sc:hcol(pal.sign,id,203),txt:hcol(S.sign,id,204)}); d+=w+(hash(i,sd+3+sd0,205)<.1?16:0); i++; } }
+      const nf0=S.pal==='us'?3+Math.floor(hash(id,21)*7):2+Math.floor(hash(id,21)*(S.pal==='jp'?6:5)),nf=hash(id,23)<.17?8+Math.floor(hash(id,24)*9):nf0,txt=hcol(S.sign,id,204),ti=S.sign.indexOf(txt); /* 偶爾一棟高樓 */ lv.bld.push({d,w,side:sd,id,nf,hh:(arc?54:46)+nf*34,col:hcol(pal.bld,id,202),sc:pal.sign[(ti+(id%2?2:0))%pal.sign.length],txt}); d+=w+(hash(i,sd+3+sd0,205)<.1?16:0); i++; } }
     lv.hmap=[]; for(const b of lv.bld) if(b.side<0) for(let d=Math.floor(b.d/8);d<(b.d+b.w)/8;d++) lv.hmap[d+200]=b.hh; } }
 function drawFP(c,vx,vw,st){
   const {lv,S,M,px,pd,simT,t}=st,F=vw*.6,camH=14,cx=vx+vw/2,hz=H*.46,cd=pd-6,night=S.night,pal=PAL[S.pal],arc=S.pal==='tw'||S.pal==='th',dim=night?.42:S.evening?.9:1;
@@ -793,9 +800,9 @@ function drawFP(c,vx,vw,st){
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
   const net=opts.net,two=!net&&opts.mode==='2p',humans=net?net.count:two?2:1,me=net?net.me:0,host=!net||net.host,si=clamp(opts.stage||0,0,STAGES.length-1),S=STAGES[si];
-  const seed=net?(Number(net.seed)>>>0)||7:Math.floor(Math.random()*1e9),lv=buildLevel(si,seed),M=S.left?-1:1;
+  const seed=net?(Number(net.seed)>>>0)||7:Math.floor(Math.random()*1e9),JOB=JOBS[(opts.options||{}).job]?(opts.options||{}).job:'moto',JB=JOBS[JOB],lv=buildLevel(si,seed,JOB),M=S.left?-1:1; JW=JWS[JOB];
   const {ctx:c}=env.canvas2d(W,H);
-  let G3=null; if(window.THREE&&window.__DELIVER3D){ try{ ensureBld(lv,S,PAL[S.pal],S.pal==='tw'||S.pal==='th'); G3=window.__DELIVER3D(window.THREE,{GAS:{z0:GZ0,z1:GZ1,x1:GAS_X1,isl:GAS_ISL},W,H,lv,S,M,ROADW,LANE,PAL,shade,hash,hcol,lightOf,crossers,crossPeds,phoneNav,drawLandmark,CAR_COL,SHIRT,SKIN,PANTS,SCOL,BOXC,TC}); }catch(e){ console.error(e); G3=null; } } /* 3D 第一人稱（載不到 three.js 就用原本的 2D） */
+  let G3=null; if(window.THREE&&window.__DELIVER3D){ try{ ensureBld(lv,S,PAL[S.pal],S.pal==='tw'||S.pal==='th'); G3=window.__DELIVER3D(window.THREE,{JOB,JW,GAS:{z0:GZ0,z1:GZ1,x1:GAS_X1,isl:GAS_ISL},W,H,lv,S,M,ROADW,LANE,PAL,shade,hash,hcol,lightOf,crossers,crossPeds,phoneNav,drawLandmark,CAR_COL,SHIRT,SKIN,PANTS,SCOL,BOXC,TC}); }catch(e){ console.error(e); G3=null; } } /* 3D 第一人稱（載不到 three.js 就用原本的 2D） */
   // 玩法：各自搶單（電腦補到 4 人）／分隊對戰／玩家同隊打電腦／玩家對決（不加電腦）；分隊時整隊淨收入相加
   let mode=(opts.options&&opts.options.team)||'ffa'; if(humans===1&&mode==='pvp') mode='ffa'; if(mode==='coop'&&humans>3) mode='vs';
   let num=net?Math.min(6,net.count+(net.bots||0)):4;
@@ -809,14 +816,14 @@ function create(env,opts){
     const sk=clamp(.36+S.stars*.09+Math.random()*.16,.4,.92); // 1 星的電腦比較慢，5 星不變
     ps.push({n,x:LANE[4]-14+(n%2)*-30-Math.floor(n/2)*10,d:60-n*46,wasIn:false,v:0,vx:0,fall:0,inv:0,look,bot,team:teamOf[n],remote:!!net&&(bot?!host:n!==me),tx:0,td:0,
       ai:bot&&host?{skill:sk,lane:[252,300,180][n%3],top:.78+sk*.22,obey:Math.random()<sk,blT:3+Math.random()*6,blind:0}:null,
-      oi:0,phase:'pick',stopT:0,food:3,fuel:100,deadline:0,money:{fee:0,tip:0,fine:0,gas:0,late:0,comp:0,fix:0},done:false,doneT:0,deliv:0,lost:0,timeout:false,log:[],lean:0,gust:0,lastD:60-n*46,warned:{}}); }
-  const SHIFT=S.orders*50+30; // 這一班的時間（秒），時間到就收工
+      oi:0,phase:'pick',stopT:0,food:3,fuel:100,deadline:0,money:{fee:0,tip:0,fine:0,gas:0,late:0,comp:0,fix:0,bonus:0},done:false,doneT:0,deliv:0,lost:0,timeout:false,log:[],lean:0,gust:0,lastD:60-n*46,warned:{}}); }
+  const SHIFT=Math.round((S.orders*50+30)*(JOB==='walk'?1.25:1)); // 這一班的時間（秒），時間到就收工
   let t=-3,simT=0,acc=0,ended=false,sendT=0,windT=0,windF=0,windDir=1,camD=[0,0],fx=[],introT=0,goSaid=false,endT=0,engine=null,ff=false;
-  const total=p=>p.money.fee+p.money.tip-p.money.fine-p.money.gas-p.money.late-p.money.comp-p.money.fix;
+  const total=p=>p.money.fee+p.money.tip-p.money.fine-p.money.gas-p.money.late-p.money.comp-p.money.fix+(p.money.bonus||0);
   const order=p=>lv.orders[p.oi];
   const local=p=>!p.remote&&!p.bot; // 自己這台電腦上操作的真人（音效只給他們）
   const sfx=(p,k)=>{ if(local(p)) env.sfx(k); };
-  function startOrder(p){ const o=order(p); if(!o){ p.done=true; p.doneT=t; return; } p.phase='pick'; p.food=3; p.deadline=t+((o.cus.d-p.d)/150)*1.5+18; }
+  function startOrder(p){ const o=order(p); if(!o){ p.done=true; p.doneT=t; return; } p.phase='pick'; p.food=3; p.deadline=t+((o.cus.d-p.d)/JB.est)*1.5+18; }
   ps.forEach(startOrder); ps.forEach(p=>{ p.tx=p.x; p.td=p.d; });
   const pop=(p,txt,col)=>fx.push({k:'txt',x:p.x,d:p.d+30,txt,col,t:0,n:p.n});
 
@@ -831,7 +838,7 @@ function create(env,opts){
   // 電腦外送員：往目標騎，前面有車就換車道；偶爾分心（技術越差越常分心），有的會守紅燈、有的會闖
   function botInput(p,dt){ const ai=p.ai,o=order(p),tgt=o?(p.phase==='pick'?o.shop:o.cus):null; if(!tgt||p.done) return {dir:0,gas:false,brake:true};
     ai.blT-=dt; if(ai.blT<=0){ ai.blT=4+Math.random()*9; ai.blind=Math.random()<(1-ai.skill)*.7?1+Math.random():0; } if(ai.blind>0) ai.blind-=dt;
-    const dist=tgt.d-p.d; let want=dist<260&&dist>-60?330:ai.lane;
+    const dist=tgt.d-p.d; let want=JOB==='walk'?WALK0()+10:dist<260&&dist>-60?(JOB==='car'?300:330):ai.lane;
     if(ai.blind<=0&&dist>200){ const ahead=lv.veh.some(e=>e.d-p.d>0&&e.d-p.d<70+90*ai.skill&&Math.abs(e.x-p.x)<30)||ps.some(q=>q!==p&&!q.done&&q.d-p.d>0&&q.d-p.d<70&&Math.abs(q.x-p.x)<26)||lv.parked.some(pk=>pk.d-p.d>0&&pk.d-p.d<120&&Math.abs(LANE[4]+6-p.x)<34)||lv.stalls.some(sl=>sl.d-p.d>-sl.len/2&&sl.d-p.d<130&&Math.abs(LANE[4]-4-p.x)<34);
       if(ahead){ if(!ai.dodge) ai.dodge=p.x>220?180:300; want=ai.dodge; } else ai.dodge=0; }
     const gas=p.fuel<25?lv.gas.find(gs=>gs.d-p.d>-20&&gs.d-p.d<300):null; let stopAt=gas?gas.d:tgt.d; if(gas) want=gas.d-p.d<70?GAS_ISL-34:330; else if(p.x>ROADW-10) want=300;
@@ -840,14 +847,15 @@ function create(env,opts){
     const dd=Math.min(stopAt-p.d,brakeFor,brk),dir=Math.abs(want-p.x)>6?(want>p.x?1:-1):0;
     if(stopAt-p.d<-30) return {dir,gas:false,brake:true};
     if(dd<p.v*.7+10&&dd<200) return {dir,gas:false,brake:true};
-    return {dir,gas:p.v<250*ai.top,brake:false}; }
+    return {dir,gas:p.v<JB.v*ai.top,brake:false}; }
 
   function crash(p,why){ if(p.inv>0||p.fall>0) return; p.fall=1.3; p.inv=2.6; p.v=0; sfx(p,'hurt'); sfx(p,'bump');
-    p.money.fix+=20; const carry=p.phase==='drop'; if(carry) p.food--; fx.push({k:'star',x:p.x,d:p.d,t:0,n:p.n}); pop(p,why+'　修車 -$20'+(carry?'　餐點 -1':''),'#ff8a8a');
-    if(carry&&p.food<=0){ p.money.comp+=80; p.lost++; p.log.push('餐點翻了，賠償 $80'); setTimeout(()=>pop(p,'餐點全毀！賠 $80','#ff5d5d'),500); p.oi++; startOrder(p); } }
-  function rectHit(p,x,d,w,h){ return Math.abs(p.x-x)<(w+12)/2&&Math.abs(p.d-d)<(h+28)/2; }
+    if(JOB!=='walk') p.money.fix+=20; p.crashN=(p.crashN||0)+1; const carry=p.phase==='drop'; if(carry) p.food--; fx.push({k:'star',x:p.x,d:p.d,t:0,n:p.n}); pop(p,why+(JOB==='walk'?'':'　修車 -$20')+(carry?'　'+JW.item+' -1':''),'#ff8a8a');
+    if(carry&&p.food<=0){ p.money.comp+=80; p.lost++; p.log.push(JW.ruin+'，賠償 $80'); setTimeout(()=>pop(p,JW.ruinPop,'#ff5d5d'),500); p.oi++; startOrder(p); } }
+  function rectHit(p,x,d,w,h){ return Math.abs(p.x-x)<(w+JB.cw)/2&&Math.abs(p.d-d)<(h+JB.cl)/2; }
   // 自己附近才出現的突發狀況：亂穿越的行人、狗、開車門（只對真人）
   const locals=[];
+  const WALK0=()=>S.pal==='tw'||S.pal==='th'?ROADW+48:ROADW+10; /* 走路：台灣、泰國走騎樓，其他城市走人行道 */
   const gasAt=d=>lv.gas.find(g=>d>g.d+GZ0-1&&d<g.d+GZ1+1);
   function localHazards(p,dt){
     if(p.remote||p.bot) return;
@@ -861,27 +869,28 @@ function create(env,opts){
     if(p.done){ p.v=Math.max(0,p.v-200*dt); p.d+=p.v*dt; return; }
     if(p.inv>0) p.inv-=dt;
     if(p.fall>0){ p.fall-=dt; return; }
-    const I=input(p,dt),rain=!!S.rain,vmax=p.fuel>0?250:55;
+    const I=input(p,dt),rain=!!S.rain,vmax=p.fuel>0?JB.v:55;
     if(t<0){ return; }
-    if(I.gas) p.v=Math.min(vmax,p.v+(p.v<0?260:150)*dt);
+    p.brakeHard=I.brake&&p.v>0?(p.brakeHard||0)+dt:0; if(I.gas) p.v=Math.min(vmax,p.v+(p.v<0?260:JB.acc)*dt);
     else if(I.brake){ if(p.v>0) p.v=Math.max(0,p.v-(rain?170:270)*dt); else p.v=Math.max(-55,p.v-60*dt); } // 停下來再按 ↓ 可以慢慢倒車
     else p.v+=(p.v>0?-Math.min(p.v,55*dt):Math.min(-p.v,80*dt));
-    const steer=I.dir*150*(.45+.55*Math.min(1,Math.abs(p.v)/150));
+    const steer=I.dir*JB.steer*(JOB==='walk'?1:(.45+.55*Math.min(1,Math.abs(p.v)/150)));
     p.vx=rain?lerp(p.vx,steer,Math.min(1,dt*3)):steer;
     // 風、水窪
     let push=0; if(S.wind&&windT>0) push=windDir*windF;
     let inP=false; for(const pd of lv.puddles) if(Math.hypot(p.x-pd.x,(p.d-pd.d)*.6)<pd.r&&p.v>40){ inP=true; p.vx+=(Math.random()-.5)*400*dt; } if(inP&&!p.wasIn) sfx(p,'pop'); p.wasIn=inP;
-    const gz=gasAt(p.d); p.x=clamp(p.x+(p.vx+push)*dt,10,gz?GAS_X1:ROADW-10); p.lean=lerp(p.lean,I.dir*M,Math.min(1,dt*8));
+    const gz=JOB==='walk'?null:gasAt(p.d); p.x=JOB==='walk'?clamp(p.x+(p.vx+push*.3)*dt,WALK0(),WALK0()+20):clamp(p.x+(p.vx+push)*dt,10,gz?GAS_X1:ROADW-10); p.lean=lerp(p.lean,I.dir*M,Math.min(1,dt*8));
     const lastD=p.d; p.d=Math.max(-40,Math.min(lv.L+200,p.d+p.v*dt));
-    if(p.x>ROADW-10){ const g=gz||gasAt(lastD); if(!g||p.d<g.d+GZ0||p.d>g.d+GZ1){ const gg=g||lv.gas.reduce((a,b)=>Math.abs(b.d-p.d)<Math.abs(a.d-p.d)?b:a); p.d=clamp(p.d,gg.d+GZ0,gg.d+GZ1); if(Math.abs(p.v)>40&&!p.bot) sfx(p,'bump'); p.v*=.2; } /* 站區出口外面是路緣 */
+    if(p.x>ROADW-10&&JOB!=='walk'){ const g=gz||gasAt(lastD); if(!g||p.d<g.d+GZ0||p.d>g.d+GZ1){ const gg=g||lv.gas.reduce((a,b)=>Math.abs(b.d-p.d)<Math.abs(a.d-p.d)?b:a); p.d=clamp(p.d,gg.d+GZ0,gg.d+GZ1); if(Math.abs(p.v)>40&&!p.bot) sfx(p,'bump'); p.v*=.2; } /* 站區出口外面是路緣 */
       const g2=gasAt(p.d); if(g2&&Math.abs(p.d-g2.d)<26&&Math.abs(p.x-GAS_ISL)<13){ p.x=p.x<GAS_ISL?GAS_ISL-13:GAS_ISL+13; } } /* 加油島擋住 */
+    if(JOB==='car'&&p.phase==='drop'&&p.brakeHard>.9&&p.v>120&&!p.bot){ p.brakeHard=-2; if(p.food>1){ p.food--; pop(p,'急煞！乘客往前撲','#ffb36b'); } }
     { const T=lv.turns.find(T=>p.d>T.d0-6&&p.d<T.e),lim=T?(T.big?150:205):0; if(T&&p.v>lim&&p.inv<=0&&!p.bot){ p.v-=260*dt; if(p.v>lim+45) crash(p,'轉彎太快，滑倒了！'); else if(!p.warned.turnSlip){ p.warned.turnSlip=1; pop(p,'轉彎太快了！放慢一點','#ffb36b'); } } if(!T) p.warned.turnSlip=0; }
-    if(p.v>0) for(const q of ps){ if(q===p||q.done||q.fall>0||Math.abs(q.x-p.x)>18) continue; const g=q.d-p.d; if(g>=0&&g<28){ if(lastD<=q.d-28+1){ p.d=q.d-28; if(p.v>q.v+40&&!p.bot) sfx(p,'bump'); p.v=Math.min(p.v,Math.max(0,q.v)); } } } /* 外送員之間會擋住，不會穿過去 */
-    p.fuel=Math.max(0,p.fuel-Math.abs(p.d-lastD)*.0075); if(p.fuel<=0&&!p.noFuel){ p.noFuel=1; pop(p,'沒油了！慢慢推去加油站','#ffd23f'); sfx(p,'trap'); }
+    if(p.v>0&&JOB!=='walk') for(const q of ps){ if(q===p||q.done||q.fall>0||Math.abs(q.x-p.x)>18) continue; const g=q.d-p.d; if(g>=0&&g<28){ if(lastD<=q.d-28+1){ p.d=q.d-28; if(p.v>q.v+40&&!p.bot) sfx(p,'bump'); p.v=Math.min(p.v,Math.max(0,q.v)); } } } /* 外送員之間會擋住，不會穿過去 */
+    if(JB.fuel) p.fuel=Math.max(0,p.fuel-Math.abs(p.d-lastD)*(JOB==='car'?.0085:.0075)); if(p.fuel<=0&&!p.noFuel){ p.noFuel=1; pop(p,'沒油了！慢慢推去加油站','#ffd23f'); sfx(p,'trap'); }
     // 路口：闖紅燈拍照
-    for(const I2 of lv.sig){ const sl=I2.d-10; if(lastD<sl&&p.d>=sl){ const L2=lightOf(I2,simT); if(L2.col==='r'&&I2.cam&&L2.p>Y_END+.4){ p.money.fine+=300; p.log.push('闖紅燈被拍，罰單 $300'); pop(p,'📸 闖紅燈！罰 $300','#ff5d5d'); sfx(p,'trap'); fx.push({k:'flash',t:0,n:p.n}); } } }
+    for(const I2 of lv.sig){ const sl=I2.d-10; if(lastD<sl&&p.d>=sl){ const L2=lightOf(I2,simT); if(L2.col==='r'&&L2.p>Y_END+.4) p.reds=(p.reds||0)+1; if(L2.col==='r'&&I2.cam&&L2.p>Y_END+.4){ p.money.fine+=300; p.log.push('闖紅燈被拍，罰單 $300'); pop(p,'📸 闖紅燈！罰 $300','#ff5d5d'); sfx(p,'trap'); fx.push({k:'flash',t:0,n:p.n}); } } }
     // 坑洞（每個人各自算有沒有壓過）
-    for(const h of lv.holes) if(Math.hypot(p.x-h.x,p.d-h.d)<h.r+5&&!(h.hit&1<<p.n)){ h.hit=(h.hit||0)|1<<p.n; if(p.v>140){ p.v*=.6; if(p.phase==='drop'&&p.inv<=0){ if(p.food>1){ p.food--; pop(p,'坑洞！湯灑出來了','#ffb36b'); sfx(p,'bump'); } else crash(p,'坑洞'); } } else sfx(p,'land'); }
+    for(const h of lv.holes) if(Math.hypot(p.x-h.x,p.d-h.d)<h.r+5&&!(h.hit&1<<p.n)){ h.hit=(h.hit||0)|1<<p.n; if(p.v>140){ p.v*=.6; if(p.phase==='drop'&&p.inv<=0){ if(p.food>1){ p.food--; pop(p,JW.spill,'#ffb36b'); sfx(p,'bump'); } else crash(p,'坑洞'); } } else sfx(p,'land'); }
     // 撞車、撞人
     if(p.inv<=0){
       for(const e of lv.veh) if(Math.abs(e.d-p.d)<80&&rectHit(p,e.x,e.d,e.w,e.h)){ crash(p,e.k==='bus'?'撞到公車':e.k==='scoot'||e.k==='tuk'?'撞到機車':'撞到車'); break; }
@@ -894,14 +903,14 @@ function create(env,opts){
     }
     // 取餐、送餐、加油：在機車道停下來
     const o=order(p),tgt=o?(p.phase==='pick'?o.shop:o.cus):null;
-    const atStop=st=>Math.abs(p.d-st.d)<46&&p.x>LANE[4]-44&&p.x<ROADW-6&&Math.abs(p.v)<28,atPump=g=>Math.abs(p.d-g.d)<34&&p.x>ROADW+40&&Math.abs(p.v)<28;
+    const atStop=st=>Math.abs(p.d-st.d)<46&&(JOB==='walk'?true:p.x>(JOB==='car'?LANE[3]+30:LANE[4]-44)&&p.x<ROADW-6)&&Math.abs(p.v)<28,atPump=g=>Math.abs(p.d-g.d)<34&&p.x>ROADW+40&&Math.abs(p.v)<28;
     let busyStop=null; if(tgt&&atStop(tgt)) busyStop=tgt; else for(const g of lv.gas) if(atPump(g)&&p.fuel<99) busyStop=g; p.stopK=busyStop?busyStop.kind:null;
     if(busyStop){ p.stopT+=dt; if(p.stopT>=.8){ p.stopT=0;
         if(busyStop.kind==='gas'){ const cost=Math.round((100-p.fuel)*1.3); p.money.gas+=cost; p.fuel=100; p.noFuel=0; pop(p,'加滿油 -$'+cost,'#ffd23f'); sfx(p,'heal'); }
-        else if(p.phase==='pick'){ p.phase='drop'; pop(p,'取到餐了！','#86dc4f'); sfx(p,'item'); }
+        else if(p.phase==='pick'){ p.phase='drop'; pop(p,JW.picked,'#86dc4f'); sfx(p,'item'); }
         else { const late=t>p.deadline,fee=o.fee; p.money.fee+=fee; p.deliv++; let tip=0; if(!late){ tip=Math.round((p.deadline-t)*.8)+(p.food>=3?15:0); p.money.tip+=tip; }
-          if(late){ p.money.late+=Math.round(fee/2); p.log.push('超時，扣 $'+Math.round(fee/2)); }
-          pop(p,late?'送達（超時扣一半）+$'+(fee-Math.round(fee/2)):'送達！+$'+fee+(tip?'　小費 $'+tip:''),late?'#ffb36b':'#86dc4f'); sfx(p,late?'land':'lap'); p.oi++; startOrder(p); } } }
+          if(late){ p.lateN=(p.lateN||0)+1; p.money.late+=Math.round(fee/2); p.log.push('超時，扣 $'+Math.round(fee/2)); }
+          pop(p,late?'超時（扣一半）+$'+(fee-Math.round(fee/2)):JW.done+'+$'+fee+(tip?'　小費 $'+tip:''),late?'#ffb36b':'#86dc4f'); sfx(p,late?'land':'lap'); p.oi++; startOrder(p); } } }
     else p.stopT=0;
   }
 
@@ -916,11 +925,14 @@ function create(env,opts){
 
   function conclude(list){
     if(ended) return; ended=true; if(engine){ try{ engine.g.gain.value=0; }catch(e){} }
+    const goalsOf=p=>[[ '全部訂單準時完成',p.deliv>=lv.orders.length&&!(p.lateN>0),100],['零事故（沒有撞車、撞人）',!(p.crashN>0),80],['不闖紅燈',!(p.reds>0),60]];
+    if(!net) for(const p of ps){ p.money.bonus=goalsOf(p).reduce((a,g)=>a+(g[1]?g[2]:0),0); }
     list=list||ps.map(statOf); const st=i=>list[i]||[0,0,0,0,1];
     const mine=ps[me],net$=st(me)[0],stars=net$>=S.target?3:net$>=S.target*.7?2:net$>=S.target*.4?1:0;
     try{ const k='arcade.deliver.bn.'+STAGES[si].name,old=parseInt(localStorage.getItem(k),10); if(!two&&!net&&(isNaN(old)||net$>old)) localStorage.setItem(k,net$); }catch(e){}
     const m=mine.money,row=(a,b,col)=>'<tr><td>'+a+'</td><td style="text-align:right;color:'+col+'">'+b+'</td></tr>';
-    const mineHtml='<table class="ls">'+row('外送費','+$'+m.fee,'#86dc4f')+row('小費','+$'+m.tip,'#86dc4f')+row('油錢','-$'+m.gas,'#ff8a8a')+row('罰單','-$'+m.fine,'#ff8a8a')+row('超時扣款','-$'+m.late,'#ff8a8a')+row('撞車修理費','-$'+m.fix,'#ff8a8a')+row('餐點賠償','-$'+m.comp,'#ff8a8a')+'</table>';
+    const G=goalsOf(mine),gHtml='<p style="margin:4px 0">'+'★'.repeat(G.filter(g=>g[1]).length)+'☆'.repeat(3-G.filter(g=>g[1]).length)+' 任務目標</p><table class="ls">'+G.map(g=>'<tr><td>'+(g[1]?'✅':'❌')+' '+g[0]+'</td><td style="text-align:right;color:'+(g[1]?'#86dc4f':'#888')+'">'+(g[1]?'+$'+g[2]:'$0')+'</td></tr>').join('')+'</table>';
+    const mineHtml=gHtml+'<table class="ls">'+row(JOB==='car'?'車資':'外送費','+$'+m.fee,'#86dc4f')+row('小費','+$'+m.tip,'#86dc4f')+row('油錢','-$'+m.gas,'#ff8a8a')+row('罰單','-$'+m.fine,'#ff8a8a')+row('超時扣款','-$'+m.late,'#ff8a8a')+row('撞車修理費','-$'+m.fix,'#ff8a8a')+row('餐點賠償','-$'+m.comp,'#ff8a8a')+'</table>';
     // 名次：淨收入高的贏；一樣多就比誰先收工
     const R=ps.map((p,i)=>({i,name:names[i],team:p.team,money:st(i)[0],deliv:st(i)[1],lost:st(i)[2],tm:st(i)[3],out:!!st(i)[4]})).sort((a,b)=>b.money-a.money||(a.out-b.out)||a.tm-b.tm);
     const all=lv.orders.length,safe=R.filter(r=>!r.out&&r.deliv===all&&r.lost===0).sort((a,b)=>a.tm-b.tm)[0];
@@ -991,9 +1003,10 @@ function create(env,opts){
     if(G3){ for(const l of G3.labels()){ const q=G3.project(l.x,l.d,l.h,vx,vw); if(!q) continue; if(l.k==='warn'){ c.fillStyle='#ff3030'; c.strokeStyle='#fff'; c.lineWidth=3; c.font='900 34px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.strokeText('！',q[0],q[1]); c.fillText('！',q[0],q[1]); } else { c.globalAlpha=l.a; c.font='700 11px '+TC; const w2=c.measureText(l.txt).width+10; c.fillStyle='rgba(11,10,28,.6)'; rr(c,q[0]-w2/2,q[1]-16,w2,15,7); c.fill(); c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(l.txt,q[0],q[1]-8.5); c.globalAlpha=1; } } }
     else drawCockpit(c,vx,vw,p.look,p.v,p.lean,t,mL,mR,p.fuel,S.night,navI);
     if(p.fall>0){ c.fillStyle='rgba(255,60,60,'+Math.min(.35,p.fall*.3)+')'; c.fillRect(vx,0,vw,H); for(let i=0;i<5;i++){ const a=t*5+i*1.26; c.fillStyle='#ffd23f'; c.font='22px sans-serif'; c.textAlign='center'; c.fillText('★',vx+vw/2+Math.cos(a)*90,H*.42+Math.sin(a)*30); } }
+    if(G3&&JOB==='car') drawCab(vx,vw,p);
     // 取餐／送餐進度
     if(p.stopT>0){ const w2=160; c.fillStyle='rgba(11,10,28,.8)'; rr(c,vx+vw/2-w2/2-6,H*.6-6,w2+12,30,10); c.fill(); c.fillStyle='#3a3670'; rr(c,vx+vw/2-w2/2,H*.6+8,w2,10,5); c.fill(); c.fillStyle='#86dc4f'; rr(c,vx+vw/2-w2/2,H*.6+8,w2*p.stopT/.8,10,5); c.fill();
-      c.fillStyle='#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(p.stopK==='gas'?'加油中…':p.phase==='pick'?'取餐中…':'送餐中…',vx+vw/2,H*.6); }
+      c.fillStyle='#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(p.stopK==='gas'?'加油中…':(p.phase==='pick'?JW.pick:JW.drop)+'中…',vx+vw/2,H*.6); }
     // 飄字（畫面中間往上飄）
     let k2=0; for(const f of fx){ if(f.k==='txt'&&f.n===n){ c.globalAlpha=Math.max(0,1-f.t/2); c.fillStyle=f.col; c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.strokeStyle='#1a1530'; c.lineWidth=5; const y=H*.34-f.t*26+k2*24; c.strokeText(f.txt,vx+vw/2,y); c.fillText(f.txt,vx+vw/2,y); c.globalAlpha=1; k2++; }
       if(f.k==='flash'&&f.n===n&&f.t<.3){ c.fillStyle='rgba(255,255,255,'+(.8-f.t*2.6)+')'; c.fillRect(vx,0,vw,H); } }
@@ -1001,11 +1014,24 @@ function create(env,opts){
     if(!p.done&&t>=0) guide(p,vx,vw,tgt);
     hud(p,vx,vw,n);
     c.restore(); }
+  /* Uber 開車：車內儀表板、方向盤、A 柱、車內後照鏡（台灣方向盤在左，靠左行駛的城市在右） */
+  function drawCab(vx,vw,p){ const s=vw/800,wx=vx+vw/2+M*-vw*.2,top=H*.8,night=S.night,dash=night?'#141418':'#24252c';
+    c.save(); c.fillStyle=night?'#0c0c10':'#1c1d22'; c.beginPath(); c.moveTo(vx,0); c.lineTo(vx+60*s,0); c.lineTo(vx+130*s,H*.62); c.lineTo(vx,H*.66); c.closePath(); c.fill(); c.beginPath(); c.moveTo(vx+vw,0); c.lineTo(vx+vw-60*s,0); c.lineTo(vx+vw-130*s,H*.62); c.lineTo(vx+vw,H*.66); c.closePath(); c.fill();
+    c.fillStyle=dash; c.beginPath(); c.moveTo(vx,H); c.lineTo(vx,top+10); c.quadraticCurveTo(vx+vw/2,top-34*s,vx+vw,top+10); c.lineTo(vx+vw,H); c.closePath(); c.fill(); c.fillStyle='rgba(255,255,255,.06)'; c.fillRect(vx,top+6,vw,3);
+    // 儀表
+    c.fillStyle='#08090c'; rr(c,wx-62*s,top-4,124*s,40*s,10*s); c.fill(); c.fillStyle=night?'#8fd8ff':'#bdeaff'; c.font='700 '+Math.round(24*s)+'px monospace'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(Math.round(Math.abs(p.v)/250*60)+' km/h',wx,top+16*s);
+    // 方向盤（跟著轉）
+    c.save(); c.translate(wx,top+44*s); c.rotate(p.lean*.55*M); c.strokeStyle='#0d0d10'; c.lineWidth=16*s; c.beginPath(); c.arc(0,0,88*s,Math.PI*1.05,Math.PI*1.95); c.stroke(); c.lineWidth=12*s; c.beginPath(); c.moveTo(-80*s,-18*s); c.lineTo(80*s,-18*s); c.stroke(); c.fillStyle='#2a2b32'; c.beginPath(); c.arc(0,-8*s,24*s,0,7); c.fill(); c.fillStyle='#ffd23f'; c.font='900 '+Math.round(12*s)+'px '+TC; c.fillText('U',0,-8*s); c.restore();
+    // 車內後照鏡
+    c.fillStyle='#111'; rr(c,vx+vw/2-70*s,6*s,140*s,30*s,8*s); c.fill(); const g=c.createLinearGradient(0,8*s,0,34*s); g.addColorStop(0,night?'#2a3048':'#9ab8d8'); g.addColorStop(1,night?'#141824':'#5a6a7a'); c.fillStyle=g; rr(c,vx+vw/2-64*s,10*s,128*s,22*s,6*s); c.fill();
+    // 乘客（後座）
+    if(p.phase==='drop'){ c.fillStyle='#e8c8a8'; c.beginPath(); c.arc(vx+vw/2+M*24*s,22*s,7*s,0,7); c.fill(); c.fillStyle='#3a2a1a'; c.beginPath(); c.arc(vx+vw/2+M*24*s,19*s,7*s,Math.PI,0); c.fill(); }
+    c.restore(); }
   /* 導航：目的地頭上的標籤、下一個路口的紅綠燈、像手機地圖的小地圖（取餐橘色、送餐藍色） */
   const PCK='#ff7a2a',DRP='#2f7cf6';
   function guide(p,vx,vw,tgt){ const small=vw<500,pick=p.phase==='pick',col=pick?PCK:DRP;
     // 目的地標籤（3D 畫面上跟著店家走）
-    if(tgt&&G3){ const dz=tgt.d-p.d; if(dz>-20&&dz<900){ const q=G3.project(ROADW+26,tgt.d,104,vx,vw); if(q&&q[0]>vx-40&&q[0]<vx+vw+40){ const tx=(pick?'🍱 取餐 ':'🏠 送餐 ')+Math.max(0,Math.round(dz/10))+'m'; c.font='900 '+(small?12:15)+'px '+TC; const w=c.measureText(tx).width+18,y=clamp(q[1],96,H*.62); c.fillStyle=col; rr(c,q[0]-w/2,y-14,w,26,13); c.fill(); c.strokeStyle='#fff'; c.lineWidth=2; c.stroke(); c.beginPath(); c.moveTo(q[0]-6,y+12); c.lineTo(q[0]+6,y+12); c.lineTo(q[0],y+20); c.fill(); c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(tx,q[0],y); } } }
+    if(tgt&&G3){ const dz=tgt.d-p.d; if(dz>-20&&dz<900){ const q=G3.project(ROADW+26,tgt.d,104,vx,vw); if(q&&q[0]>vx-40&&q[0]<vx+vw+40){ const tx=(pick?JW.ip+' '+JW.pick+' ':JW.id+' '+JW.drop+' ')+Math.max(0,Math.round(dz/10))+'m'; c.font='900 '+(small?12:15)+'px '+TC; const w=c.measureText(tx).width+18,y=clamp(q[1],96,H*.62); c.fillStyle=col; rr(c,q[0]-w/2,y-14,w,26,13); c.fill(); c.strokeStyle='#fff'; c.lineWidth=2; c.stroke(); c.beginPath(); c.moveTo(q[0]-6,y+12); c.lineTo(q[0]+6,y+12); c.lineTo(q[0],y+20); c.fill(); c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(tx,q[0],y); } } }
     // 下一個路口的紅綠燈
     const nx=lv.inter.find(I=>I.d-10-p.d>-4&&I.d-10-p.d<2500);
     if(nx){ const Lg=lightOf(nx,simT),dist=Math.max(0,Math.round((nx.d-10-p.d)/10)),bx=vx+vw/2-(small?52:64),by=small?100:66,bw=small?104:128,bh=small?30:36,r=small?8:10;
@@ -1020,7 +1046,7 @@ function create(env,opts){
     // 要轉彎時畫面中間的大箭頭
     if(tip&&/轉|斜/.test(tip.tx)&&!/中/.test(tip.tx)){ const T=lv.turns.find(T=>T.e>p.d&&(!tgt||T.d0<tgt.d)); if(T&&T.d0-p.d<420&&T.d0-p.d>0){ const q=G3?G3.project(LANE[3],T.d0+40,30,vx,vw):null; if(q){ c.save(); c.translate(q[0],clamp(q[1],110,H*.6)); c.globalAlpha=.85; c.fillStyle=tip.warn?'#e8402e':'#ffd23f'; c.strokeStyle='#14122b'; c.lineWidth=3; c.font='900 '+(small?30:42)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.strokeText(tip.ic,0,0); c.fillText(tip.ic,0,0); c.restore(); } } }
     // 加油提示
-    if(p.fuel<35){ const g=lv.gas.find(g=>g.d-p.d>-60&&g.d-p.d<400); if(g){ c.fillStyle='rgba(20,90,50,.9)'; rr(c,vx+vw/2-130,H*.66,260,26,13); c.fill(); c.fillStyle='#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(p.x>ROADW-10?'⛽ 停在加油機旁邊（停下來就會加油）':g.d-p.d>40?'⛽ 前方 '+Math.round((g.d-p.d)/10)+'m 加油站，'+(M>0?'右':'左')+'轉進站':'⛽ 現在'+(M>0?'右':'左')+'轉騎進加油站',vx+vw/2,H*.66+13); } }
+    if(JB.fuel&&p.fuel<35){ const g=lv.gas.find(g=>g.d-p.d>-60&&g.d-p.d<400); if(g){ c.fillStyle='rgba(20,90,50,.9)'; rr(c,vx+vw/2-130,H*.66,260,26,13); c.fill(); c.fillStyle='#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(p.x>ROADW-10?'⛽ 停在加油機旁邊（停下來就會加油）':g.d-p.d>40?'⛽ 前方 '+Math.round((g.d-p.d)/10)+'m 加油站，'+(M>0?'右':'左')+'轉進站':'⛽ 現在'+(M>0?'右':'左')+'轉騎進加油站',vx+vw/2,H*.66+13); } }
   }
   function hud(p,vx,vw,n,sx,sy){
     const o=order(p),small=vw<500;
@@ -1029,14 +1055,14 @@ function create(env,opts){
     c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.fillText(Math.min(p.oi+1,lv.orders.length)+' / '+lv.orders.length+' 單',vx+16,46);
     // 目前任務
     if(o&&!p.done){ const tgt=p.phase==='pick'?o.shop:o.cus,dist=Math.round((tgt.d-p.d)/10),left=Math.ceil(p.deadline-t);
-      c.fillStyle=p.phase==='pick'?'#ff9d5c':'#7ab8ff'; c.font='900 14px '+TC; c.fillText((p.phase==='pick'?'取餐：':'送到：')+tgt.name,vx+(small?88:110),22);
+      c.fillStyle=p.phase==='pick'?'#ff9d5c':'#7ab8ff'; c.font='900 14px '+TC; c.fillText((p.phase==='pick'?JW.from:JW.to)+tgt.name,vx+(small?88:110),22);
       c.fillStyle='#fff'; c.font='700 12px '+TC; c.fillText((dist>=0?'前方 '+dist+' 公尺':'已經過頭 '+(-dist)+' 公尺，倒車回去')+'　'+(left>=0?'剩 '+left+' 秒':'超時 '+(-left)+' 秒'),vx+(small?88:110),44);
       // 餐點完整度
       if(p.phase==='drop'){ for(let i=0;i<3;i++){ c.fillStyle=i<p.food?'#ffd23f':'#3a3670'; c.beginPath(); c.arc(vx+vw-(small?118:136)+i*14,24,5.5,0,Math.PI); c.fill(); c.fillRect(vx+vw-(small?124:142)+i*14,23,12,2); } } }
     else { c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.fillText(p.done?(p.timeout?'下班時間到！':'收工了！')+(ff?'電腦還在送，快轉中…':ps.some(q=>!q.done)?'等其他人…':''):'',vx+110,32); }
     // 油量
-    const fx0=vx+vw-(small?78:88); c.fillStyle='#fff'; c.font='700 11px '+TC; c.textAlign='left'; c.fillText('油',fx0-16,44); c.fillStyle='#3a3670'; rr(c,fx0,38,small?62:72,12,5); c.fill(); c.fillStyle=p.fuel<20?'#ff5d5d':'#ffd23f'; rr(c,fx0,38,(small?62:72)*p.fuel/100,12,5); c.fill();
-    c.fillStyle='#fff'; c.textAlign='right'; c.font='700 11px '+TC; c.fillText(Math.round(Math.abs(p.v)/250*60)+' km/h',vx+vw-16,22);
+    const fx0=vx+vw-(small?78:88); c.fillStyle='#fff'; c.font='700 11px '+TC; c.textAlign='left'; c.fillText(JB.fuel?'油':'',fx0-16,44); if(!JB.fuel){ c.fillStyle='#86dc4f'; c.font='700 10px '+TC; c.fillText(JOB==='walk'?'走路不用油':'腳踏車免加油',fx0,44); } else { c.fillStyle='#3a3670'; rr(c,fx0,38,small?62:72,12,5); c.fill(); c.fillStyle=p.fuel<20?'#ff5d5d':'#ffd23f'; rr(c,fx0,38,(small?62:72)*p.fuel/100,12,5); c.fill(); }
+    c.fillStyle='#fff'; c.textAlign='right'; c.font='700 11px '+TC; c.fillText(Math.round(Math.abs(p.v)/250*60*(JOB==='walk'?.3:1))+' km/h',vx+vw-16,22);
     // 下班倒數（像碼錶一樣跳到小數點）
     const left=SHIFT-Math.max(0,t),warn=left<30; c.fillStyle=warn?'rgba(120,20,30,.85)':'rgba(11,10,28,.78)'; rr(c,vx+8,66,small?112:128,28,9); c.fill();
     c.textAlign='left'; c.textBaseline='middle'; c.fillStyle=warn&&Math.sin(t*8)>0?'#ffd23f':'#fff'; c.font='900 '+(small?15:17)+'px monospace'; c.fillText('⏳'+fmtT(left),vx+14,81);
@@ -1060,7 +1086,7 @@ function create(env,opts){
 /* ---------- 開始畫面示意圖、縮圖、造型預覽 ---------- */
 let demoLv=null,demoSi=-1,demoT=0;
 function stageShow(ctx,w,h,si,t){ // 開始畫面左邊：用第一人稱騎一段那個城市
-  const S=STAGES[si],M=S.left?-1:1; if(demoSi!==si||t<demoT-1){ demoSi=si; demoLv=buildLevel(si,12345); demoT=0; }
+  const S=STAGES[si],M=S.left?-1:1; if(demoSi!==si||t<demoT-1){ demoSi=si; demoLv=buildLevel(si,12345,'moto'); demoT=0; }
   let n=0; while(demoT<t&&n++<240){ demoT+=SIM; simStep(demoLv,demoT); }
   const pd=(t*120)%Math.max(1200,demoLv.L-900)+200,px=LANE[3]+Math.sin(t*.7)*36,lean=Math.cos(t*.7)*.5;
   ctx.save(); ctx.scale(w/W,h/H); drawFP(ctx,0,W,{lv:demoLv,S,M,px,pd,simT:demoT,t,lean,riders:[],locals:[],target:null});
@@ -1095,7 +1121,7 @@ function preview(ctx,w,h,L,t){ // 我的造型：正面＋側面（寫實）
   load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   touch:m=>m==='2p'?{left:[{l:'◀',c:'KeyA'},{l:'▶',c:'KeyD'},{l:'▲',c:'KeyW',act:true},{l:'▼',c:'KeyS'}],right:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'},{l:'▲',c:'ArrowUp',act:true},{l:'▼',c:'ArrowDown'}]}
     :{left:[{l:'◀',c:'ArrowLeft'},{l:'▶',c:'ArrowRight'}],right:[{l:'▼',c:'ArrowDown'},{l:'▲',c:'ArrowUp',act:true}]},
-  options:[{key:'team',label:'玩法',def:'ffa',opts:[{id:'ffa',label:'各自搶單（電腦補到 4 人）'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],
+  options:[{key:'job',label:'工作',def:'moto',opts:[{id:'moto',label:'機車外送'},{id:'bike',label:'腳踏車外送'},{id:'walk',label:'走路外送'},{id:'car',label:'Uber 開車載客'}]},{key:'team',label:'玩法',def:'ffa',opts:[{id:'ffa',label:'各自搶單（電腦補到 4 人）'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],
   best:{label:'最高收入',fmt:v=>'$'+v,lower:false},
   looks:[{key:'char',label:'人物',opts:[{id:'boy',label:'男孩'},{id:'girl',label:'女孩'},{id:'cat',label:'貓耳'},{id:'bear',label:'熊熊'}]},
     {key:'helmet',label:'安全帽',type:'color',opts:['#ffd23f','#ff7eb6','#b98cff','#3ddbd9','#ffffff','#2b2b36','#ff5d4f','#86dc4f']},
