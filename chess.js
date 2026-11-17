@@ -592,7 +592,7 @@ function create(env,opts){
   function drawPlayers(){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,744,46,206,262,10); c.fill();
     const order=PL.slice().sort((a,b)=>(b.alive-a.alive)||b.hp-a.hp);
     order.forEach((p,k)=>{ const y=64+k*30,mine=p.i===me; c.fillStyle=mine?'rgba(255,210,63,.2)':'transparent'; rr(c,750,y-12,194,26,6); c.fill();
-      c.textAlign='left'; c.textBaseline='middle'; c.fillStyle=p.alive?'#fff':'#6b6799'; c.font=(mine?'900 ':'700 ')+'12px '+TC; let nm=names[p.i]; if(nm.length>7) nm=nm.slice(0,7)+'…'; c.fillText(nm,756,y);
+      c.textAlign='left'; c.textBaseline='middle'; c.fillStyle=p.alive?'#fff':'#6b6799'; c.font=(mine?'900 ':'700 ')+'12px '+TC; let nm=names[p.i]; if(nm.length>7) nm=nm.slice(0,7)+'…'; c.fillText(nm,756,y,96);
       c.fillStyle='#3a3670'; rr(c,856,y-5,60,10,5); c.fill(); c.fillStyle=p.hp>50?'#5fd068':p.hp>20?'#ffd23f':'#ff5d5d'; rr(c,856,y-5,60*clamp(p.hp,0,100)/100,10,5); c.fill();
       c.fillStyle='#fff'; c.textAlign='right'; c.font='900 11px '+TC; c.fillText(p.alive?Math.max(0,p.hp):'第'+p.place,944,y); }); }
   function drawItems(){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,744,316,206,114,10); c.fill(); c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillText('裝備（拖到萌獸身上）',752,330);

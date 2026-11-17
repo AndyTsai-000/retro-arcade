@@ -127,6 +127,8 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 #stage{position:absolute;inset:0}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #stage canvas.fit{object-fit:contain}
+#rotHint{position:fixed;left:50%;transform:translateX(-50%);z-index:30;background:rgba(255,210,63,.95);color:#14122b;font-weight:900;font-size:14px;padding:7px 14px;border-radius:20px;box-shadow:0 3px 0 #0b0a1c;white-space:nowrap;cursor:pointer}
+#rotHint b{margin-left:8px;opacity:.7}
 #ov{position:absolute;inset:0;background:rgba(10,9,26,.82);display:flex;padding:16px;overflow:auto}
 .card{background:var(--panel);border:3px solid #0b0a1c;box-shadow:6px 6px 0 #0b0a1c;border-radius:6px;padding:22px 24px;
   max-width:440px;width:100%;display:flex;flex-direction:column;gap:14px;text-align:center;margin:auto}
@@ -275,7 +277,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=288; // 每次改版加一
+window.ARCADE_V=289; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge3d','dodge','soccer3d','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','boomcode','tug','truth','party','gems','chair','tacit','piano','stroke','dragon'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -700,7 +702,7 @@ const env={
   hit:c=>!!hits[c],
   sfx:n=>{ if(SFX[n]) SFX[n](); },
   audio:()=>AC, out:()=>sfxBus,
-  canvas2d(w,h){ const c=document.createElement('canvas'),S=2; c.width=w*S;c.height=h*S;c.className='fit';stage.appendChild(c);
+  canvas2d(w,h){ const c=document.createElement('canvas'),S=2; c.width=w*S;c.height=h*S;c.className='fit';stage.appendChild(c); MAIN_CV.add(c);
     const ctx=c.getContext('2d'); ctx.scale(S,S); return {canvas:c,ctx}; },
   end(res){ finish(res); }
 };
@@ -853,7 +855,7 @@ async function lookCard(){ closeStage();
   bindPhoto(g,look);
   on('lkOk',startCard);
 }
-let instGen=0; // 每開一局加一：舊局延遲呼叫的「結束」不能把新開的遊戲結束掉
+let instGen=0,frameN=0; // 每開一局加一：舊局延遲呼叫的「結束」不能把新開的遊戲結束掉
 function killInst(){ instGen++; closeStage(); if(inst){ try{inst.destroy();}catch(e){} inst=null; } stage.innerHTML=''; }
 // 手機縮放：大廳、選關卡、造型、設定畫面可以放大縮小；開始玩之後（含暫停、結算）先縮回原本大小再鎖住，直向橫向都一樣
 // iOS 不理 user-scalable=no，所以還要擋手勢事件、雙指、點兩下放大；frame() 依遊戲狀態自動切換
@@ -870,7 +872,7 @@ const ZLOCK_STATES={running:1,coin:1,paused:1,over:1,loading:1};
 function open(id){
   if(!myName){ nameModal(); return; }
   audio(); SFX.click();
-  const P=G[id]; if(P&&P.pack){ curPack=P; P.id=id; const k=load('arcade.pack.'+id); id=P.pack.includes(k)?k:P.pack[0]; } else curPack=null; /* 合集：直接打開上次玩的那一款 */
+  const P=G[id]; if(P&&P.pack){ curPack=P; P.id=id; const k=load('arcade.pack.'+id),ok=P.pack.filter(q=>G[q]); id=ok.includes(k)?k:ok[0]||P.pack[0]; } else curPack=null; /* 合集：直接打開上次玩的那一款 */
   setCur(id); $('#hub').hidden=true; $('#play').hidden=false;
   startCard(); scrollTo(0,0); pushGuard();
 }
@@ -879,7 +881,7 @@ function setCur(id){
   $('#gName').textContent=curPack?curPack.name+'・'+cur.name:cur.name;
   buildPad(padSpec(cur)); stage.innerHTML='';
 }
-function packHtml(){ return curPack?'<div class="lkhead">選擇遊戲</div><div class="chips">'+curPack.pack.map(k=>'<button class="chip'+(k===cur.id?' sel':'')+'" data-pk="'+k+'">'+G[k].name+'</button>').join('')+'</div>':''; }
+function packHtml(){ return curPack?'<div class="lkhead">選擇遊戲</div><div class="chips">'+curPack.pack.filter(k=>G[k]).map(k=>'<button class="chip'+(k===cur.id?' sel':'')+'" data-pk="'+k+'">'+G[k].name+'</button>').join('')+'</div>':''; }
 function bindPack(){ card.querySelectorAll('[data-pk]').forEach(b=>b.addEventListener('click',()=>{ const k=b.dataset.pk; if(k===cur.id) return; SFX.click(); save('arcade.pack.'+curPack.id,k); closePrev(); setCur(k); startCard(); })); }
 // 關卡很多的遊戲（stageGrid）：左邊示意圖和開始按鈕，右邊只放關卡數字，不用一直往下拉
 function gridHtml(g){
@@ -1387,8 +1389,19 @@ showName();
 if(!myName) nameModal();
 
 const STEP=1/120; let hubTick=0,pauseTick=0;
+/* 手機、平板上遊戲主畫面縮得比較小時，小字自動放大（最多 1.35 倍，盡量不擠出框）；直放手機玩橫式畫面時提示轉橫 */
+const MAIN_CV=new WeakSet(); let FONT_MIN=0;
+{ const P=CanvasRenderingContext2D.prototype,D=Object.getOwnPropertyDescriptor(P,'font');
+  if(D&&D.set) Object.defineProperty(P,'font',{configurable:true,get(){ return D.get.call(this); },set(v){ if(FONT_MIN&&typeof v==='string'&&MAIN_CV.has(this.canvas)) v=v.replace(/(\d+(?:\.\d+)?)px/,(m,n)=>{ n=+n; return (n<FONT_MIN?Math.min(n*1.35,FONT_MIN):n)+'px'; }); D.set.call(this,v); }}); }
+let rotHint=null,rotOff=false;
+function mobileFit(){ const cv=state==='running'?[...stage.querySelectorAll('canvas.fit')].find(c=>MAIN_CV.has(c)):null;
+  if(!cv||!isTouch){ FONT_MIN=0; if(rotHint) rotHint.hidden=true; return; }
+  const r=cv.getBoundingClientRect(),lw=cv.width/2,lh=cv.height/2,k=Math.min(r.width/lw,r.height/lh); FONT_MIN=k<.95?Math.min(24,12/k):0; /* 目標：螢幕上至少 12px */
+  const port=innerHeight>innerWidth&&innerWidth<600&&lw/lh>1.2;
+  if(port&&!rotOff){ if(!rotHint){ rotHint=document.createElement('div'); rotHint.id='rotHint'; rotHint.innerHTML='📱↻ 轉成橫向，畫面更大、字更清楚 <b>✕</b>'; rotHint.onclick=()=>{ rotOff=true; rotHint.hidden=true; }; document.body.appendChild(rotHint); }
+    const top=r.top+(r.height-lh*k)/2; rotHint.style.top=Math.max(r.top+6,top-44)+'px'; rotHint.hidden=false; } else if(rotHint) rotHint.hidden=true; }
 function frame(ts){
-  requestAnimationFrame(frame);
+  requestAnimationFrame(frame); if(!(frameN=(frameN+1)%15)) mobileFit();
   { const zl=!!ZLOCK_STATES[state]; if(zl!==zoomLock) lockZoom(zl); } /* 遊戲中鎖住縮放，回到選單才解開 */
   const dt=Math.min(.05,(ts-last)/1000||0); last=ts;
   if(state==='hub'){ if(!(hubTick=(hubTick+1)%2)) drawThumbs(ts/1000); return; } /* 封面動得慢，隔一格畫就夠 */
