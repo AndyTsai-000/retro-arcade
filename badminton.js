@@ -147,8 +147,8 @@ function create(env,opts){
   const ps=Array.from({length:N},(_,i)=>mk(i)),sh={x:200,y:300,w:0,vx:0,vy:0,vw:0,held:0,tx:200,ty:300,tw:0},fx=[],score=[0,0];
   const ALTC=['#ff5d6d',solo&&!dbl?ST.col:'#4f9dff','#ff9d3d','#3ddbd9'];
   ps.forEach((p,i)=>{ p.look=Object.assign({color:ALTC[i],hair:i===1&&solo&&!dbl?ST.hair:i%3},(net?net.looks&&HI(i)>=0&&net.looks[HI(i)]:i===0?opts.look:null)||{}); if(!p.look.color) p.look.color=ALTC[i]; });
-  // 兩個真人同一隊（自己用方向鍵跑位）不容易站得剛好，打得到球的距離放寬一點
-  for(const p of ps){ const m=ps.find(q=>q.team===p.team&&q!==p); p.rm=dbl&&m&&human(p.n)&&human(m.n)?1.4:1; }
+  // 雙打時真人玩家（自己用方向鍵跑位）不容易站得剛好，打得到球的距離放寬一點；電腦不變
+  for(const p of ps) p.rm=dbl&&human(p.n)?1.4:1;
   for(let i=1;i<N;i++) if(ps[i].team!==ps[0].team&&ps[i].look.color===ps[0].look.color) ps[i].look.color=ps[0].look.color==='#4f9dff'?'#5fd068':'#4f9dff';
   const nm=i=>net?(HI(i)>=0&&HI(i)<net.count?(net.names[HI(i)]||'玩家 '+(HI(i)+1)):'電腦'+(i+1)):ctrl[i]==='key0'?'1P':ctrl[i]==='key1'?'2P':ctrl[i]==='solo'?(opts.name||'你'):(dbl&&ps[i].team===0?'電腦隊友':ST.foe+(dbl?(i<2?'A':'B'):'（電腦）'));
   const names=ps.map((p,i)=>nm(i)),myTeam=me%2,TN=tm=>dbl?(!two&&tm===myTeam?'我方':tm?'右隊':'左隊'):names[tm];
