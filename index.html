@@ -168,7 +168,7 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .lkhead.fold:hover .arr{border-color:var(--cyan)}
 .foldWrap.folded .arr{transform:rotate(-90deg)}
 .foldWrap.folded .foldBody{display:none}
-.foldBody{max-height:min(230px,32vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:6px;border-radius:12px;background:rgba(0,0,0,.12)} /* 關卡列表自己捲（滾輪），下面的說明和操作一直看得到 */
+.foldBody{max-height:min(210px,28vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:6px;border-radius:12px;background:rgba(0,0,0,.12)} /* 關卡列表自己捲（滾輪），下面的說明和操作一直看得到 */
 .sgSplit .lklist .foldBody .chips{padding:6px 4px}
 .foldWrap .foldCur{display:none;color:var(--dim);font-weight:700;font-size:13px}
 .foldWrap.folded .foldCur{display:inline}
@@ -204,6 +204,11 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .lksel{flex:1;min-width:0;max-width:280px;padding:8px 12px;border-radius:10px;border:2px solid var(--yellow);background:#14122b;color:#fff;font:900 15px "Noto Sans TC",sans-serif;cursor:pointer}
 .lktext{flex:1;min-width:0;max-width:220px;padding:8px 12px;border-radius:10px;border:2px solid #3a3570;background:#14122b;color:#fff;font:700 15px "Noto Sans TC",sans-serif}
 .sgGoal{text-align:left;margin:6px 0 4px;color:var(--dim);font-size:14px;line-height:1.6}
+/* 說明、操作、左邊的設定太長時各自捲動，整個開始畫面不會拉得很長 */
+.sgSplit .lklist{max-height:none;overflow:visible} .sgSplit .lklist>*{flex-shrink:0}
+.sgSplit .sgGoal,.sgSplit #sgHelp{max-height:min(115px,17vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:6px}
+.sgSplit .lkOpt{max-height:min(230px,30vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:6px}
+@media (max-width:720px) and (orientation:portrait){ .sgSplit .lkOpt{max-height:none;overflow:visible} }
 .stars{color:var(--yellow);letter-spacing:.05em}.chip.sel .stars{color:#7a3d00}
 .who{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;counter-reset:w}
 .who li{counter-increment:w;background:var(--ink);border:2px solid var(--line);border-radius:4px;padding:3px 10px;font-weight:700}
@@ -293,7 +298,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=306; // 每次改版加一
+window.ARCADE_V=307; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge3d','dodge','soccer3d','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','boomcode','tug','truth','charades','party','gems','chair','tacit','piano','stroke','dragon','badminton','cook','fish','pickleball','tennis','pingpong','racket'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
