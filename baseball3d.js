@@ -121,8 +121,8 @@ function make(T,o){ const {W,H,ZX,ZY,ZW,ZH,L,fence,FPOS,BASE,kfBK}=o,PI=Math.PI,
   const PF=[[0,{ry:0,y:0,L:[.04,1.22,.24],R:[-.04,1.22,.24],P:{spine:[.05,0,0],knL:[.08,0,0],knR:[.08,0,0]}}],
     [.3,{ry:-1.35,y:0,L:[.03,1.32,.22],R:[-.03,1.32,.22],P:{spine:[-.06,0,0],hipL:[-1.5,0,0],knL:[1.75,0,0],anL:[.3,0,0],hipR:[-.05,0,0],knR:[.15,0,0]}}],
     [.55,{ry:-1.25,y:-.2,L:[.55,1.35,.08],R:[-.5,1.7,-.18],P:{spine:[.1,0,0],hipL:[-.95,0,0],knL:[.55,0,0],hipR:[.5,0,0],knR:[.65,0,0],anR:[.3,0,0]}}],
-    [.8,{ry:-.25,y:-.3,L:[.25,1.0,.2],R:[-.12,1.7,.5],P:{spine:[.55,0,0],hipL:[-.95,0,0],knL:[.45,0,0],hipR:[.6,0,0],knR:[.5,0,0],anR:[.5,0,0]}}],
-    [1,{ry:0,y:-.3,L:[.28,1.0,.08],R:[.25,.7,.45],P:{spine:[.85,0,0],hipL:[-.75,0,0],knL:[.6,0,0],hipR:[.1,0,0],knR:[1.3,0,0],anR:[.4,0,0]}}]];
+    [.8,{ry:-.25,y:-.3,L:[.25,1.0,.2],R:[-.38,1.62,.9],P:{spine:[.55,0,0],hipL:[-.95,0,0],knL:[.45,0,0],hipR:[.6,0,0],knR:[.5,0,0],anR:[.5,0,0]}}],
+    [1,{ry:0,y:-.3,L:[.28,1.0,.08],R:[.3,.75,.55],P:{spine:[.85,0,0],hipL:[-.75,0,0],knL:[.6,0,0],hipR:[.55,0,0],knR:[.9,0,0],anR:[.4,0,0]}}]];
   const tmpV=new V(),tmpW=new V(),ZW3=.36,ZC=.86,ZH3=ZW3*ZH/ZW;
   function pitcherPose(E,pp,dt){ const [A,B,k]=frames(PF,pp),P=H3.mix(A.P,B.P,k); P.y=lerp(A.y,B.y,k);
     E.cur=P; H3.pose(E.h.J,P); E.ang=lerp(A.ry,B.ry,k); E.g.rotation.y=E.ang; E.g.position.set(0,.25,mz); E.g.scale.setScalar(1); E.g.visible=true; E.g.updateMatrixWorld(true);
@@ -131,12 +131,12 @@ function make(T,o){ const {W,H,ZX,ZY,ZW,ZH,L,fence,FPOS,BASE,kfBK}=o,PI=Math.PI,
   const BXP=-1.12,BZP=.05;
   // 打擊分解動作（x 朝本壘板、z 朝捕手、-z 朝投手）：站穩→抬前腳蓄力→踏步、髖先轉→轉肩、手帶棒→擊球點雙臂伸直→收棒到肩後
   // pv 骨盆位置、py 骨盆轉、sy 上身再多轉、lean 前傾；h 下面那隻手的位置；L／R 前後腳踝，th 腳尖方向，pt 腳跟抬起
-  const SWF=[[-1,{pv:[0,.885,.04],py:0,sy:-.16,lean:.26,h:[.17,1.37,.3],L:[0,.078,-.34],Lt:1.72,Lp:0,R:[0,.078,.36],Rt:1.42,Rp:0}],
-    [0,{pv:[-.01,.895,.13],py:-.2,sy:-.42,lean:.26,h:[.1,1.39,.39],L:[.0,.17,-.44],Lt:1.6,Lp:-.2,R:[0,.078,.36],Rt:1.42,Rp:0}],
-    [.16,{pv:[.01,.845,-.03],py:.42,sy:-.14,lean:.24,h:[.27,1.08,.22],L:[-.02,.078,-.64],Lt:1.95,Lp:0,R:[0,.085,.36],Rt:1.6,Rp:.12}],
-    [.32,{pv:[.04,.84,-.14],py:.92,sy:.34,lean:.22,h:[.62,.86,-.13],L:[-.02,.078,-.64],Lt:2.05,Lp:0,R:[-.02,.15,.3],Rt:2.35,Rp:.72}],
-    [.5,{pv:[.05,.85,-.17],py:1.2,sy:.62,lean:.16,h:[.5,1.12,-.5],L:[-.02,.078,-.64],Lt:2.15,Lp:0,R:[-.03,.17,.25],Rt:2.6,Rp:.85}],
-    [.75,{pv:[.04,.87,-.18],py:1.38,sy:.78,lean:.08,h:[.13,1.46,-.52],L:[-.02,.078,-.64],Lt:2.2,Lp:0,R:[-.03,.18,.2],Rt:2.75,Rp:.92}],
+  const SWF=[[-1,{pv:[0,.84,.06],py:0,sy:-.2,lean:.34,h:[.12,1.4,.38],L:[0,.078,-.34],Lt:1.72,Lp:0,R:[0,.078,.36],Rt:1.42,Rp:0}],
+    [0,{pv:[-.01,.86,.14],py:-.2,sy:-.42,lean:.32,h:[.08,1.41,.42],L:[.0,.17,-.44],Lt:1.6,Lp:-.2,R:[0,.078,.36],Rt:1.42,Rp:0}],
+    [.16,{pv:[.01,.81,-.03],py:.42,sy:-.14,lean:.24,h:[.27,1.08,.22],L:[-.02,.078,-.64],Lt:1.95,Lp:0,R:[0,.085,.36],Rt:1.6,Rp:.12}],
+    [.32,{pv:[.04,.81,-.14],py:.92,sy:.34,lean:.22,h:[.62,.86,-.13],L:[-.02,.078,-.64],Lt:2.05,Lp:0,R:[-.02,.15,.3],Rt:2.35,Rp:.72}],
+    [.5,{pv:[.05,.83,-.17],py:1.2,sy:.62,lean:.16,h:[.5,1.12,-.5],L:[-.02,.078,-.64],Lt:2.15,Lp:0,R:[-.03,.17,.25],Rt:2.6,Rp:.85}],
+    [.75,{pv:[.04,.86,-.18],py:1.38,sy:.78,lean:.08,h:[.13,1.46,-.52],L:[-.02,.078,-.64],Lt:2.2,Lp:0,R:[-.03,.18,.2],Rt:2.75,Rp:.92}],
     [1,{pv:[.03,.885,-.17],py:1.46,sy:.82,lean:.04,h:[-.2,1.5,-.24],L:[-.02,.078,-.64],Lt:2.2,Lp:0,R:[-.03,.18,.18],Rt:2.8,Rp:.92}]];
   const swAt=p=>{ const [A,B,k]=frames(SWF,p),o2={}; for(const n in A) o2[n]=Array.isArray(A[n])?lp3(A[n],B[n],k):lerp(A[n],B[n],k); return o2; };
   const batDirAt=(p,wag,cy)=>{ const J0=kfBK(p),a=J0.a+wag,e=J0.e+(p>.2&&p<.45?-cy*.25:0); return new V(Math.cos(e)*Math.cos(a),Math.sin(e),-Math.cos(e)*Math.sin(a)).normalize(); };
@@ -165,6 +165,7 @@ function make(T,o){ const {W,H,ZX,ZY,ZW,ZH,L,fence,FPOS,BASE,kfBK}=o,PI=Math.PI,
     // 投打畫面：pp 投手動作、bp 揮棒、pit 這一球、cy 打者瞄準高度
     pitch(st){ const {t,fc,bc,pp,bp,cy,pit,showBall,cheer}=st; board(st.board); const dt=lastT==null?.016:cl(t-lastT,0,.1); lastT=t; teamsFor(fc,bc); hideAll(); view='pitch';
       cam.position.copy(pcPos); cam.quaternion.copy(pcQ); cam.fov=pcFov; cam.updateProjectionMatrix(); sun.target.position.set(0,0,-10); sun.position.set(night?5:-20,night?60:sunset?22:50,night?25:28);
+      if(st.cam){ cam.position.set(...st.cam[0]); cam.lookAt(...st.cam[1]); cam.fov=st.cam[2]||30; cam.updateProjectionMatrix(); } /* 測試用：換個角度看 */
       crowdT.offset.y=cheer?Math.abs(Math.sin(t*9))*.012:0;
       pitcherPose(FL[0],pp,dt); pball.visible=pp<.78;
       for(let i=2;i<9;i++){ const q=FPOS[i]; place(FL[i],q[0]*FT,-q[1]*FT,Math.atan2(0-q[0]*FT,0+q[1]*FT),poseOf(pp>.6&&pp<1||pit?'ready':'stand',t,i),dt); }

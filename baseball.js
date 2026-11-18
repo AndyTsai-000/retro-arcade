@@ -655,7 +655,7 @@ function create(env,opts){
     if(S.banT>0&&S.ban){ ctx.textAlign='center'; ctx.font='900 26px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#14122b'; ctx.strokeText(S.ban,W/2,84); ctx.fillStyle='#ffd23f'; ctx.fillText(S.ban,W/2,84); }
   }
   if(DERBY){ S.half=me; banner('全壘打大賽：'+DOUTS+' 球裡打越多支越好',2.2); } else banner('1 局上　'+tname[0]+' 進攻',1.6);
-  return {update,draw,destroy(){ if(G3) G3.destroy(); },_dbg:{S,teams,get fl(){return fl;},get runners(){return runners;},hit:(e,l,s)=>startField(e,l,s),resolve,throwPitch,art:{drawBatter,fig,pose,kf,PK,stadium}}};
+  return {update,draw,destroy(){ if(G3) G3.destroy(); },_dbg:{S,teams,get fl(){return fl;},get runners(){return runners;},hit:(e,l,s)=>startField(e,l,s),resolve,throwPitch,art:{drawBatter,fig,pose,kf,PK,BK,stadium}}};
 }
 
 function scene(ctx,w,h,L,t){
