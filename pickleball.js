@@ -254,8 +254,15 @@ function create(env,opts){
     else { net.onmsg=(m,from)=>{ if(m.i&&rin[SL(from)]){ const r=rin[SL(from)]; r.dx=m.i[0]; r.dy=m.i[1]; if(m.i[2]) r.sw=true; if(m.i[3]) r.dk=true; } };
       net.onleave=i=>{ const j=SL(i); if(j<N&&!ended) ctrl[j]='ai'; }; } }
   // 移動：方向是照「這個人自己的鏡頭」看的（同一台都用左隊的鏡頭；連線各自從自己這隊看）
+  // 自動跑位：「跑位」設定選自動的真人，角色自己跑到球的位置，只要按揮拍；方向鍵只用來選往哪邊打
+  const RUN=OPT.run||'manual',autoS=ps.map(()=>({pred:null,t:0}));
+  const AUTO=n=>{ if(isAI(n)||RUN==='manual') return false; if(RUN==='auto') return true; const h=net?HI(n):ctrl[n]==='key1'?1:0; return RUN==='p1'?h===0:h===1; };
+  function autoT(p,dt){ const A=autoS[p.n],coming=lastTeam>=0&&lastTeam!==p.team;
+    if(coming){ if((A.t-=dt)<=0||!A.pred){ A.t=.08; A.pred=predict(p); } if(A.pred&&mine(p,A.pred)) return [A.pred.x-p.face*6,A.pred.w]; } else A.pred=null;
+    return [p.team?W-BACK-30:BACK+30,dbl?RW(p.team)*p.side*70:0]; }
   function movePlayer(p,i,dt){ const sp=isAI(p.n)?AI.spd:235,cam=net?p.team:0,fx2=cam?-1:1; let mx,mw;
     if(isAI(p.n)){ const d=Math.hypot(i.wx||0,i.ww||0); mx=d>4?(i.wx/d)*Math.min(1,d/28):0; mw=d>4?(i.ww/d)*Math.min(1,d/28):0; }
+    else if(AUTO(p.n)){ const T=autoT(p,dt),dx=T[0]-p.x,dw=T[1]-p.w,d=Math.hypot(dx,dw); mx=d>4&&phase==='play'||d>4&&phase==='point'?(dx/d)*Math.min(1,d/24):0; mw=d>4&&(phase==='play'||phase==='point')?(dw/d)*Math.min(1,d/24):0; if(phase==='serve'){ mx=0; mw=(p.n===server?(i.dx||0)*fx2:0); } p.aim=(i.dx||0)*fx2; }
     else { mx=(i.dy||0)*fx2; mw=(i.dx||0)*fx2; const l=Math.hypot(mx,mw); if(l>1){ mx/=l; mw/=l; } p.aim=(i.dx||0)*fx2*RW(0)*1; }
     p.moving=Math.abs(mx)+Math.abs(mw)>.05;
     if(phase==='serve'&&p.n===server){ const bx=p.team?W-BACK+6:BACK-6; p.x=p.team?Math.max(bx,p.x+mx*sp*dt):Math.min(bx,p.x+mx*sp*dt); p.x=clamp(p.x,10,W-10); p.w=svSign>0?clamp(p.w+mw*sp*dt,8,CW):clamp(p.w+mw*sp*dt,-CW,-8); if(i.dk){ p.sv=(p.sv+1)%4; sfx('click'); } } // 發球前「小球」換發球種類
@@ -341,7 +348,8 @@ function thumb(c,w,h,t){ c.save(); c.scale(w/W,h/H); demo(c,6,t,'#ff5d6d','#4f9d
   desc:'從球員背後看的匹克球！單打或雙打，照真實規則：低手發球（四種發球）、雙彈地、廚房區不能截擊。前後左右跑位，揮拍自動判斷抽球或扣殺，「小球」輕輕吊進對方廚房區。單人 200 關（1 對 1 或 2 對 2），雙人同一台，連線最多 4 人。',
   goal:'球在對方那邊落地兩次、或對方失誤（出界、下網、發球落在廚房區或錯的發球區、在廚房區截擊）就贏這球。發球得分制只有發球方贏球才得分，先到 11 分就贏；落地得分制每球都得分，先到 15 分就贏（兩種都不用 Deuce）。發球方得分時，同一位發球員換到另一邊繼續發；雙打發球得分制失誤時換搭檔發，兩人都失誤才換對方。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  options:[{key:'fmt',label:'賽制（單人）',def:'singles',opts:[{id:'singles',label:'單打 1 對 1'},{id:'doubles',label:'雙打：配電腦隊友 2 對 2'}]},
+  options:[{key:'run',label:'跑位',def:'manual',opts:[{id:'manual',label:'大家都自己跑'},{id:'auto',label:'大家都自動跑位'},{id:'p1',label:'只有 1P 自動（連線：房主）'},{id:'p2',label:'只有 2P 自動（連線：第二位）'}]},
+    {key:'fmt',label:'賽制（單人）',def:'singles',opts:[{id:'singles',label:'單打 1 對 1'},{id:'doubles',label:'雙打：配電腦隊友 2 對 2'}]},
     {key:'score',label:'計分',def:'side',opts:[{id:'side',label:'發球得分制（11 分，不用 Deuce）'},{id:'rally',label:'落地得分制（15 分，不用 Deuce）'}]},
     {key:'serve',label:'預設發球',def:'deep',opts:[{id:'deep',label:'高遠深球'},{id:'drive',label:'快速平擊'},{id:'top',label:'上旋發球'},{id:'slice',label:'側旋發球'}]},
     {key:'team',label:'兩個玩家時（雙人／連線 2 人）',def:'1v1',opts:[{id:'1v1',label:'兩人 1 對 1'},{id:'vs',label:'各配電腦隊友 2 對 2'},{id:'coop',label:'兩人同隊打 2 個電腦'}]},
@@ -350,8 +358,8 @@ function thumb(c,w,h,t){ c.save(); c.scale(w/W,h/H); demo(c,6,t,'#ff5d6d','#4f9d
   stageGoal:i=>{ const S=STAGES[i]; return '第 '+(i+1)+' 關・'+S.name+'：打贏 '+S.foe+'。'+(i<10?'對手很慢、常失誤，先熟悉發球、等彈地和小球。':i<60?'對手開始會上網打小球，你也試著站到廚房線外。':i<130?'對手會在網前截擊，回球要低、打兩邊。':'高手對決：小球、抽球、扣殺都很準。'); },
   stageLocked:i=>i>0&&getRec(i-1)==null,stageBest:i=>{ const v=getRec(i); return v?'✓ '+v.replace(':',' : '):''; },
   hubBest:()=>{ let n=0; for(let i=0;i<LV;i++) if(getRec(i)!=null) n++; return n?'過關 <b>'+n+' / '+LV+'</b>':'尚無紀錄'; },
-  help:[['↑ ↓ ← →','前後左右跑位（發球時在底線後的那半邊移動）'],['空白鍵','揮拍：低手發球；自動抽球，球很高時扣殺；按著 ← → 揮拍會往那邊打'],['X','小球：輕輕吊進對方廚房區；發球前按＝換發球種類'],['規則','前兩拍要等球彈地；站在廚房區不能截擊']],
-  touchHelp:[['方向盤','前後左右跑位'],['揮拍','發球、自動抽球或扣殺'],['小球','吊進對方廚房區；發球前按＝換發球種類'],['規則','前兩拍等彈地；廚房區不能截擊']],
+  help:[['↑ ↓ ← →','前後左右跑位（發球時在底線後的那半邊移動）'],['空白鍵','揮拍：低手發球；自動抽球，球很高時扣殺；按著 ← → 揮拍會往那邊打'],['X','小球：輕輕吊進對方廚房區；發球前按＝換發球種類'],['規則','前兩拍要等球彈地；站在廚房區不能截擊'],['自動跑位','開始前「跑位」選自動：角色自己跑到球的位置，你只要按揮拍；方向鍵改成選往哪邊打']],
+  touchHelp:[['方向盤','前後左右跑位'],['揮拍','發球、自動抽球或扣殺'],['小球','吊進對方廚房區；發球前按＝換發球種類'],['規則','前兩拍等彈地；廚房區不能截擊'],['自動跑位','「跑位」選自動時角色自己跑，只要按揮拍；方向盤選往哪邊打']],
   touch:{left:'dpad',right:[{l:'小球',c:'KeyX'},{l:'揮拍',c:'Space',act:true}]},
   looks:[{key:'pad',label:'球拍種類',opts:[{id:'std',label:'標準拍'},{id:'long',label:'加長拍'},{id:'wide',label:'寬面拍'}]},{key:'face',label:'拍面顏色',type:'color',opts:['#ff7a3d','#ff5d6d','#ffd23f','#5fd068','#3ddbd9','#4f9dff','#b98cff','#2a2a30']},{key:'grip',label:'握把顏色',type:'color',opts:['#333333','#f4f0e8','#ff5d6d','#4f9dff','#5fd068','#ffd23f']},
     {key:'color',label:'球衣顏色',type:'color',opts:['#ff5d6d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#4f9dff','#b98cff','#ff7eb6']},{key:'hair',label:'髮型',opts:[{id:'0',label:'短髮'},{id:'1',label:'馬尾'},{id:'2',label:'捲毛'}]}],
