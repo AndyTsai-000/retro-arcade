@@ -159,6 +159,17 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
 .sg.sel{background:var(--cyan);border-color:#0b0a1c;color:#14122b}
 .sg.lock{opacity:.4}.sg.lock.sel{opacity:.8}
 .sgInfo{font-weight:700;margin:4px 0 0}
+/* 開始畫面：左欄＝示意圖＋開始＋賽制／玩法設定；右欄＝選遊戲、關卡（可收起）、說明、操作 */
+.lkLeft{display:flex;flex-direction:column;gap:8px;min-width:0}
+.lkLeft .lkL{position:static}
+.lkOpt .chips{justify-content:flex-start;padding:6px 0}
+.lkhead.fold{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}
+.lkhead.fold .arr{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--ink);border:2px solid var(--line);font-size:13px;transition:transform .2s}
+.lkhead.fold:hover .arr{border-color:var(--cyan)}
+.foldWrap.folded .arr{transform:rotate(-90deg)}
+.foldWrap.folded .foldBody{display:none}
+.foldWrap .foldCur{display:none;color:var(--dim);font-weight:700;font-size:13px}
+.foldWrap.folded .foldCur{display:inline}
 .sgSplit .lkL .lk{height:auto}
 .sgSplit .lkL{position:static}
 .sgSplit .lklist .chips{justify-content:flex-start;padding:6px 0}
@@ -171,6 +182,7 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
   .sgSplit .lkL>p.hint{display:none}
   .sgSplit .lkL .row{gap:8px}.sgSplit .lkL .turn{margin:0;font-size:13px}
   .sgSplit .lkL .lk{order:-3}.sgSplit .lkL .sgInfo{order:-2}.sgSplit .lkL>.row{order:-1} /* 開始按鈕緊接在預覽下面，說明文字放後面 */
+  .sgSplit .lkLeft{display:contents} /* 直放：預覽＋開始固定在上面，賽制／玩法設定接在下面跟著捲 */
 }
 /* 手機橫放：預覽縮小，開始按鈕不用捲就看得到 */
 @media (orientation:landscape) and (max-height:540px){
@@ -181,6 +193,8 @@ h1{margin:0;font-weight:900;font-size:clamp(40px,9vw,76px);line-height:1.05;lett
   .sgSplit .lkL .lk{max-height:calc(100vh - 250px);width:auto;max-width:100%;min-height:0;margin:0 auto}
   .sgSplit .lkL>p.hint{display:none}
   .sgSplit .lklist{max-height:calc(100vh - 120px)}
+  .sgSplit .lkLeft{position:sticky;top:-16px;max-height:calc(100vh - 120px);overflow-y:auto;scrollbar-width:thin}
+  .sgSplit .lkLeft .lkL{position:static;max-height:none;overflow:visible}
 }
 .sndRow{display:grid;grid-template-columns:5.5em 1fr 2.5em;align-items:center;gap:10px;margin:12px 0;text-align:left}
 .sndRow input{width:100%;accent-color:var(--y,#ffd23f)}.sndRow b{text-align:right}
@@ -277,7 +291,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=304; // 每次改版加一
+window.ARCADE_V=305; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge3d','dodge','soccer3d','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','boomcode','tug','truth','charades','party','gems','chair','tacit','piano','stroke','dragon','badminton','cook','fish','pickleball','tennis','pingpong','racket'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -908,26 +922,32 @@ function startCard(){
   if(g.stageGrid){
     showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas><p>'+g.goal+'</p><p class="hint">按上方「遊戲操作」可以看按鍵說明。</p>'+optsHtml(g)+
       '<p class="sgInfo" id="sgInfo">'+gridInfo(g)+'</p><div class="row"><button class="btn main" id="sGo">開始</button>'+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div></div>'+
-      '<div class="lklist"><div class="lkhead">選擇關卡</div>'+gridHtml(g)+'</div></div>');
-    closeLook(); demo(g); lockSync(g);
+      '<div class="lklist">'+(()=>{ const f=load('arcade.fold.'+g.id)==='1'; return '<div class="foldWrap'+(f?' folded':'')+'" id="foldWrap"><div class="lkhead fold" id="foldHead" title="收起／展開">選擇關卡 <span class="arr">▾</span><span class="foldCur" id="foldCur"></span></div><div class="foldBody">'+gridHtml(g)+'</div></div>'; })()+'</div></div>');
+    closeLook(); demo(g); lockSync(g); bindFold(g);
     bindChips(()=>{ $('#sgInfo').innerHTML=gridInfo(g); lockSync(g); }); bindOpts(g); on('sGo',()=>enter({stage:stageSel})); on('sLook',()=>{SFX.click();lookCard();});
     const sel=card.querySelector('.sg.sel'); if(sel) sel.scrollIntoView({block:'nearest'});
     return; }
   // 一般遊戲也用左右兩欄：左邊示意圖、說明、目前選的關卡和開始按鈕；右邊是關卡、賽制、玩法和操作說明
   const stInfo=()=>g.stages?'<p class="sgInfo" id="sgInfo">'+gridInfo(g)+'</p>':'';
   // 右邊列出關卡名稱（有難度的加星數）；只有貓咪數獨那種關卡很多的遊戲（stageGrid）才只放數字
-  const stageChips=!g.stages?'':!g.stageGrid?'<div class="lkhead">'+(g.stageLabel||'選擇關卡')+'</div><div class="chips">'+g.stages.map((s,i)=>(g.stageLocked&&g.stageLocked(i)?'<button class="chip lock'+(i===stageSel?' sel':'')+'" data-s="'+i+'" title="過了前一關才會解鎖（可以先看畫面）">🔒 '+(i+1)+'　'+s+'</button>':'<button class="chip'+(i===stageSel?' sel':'')+'" data-s="'+i+'">'+(i+1)+'　'+s+(g.stars?'　<span class="stars">'+'★'.repeat(g.stars[i])+'</span>':'')+(g.stageBest&&g.stageBest(i)?'　<small>'+g.stageBest(i)+'</small>':'')+'</button>')).join('')+'</div>':'<div class="lkhead">選擇關卡</div>'+gridHtml(g);
+  const fold=k=>{ const f=load('arcade.fold.'+g.id)==='1'; return '<div class="foldWrap'+(f?' folded':'')+'" id="foldWrap"><div class="lkhead fold" id="foldHead" title="收起／展開">'+k+' <span class="arr">▾</span><span class="foldCur" id="foldCur"></span></div><div class="foldBody">'; };
+  const stageChips=!g.stages?'':!g.stageGrid?fold(g.stageLabel||'選擇關卡')+'<div class="chips">'+g.stages.map((s,i)=>(g.stageLocked&&g.stageLocked(i)?'<button class="chip lock'+(i===stageSel?' sel':'')+'" data-s="'+i+'" title="過了前一關才會解鎖（可以先看畫面）">🔒 '+(i+1)+'　'+s+'</button>':'<button class="chip'+(i===stageSel?' sel':'')+'" data-s="'+i+'">'+(i+1)+'　'+s+(g.stars?'　<span class="stars">'+'★'.repeat(g.stars[i])+'</span>':'')+(g.stageBest&&g.stageBest(i)?'　<small>'+g.stageBest(i)+'</small>':'')+'</button>')).join('')+'</div></div></div>':fold('選擇關卡')+gridHtml(g)+'</div></div>';
   const varChips=g.variants?'<div class="lkhead">賽制</div><div class="chips">'+g.variants.map(v=>'<button class="chip'+(v.id===variantSel?' sel':'')+'" data-v="'+v.id+'">'+v.label+'</button>').join('')+'</div>':'';
   const optBlock='<div id="optBox">'+(visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):'')+'</div>';
-  showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas>'+stInfo()+
+  showCard('<h3>'+g.name+'</h3><div class="lkSplit sgSplit"><div class="lkLeft"><div class="lkL"><canvas id="demoCv" width="960" height="540" class="lk demo" aria-label="遊戲示意圖"></canvas>'+stInfo()+
     '<div class="row">'+(g.modes?g.modes.filter(m=>!(m.kb&&isTouch)).map(m=>'<button class="btn main" data-m="'+m.id+'">'+m.label+'</button>').join(''):'<button class="btn main" id="sGo">開始</button>')+
-    (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+
-    '<div class="lklist">'+packHtml()+stageChips+varChips+optBlock+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+goalOf(g,stageSel)+'</p><div class="lkhead">操作說明</div><div id="sgHelp">'+helpHtml(g)+'</div></div></div>');
-  closeLook(); demo(g); leftTrack(g); lockSync(g); bindPack();
+    (g.online?'<button class="btn" id="sNet">多人連線</button>':'')+(g.looks?'<button class="btn" id="sLook">我的造型</button>':'')+'</div>'+(g.wide!==false?'<p class="turn">把手機轉成橫向，畫面會比較大。</p>':'')+'</div>'+(varChips||visOpts(g).length||g.optNote?'<div class="lkOpt">'+varChips+optBlock+'</div>':'<div class="lkOpt">'+optBlock+'</div>')+'</div>'+
+    '<div class="lklist">'+packHtml()+stageChips+'<div class="lkhead">遊戲說明</div><p class="sgGoal" id="sgGoal">'+goalOf(g,stageSel)+'</p><div class="lkhead">操作說明</div><div id="sgHelp">'+helpHtml(g)+'</div></div></div>');
+  closeLook(); demo(g); leftTrack(g); lockSync(g); bindPack(); bindFold(g);
   bindChips(()=>{ const el=$('#sgInfo'); if(el) el.innerHTML=gridInfo(g); leftTrack(g); lockSync(g); const gl=$('#sgGoal'); if(gl&&(g.stageGoal||g.optNote)) gl.innerHTML=goalOf(g,stageSel); const hb=$('#sgHelp'); if(hb&&g.stageHelp) hb.innerHTML=helpHtml(g); const ob=$('#optBox'); if(ob){ ob.innerHTML=visOpts(g).length?'<div class="lkhead">玩法設定</div>'+optsHtml(g):''; bindOpts(g); } }); /* 換關卡時只顯示那一關的設定 */ const reOpt=()=>{ if(!g.optNote) return; const gl=$('#sgGoal'),ob=$('#optBox'); if(gl) gl.innerHTML=goalOf(g,stageSel); if(ob){ ob.innerHTML='<div class="lkhead">玩法設定</div>'+optsHtml(g); bindOpts(g,reOpt); } }; bindOpts(g,reOpt); on('sGo',()=>enter({stage:stageSel})); on('sNet',()=>{SFX.click();netCard();}); on('sLook',()=>{SFX.click();lookCard();});
   card.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>enter({stage:stageSel,mode:b.dataset.m})));
   const sel=card.querySelector('.lklist .sg.sel,.lklist .chip.sel[data-s]'); if(sel) sel.scrollIntoView({block:'nearest'});
 }
+// 關卡列表的箭頭：點標題收起／展開（每款遊戲各自記住）；收起時標題旁顯示目前選的關卡
+function bindFold(g){ const w=$('#foldWrap'),h=$('#foldHead'); if(!w||!h) return;
+  const cur2=()=>{ const c2=$('#foldCur'); if(c2&&g.stages) c2.textContent='目前：'+(g.stageLabel?'':'第 '+(stageSel+1)+' 關　')+g.stages[stageSel]; };
+  cur2(); h.addEventListener('click',()=>{ SFX.click(); const f=!w.classList.contains('folded'); w.classList.toggle('folded',f); save('arcade.fold.'+g.id,f?'1':'0'); cur2(); if(!f){ const sel=w.querySelector('.sg.sel,.chip.sel[data-s]'); if(sel) sel.scrollIntoView({block:'nearest'}); } });
+  card.querySelectorAll('[data-s]').forEach(b=>b.addEventListener('click',()=>setTimeout(cur2,0))); }
 // 選到還沒解鎖的關卡：可以看畫面，但開始鈕停用
 function lockSync(g){ const L=!!(g.stages&&g.stageLocked&&g.stageLocked(stageSel)); card.querySelectorAll('.lkL [data-m],#sGo,#sNet').forEach(b=>b.disabled=L);
   let n=$('#lockNote'); if(L&&!n){ const r=card.querySelector('.lkL .row'); if(r){ n=document.createElement('p'); n.id='lockNote'; n.className='lockNote'; n.textContent='🔒 過了前一關才能玩這一關'; r.after(n); } } else if(!L&&n) n.remove(); }
