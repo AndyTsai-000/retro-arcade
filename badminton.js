@@ -177,7 +177,12 @@ function create(env,opts){
       const need=Math.max(0,Math.hypot(s.x-p.x,s.w-p.w)-REACH*.5)/AI.spd+AI.react; if(need<=i/90) return last; } return last||{x:sh.x,w:sh.w,h:0,t:0}; }
   // 雙打誰去接：發球只能由接發球的人接；之後離得近的去（隊友是真人時，照左右半邊分工）
   function mine(p,pred){ if(!dbl) return true; if(rally===0&&lastTeam>=0) return p.n===recv; const mate=ps.find(q=>q.team===p.team&&q!==p),dm=Math.hypot(mate.x-pred.x,mate.w-pred.w),dp=Math.hypot(p.x-pred.x,p.w-pred.w);
-    return human(mate.n)?(Math.sign(pred.w||1)===Math.sign(p.w||1)&&dp<dm+60):dp<=dm; }
+    if(!human(mate.n)) return dp<=dm;
+    // 隊友是真人：照他站的前後分工——他在網前，後場的球我去；他在後場，網前的球我去；他在中間就左右分工；離他太遠的球也由我補
+    const mz=zoneOf(mate),pd=Math.abs(pred.x-NETX),far=Math.abs(pred.w-mate.w)>110;
+    if(mz==='front') return pd>190||far; if(mz==='back') return pd<200||far;
+    return Math.sign(pred.w||1)===Math.sign(p.w||1)&&dp<dm+60; }
+  const zoneOf=q=>{ const d=Math.abs(q.x-NETX); return d<175?'front':d>240?'back':'mid'; };
   function aiInput(p,dt){ const o={dx:0,dy:0,jump:false,sw:false,drop:false,wx:0,ww:0},A=aiS[p.n],dir=p.face;
     if(phase==='serve'){ if(sh.held===p.n&&introT<=0&&(aiServeT-=dt)<=0){ const sht=dbl?Math.random()<.75:Math.random()<.5*k; o.sw=!sht; o.drop=sht; } return o; }
     if(phase!=='play') return o;
@@ -189,11 +194,17 @@ function create(env,opts){
     let baseX=k<.3?mx(620):myT==='drop'||myT==='net'?mx(lerp(590,NETX+110,k)):myT==='smash'?mx(lerp(600,540,k)):myT==='clear'||myT==='lift'?mx(lerp(610,600,k)):mx(lerp(620,565,k)),baseW=0;
     if(dbl){ const mate=ps.find(q=>q.team===p.team&&q!==p),attack=lastTeam===p.team&&(sh.type==='smash'||sh.type==='drop'||sh.type==='net'||sh.type==='drive');
       if(attack&&k>.3){ const front=lastHit===p.n?Math.abs(p.x-NETX)<Math.abs(mate.x-NETX):Math.abs(p.x-NETX)<=Math.abs(mate.x-NETX); baseX=front?NETX-dir*95:NETX-dir*250; baseW=front?clamp(sh.w*.4,-60,60):0; }
-      else { baseX=NETX-dir*215; baseW=RW(p.team)*p.side*68; } }
+      else { baseX=NETX-dir*215; baseW=RW(p.team)*p.side*68; }
+      // 隊友是真人：像真人搭檔一樣補位——你上網我就退後場中間；你退後場，進攻時我上網、防守時我站你的另一邊；你在中間我就站另一邊
+      if(human(mate.n)){ const mz=zoneOf(mate),atk=attack||(coming&&GY-sh.y>120&&Math.abs(sh.x-NETX)>220&&Math.sign(sh.w||1)===Math.sign(mate.w||1));
+        let role=mz==='front'?'back':mz==='back'&&atk?'front':'side'; if(A.role&&A.role!==role&&(A.roleT||0)<.5){ role=A.role; } if(role!==A.role){ A.role=role; A.roleT=0; } A.roleT=(A.roleT||0)+dt;
+        if(role==='back'){ baseX=NETX-dir*265; baseW=clamp(sh.w*.35,-50,50); }
+        else if(role==='front'){ baseX=NETX-dir*100; baseW=clamp(sh.w*.5,-60,60); }
+        else { baseX=NETX-dir*215; baseW=-Math.sign(mate.w||RW(p.team)*p.side*-1)*70; } } }
     const shade=clamp(sh.w+(sh.vw||0)*.3,-PW,PW)*(.1+.4*k)*(dbl?.5:1); if(coming) A.rt=0; else A.rt+=dt;
     const go=coming&&A.pred&&mine(p,A.pred);
     let tx=go?A.pred.x-dir*6+(A.dec.off||0):baseX,tw=go?A.pred.w:baseW+shade;
-    if(!coming&&(A.rt<(1-k)*.45||Math.hypot(tx-p.x,tw-p.w)<(1-k)*60)){ tx=p.x; tw=p.w; }
+    if(!coming&&!(dbl&&human(ps.find(q=>q.team===p.team&&q!==p).n))&&(A.rt<(1-k)*.45||Math.hypot(tx-p.x,tw-p.w)<(1-k)*60)){ tx=p.x; tw=p.w; } // 當你的隊友時一定補位，不偷懶
     tx=p.team?clamp(tx,NETX+30,W+40):clamp(tx,-40,NETX-30);
     o.wx=tx-p.x; o.ww=tw-p.w;
     if(go&&A.dec.jmp&&p.y>=GY&&sh.vy>0&&GY-sh.y>150&&GY-sh.y<230&&Math.hypot(sh.x-p.x,sh.w-p.w)<70) o.jump=true;
