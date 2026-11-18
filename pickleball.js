@@ -156,6 +156,8 @@ function create(env,opts){
   const RW=tm=>tm?-1:1; // 這隊的「右手邊」在 w 的哪個方向
   const ps=Array.from({length:N},(_,i)=>{ const tm=i%2,lk=Object.assign({},(net?net.looks&&HI(i)>=0&&net.looks[HI(i)]:null)||(i===0?opts.look:null)||{color:ALTC[i],hair:i%3});
     if(!lk.color) lk.color=ALTC[i]; return {n:i,team:tm,side:dbl?(i<2?1:-1):1,x:tm?700:100,w:0,face:tm?-1:1,sw:0,hitOK:false,dk:false,moving:false,volT:0,tx:tm?700:100,tw:0,look:lk,sv:Math.max(0,SERVES.findIndex(q=>q[0]===OPT.serve)),aim:0,swType:'ready',run:0}; });
+  // 兩個真人同一隊（自己用方向鍵跑位）不容易站得剛好，打得到球的距離放寬一點
+  for(const p of ps){ const m=ps.find(q=>q.team===p.team&&q!==p); p.rm=dbl&&m&&human(p.n)&&human(m.n)?1.4:1; }
   for(let i=1;i<N;i++) if(ps[i].team!==ps[0].team&&ps[i].look.color===ps[0].look.color) ps[i].look.color='#4f9dff';
   const nm=i=>net?(HI(i)>=0&&HI(i)<net.count?(net.names[HI(i)]||'玩家 '+(HI(i)+1)):'電腦'+(i+1)):ctrl[i]==='key0'?'1P':ctrl[i]==='key1'?'2P':ctrl[i]==='solo'?(opts.name||'你'):(dbl&&ps[i].team===0?'電腦隊友':ST.foe+(dbl?(i<2?'A':'B'):''));
   const names=ps.map((p,i)=>nm(i)),myTeam=ps[me].team,CT=net?myTeam:0,TN=tm=>dbl?(!two&&tm===myTeam?'我方':tm?'右隊':'左隊'):names[tm];
@@ -222,7 +224,7 @@ function create(env,opts){
     if(ai) tw+=(R()-.5)*AI.lat; tw=clamp(tw,-CW+8,CW-8);
     v=v||aimShot(ball.x,ball.y,oppBack-dir*120,[30,40,50,60],dir)||aimShot(ball.x,ball.y,NETX+dir*200,[40,55,70],dir)||{vx:dir*300,vy:-420,t:1};
     // 擊球品質 e：越大偏得越多（照真人：撲球、邊跑邊打、低球、小球最容易失手；電腦照關卡）
-    const stretch=clamp(reachD(p,ball)/REACH,0,1),lowB=ball.y>GY-22?1:0,base={dink:.3,drop:.42,drive:.24,smash:.2}[type]||.25;
+    const stretch=clamp(reachD(p,ball)/(REACH*(p.rm||1)),0,1),lowB=ball.y>GY-22?1:0,base={dink:.3,drop:.42,drive:.24,smash:.2}[type]||.25;
     let e=base*(1+stretch*1.6+(p.moving?.45:0)+lowB*.6)*(ai?(1.45-1.05*k):1); if(p.weak) e*=1.4;
     const gs=()=>((R()+R()+R())/1.5-1); v={vx:v.vx*(1+gs()*e*.42),vy:v.vy*(1+gs()*e*.42),t:v.t}; tw+=gs()*e*150;
     const vol=ball.bn===0; ball.vx=v.vx; ball.vy=v.vy; ball.vw=(tw-ball.w)/Math.max(.25,v.t||1); ball.bn=0; ball.net=0; ball.spin=''; ball.curl=0; ball.smash=type==='smash';
@@ -284,7 +286,7 @@ function create(env,opts){
       return; }
     const n=Math.max(1,Math.ceil(dt*240)); for(let s=0;s<n&&phase==='play';s++){ const px=ball.x; stepB(ball,dt/n);
       if((px-NETX)*(ball.x-NETX)<=0&&ball.y>NETTOP-6&&Math.abs(ball.w)<CW+14){ if(ball.y>NETTOP+2){ ball.x=NETX-Math.sign(ball.vx||1)*6; ball.vx*=-.15; ball.vw*=.3; ball.vy=Math.max(0,ball.vy)*.3; ball.net=1; sfx('bump'); fx.push({k:'ring',x:NETX,w:ball.w,h:GY-ball.y,t:0,col:'#ff8a8a'}); } else { ball.vy=Math.min(ball.vy,0)-40; ball.vx*=.75; fx.push({k:'ring',x:NETX,w:ball.w,h:GY-NETTOP,t:0,col:'#aaa'}); } }
-      for(const p of ps){ if(p.sw>.04&&p.hitOK&&reachD(p,ball)<REACH){ if(!mySide(p)||p.team===lastTeam) continue;
+      for(const p of ps){ if(p.sw>.04&&p.hitOK&&reachD(p,ball)<REACH*(p.rm||1)){ if(!mySide(p)||p.team===lastTeam) continue;
           if(ball.bn===0&&mustBounce()){ if(human(p.n)) waitTip=1; continue; }
           p.hitOK=false; if(ball.bn===0&&inKitchen(p.x)){ rallyEnd(1-p.team,'在廚房區截擊'); break; } shoot(p,p.dk); break; } }
       if(phase!=='play') break;

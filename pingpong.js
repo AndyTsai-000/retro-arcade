@@ -153,6 +153,8 @@ function create(env,opts){
   const ALTC=['#ff5d6d',solo&&!dbl?ST.col:'#4f9dff','#ff9d3d','#3ddbd9'];
   const ps=Array.from({length:N},(_,i)=>{ const tm=i%2,lk=Object.assign({},(net?net.looks&&HI(i)>=0&&net.looks[HI(i)]:null)||(i===0?opts.look:null)||{color:ALTC[i],hair:i===1&&solo&&!dbl?ST.hair:i%3}); if(!lk.color) lk.color=ALTC[i];
     return {n:i,team:tm,x:tm?TX1+40:TX0-40,w:0,face:tm?-1:1,sw:0,hitOK:false,dk:false,moving:false,tx:0,tw:0,look:lk,aim:0,swType:'ready',run:0}; });
+  // 兩個真人同一隊（自己用方向鍵跑位）不容易站得剛好，打得到球的距離放寬一點
+  for(const p of ps){ const m=ps.find(q=>q.team===p.team&&q!==p); p.rm=dbl&&m&&human(p.n)&&human(m.n)?1.4:1; }
   for(let i=1;i<N;i++) if(ps[i].team!==ps[0].team&&ps[i].look.color===ps[0].look.color) ps[i].look.color='#4f9dff';
   const nm=i=>net?(HI(i)>=0&&HI(i)<net.count?(net.names[HI(i)]||'玩家 '+(HI(i)+1)):'電腦'+(i+1)):ctrl[i]==='key0'?'1P':ctrl[i]==='key1'?'2P':ctrl[i]==='solo'?(opts.name||'你'):(dbl&&ps[i].team===0?'電腦隊友':ST.foe+(dbl?(i<2?'A':'B'):''));
   const names=ps.map((p,i)=>nm(i)),myTeam=me%2,CT=net?myTeam:0,TN=tm=>dbl?ps.filter(p=>p.team===tm).map(p=>names[p.n]).join('＋'):names[tm];
@@ -210,7 +212,7 @@ function create(env,opts){
     let tx=type==='push'?NETX+dir*(50+R()*70):oppEnd-dir*(18+R()*70),tw=p.aim?p.aim*(30+R()*(TW-40)):(oW>0?-1:1)*(20+R()*(TW-34));
     if(ai){ tx+=(R()-.5)*AI.err; tw+=(R()-.5)*AI.lat; }
     const T0=type==='smash'?(ai?.42-.1*k:.32):type==='push'?.78:(ai?.72-.2*k:.5)*(dbl?1.12:1),spin=type==='push'?'back':type==='smash'?'':'top';
-    const stretch=clamp(reachD(p,ball)/REACH,0,1),baseE={push:.22,drive:.26,smash:.32}[type],spinIn=ball.spin==='back'&&type!=='push'?.5:0;
+    const stretch=clamp(reachD(p,ball)/(REACH*(p.rm||1)),0,1),baseE={push:.22,drive:.26,smash:.32}[type],spinIn=ball.spin==='back'&&type!=='push'?.5:0;
     let e=baseE*(1+stretch*1.5+(p.moving?.4:0)+spinIn)*(ai?(1.45-1.05*k):1);
     const gs=()=>((R()+R()+R())/1.5-1); tx+=gs()*e*80; tw+=gs()*e*60;
     let v=aimTo(ball.x,ball.w,ball.h,tx,clamp(tw,-TW-10,TW+10),T0*(1+gs()*e*.15),spin)||aimTo(ball.x,ball.w,ball.h,NETX+dir*90,0,.9,'')||{vx:dir*300,vw:0,vh:200};
@@ -267,7 +269,7 @@ function create(env,opts){
     trail.push([ball.x,ball.w,ball.h]); if(trail.length>7) trail.shift();
     const n=Math.max(1,Math.ceil(dt*360)); for(let s=0;s<n&&phase==='play';s++){ const px=ball.x; stepB(ball,dt/n);
       if((px-NETX)*(ball.x-NETX)<=0&&Math.abs(ball.w)<TW+8&&ball.h<TH+NETH+2&&ball.h>TH-4){ if(ball.h<TH+NETH-2){ ball.x=NETX-Math.sign(ball.vx||1)*3; ball.vx*=-.2; ball.vw*=.3; ball.vh=Math.max(ball.vh,0)*.3; sfx('bump'); } else { ball.vh=Math.abs(ball.vh)*.4+30; ball.vx*=.7; netTouch=true; fx.push({k:'ring',x:NETX,w:ball.w,h:TH+NETH,t:0,col:'#aaa'}); } }
-      for(const p of ps){ if(p.sw>.05&&p.hitOK&&canHit(p)&&reachD(p,ball)<REACH){ p.hitOK=false; shoot(p,p.dk); break; } }
+      for(const p of ps){ if(p.sw>.05&&p.hitOK&&canHit(p)&&reachD(p,ball)<REACH*(p.rm||1)){ p.hitOK=false; shoot(p,p.dk); break; } }
       if(ball.h<=TH&&ball.vh<0&&onTable(ball.x,ball.w)&&ball.h>TH-6){ const sd=ball.x<NETX?0:1,ht=lastTeam,sv=ps[server];
         if(hits===1){ // 發球：先彈自己這邊、再彈對面；雙打要從右半邊打到對方右半邊（中線算）
           if(bnSide===-1){ if(sd!==ht){ pointTo(1-ht,'發球要先彈在自己這邊'); break; } if(dbl&&ball.w*RWs(sv)<-2){ pointTo(1-ht,'雙打發球要先彈在自己的右半邊'); break; } bnSide=sd; bnCount=0; tblBounce(ball); sfx('land'); fx.push({k:'dot',x:ball.x,w:ball.w,t:0}); continue; }

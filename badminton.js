@@ -147,6 +147,8 @@ function create(env,opts){
   const ps=Array.from({length:N},(_,i)=>mk(i)),sh={x:200,y:300,w:0,vx:0,vy:0,vw:0,held:0,tx:200,ty:300,tw:0},fx=[],score=[0,0];
   const ALTC=['#ff5d6d',solo&&!dbl?ST.col:'#4f9dff','#ff9d3d','#3ddbd9'];
   ps.forEach((p,i)=>{ p.look=Object.assign({color:ALTC[i],hair:i===1&&solo&&!dbl?ST.hair:i%3},(net?net.looks&&HI(i)>=0&&net.looks[HI(i)]:i===0?opts.look:null)||{}); if(!p.look.color) p.look.color=ALTC[i]; });
+  // 兩個真人同一隊（自己用方向鍵跑位）不容易站得剛好，打得到球的距離放寬一點
+  for(const p of ps){ const m=ps.find(q=>q.team===p.team&&q!==p); p.rm=dbl&&m&&human(p.n)&&human(m.n)?1.4:1; }
   for(let i=1;i<N;i++) if(ps[i].team!==ps[0].team&&ps[i].look.color===ps[0].look.color) ps[i].look.color=ps[0].look.color==='#4f9dff'?'#5fd068':'#4f9dff';
   const nm=i=>net?(HI(i)>=0&&HI(i)<net.count?(net.names[HI(i)]||'玩家 '+(HI(i)+1)):'電腦'+(i+1)):ctrl[i]==='key0'?'1P':ctrl[i]==='key1'?'2P':ctrl[i]==='solo'?(opts.name||'你'):(dbl&&ps[i].team===0?'電腦隊友':ST.foe+(dbl?(i<2?'A':'B'):'（電腦）'));
   const names=ps.map((p,i)=>nm(i)),myTeam=me%2,TN=tm=>dbl?(!two&&tm===myTeam?'我方':tm?'右隊':'左隊'):names[tm];
@@ -221,7 +223,7 @@ function create(env,opts){
     v=(type==='smash'?aimFixed(sh.x,sh.y,tx,(ai?.8+.2*k:1)*(1000+480*clamp(1-Math.abs(sh.x-NETX)/(NETX-BACK),0,1)),dir,-40,20):type==='drive'?aimFixed(sh.x,sh.y,tx,ai?850+250*k:1050,dir,-8,28):null)||aimShot(sh.x,sh.y,tx,ANG,dir)||aimShot(sh.x,sh.y,oppBack-dir*80,[50,60,70,78],dir)||{vx:dir*260,vy:-760,t:1.4};
     // 左右：按著左右就往那邊，不然打對手比較少的那一邊（雙打常打兩人中間）
     const oW=opp.reduce((a,o)=>a+o.w,0)/opp.length; let tw=p.aim?p.aim*(60+R()*(PW-80)):dbl&&R()<.35?(opp[0].w+opp[1].w)/2:(oW>0?-1:1)*(40+R()*(PW-65)); if(type==='net'||type==='drop') tw=clamp(sh.w*.4+(R()-.5)*90,-PW+15,PW-15); if(ai) tw+=(R()-.5)*AI.lat; tw=clamp(tw,-PW+8,PW-8);
-    const stretch=clamp(reachD(p,sh)/REACH,0,1),base={net:.3,drop:.34,drive:.24,smash:.2,clear:.18,lift:.2}[type]||.22; let e=base*(1+stretch*1.6+(p.moving?.45:0)+(h<40?.6:0))*(ai?(1.45-1.05*k):1);
+    const stretch=clamp(reachD(p,sh)/(REACH*(p.rm||1)),0,1),base={net:.3,drop:.34,drive:.24,smash:.2,clear:.18,lift:.2}[type]||.22; let e=base*(1+stretch*1.6+(p.moving?.45:0)+(h<40?.6:0))*(ai?(1.45-1.05*k):1);
     const gs=()=>((R()+R()+R())/1.5-1); v={vx:v.vx*(1+gs()*e*.3),vy:v.vy*(1+gs()*e*.38),t:v.t}; tw+=gs()*e*140;
     sh.vx=v.vx; sh.vy=v.vy; sh.vw=(tw-sh.w)/Math.max(.3,(v.t||1)*.9); sh.type=type; sh.weak=stretch>.8; sh.net=0; lastHit=p.n; lastTeam=p.team; rally++; best=Math.max(best,rally);
     p.swType=type==='smash'||type==='clear'?'over':type==='net'||type==='drop'&&h<100?'net':((sh.w-p.w)*RW(p.team)>=0?'fh':'bh'); p.sw=SWD*.55;
@@ -266,7 +268,7 @@ function create(env,opts){
       return; }
     const n=Math.max(1,Math.ceil(dt*240)); for(let s=0;s<n&&phase==='play';s++){ const px=sh.x; stepSh(sh,dt/n);
       if((px-NETX)*(sh.x-NETX)<=0&&sh.y>NETTOP&&Math.abs(sh.w)<DW+10){ sh.x=NETX-Math.sign(sh.vx||1)*5; sh.vx*=-.12; sh.vw*=.3; sh.vy=Math.max(0,sh.vy)*.3; sh.net=1; sfx('bump'); fx.push({k:'ring',x:NETX,w:sh.w,h:GY-sh.y,t:0,col:'#ff8a8a'}); }
-      for(const p of ps){ if(p.sw>.04&&p.hitOK&&p.team!==lastTeam&&mySide(p)&&reachD(p,sh)<REACH){ if(dbl&&rally===0&&p.n!==recv) continue; /* 發球只能由接發球的人接 */ p.hitOK=false; shoot(p,p.drop); break; } }
+      for(const p of ps){ if(p.sw>.04&&p.hitOK&&p.team!==lastTeam&&mySide(p)&&reachD(p,sh)<REACH*(p.rm||1)){ if(dbl&&rally===0&&p.n!==recv) continue; /* 發球只能由接發球的人接 */ p.hitOK=false; shoot(p,p.drop); break; } }
       if(sh.y>=GY){ sh.y=GY; const side=sh.x<NETX?0:1,serve=rally===0,inb=sh.x>=BACK-2&&sh.x<=W-BACK+2&&Math.abs(sh.w)<=PW+2,ht=lastTeam;
         if(side===ht) point(1-ht,(serve?'發球':'')+(sh.net?'掛網':'沒過網'));
         else if(!inb) point(1-ht,(serve?'發球':'')+(Math.abs(sh.w)>PW+2?'出邊線':'出底線'));
