@@ -223,10 +223,12 @@ function create(env,opts){
     if(type==='smash'){ sfx('boom'); shake=.2; pop('扣殺！','#ff5d8f',ball.x,ball.w,GY-ball.y+40); } else { sfx(type==='drive'?'place':'pop'); if(type==='dink'||type==='drop') pop(type==='dink'?'小球':'放小球','#7af0ff',ball.x,ball.w,GY-ball.y+40); }
     fx.push({k:'ring',x:ball.x,w:ball.w,h:GY-ball.y,t:0,col:ball.smash?'#ff5d8f':'#fff'}); }
   function rallyEnd(wt,why){ if(phase!=='play'&&phase!=='serve') return; phase='point'; ptT=1.6; lastW=wt; let txt;
-    if(wt===servT){ score[wt]++; txt='得分'; if(dbl){ const S=ps[server],P=ps.find(q=>q.team===wt&&q!==S),sd=S.side; S.side=P.side; P.side=sd; } }
-    else if(RALLY){ score[wt]++; txt='得分・換發球'; servT=wt; server=rightP(wt).n; sNum=1; }
-    else if(dbl&&sNum===1){ sNum=2; server=ps.find(q=>q.team===servT&&q.n!==server).n; txt='換第二發球員'; }
-    else { servT=wt; server=rightP(wt).n; sNum=1; txt='換發球'; }
+    // 照正式規則：發球方得分→同一位發球員換到另一邊繼續發（雙打跟搭檔交換位置，單打依自己分數單雙數換邊）
+    if(wt===servT){ score[wt]++; txt='得分・同一位發球員換邊續發'; if(dbl){ const S=ps[server],P=ps.find(q=>q.team===wt&&q!==S),sd=S.side; S.side=P.side; P.side=sd; } }
+    // 落地得分制：接發球方贏球＝得分＋換發球，站位不換；由「分數偶數站右、奇數站左」那一邊的人發球，每隊只有一位發球員
+    else if(RALLY){ score[wt]++; txt='得分・換對方發球'; servT=wt; const sd=score[wt]%2?-1:1; server=((dbl&&ps.find(q=>q.team===wt&&q.side===sd))||rightP(wt)).n; sNum=1; }
+    else if(dbl&&sNum===1){ sNum=2; server=ps.find(q=>q.team===servT&&q.n!==server).n; txt='換搭檔（第二發球員）在原位置發球'; }
+    else { servT=wt; server=rightP(wt).n; sNum=1; txt=dbl?'換發球・由右半場的人先發':'換發球'; }
     const my=wt===myTeam; msg=(two?(dbl?TN(wt):wt?'2P':'1P')+' ':my?'':'對手')+txt+'　'+why; msgT=1.6;
     env.sfx(two||my?'item':'hurt'); if(net) ev.push('p'+wt);
     if(Math.max(score[0],score[1])>=GOAL){ phase='over'; overT=0; } } /* 兩種計分都不用 Deuce：發球得分制先到 11 分、落地得分制先到 15 分就贏 */
@@ -299,7 +301,7 @@ function create(env,opts){
     c.font='900 28px '+TC; c.fillStyle='#fff'; c.fillText(score[1-lt]+'　:　'+score[lt],W/2,28); 
     c.font='700 13px '+TC; c.fillStyle='#cfd2e8'; c.fillText((dbl?'雙打・':'單打・')+(RALLY?'落地得分制・先拿 15 分（不用 Deuce）':'發球得分制・先拿 11 分（不用 Deuce）'),W/2,50,300);
     c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.fillText('🟡 發球',servT===lt?W/2+155:W/2-155,42);
-    if(phase==='serve'&&server>=0){ const call=score[servT]+'－'+score[1-servT]+(dbl?'－'+sNum:''),sd=sideOf(ps[server]); c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-200,70,400,28,14); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('報分 '+call+'，'+(dbl?names[server]+'在':'從')+(sd>0?'右':'左')+'半場發球（打斜對角）',W/2,84,390); }
+    if(phase==='serve'&&server>=0){ const call=score[servT]+'－'+score[1-servT]+(dbl&&!RALLY?'－'+sNum:''),sd=sideOf(ps[server]); c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-200,70,400,28,14); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('報分 '+call+'，'+(dbl?names[server]+'在':'從')+(sd>0?'右':'左')+'半場發球（打斜對角）',W/2,84,390); }
     const my=ps[me],tch=document.body.classList.contains('touch'),meServe=two?human(server):server===me,mq=proj(my.x,my.w,0,ct);
     if(phase==='serve'&&introT<=0&&meServe){ const P=ps[server]; c.fillStyle='rgba(11,10,28,.78)'; rr(c,W/2-230,104,460,58,15); c.fill();
       SERVES.forEach((q,i)=>{ const x=W/2-171+i*114,on=i===P.sv; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.12)'; rr(c,x-52,110,104,24,12); c.fill(); c.fillStyle=on?'#14122b':'#cfd2e8'; c.font='900 14px '+TC; c.fillText(q[1],x,122); });
@@ -323,7 +325,7 @@ function thumb(c,w,h,t){ c.save(); c.scale(w/W,h/H); demo(c,6,t,'#ff5d6d','#4f9d
   name:'匹克球對決',tag:'PICKLEBALL DUEL',color:'#e8f040',online:true,maxPlayers:4,
   coin:o=>{ const d=(o.options||{}).fmt==='doubles'||(o.net&&o.net.count>2); return {verb:'先發球',names:d?['左隊','右隊']:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}; },
   desc:'從球員背後看的匹克球！單打或雙打，照真實規則：低手發球（四種發球）、雙彈地、廚房區不能截擊。前後左右跑位，揮拍自動判斷抽球或扣殺，「小球」輕輕吊進對方廚房區。單人 200 關（1 對 1 或 2 對 2），雙人同一台，連線最多 4 人。',
-  goal:'球在對方那邊落地兩次、或對方失誤（出界、下網、發球落在廚房區或錯的發球區、在廚房區截擊）就贏這球。發球得分制只有發球方贏球才得分，先到 11 分就贏；落地得分制每球都得分，先到 15 分就贏（兩種都不用 Deuce）。',
+  goal:'球在對方那邊落地兩次、或對方失誤（出界、下網、發球落在廚房區或錯的發球區、在廚房區截擊）就贏這球。發球得分制只有發球方贏球才得分，先到 11 分就贏；落地得分制每球都得分，先到 15 分就贏（兩種都不用 Deuce）。發球方得分時，同一位發球員換到另一邊繼續發；雙打發球得分制失誤時換搭檔發，兩人都失誤才換對方。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   options:[{key:'fmt',label:'賽制',def:'singles',opts:[{id:'singles',label:'單打 1 對 1'},{id:'doubles',label:'雙打 2 對 2'}]},
     {key:'score',label:'計分',def:'side',opts:[{id:'side',label:'發球得分制（11 分，不用 Deuce）'},{id:'rally',label:'落地得分制（15 分，不用 Deuce）'}]},
