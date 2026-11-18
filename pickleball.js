@@ -229,13 +229,16 @@ function create(env,opts){
     p.swType=type==='smash'?'over':type==='dink'||type==='drop'?'dink':((ball.w-p.w)*RW(p.team)>=0?'fh':'bh'); p.sw=SWD*.55; // 動作對到擊球點
     if(type==='smash'){ sfx('boom'); shake=.2; pop('扣殺！','#ff5d8f',ball.x,ball.w,GY-ball.y+40); } else { sfx(type==='drive'?'place':'pop'); if(type==='dink'||type==='drop') pop(type==='dink'?'小球':'放小球','#7af0ff',ball.x,ball.w,GY-ball.y+40); }
     fx.push({k:'ring',x:ball.x,w:ball.w,h:GY-ball.y,t:0,col:ball.smash?'#ff5d8f':'#fff'}); }
+  /* 報分：第一個數字是發球方隊伍分數、第二個是對方分數、雙打發球得分制第三個是發球順位（落地得分制沒有第三個） */
+  function callStr(){ return score[servT]+'－'+score[1-servT]+(dbl&&!RALLY?'－'+sNum:''); }
   function rallyEnd(wt,why){ if(phase!=='play'&&phase!=='serve') return; phase='point'; ptT=1.6; lastW=wt; let txt;
     // 照正式規則：發球方得分→同一位發球員換到另一邊繼續發（雙打跟搭檔交換位置，單打依自己分數單雙數換邊）
     if(wt===servT){ score[wt]++; txt='得分・同一位發球員換邊續發'; if(dbl){ const S=ps[server],P=ps.find(q=>q.team===wt&&q!==S),sd=S.side; S.side=P.side; P.side=sd; } }
     // 落地得分制：接發球方贏球＝得分＋換發球，站位不換；由「分數偶數站右、奇數站左」那一邊的人發球，每隊只有一位發球員
     else if(RALLY){ score[wt]++; txt='得分・換對方發球'; servT=wt; const sd=score[wt]%2?-1:1; server=((dbl&&ps.find(q=>q.team===wt&&q.side===sd))||rightP(wt)).n; sNum=1; }
     else if(dbl&&sNum===1){ sNum=2; server=ps.find(q=>q.team===servT&&q.n!==server).n; txt='換搭檔（第二發球員）在原位置發球'; }
-    else { servT=wt; server=rightP(wt).n; sNum=1; txt=dbl?'換發球・由右半場的人先發':'換發球'; }
+    else { servT=wt; server=rightP(wt).n; sNum=1; txt=dbl?'換發球・由右半場的人（第一發球員）先發':'換發球'; }
+    if(Math.max(score[0],score[1])<GOAL) txt+='　報分 '+callStr();
     const my=wt===myTeam; msg=(two?(dbl?TN(wt):wt?'2P':'1P')+' ':my?'':'對手')+txt+'　'+why; msgT=1.6;
     env.sfx(two||my?'item':'hurt'); if(net) ev.push('p'+wt);
     if(Math.max(score[0],score[1])>=GOAL){ phase='over'; overT=0; } } /* 兩種計分都不用 Deuce：發球得分制先到 11 分、落地得分制先到 15 分就贏 */
@@ -302,18 +305,19 @@ function create(env,opts){
       else if(f.k==='txt'){ c.globalAlpha=a; c.font='900 20px '+TC; c.textAlign='center'; c.lineWidth=5; c.strokeStyle='#14122b'; c.strokeText(f.txt,q[0],q[1]-f.t*30); c.fillStyle=f.col; c.fillText(f.txt,q[0],q[1]-f.t*30); c.globalAlpha=1; } }
     c.restore();
     // 比分：照現實報分（單打兩個數字、雙打三個數字）
-    c.fillStyle='rgba(11,10,28,.8)'; rr(c,W/2-240,6,480,56,14); c.fill(); c.textAlign='center'; c.textBaseline='middle';
+    c.fillStyle='rgba(11,10,28,.8)'; rr(c,W/2-240,6,480,86,14); c.fill(); c.textAlign='center'; c.textBaseline='middle';
     const tName=tm=>dbl?ps.filter(p=>p.team===tm).map(p=>names[p.n]).join('＋'):names[tm],lt=ct===0?0:1;
     c.font='900 15px '+TC; c.fillStyle=ps[1-lt].look.color; c.fillText(tName(1-lt),W/2-155,22,150); c.fillStyle=ps[lt].look.color; c.fillText(tName(lt),W/2+155,22,150);
     c.font='900 28px '+TC; c.fillStyle='#fff'; c.fillText(score[1-lt]+'　:　'+score[lt],W/2,28); 
-    c.font='700 13px '+TC; c.fillStyle='#cfd2e8'; c.fillText((dbl?'雙打・':'單打・')+(RALLY?'落地得分制・先拿 15 分（不用 Deuce）':'發球得分制・先拿 11 分（不用 Deuce）'),W/2,50,300);
-    c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.fillText('🟡 發球',servT===lt?W/2+155:W/2-155,42);
-    if(phase==='serve'&&server>=0){ const call=score[servT]+'－'+score[1-servT]+(dbl&&!RALLY?'－'+sNum:''),sd=sideOf(ps[server]); c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-200,70,400,28,14); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('報分 '+call+'，'+(dbl?names[server]+'在':'從')+(sd>0?'右':'左')+'半場發球（打斜對角）',W/2,84,390); }
+    const call=callStr(); c.font='900 15px '+TC; c.fillStyle='#ffd23f'; c.fillText('目前報分 '+call+(dbl&&!RALLY?'（發球方－接發球方－發球順位）':'（發球方－接發球方）'),W/2,62,460);
+    c.font='700 12px '+TC; c.fillStyle='#cfd2e8'; c.fillText((dbl?'雙打・':'單打・')+(RALLY?'落地得分制・先拿 15 分（不用 Deuce）':'發球得分制・先拿 11 分（不用 Deuce）'),W/2,80,440);
+    c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.fillText('🟡 發球',servT===lt?W/2+155:W/2-155,41);
+    if(phase==='serve'&&server>=0){ const sd=sideOf(ps[server]); c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-200,98,400,28,14); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('報分 '+call+'，'+(dbl?names[server]+'在':'從')+(sd>0?'右':'左')+'半場發球（打斜對角）',W/2,112,390); }
     const my=ps[me],tch=document.body.classList.contains('touch'),meServe=two?human(server):server===me,mq=proj(my.x,my.w,0,ct);
-    if(phase==='serve'&&introT<=0&&meServe){ const P=ps[server]; c.fillStyle='rgba(11,10,28,.78)'; rr(c,W/2-230,104,460,58,15); c.fill();
-      SERVES.forEach((q,i)=>{ const x=W/2-171+i*114,on=i===P.sv; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.12)'; rr(c,x-52,110,104,24,12); c.fill(); c.fillStyle=on?'#14122b':'#cfd2e8'; c.font='900 14px '+TC; c.fillText(q[1],x,122); });
-      c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText(tch?'「小球」換發球種類，「揮拍」低手發球':'X 換發球種類，空白鍵低手發球（方向鍵可以移動站位）',W/2,148,440); }
-    if(phase==='play'&&hits<3){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,W/2-150,70,300,26,13); c.fill(); c.fillStyle='#7af0ff'; c.font='900 14px '+TC; c.fillText(hits===1?'接發球：要等球彈地一次':'第三拍：也要等球彈地一次',W/2,83); }
+    if(phase==='serve'&&introT<=0&&meServe){ const P=ps[server]; c.fillStyle='rgba(11,10,28,.78)'; rr(c,W/2-230,132,460,58,15); c.fill();
+      SERVES.forEach((q,i)=>{ const x=W/2-171+i*114,on=i===P.sv; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.12)'; rr(c,x-52,138,104,24,12); c.fill(); c.fillStyle=on?'#14122b':'#cfd2e8'; c.font='900 14px '+TC; c.fillText(q[1],x,150); });
+      c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText(tch?'「小球」換發球種類，「揮拍」低手發球':'X 換發球種類，空白鍵低手發球（方向鍵可以移動站位）',W/2,176,440); }
+    if(phase==='play'&&hits<3){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,W/2-150,98,300,26,13); c.fill(); c.fillStyle='#7af0ff'; c.font='900 14px '+TC; c.fillText(hits===1?'接發球：要等球彈地一次':'第三拍：也要等球彈地一次',W/2,111); }
     if(waitTip>0){ c.fillStyle='#ffd23f'; c.font='900 17px '+TC; c.lineWidth=4; c.strokeStyle='#14122b'; c.strokeText('先等球彈地（雙彈地規則）',mq[0],mq[1]-110*mq[2]); c.fillText('先等球彈地（雙彈地規則）',mq[0],mq[1]-110*mq[2]); }
     if(phase==='play'&&hits>=3&&inKitchen(my.x)){ c.fillStyle='#ff9d3d'; c.font='900 15px '+TC; c.lineWidth=4; c.strokeStyle='#14122b'; c.strokeText('在廚房區：不能截擊',mq[0],mq[1]+18); c.fillText('在廚房區：不能截擊',mq[0],mq[1]+18); }
     if(msgT>0&&phase!=='serve'){ c.font='900 28px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(msg,W/2,180); c.fillStyle='#ffd23f'; c.fillText(msg,W/2,180); }
