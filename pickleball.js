@@ -1,7 +1,7 @@
 // 匹克球對決：從球員背後看的透視視角，單打或雙打。照中華民國匹克球總會／PaddleLab 整理的規則：
 //  發球站底線後、照分數站右（偶數）或左（奇數）半場，低手發到斜對角發球區（落在廚房區、廚房線或錯的那一半＝失誤，每次只有一次機會，擦網落點對就繼續）；
 //  雙彈地：接發球、發球方的第三拍都要等球彈地；廚房區（網前 7 呎，含線）裡不能截擊，截擊後衝進廚房區也算違例；碰線算界內。
-//  計分可選：發球得分制（只有發球方得分，先到 11 分，不用 Deuce）／落地得分制（每球都得分，15 分要贏 2 分）。雙打照 0-0-2、1 號／2 號發球員輪替，發球方得分搭檔換邊。
+//  計分可選：發球得分制（只有發球方得分，先到 11 分，不用 Deuce）／落地得分制（每球都得分，先到 15 分，不用 Deuce）。雙打照 0-0-2、1 號／2 號發球員輪替，發球方得分搭檔換邊。
 // 座標：x＝球場長邊（左隊在 x<400）、w＝左右（左隊面向 +x 時右手邊是 +w）、y＝高度（GY 是地面，越小越高）。
 // 操作：方向鍵前後左右跑、揮拍（自動判斷抽球／扣殺；按著左右揮拍會往那邊打）、「小球」吊進對方廚房區；發球前「小球」換發球種類。
 (function(){
@@ -229,7 +229,7 @@ function create(env,opts){
     else { servT=wt; server=rightP(wt).n; sNum=1; txt='換發球'; }
     const my=wt===myTeam; msg=(two?(dbl?TN(wt):wt?'2P':'1P')+' ':my?'':'對手')+txt+'　'+why; msgT=1.6;
     env.sfx(two||my?'item':'hurt'); if(net) ev.push('p'+wt);
-    if(Math.max(score[0],score[1])>=GOAL&&(!RALLY||Math.abs(score[0]-score[1])>=2)){ phase='over'; overT=0; } } /* 發球得分制先到 11 分（不用 Deuce）；落地得分制 15 分要贏 2 分 */
+    if(Math.max(score[0],score[1])>=GOAL){ phase='over'; overT=0; } } /* 兩種計分都不用 Deuce：發球得分制先到 11 分、落地得分制先到 15 分就贏 */
   function conclude(a,b,note){ if(ended) return; ended=true; score[0]=a; score[1]=b; const w=a>b?0:1,my=two||w===myTeam;
     if(solo&&w===0) LS(recKey(si),a+':'+b); env.sfx(my?'win':'lose');
     env.end({title:two?(dbl?TN(w):w?'2P':'1P')+' 獲勝！':my?(solo?'贏了！過關':'你們贏了！'):'輸了',big:a+' : '+b,text:(note?note+' ':'')+(solo?ST.name+'　對手：'+ST.foe+(dbl?'隊':'')+'。':'')+(best>3?'最長來回 '+best+' 拍。':''),score:solo&&w===0?si+1:null,next:solo&&w===0&&si<LV-1}); }
@@ -297,7 +297,7 @@ function create(env,opts){
     const tName=tm=>dbl?ps.filter(p=>p.team===tm).map(p=>names[p.n]).join('＋'):names[tm],lt=ct===0?0:1;
     c.font='900 15px '+TC; c.fillStyle=ps[1-lt].look.color; c.fillText(tName(1-lt),W/2-155,22,150); c.fillStyle=ps[lt].look.color; c.fillText(tName(lt),W/2+155,22,150);
     c.font='900 28px '+TC; c.fillStyle='#fff'; c.fillText(score[1-lt]+'　:　'+score[lt],W/2,28); 
-    c.font='700 13px '+TC; c.fillStyle='#cfd2e8'; c.fillText((dbl?'雙打・':'單打・')+(RALLY?'落地得分制・先拿 15 分（要贏 2 分）':'發球得分制・先拿 11 分（不用 Deuce）'),W/2,50,300);
+    c.font='700 13px '+TC; c.fillStyle='#cfd2e8'; c.fillText((dbl?'雙打・':'單打・')+(RALLY?'落地得分制・先拿 15 分（不用 Deuce）':'發球得分制・先拿 11 分（不用 Deuce）'),W/2,50,300);
     c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.fillText('🟡 發球',servT===lt?W/2+155:W/2-155,42);
     if(phase==='serve'&&server>=0){ const call=score[servT]+'－'+score[1-servT]+(dbl?'－'+sNum:''),sd=sideOf(ps[server]); c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-200,70,400,28,14); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('報分 '+call+'，'+(dbl?names[server]+'在':'從')+(sd>0?'右':'左')+'半場發球（打斜對角）',W/2,84,390); }
     const my=ps[me],tch=document.body.classList.contains('touch'),meServe=two?human(server):server===me,mq=proj(my.x,my.w,0,ct);
@@ -323,10 +323,10 @@ function thumb(c,w,h,t){ c.save(); c.scale(w/W,h/H); demo(c,6,t,'#ff5d6d','#4f9d
   name:'匹克球對決',tag:'PICKLEBALL DUEL',color:'#e8f040',online:true,maxPlayers:4,
   coin:o=>{ const d=(o.options||{}).fmt==='doubles'||(o.net&&o.net.count>2); return {verb:'先發球',names:d?['左隊','右隊']:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}; },
   desc:'從球員背後看的匹克球！單打或雙打，照真實規則：低手發球（四種發球）、雙彈地、廚房區不能截擊。前後左右跑位，揮拍自動判斷抽球或扣殺，「小球」輕輕吊進對方廚房區。單人 200 關（1 對 1 或 2 對 2），雙人同一台，連線最多 4 人。',
-  goal:'球在對方那邊落地兩次、或對方失誤（出界、下網、發球落在廚房區或錯的發球區、在廚房區截擊）就贏這球。發球得分制只有發球方贏球才得分，先到 11 分就贏；落地得分制每球都得分，先到 15 分、領先 2 分就贏。',
+  goal:'球在對方那邊落地兩次、或對方失誤（出界、下網、發球落在廚房區或錯的發球區、在廚房區截擊）就贏這球。發球得分制只有發球方贏球才得分，先到 11 分就贏；落地得分制每球都得分，先到 15 分就贏（兩種都不用 Deuce）。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   options:[{key:'fmt',label:'賽制',def:'singles',opts:[{id:'singles',label:'單打 1 對 1'},{id:'doubles',label:'雙打 2 對 2'}]},
-    {key:'score',label:'計分',def:'side',opts:[{id:'side',label:'發球得分制（11 分，不用 Deuce）'},{id:'rally',label:'落地得分制（15 分）'}]},
+    {key:'score',label:'計分',def:'side',opts:[{id:'side',label:'發球得分制（11 分，不用 Deuce）'},{id:'rally',label:'落地得分制（15 分，不用 Deuce）'}]},
     {key:'serve',label:'預設發球',def:'deep',opts:[{id:'deep',label:'高遠深球'},{id:'drive',label:'快速平擊'},{id:'top',label:'上旋發球'},{id:'slice',label:'側旋發球'}]},
     {key:'team',label:'雙人玩雙打',def:'vs',opts:[{id:'vs',label:'各帶電腦隊友對打'},{id:'coop',label:'兩人同隊打電腦'}]},
     {key:'court',label:'場地（雙人／連線）',def:'0',opts:VENUES.map((v,i)=>({id:String(i),label:v.n}))}],
