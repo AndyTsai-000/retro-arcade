@@ -1,4 +1,4 @@
-// 經典小遊戲合集：把桌面小遊戲（踩地雷、彈珠台、五子棋、貪食蛇、打殭屍、恐龍跳躍、數字拼圖）放進遊戲區。
+// 經典小遊戲合集：把桌面小遊戲（踩地雷、彈珠台、五子棋、貪食蛇、打殭屍、恐龍跳躍、數字拼圖）和打磚塊、記憶翻牌、打地鼠放進遊戲區。
 // 每款都是獨立網頁（classic/*.html），選哪一關就把那一款嵌進遊戲畫面；離開時移除。
 (function(){
 'use strict';
@@ -18,10 +18,16 @@ const GAMES=[
   {f:'dino',n:'恐龍跳躍',stars:1,goal:'跳過仙人掌、蹲下躲翼龍，跑越遠分數越高。',best:()=>LS('dino-best')>0?'最高 '+LS('dino-best')+' 分':'',
     help:[['空白鍵 ／ ↑','跳躍'],['↓','蹲下']],touch:[['點一下畫面','跳躍']]},
   {f:'puzzle15',n:'數字拼圖',stars:2,goal:'把 1 到 15 按順序排好、空格在右下角就完成，步數越少越好。',best:()=>LS('puzzle15-best')>0?'最少 '+LS('puzzle15-best')+' 步':'',
-    help:[['滑鼠','點空格旁邊的方塊滑動'],['方向鍵','移動方塊']],touch:[['點方塊','滑到空格']]}];
+    help:[['滑鼠','點空格旁邊的方塊滑動'],['方向鍵','移動方塊']],touch:[['點方塊','滑到空格']]},
+  {f:'breakout',n:'打磚塊',stars:2,goal:'用擋板把球彈回去，打掉所有磚塊就過關。銀色磚要打兩下、金色磚打不破；接到掉下來的道具有加長、三顆球、慢速、雷射。',best:()=>LS('breakout-best')>0?'最高 '+LS('breakout-best')+' 分':'',
+    help:[['← → ／ 滑鼠','移動擋板'],['空白鍵','發球、暫停']],touch:[['手指左右拖','移動擋板'],['點一下','發球']]},
+  {f:'memory',n:'記憶翻牌',stars:1,goal:'一次翻兩張牌，一樣就配對成功，不一樣會蓋回去。全部配完就過關，翻牌次數越少越好（可選 12～36 張）。',best:()=>{ const b=['4x3','4x4','6x4','6x6'].map(k=>+LS('memory-best-'+k)).filter(Boolean); return b.length?'玩過 '+b.length+' 種':''; },
+    help:[['滑鼠','點牌翻開']],touch:[['點一下','翻牌']]},
+  {f:'whack',n:'打地鼠',stars:1,goal:'地鼠冒出來就敲下去！金色地鼠分數高，頭上有炸彈的別打；漏掉或打到炸彈共 5 次就結束，越後面冒得越快。',best:()=>LS('whack-best')>0?'最高 '+LS('whack-best')+' 分':'',
+    help:[['滑鼠','點地鼠'],['1～9','對應九個洞（像數字鍵盤的排法）']],touch:[['點一下','敲地鼠']]}];
 // 關卡圖（還沒截圖時用）：每款畫一張簡單的示意
 function art(c,w,h,i,t){ c.save(); c.scale(w/480,h/270); const g=GAMES[i];
-  const bg=['#008080','#1a1440','#d8a860','#10200f','#3a7a2a','#f4f4f4','#2a3a5a'][i]; c.fillStyle=bg; c.fillRect(0,0,480,270);
+  const bg=['#008080','#1a1440','#d8a860','#10200f','#3a7a2a','#f4f4f4','#2a3a5a','#120e30','#1f5a40','#5aa848'][i]; c.fillStyle=bg; c.fillRect(0,0,480,270);
   if(i===0){ for(let y=0;y<8;y++) for(let x=0;x<12;x++){ const X=96+x*24,Y=40+y*24,o=(x*7+y*3)%5<3; c.fillStyle=o?'#c0c0c0':'#d0d0d0'; c.fillRect(X,Y,23,23); if(o){ c.fillStyle='#fff'; c.fillRect(X,Y,23,3); c.fillRect(X,Y,3,23); } else if((x+y)%4===1){ c.fillStyle=['#00f','#080','#f00'][(x+y)%3]; c.font='bold 16px Arial'; c.textAlign='center'; c.fillText(''+(1+(x+y)%3),X+12,Y+18); } } }
   if(i===1){ c.strokeStyle='#ff7eb6'; c.lineWidth=4; c.strokeRect(150,20,180,240); for(const [x,y,r] of [[200,80,16],[280,90,16],[240,140,18]]){ c.fillStyle='#ffd23f'; c.beginPath(); c.arc(x,y,r,0,TAU); c.fill(); } c.fillStyle='#e8e8f0'; c.beginPath(); c.arc(240+Math.sin(t*2)*60,200-Math.abs(Math.sin(t*3))*120,7,0,TAU); c.fill(); c.fillStyle='#3ddbd9'; c.save(); c.translate(200,240); c.rotate(-.3+Math.sin(t*5)*.2); c.fillRect(0,-4,36,8); c.restore(); c.save(); c.translate(280,240); c.rotate(Math.PI+.3-Math.sin(t*5)*.2); c.fillRect(0,-4,36,8); c.restore(); }
   if(i===2){ c.strokeStyle='#5a3a1a'; c.lineWidth=1; for(let k=0;k<11;k++){ c.beginPath(); c.moveTo(140+k*20,35); c.lineTo(140+k*20,235); c.stroke(); c.beginPath(); c.moveTo(140,35+k*20); c.lineTo(340,35+k*20); c.stroke(); } [[4,4],[5,5],[6,4],[5,4],[4,5],[6,6],[3,3]].forEach(([x,y],k)=>{ c.fillStyle=k%2?'#fff':'#14122b'; c.beginPath(); c.arc(140+x*20,35+y*20,8,0,TAU); c.fill(); }); }
@@ -29,6 +35,9 @@ function art(c,w,h,i,t){ c.save(); c.scale(w/480,h/270); const g=GAMES[i];
   if(i===4){ for(let r=0;r<5;r++){ c.fillStyle=r%2?'#4a9a3a':'#5aaa48'; c.fillRect(0,20+r*48,480,48); } for(let r=0;r<5;r++){ c.fillStyle='#2f8a2f'; c.beginPath(); c.arc(80,44+r*48,14,0,TAU); c.fill(); c.fillStyle='#8aa080'; c.fillRect(380-((t*20+r*40)%200),28+r*48,18,34); } }
   if(i===5){ c.fillStyle='#535353'; c.fillRect(0,200,480,2); const jy=Math.max(0,Math.sin(t*3))*60; c.fillRect(110,160-jy,30,40); c.fillRect(132,150-jy,22,16); for(let k=0;k<3;k++){ const x=480-((t*140+k*190)%560); c.fillRect(x,170,10,30); c.fillRect(x-8,178,8,4); } }
   if(i===6){ const N=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0]; N.forEach((n,k)=>{ if(!n) return; const x=170+(k%4)*36,y=55+Math.floor(k/4)*36; c.fillStyle='#ffd23f'; c.fillRect(x,y,33,33); c.fillStyle='#14122b'; c.font='bold 16px Arial'; c.textAlign='center'; c.fillText(n,x+16,y+22); }); }
+  if(i===7){ const P=['#ff5d6d','#ff9d3d','#ffd23f','#5fd068','#3ddbd9','#4f9dff']; for(let r=0;r<6;r++) for(let k=0;k<12;k++){ if((r+k+Math.floor(t))%9===0) continue; c.fillStyle=P[r]; c.fillRect(60+k*30,30+r*14,28,12); } const bx=240+Math.sin(t*1.7)*150,by=170-Math.abs(Math.sin(t*2.3))*60; c.fillStyle='#fff'; c.beginPath(); c.arc(bx,by,6,0,TAU); c.fill(); c.fillStyle='#3ddbd9'; c.fillRect(bx-40,232,80,10); }
+  if(i===8){ for(let k=0;k<8;k++){ const x=96+(k%4)*76,y=34+Math.floor(k/4)*96,o=(k===2||k===5||Math.floor(t*1.5)%8===k); c.fillStyle=o?'#fff':'#3a2aa0'; c.fillRect(x,y,66,86); c.strokeStyle='#ffd23f'; c.lineWidth=2; c.strokeRect(x+4,y+4,58,78); if(o){ c.fillStyle=['#ff5d6d','#ff9d3d','#ffd23f','#5fd068','#4f9dff','#ffd23f','#b98cff','#ff7eb6'][k]; c.beginPath(); c.arc(x+33,y+43,16,0,TAU); c.fill(); } } }
+  if(i===9){ for(let k=0;k<3;k++){ const x=120+k*120,y=170; c.fillStyle='#1a0f08'; c.beginPath(); c.ellipse(x,y,40,13,0,0,TAU); c.fill(); const up=Math.max(0,Math.sin(t*2+k*2)); if(up>.05){ c.save(); c.beginPath(); c.rect(x-50,y-110,100,110); c.clip(); c.fillStyle='#9a6a42'; c.beginPath(); c.ellipse(x,y+40-up*70,30,40,0,0,TAU); c.fill(); c.fillStyle='#1a0f08'; c.beginPath(); c.arc(x-10,y+16-up*70,4,0,TAU); c.arc(x+10,y+16-up*70,4,0,TAU); c.fill(); c.restore(); } } c.fillStyle='#d8302a'; c.fillRect(300,60,60,26); c.fillStyle='#8a5a2a'; c.fillRect(326,86,8,50); }
   c.font='900 22px '+TC; c.textAlign='center'; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(g.n,240,262); c.fillStyle='#fff'; c.fillText(g.n,240,262); c.restore(); }
 /* 七款原本各自一種配色：嵌進來時套上遊戲區的外觀（深紫背景、霓虹格線、金框圓角、按鈕同一種樣式） */
 const THEME_CSS=`html,body{background:radial-gradient(ellipse at 50% -10%,#3a2470 0%,#140c34 55%,#07051a 100%) fixed!important;color:#f0ecff!important;font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif!important}
@@ -48,7 +57,7 @@ function create(env,opts){ const si=Math.max(0,Math.min(GAMES.length-1,opts.stag
   fr.addEventListener('load',()=>{ focus(); try{ const d=fr.contentDocument; d.addEventListener('pointerdown',focus); theme(d); }catch(e){} });
   let t=0; return {update(dt){ t+=dt; },draw(){},destroy(){ fr.remove(); },_dbg:{fr,G}}; }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).classic={name:'經典小遊戲合集',tag:'CLASSIC PACK',color:'#3ddbd9',
-  desc:'以前電腦裡的經典小遊戲一次收齊：踩地雷、彈珠台、五子棋、貪食蛇、打殭屍、恐龍跳躍、數字拼圖。選一款就能玩，紀錄會自動保存。',
+  desc:'以前電腦裡的經典小遊戲一次收齊：踩地雷、彈珠台、五子棋、貪食蛇、打殭屍、恐龍跳躍、數字拼圖、打磚塊、記憶翻牌、打地鼠。選一款就能玩，紀錄會自動保存。',
   goal:'每款玩法不同，左邊選好遊戲就能開始；玩完按「回到遊戲區大廳」離開。',
   stages:GAMES.map(g=>g.n),stars:GAMES.map(g=>g.stars),stageLabel:'選擇遊戲',
   stageGoal:i=>GAMES[i].goal,

@@ -3,7 +3,7 @@
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
-const GAMES=['吹牛','十八仔','妞妞','紅黑大小單雙'],GID=['liar','sb','nn','rb'];
+const GAMES=['吹牛','十八仔','妞妞','紅黑大小單雙','骰寶'],GID=['liar','sb','nn','rb','sic'];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rnd=()=>1+Math.floor(Math.random()*6),roll=n=>Array.from({length:n},rnd);
 const CN=['','一','二','三','四','五','六','七','八','九'];
 
@@ -51,7 +51,7 @@ function drawCup(c,x,y,s,lift,rot,al,noPlate){ // x,y＝底盤中心；lift＝�
   c.fillStyle='rgba(255,255,255,.5)'; c.beginPath(); c.arc(-s*.03,-s*.96,s*.035,0,7); c.fill();
   c.restore(); }
 // 每種骰子遊戲預設的場景：吹牛在酒吧、十八仔在夜市、妞妞在賭場、紅黑大小單雙在星空下
-const THEME={liar:{bg:'bar',felt:'#5a2a2a'},sb:{bg:'market',felt:'#1f4f7a'},nn:{bg:'casino',felt:'#1f6b4a'},rb:{bg:'night',felt:'#3a2d57'}};
+const THEME={liar:{bg:'bar',felt:'#5a2a2a'},sb:{bg:'market',felt:'#1f4f7a'},nn:{bg:'casino',felt:'#1f6b4a'},rb:{bg:'night',felt:'#3a2d57'},sic:{bg:'casino',felt:'#6b1f2a'}};
 const savedLook=()=>{ try{ return JSON.parse(localStorage.getItem('arcade.look.dice')||'null')||{}; }catch(e){ return {}; } }; // 開始畫面左邊的圖也用自己存的造型
 const themed=(L,kind)=>{ L=L||{}; const T=THEME[kind]; return Object.assign({},L,{bg:!L.bg||L.bg==='auto'?T.bg:L.bg,felt:L.felt||T.felt}); };
 function drawTable(c,w,h,L,t){
@@ -72,7 +72,7 @@ function drawTable(c,w,h,L,t){
 
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
-  const kind=GID[clamp(opts.stage||0,0,3)],humans=net?net.count:1,OP=opts.options||{};
+  const kind=GID[clamp(opts.stage||0,0,4)],humans=net?net.count:1,OP=opts.options||{};
   const np=net?Math.min(6,net.count+(net.bots||0)):clamp(+OP.seats||4,2,6);
   const L=themed(opts.look,kind); setSty(L);
   const AID=[5,3.6,2.2][Math.max(0,['slow','normal','fast'].indexOf(OP.speed||'normal'))];
@@ -131,6 +131,29 @@ function create(env,opts){
     const share=Math.floor(G.pot/ws.length); ws.forEach((p,i)=>G.chips[p]+=share+(i<G.pot%ws.length?1:0));
     G.show={ws,until:4.5}; G.turn=-1; log(ws.map(p=>names[p]).join('、')+' 贏得彩池 '+G.pot+'（'+G.rolls[ws[0]].e.name+'）'); sfx('win'); }
 
+  /* ===== 骰寶：莊家搖三顆骰子，大家先押：大、小、單、雙、任意圍骰、押點數 ===== */
+  // 大＝11～17、小＝4～10（三顆一樣的圍骰時，大小單雙都算輸）各賠 1 倍；任意圍骰賠 30 倍；押點數：出現 1 顆賠 1 倍、2 顆 2 倍、3 顆 3 倍
+  const SICK=['small','odd','any','even','big','n1','n2','n3','n4','n5','n6'],SICN={small:'小',big:'大',odd:'單',even:'雙',any:'任意圍骰',n1:'押 1',n2:'押 2',n3:'押 3',n4:'押 4',n5:'押 5',n6:'押 6'};
+  function sicPay(k,d){ const s=d[0]+d[1]+d[2],tri=d[0]===d[1]&&d[1]===d[2];
+    if(k==='any') return tri?30:-1; if(k[0]==='n'){ const n=d.filter(v=>v===+k[1]).length; return n?n:-1; }
+    if(tri) return -1; if(k==='big') return s>=11?1:-1; if(k==='small') return s<=10?1:-1; if(k==='odd') return s%2?1:-1; return s%2?-1:1; }
+  function sicSetup(){ G.chips=new Array(np).fill(START); G.round=0; G.hist=[]; sicRound(); }
+  function sicRound(){ const ok=[...Array(np).keys()].filter(p=>G.chips[p]>0);
+    if(G.round>=ROUNDS||!ok.length||(!net&&G.chips[0]<=0)){ G.over={chips:G.chips.slice()}; return; }
+    G.round++; G.bets=new Array(np).fill(null); G.show=null; G.sd=null; G.phase='bet'; G.turn=ok[0]; log('第 '+G.round+' / '+ROUNDS+' 局：請下注（最少 '+BET+'）'); }
+  function sicBet(p,k,amt){ if(G.over||G.phase!=='bet'||G.turn!==p) return '不是你的回合'; if(!SICN[k]) return '先選要押什麼'; amt=Math.floor(amt);
+    if(amt<Math.min(BET,G.chips[p])||amt>G.chips[p]) return '下注金額不對';
+    G.bets[p]={k,amt}; G.chips[p]-=amt; sfx('place'); log(names[p]+' 押「'+SICN[k]+'」'+amt);
+    const rest=[...Array(np).keys()].filter(q=>G.chips[q]>0&&!G.bets[q]&&q!==p); const nx=rest.find(q=>q>p)??rest[0];
+    if(nx!=null){ G.turn=nx; return null; }
+    // 大家都押好了：莊家搖骰
+    const d=roll(3); G.sd=d; G.seq++; shake(-1); const res=new Array(np).fill(0),ws=[];
+    for(let q=0;q<np;q++){ const b=G.bets[q]; if(!b) continue; const m=sicPay(b.k,d); if(m>0){ G.chips[q]+=b.amt*(m+1); res[q]=b.amt*m; ws.push(q); } else res[q]=-b.amt; }
+    const s=d[0]+d[1]+d[2],tri=d[0]===d[1]&&d[1]===d[2]; G.hist.push(d); if(G.hist.length>8) G.hist.shift();
+    G.phase='show'; G.show={ws,res,until:5}; G.turn=-1; log('開！'+d.join('、')+'　共 '+s+' 點'+(tri?'（圍骰）':s>=11?'（大）':'（小）')); return null; }
+  function sicAI(p){ const r=Math.random(),k=r<.62?(Math.random()<.5?'big':'small'):r<.86?(Math.random()<.5?'odd':'even'):r<.97?'n'+(1+Math.floor(Math.random()*6)):'any';
+    const amt=Math.min(G.chips[p],BET*(1+Math.floor(Math.random()*3))); return sicBet(p,k,amt); }
+
   /* ===== 紅黑大小單雙 ===== */
   function rbSetup(){ G.lives=new Array(np).fill(LIVES); rbRound(Math.floor(Math.random()*np)); }
   function rbRound(start){ G.dice=[]; for(let p=0;p<np;p++) G.dice[p]=G.lives[p]>0?roll(5):[]; G.turn=start; G.last=null; G.lost=null; G.phase='call'; rbShake(); }
@@ -157,10 +180,11 @@ function create(env,opts){
     return rbCall(p,best); }
 
   /* ===== 共用 ===== */
-  const SETUP={liar:liarSetup,sb:potSetup,nn:potSetup,rb:rbSetup};
+  const SETUP={liar:liarSetup,sb:potSetup,nn:potSetup,rb:rbSetup,sic:sicSetup};
   function doAct(p,a){
     if(kind==='liar') return a.t==='open'?liarOpen(p):liarBid(p,a.q|0,a.f|0);
     if(kind==='rb') return rbCall(p,a.cat);
+    if(kind==='sic') return sicBet(p,a.k,a.amt);
     return potRoll(p); }
   function act(a){ if(client){ net.send({act:a}); return; } const err=doAct(me,a); if(err){ say(err,2.4); sfx('bump'); } else broadcast(); }
   function broadcast(){ if(net&&net.host) net.send({st:G}); }
@@ -173,7 +197,7 @@ function create(env,opts){
   if(!client){ SETUP[kind](); broadcast(); }
   function aiStep(){
     if(G.over) return; const p=G.turn; if(p<0||!(isAI(p)||left.has(p))) return;
-    if(kind==='liar'&&!G.reveal) liarAI(p); else if(kind==='rb'&&G.phase==='call') rbAI(p); else if((kind==='sb'||kind==='nn')&&!G.show) potRoll(p);
+    if(kind==='liar'&&!G.reveal) liarAI(p); else if(kind==='rb'&&G.phase==='call') rbAI(p); else if(kind==='sic'&&G.phase==='bet') sicAI(p); else if((kind==='sb'||kind==='nn')&&!G.show) potRoll(p);
     broadcast(); }
   function update(dt){
     t+=dt; if(msgT>0) msgT-=dt; if(G.shk!==shkSeen){ shkSeen=G.shk; shkT=0; sfx('rattle'); } shkT+=dt;
@@ -182,6 +206,7 @@ function create(env,opts){
     if(G.over){ ended=true; setTimeout(finish,1800); return; }
     if(kind==='liar'&&G.reveal){ G.reveal.until-=dt; if(G.reveal.until<=0){ const al=aliveL(); if(al.length<=1){ G.over={win:al[0]}; } else { const L2=G.reveal.loser; liarRound(G.lives[L2]>0?L2:al.find(q=>q>L2)??al[0]); } broadcast(); } return; }
     if((kind==='sb'||kind==='nn')&&G.show){ G.show.until-=dt; if(G.show.until<=0){ potRound(); broadcast(); } return; }
+    if(kind==='sic'&&G.show){ if(shkT<SHK) return; G.show.until-=dt; if(G.show.until<=0){ sicRound(); broadcast(); } return; }
     if(kind==='rb'&&(G.phase==='show'||G.phase==='lost')){ G.until-=dt; if(G.until<=0){ if(G.phase==='show') rbNext(); else rbAfterLost(); broadcast(); } return; }
     if(shkT<SHK) return; if(G.turn!==lastTurn){ lastTurn=G.turn; aiT=0; aiWait=AID*(.85+Math.random()*.4); } aiT+=dt; if(aiT>aiWait){ aiT=0; lastTurn=-2; aiStep(); }
   }
@@ -205,7 +230,7 @@ function create(env,opts){
 
   /* ===== 畫面 ===== */
   function btn(label,x,y,w,fn,dis,main,h){ btns.push({label,x,y,w,h:h||36,fn,dis,main}); }
-  function drawBtns(){ for(const b of btns){ c.fillStyle=b.dis?'rgba(20,18,40,.6)':b.main?'#ffd23f':b.sel?'#3ddbd9':'#2b2759'; rr(c,b.x,b.y,b.w,b.h,10); c.fill(); c.strokeStyle='#0b0a1c'; c.lineWidth=2; c.stroke();
+  function drawBtns(){ for(const b of btns){ if(b.ghost) continue; c.fillStyle=b.dis?'rgba(20,18,40,.6)':b.main?'#ffd23f':b.sel?'#3ddbd9':'#2b2759'; rr(c,b.x,b.y,b.w,b.h,10); c.fill(); c.strokeStyle='#0b0a1c'; c.lineWidth=2; c.stroke();
     if(b.die){ drawDie(c,b.x+(b.w-b.h*.7)/2,b.y+b.h*.15,b.h*.7,b.die,{hl:b.sel}); continue; }
     c.fillStyle=b.dis?'#6b6799':b.main||b.sel?'#14122b':'#fff'; c.font='900 15px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(b.label,b.x+b.w/2,b.y+b.h/2+1); } }
   function plate(p,x,y,extra,active){ const s=names[p]+(extra?'　'+extra:''); c.font='700 13px '+TC; const w=c.measureText(s).width+20;
@@ -227,7 +252,7 @@ function create(env,opts){
     btns=[]; setSty(L); drawTable(c,W,H,L,t);
     c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 16px '+TC; c.fillText(GAMES[GID.indexOf(kind)],14,20);
     if(G.log){ c.font='700 12px '+TC; let tx=G.log; while(c.measureText(tx).width>330&&tx.length>4) tx=tx.slice(0,-2); if(tx!==G.log) tx+='…'; const w=c.measureText(tx).width+20; c.fillStyle='rgba(11,10,28,.72)'; rr(c,10,34,w,22,11); c.fill(); c.fillStyle='#fff'; c.textAlign='left'; c.fillText(tx,20,45); }
-    if(kind==='liar') drawLiar(); else if(kind==='rb') drawRB(); else drawPot();
+    if(kind==='liar') drawLiar(); else if(kind==='rb') drawRB(); else if(kind==='sic') drawSIC(); else drawPot();
     drawBtns();
     if(msgT>0&&msg){ c.font='900 16px '+TC; c.textAlign='center'; const w=c.measureText(msg).width+30; c.fillStyle='rgba(180,30,50,.92)'; rr(c,W/2-w/2,H/2-22,w,40,14); c.fill(); c.fillStyle='#fff'; c.fillText(msg,W/2,H/2-1); }
   }
@@ -270,6 +295,36 @@ function create(env,opts){
     if(!S&&G.turn===me&&!G.over&&!shaking()) btn('擲骰',W/2+150,400,110,()=>act({t:'roll'}),false,true,46);
     if(kind==='nn'&&r&&r.e.grp&&!cupAnim(me)){ c.fillStyle='#cfe8d8'; c.font='700 12px '+TC; c.textAlign='center'; c.fillText('亮起來的三顆湊成 10',W/2,428); }
   }
+  let sicK='big',sicAmt=0;
+  function drawSIC(){ if(!G.chips||!G.bets) return; const S=G.show,shk=shaking();
+    for(let p=0;p<np;p++){ if(p===me) continue; const {x,y}=seat(p),b=G.bets[p];
+      if(b){ c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText(SICN[b.k]+' '+b.amt,x,y-14); }
+      plate(p,x,y+18,G.chips[p]+(S&&S.res[p]&&!shk?'（'+(S.res[p]>0?'+':'')+S.res[p]+'）':''),G.phase==='bet'&&G.turn===p&&!G.over); }
+    // 中間：莊家的骰盅＋押注桌
+    const cx=W/2,cy=172; cupSpot(-2,cx,cy+30,90,()=>{ if(G.sd) diceRow(G.sd,cx,cy-4,34); },G.phase==='bet'||!G.sd);
+    if(G.sd&&!shk){ const s=G.sd[0]+G.sd[1]+G.sd[2],tri=G.sd.every(v=>v===G.sd[0]); c.fillStyle=tri?'#ff7ab0':'#ffd23f'; c.font='900 18px '+TC; c.textAlign='center'; c.fillText(s+' 點　'+(tri?'圍骰！':s>=11?'大':'小')+'・'+(s%2?'單':'雙'),cx,cy+64); }
+    c.fillStyle='#cfe8d8'; c.font='700 12px '+TC; c.textAlign='center'; c.textAlign='left'; c.fillText('莊家',cx+80,cy-10); c.fillText('第 '+G.round+' / '+ROUNDS+' 局',cx+80,cy+10); c.textAlign='center';
+    // 押注格子（點一下選）
+    const bx=150,by=262,bw=500,cells=[['small','小 4～10',0,0,1],['odd','單',1,0,1],['any','任意圍骰 ×30',2,0,1],['even','雙',3,0,1],['big','大 11～17',4,0,1]],my=G.phase==='bet'&&G.turn===me&&!G.over&&!shk,cw2=bw/5;
+    const hitK=(k,x,y,w,h)=>{ if(my) btns.push({label:'',x,y,w,h,fn:()=>{ sicK=k; },dis:false,ghost:true}); };
+    const winK=k=>G.sd&&!shk&&G.phase==='show'&&sicPay(k,G.sd)>0;
+    cells.forEach(([k,lb,i])=>{ const x=bx+i*cw2,y=by,on=sicK===k&&my,win=winK(k); c.fillStyle=win?'rgba(134,220,79,.45)':on?'rgba(255,210,63,.35)':'rgba(0,0,0,.25)'; rr(c,x+2,y,cw2-4,44,8); c.fill(); c.strokeStyle=on?'#ffd23f':'rgba(255,230,160,.6)'; c.lineWidth=on?3:1.5; c.stroke();
+      c.fillStyle='#fff'; c.font='900 15px '+TC; c.textAlign='center'; c.fillText(lb,x+cw2/2,y+23,cw2-8); hitK(k,x+2,y,cw2-4,44); });
+    for(let n=1;n<=6;n++){ const k='n'+n,w6=bw/6,x=bx+(n-1)*w6,y=by+50,on=sicK===k&&my,win=winK(k); c.fillStyle=win?'rgba(134,220,79,.45)':on?'rgba(255,210,63,.35)':'rgba(0,0,0,.25)'; rr(c,x+2,y,w6-4,40,8); c.fill(); c.strokeStyle=on?'#ffd23f':'rgba(255,230,160,.6)'; c.lineWidth=on?3:1.5; c.stroke(); drawDie(c,x+w6/2-15,y+5,30,n); hitK(k,x+2,y,w6-4,40); }
+    // 別人押的籌碼標在格子上
+    G.bets.forEach((b,q)=>{ if(!b) return; let x,y; const i=['small','odd','any','even','big'].indexOf(b.k); if(i>=0){ x=bx+i*cw2+cw2-14; y=by+10; } else { const n=+b.k[1]; x=bx+(n-1)*bw/6+bw/6-12; y=by+58; }
+      x-=(q%3)*9; c.fillStyle=['#ff5d6d','#4f9dff','#5fd068','#ffd23f','#b98cff','#ff9d3d'][q%6]; c.beginPath(); c.arc(x,y,7,0,7); c.fill(); c.strokeStyle='#fff'; c.lineWidth=1.5; c.stroke(); });
+    // 近幾局的結果
+    if(G.hist&&G.hist.length){ c.fillStyle='rgba(11,10,28,.6)'; rr(c,W-130,60,118,24+G.hist.length*16,10); c.fill(); c.fillStyle='#cfe8d8'; c.font='700 11px '+TC; c.textAlign='center'; c.fillText('最近開的',W-71,72);
+      G.hist.slice().reverse().forEach((d,i)=>{ const s=d[0]+d[1]+d[2],tri=d.every(v=>v===d[0]); c.fillStyle=tri?'#ff7ab0':s>=11?'#ff8a6a':'#8ac8ff'; c.fillText(d.join(' ')+'　'+s+(tri?' 圍':s>=11?' 大':' 小'),W-71,88+i*16); }); }
+    // 自己
+    const b=G.bets[me]; plate(me,W/2,458,G.chips[me]+' 籌碼'+(b?'　押「'+SICN[b.k]+'」'+b.amt:'')+(S&&S.res[me]&&!shk?'（'+(S.res[me]>0?'+':'')+S.res[me]+'）':''),my);
+    if(S&&!shk&&S.res[me]){ c.fillStyle=S.res[me]>0?'#86dc4f':'#ff8a8a'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText(S.res[me]>0?'押中了！贏 '+S.res[me]:'沒押中',W/2,372); }
+    if(my){ const mx=G.chips[me],lo=Math.min(BET,mx); if(!sicAmt||sicAmt>mx||sicAmt<lo) sicAmt=lo;
+      btn('−',W/2-200,388,40,()=>{ sicAmt=Math.max(lo,sicAmt-BET); }); c.fillStyle='#ffd23f'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText(sicAmt,W/2-120,407); btn('＋',W/2-80,388,40,()=>{ sicAmt=Math.min(mx,sicAmt+BET); }); btn('全下',W/2-30,388,70,()=>{ sicAmt=mx; });
+      btn('押「'+SICN[sicK]+'」',W/2+52,388,150,()=>act({t:'bet',k:sicK,amt:sicAmt}),false,true); }
+    else if(G.phase==='bet'&&!G.over){ c.fillStyle='#fff'; c.font='700 14px '+TC; c.textAlign='center'; c.fillText(shk?'莊家搖骰中…':'等 '+names[G.turn]+' 下注…',W/2,400); } }
+
   function drawRB(){
     if(!G.dice||!G.lives) return; const Ls=G.last,show=G.phase==='show',LO=G.phase==='lost'?G.lost:null,hearts=p=>'♥'.repeat(Math.max(0,G.lives[p]));
     for(let p=0;p<np;p++){ if(p===me) continue; const {x,y}=seat(p),n=G.dice[p].length,out=G.lives[p]<=0&&!(LO&&LO.who.includes(p));
@@ -302,35 +357,38 @@ function stageShow(ctx,w,h,si,t){
   if(si===0){ drawCup(ctx,w*.2,h*.5,60*k,u<.5?Math.sin(u*Math.PI*2)*8*k:0); drawCup(ctx,w*.8,h*.5,60*k,0); ctx.fillStyle='#ffd23f'; ctx.font='900 '+Math.round(26*k)+'px '+TC; ctx.fillText('4 個',w/2-24*k,h*.42); drawDie(ctx,w/2+10*k,h*.42-18*k,36*k,5); row([1,5,5,3,6],h*.72,f=>({hl:f===5||f===1})); }
   else if(si===1){ const d=u<.6?[1+Math.floor(t*9)%6,1+Math.floor(t*7)%6,1+Math.floor(t*5)%6,1+Math.floor(t*11)%6]:[6,6,6,6].map((v,i)=>i<2?v:[5,1][i-2]); row(d,h*.45); ctx.fillStyle='#86dc4f'; ctx.font='900 '+Math.round(28*k)+'px '+TC; if(u>=.6) ctx.fillText('6 點',w/2,h*.75); }
   else if(si===2){ row([3,3,4,6,3],h*.45,(f,i)=>({hl:i<3})); ctx.fillStyle='#86dc4f'; ctx.font='900 '+Math.round(28*k)+'px '+TC; ctx.fillText('3+3+4＝10　6+3＝妞九',w/2,h*.75); }
+  else if(si===4){ const d=u<.5?[1+Math.floor(t*9)%6,1+Math.floor(t*7)%6,1+Math.floor(t*5)%6]:[6,5,4]; row(d,h*.4); ctx.fillStyle='#ffd23f'; ctx.font='900 '+Math.round(24*k)+'px '+TC; ctx.fillText(u<.5?'押大？押小？':'15 點　大！',w/2,h*.72); }
   else { row([1,4,3,4,6],h*.42,f=>({dim:u>.5&&[2,3,5,6].includes(f)})); ctx.fillStyle='#ffd23f'; ctx.font='900 '+Math.round(24*k)+'px '+TC; ctx.fillText(u>.5?'拿掉「黑」！':'紅？黑？大？小？單？雙？',w/2,h*.72); }
 }
 function thumb(ctx,w,h,t){ setSty(null); drawTable(ctx,w,h,{felt:'#5a2a2a'},t); const k=w/480,s=40*k;
   [6,6,5,1].forEach((f,i)=>{ const a=Math.sin(t*2+i)*.15; ctx.save(); ctx.translate(w/2+(i-1.5)*52*k,h*.58); ctx.rotate(a); drawDie(ctx,-s/2,-s/2,s,f); ctx.restore(); });
   drawCup(ctx,w*.18,h*.66,64*k,Math.abs(Math.sin(t*2))*10*k); drawCup(ctx,w*.82,h*.66,64*k,0);
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.13)+'px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#0b0a1c'; ctx.strokeText('骰子派對',w/2,h*.17); ctx.fillStyle='#ffd23f'; ctx.fillText('骰子派對',w/2,h*.17);
-  ctx.font='700 '+Math.round(h*.06)+'px '+TC; ctx.fillStyle='#ffe8c8'; ctx.fillText('吹牛・十八仔・妞妞・紅黑大小單雙',w/2,h*.9); }
+  ctx.font='700 '+Math.round(h*.06)+'px '+TC; ctx.fillStyle='#ffe8c8'; ctx.fillText('吹牛・十八仔・妞妞・紅黑大小單雙・骰寶',w/2,h*.9); }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).dice={
   name:'骰子派對',tag:'DICE PARTY',color:'#ff7a5c',online:true,maxPlayers:6,bots:true,minPlayers:2,
-  desc:'一組骰盅玩四種：吹牛、十八仔、妞妞、紅黑大小單雙。和電腦同桌，或開房間 2～6 人連線。',
+  desc:'一組骰盅玩五種：吹牛、十八仔、妞妞、紅黑大小單雙、骰寶。和電腦同桌，或開房間 2～6 人連線。',
   goal:'選一種骰子遊戲開始玩。',
   stages:GAMES,stageLabel:'選擇遊戲',
   stageGoal:si=>[
     '吹牛：每人一個骰盅、5 顆骰子，只看得到自己的。輪流喊「全場有幾個某點數」，下一個人要喊得更大（個數多，或同個數點數大），不相信就「開」。1 可以當任何點數（萬用），但有人喊 1 時就不算萬用。開盅後數量夠，開的人輸；不夠，喊的人輸。輸一次少一條命，撐到最後的人贏。',
     '十八仔：每局每人下注後輪流擲 4 顆骰子。要有一對，另外兩顆相加就是點數；兩對時取大的那對相加。12 點叫「十八」，3 點叫「BG」最小；四顆一樣是「一色」最大。三同一異或四顆都不同會自動重擲。點數最大的人贏彩池，打 8 局比籌碼。',
     '妞妞：每人擲 5 顆骰子。找出三顆加起來是 10（妞），另外兩顆相加取個位數比大小：0 叫「妞妞」最大，再來妞九、妞八…妞一；湊不出 10 是「無妞」最小；五顆一樣是「豹子」最大。遊戲會自動幫你湊最好的組合。每局輪一個人當莊家，閒家下注後各自和莊家比，一樣大算莊家贏；妞妞、豹子賠 3 倍，妞七～妞九賠 2 倍，其他賠 1 倍。打 8 局比籌碼。',
-    '紅黑大小單雙：每人一個骰盅、5 顆骰子。輪到你時，亮出自己的骰子，從紅黑、大小、單雙裡選一種拿掉（紅＝1、4，黑＝2、3、5、6；大＝4～6，小＝1～3；單＝1、3、5，雙＝2、4、6），所有人都要拿掉這種骰子。只剩一顆時不能看，要盲猜：亮出來和喊的不一樣就過關。骰子被拿光就少一條命，大家再重拿 5 顆開新的一輪；命用完出局，撐到最後的人贏（命數可以在開始前選）。'][si],
+    '紅黑大小單雙：每人一個骰盅、5 顆骰子。輪到你時，亮出自己的骰子，從紅黑、大小、單雙裡選一種拿掉（紅＝1、4，黑＝2、3、5、6；大＝4～6，小＝1～3；單＝1、3、5，雙＝2、4、6），所有人都要拿掉這種骰子。只剩一顆時不能看，要盲猜：亮出來和喊的不一樣就過關。骰子被拿光就少一條命，大家再重拿 5 顆開新的一輪；命用完出局，撐到最後的人贏（命數可以在開始前選）。',
+    '骰寶：莊家用骰盅搖三顆骰子，大家先下注再開。押「大」（11～17 點）、「小」（4～10 點）、「單」或「雙」中了賠 1 倍，但三顆一樣（圍骰）時這四種都算輸；押「任意圍骰」中了賠 30 倍；押某個點數，開出 1 顆賠 1 倍、2 顆賠 2 倍、3 顆賠 3 倍。每人每局押一種，金額自己選，打 8 局比籌碼。'][si],
   options:[{key:'speed',label:'電腦速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]},
     {key:'seats',label:'單機人數',def:'4',opts:[2,3,4,5,6].map(n=>({id:String(n),label:n+' 人'}))},
     {key:'lives',label:'每人幾條命',def:'3',only:[0,3],opts:[{id:'1',label:'1 條'},{id:'3',label:'3 條'},{id:'5',label:'5 條'}]},
-    {key:'chips',label:'起始籌碼',def:'1000',only:[1,2],opts:[{id:'500',label:'500'},{id:'1000',label:'1000'},{id:'2000',label:'2000'}]},
-    {key:'bet',label:'每局下注',def:'50',only:[1,2],opts:[{id:'10',label:'10'},{id:'50',label:'50'},{id:'100',label:'100'}]}],
+    {key:'chips',label:'起始籌碼',def:'1000',only:[1,2,4],opts:[{id:'500',label:'500'},{id:'1000',label:'1000'},{id:'2000',label:'2000'}]},
+    {key:'bet',label:'每局下注',def:'50',only:[1,2,4],opts:[{id:'10',label:'10'},{id:'50',label:'50'},{id:'100',label:'100'}]}],
   help:[['按鈕','喊、開、擲骰、選要拿掉的骰子']],
   stageHelp:si=>{ const H=[
       [['− ＋','選要喊的個數'],['點骰子','選要喊的點數（1 最大）'],['喊','送出你喊的「幾個幾」'],['開！','不相信上一個人喊的，開盅點數']],
       [['擲骰','輪到你時按「擲骰」，骰盅搖完會自動掀開'],['看結果','牌型自動算好，最大的人贏彩池']],
       [['擲骰','輪到你時按「擲骰」，骰盅搖完會自動掀開'],['看結果','自動找出湊成 10 的三顆並亮起來，和莊家比大小']],
-      [['紅黑大小單雙','輪到你時，從六個按鈕選一種拿掉'],['盲猜','只剩一顆時看不到自己的骰子，一樣從六個按鈕選']]][si];
+      [['紅黑大小單雙','輪到你時，從六個按鈕選一種拿掉'],['盲猜','只剩一顆時看不到自己的骰子，一樣從六個按鈕選']],
+      [['點押注格','選要押大、小、單、雙、任意圍骰或某個點數'],['− ＋／全下','調整下注金額'],['押','送出下注，大家押好後莊家開骰']]][si];
     return {help:H,touchHelp:H}; },
   touch:null,
   looks:[{key:'die',label:'骰子顏色',type:'color',opts:['#fdfcf8','#fff1c4','#ff8a8a','#2b2b36','#8ac8ff','#a8e6a1']},

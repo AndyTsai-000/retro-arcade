@@ -3,7 +3,7 @@
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',KAI='"BiauKai","DFKai-SB","標楷體","KaiTi","STKaiti","Noto Serif TC","Songti TC",serif';
-const GAMES=['圍棋','五子棋','跳棋','象棋','暗棋','象棋麻將'],GID=['go','gm','cc','xq','bq','mj'];
+const GAMES=['圍棋','五子棋','跳棋','象棋','暗棋','象棋麻將','西洋棋'],GID=['go','gm','cc','xq','bq','mj','ch'];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,rand=n=>Math.floor(Math.random()*n);
 const shuffle=a=>{ for(let i=a.length-1;i>0;i--){ const j=rand(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 const D4=[[-1,0],[1,0],[0,-1],[0,1]],DD=[[-1,-1],[-1,1],[1,-1],[1,1]];
@@ -41,7 +41,7 @@ function marble(c,x,y,r,col,al){ c.save(); if(al!=null) c.globalAlpha=al;
   const g=c.createRadialGradient(x-r*.35,y-r*.4,r*.05,x,y,r); g.addColorStop(0,'#ffffff'); g.addColorStop(.25,shade(col,1.25)); g.addColorStop(.75,col); g.addColorStop(1,shade(col,.55));
   c.fillStyle=g; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); c.fillStyle='rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(x-r*.3,y-r*.42,r*.28,r*.16,-.5,0,7); c.fill(); c.restore(); }
 // 每種棋預設的場景：圍棋在和室、五子棋在庭園、跳棋在遊戲室、象棋在公園、暗棋在廟口、象棋麻將在茶館
-const THEME={go:'tatami',gm:'garden',cc:'play',xq:'park',bq:'temple',mj:'tea'};
+const THEME={go:'tatami',gm:'garden',cc:'play',xq:'park',bq:'temple',mj:'tea',ch:'garden'};
 const savedLook=()=>{ try{ return JSON.parse(localStorage.getItem('arcade.look.qi')||'null')||{}; }catch(e){ return {}; } };
 const themed=(L,kind)=>{ L=L||{}; return {bg:!L.bg||L.bg==='auto'?THEME[kind]:L.bg,board:L.board||'#dcae66',felt:L.felt||'#2f6b4f'}; };
 function drawBg(c,w,h,bg,t){ const k=w/800; t=t||0;
@@ -224,9 +224,93 @@ function mjSh(a,need,noJ){ let best=9;
     a[i]--; rec(i,s,pt,pr); a[i]++; };
   rec(0,0,0,false); return best; }
 
+
+/* ---------- 西洋棋引擎：走法（含王車易位、吃過路兵、升變）、將軍判斷、α-β 搜尋 ---------- */
+// 棋盤索引 r*8+c，r=0 在上（黑方第 8 橫列），白方在下。棋子＝顏色(0 白、1 黑)<<3 | 種類(1 兵 2 馬 3 象 4 車 5 后 6 王)
+// 局面 st={b,cr,ep}：cr 易位權（1 白短、2 白長、4 黑短、8 黑長），ep 吃過路兵的格子（沒有是 -1）
+// 走法編碼：f | to<<6 | promo<<12（promo＝升變成的種類，0＝不升變）
+const CH_INIT=(()=>{ const b=new Array(64).fill(0),back=[4,2,3,5,6,3,2,4]; for(let c=0;c<8;c++){ b[c]=8+back[c]; b[8+c]=9; b[48+c]=1; b[56+c]=back[c]; } return b; })();
+const CHV=[0,100,320,330,500,900,0];
+function chAttacked(b,sq,by){ const r=sq>>3,c=sq&7;
+  const pr=by?r-1:r+1; if(pr>=0&&pr<8){ if(c>0&&b[pr*8+c-1]===(by<<3|1)) return true; if(c<7&&b[pr*8+c+1]===(by<<3|1)) return true; }
+  for(const [dr,dc] of [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[1,-2],[-1,2],[1,2]]){ const R=r+dr,C=c+dc; if(R>=0&&R<8&&C>=0&&C<8&&b[R*8+C]===(by<<3|2)) return true; }
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc) continue; const R=r+dr,C=c+dc; if(R>=0&&R<8&&C>=0&&C<8&&b[R*8+C]===(by<<3|6)) return true; }
+  for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){ const diag=dr&&dc; let R=r+dr,C=c+dc; while(R>=0&&R<8&&C>=0&&C<8){ const v=b[R*8+C]; if(v){ if((v>>3)===by){ const t=v&7; if(t===5||(diag?t===3:t===4)) return true; } break; } R+=dr; C+=dc; } }
+  return false; }
+function chKing(b,s){ const K=s<<3|6; for(let i=0;i<64;i++) if(b[i]===K) return i; return -1; }
+function chInCheck(b,s){ const k=chKing(b,s); return k<0||chAttacked(b,k,1-s); }
+function chGen(st,s,capOnly){ const b=st.b,mv=[];
+  for(let i=0;i<64;i++){ const v=b[i]; if(!v||(v>>3)!==s) continue; const t=v&7,r=i>>3,c=i&7;
+    const add=(j,pr)=>{ const w=b[j]; if(w&&(w>>3)===s) return false; if(capOnly&&!w&&!pr) return !w; mv.push(i|j<<6|(pr||0)<<12); return !w; };
+    if(t===1){ const d=s?8:-8,last=s?7:0,start=s?1:6,j=i+d; if(j>=0&&j<64&&!b[j]){ if((j>>3)===last) mv.push(i|j<<6|5<<12); else if(!capOnly){ mv.push(i|j<<6); if(r===start&&!b[j+d]) mv.push(i|(j+d)<<6); } }
+      for(const dc of [-1,1]){ const C=c+dc; if(C<0||C>7) continue; const k=j+dc,w=b[k]; if((w&&(w>>3)!==s)||k===st.ep) mv.push(i|k<<6|((k>>3)===last?5:0)<<12); } }
+    else if(t===2){ for(const [dr,dc] of [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[1,-2],[-1,2],[1,2]]){ const R=r+dr,C=c+dc; if(R>=0&&R<8&&C>=0&&C<8) add(R*8+C); } }
+    else if(t===6){ for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc) continue; const R=r+dr,C=c+dc; if(R>=0&&R<8&&C>=0&&C<8) add(R*8+C); }
+      if(!capOnly){ const home=s?4:60,o=1-s; if(i===home&&!chAttacked(b,i,o)){
+        if(st.cr&(s?4:1)&&!b[i+1]&&!b[i+2]&&b[i+3]===(s<<3|4)&&!chAttacked(b,i+1,o)&&!chAttacked(b,i+2,o)) mv.push(i|(i+2)<<6);
+        if(st.cr&(s?8:2)&&!b[i-1]&&!b[i-2]&&!b[i-3]&&b[i-4]===(s<<3|4)&&!chAttacked(b,i-1,o)&&!chAttacked(b,i-2,o)) mv.push(i|(i-2)<<6); } } }
+    else { const dirs=t===3?[[1,1],[1,-1],[-1,1],[-1,-1]]:t===4?[[1,0],[-1,0],[0,1],[0,-1]]:[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+      for(const [dr,dc] of dirs){ let R=r+dr,C=c+dc; while(R>=0&&R<8&&C>=0&&C<8){ const j=R*8+C,w=b[j]; if(w){ if((w>>3)!==s) mv.push(i|j<<6); break; } if(!capOnly) mv.push(i|j<<6); R+=dr; C+=dc; } } } }
+  return mv; }
+// 走一步，回傳可以還原的資料
+function chMake(st,m){ const b=st.b,f=m&63,to=(m>>6)&63,pr=m>>12,v=b[f],t=v&7,s=v>>3,u={m,cp:b[to],cr:st.cr,ep:st.ep,epc:-1,rk:-1};
+  if(t===1&&to===st.ep&&!b[to]){ const k=to+(s?-8:8); u.epc=k; u.cp=b[k]; b[k]=0; }
+  b[to]=pr?(s<<3|pr):v; b[f]=0;
+  if(t===6&&Math.abs(to-f)===2){ const rf=to>f?f+3:f-4,rt=to>f?f+1:f-1; b[rt]=b[rf]; b[rf]=0; u.rk=rf; }
+  st.ep=t===1&&Math.abs(to-f)===16?(f+to)/2:-1;
+  const clr=sq=>{ if(sq===60) st.cr&=~3; if(sq===4) st.cr&=~12; if(sq===63) st.cr&=~1; if(sq===56) st.cr&=~2; if(sq===7) st.cr&=~4; if(sq===0) st.cr&=~8; };
+  clr(f); clr(to); return u; }
+function chUnmake(st,u){ const b=st.b,m=u.m,f=m&63,to=(m>>6)&63,pr=m>>12,v=b[to],s=v>>3;
+  b[f]=pr?(s<<3|1):v; b[to]=u.epc>=0?0:u.cp; if(u.epc>=0) b[u.epc]=u.cp;
+  if(u.rk>=0){ const rt=to>f?f+1:f-1; b[u.rk]=b[rt]; b[rt]=0; }
+  st.cr=u.cr; st.ep=u.ep; }
+function chLegal(st,s){ const out=[]; for(const m of chGen(st,s)){ const u=chMake(st,m); if(!chInCheck(st.b,s)) out.push(m); chUnmake(st,u); } return out; }
+// 評估：子力＋位置（中央、兵往前、王在前期躲在後面）
+function chEval(b){ let sc=0,mat=0; for(let i=0;i<64;i++){ const v=b[i]; if(v&&(v&7)!==6&&(v&7)!==1) mat+=CHV[v&7]; }
+  const end=mat<2600;
+  for(let i=0;i<64;i++){ const v=b[i]; if(!v) continue; const t=v&7,s=v>>3,r=i>>3,c=i&7,adv=s?r:7-r,cen=3.5-Math.max(Math.abs(c-3.5),Math.abs(r-3.5)); let x=CHV[t];
+    if(t===1) x+=adv*adv*2+(c>=2&&c<=5?adv*3:0); else if(t===2) x+=cen*10-(adv===0?10:0); else if(t===3) x+=cen*5-(adv===0?8:0); else if(t===4) x+=(adv===6?18:0); else if(t===5) x+=cen*2;
+    else if(t===6) x+=end?cen*10:(adv===0?(c<=2||c>=6?22:0):-25*adv);
+    sc+=s?-x:x; } return sc; }
+function chSearch(st0,s,ms,maxD,noise){ const st={b:st0.b.slice(),cr:st0.cr,ep:st0.ep},b=st.b,t0=performance.now(),MATE=1e6; let nodes=0,stop=false;
+  const ev=sd=>sd?-chEval(b):chEval(b);
+  const order=list=>list.map(m=>{ const to=(m>>6)&63,f=m&63; return [m,(b[to]?CHV[b[to]&7]*10+1000-CHV[b[f]&7]/10:0)+(m>>12?800:0)]; }).sort((x,y)=>y[1]-x[1]).map(x=>x[0]);
+  function q(sd,a,be,d){ nodes++; const sp=ev(sd); if(sp>=be) return sp; if(sp>a) a=sp; if(d>6) return sp;
+    for(const m of order(chGen(st,sd,true))){ const u=chMake(st,m); if(chInCheck(b,sd)){ chUnmake(st,u); continue; } const v=-q(1-sd,-be,-a,d+1); chUnmake(st,u); if(v>=be) return v; if(v>a) a=v; }
+    return a; }
+  function nm(sd,d,a,be,ply){ if((++nodes&1023)===0&&performance.now()-t0>ms) stop=true; if(stop) return 0;
+    if(d<=0) return q(sd,a,be,0); let best=-MATE,any=false;
+    for(const m of order(chGen(st,sd))){ const u=chMake(st,m); if(chInCheck(b,sd)){ chUnmake(st,u); continue; } any=true; const v=-nm(1-sd,d-1,-be,-a,ply+1); chUnmake(st,u); if(stop) return 0; if(v>best) best=v; if(v>a) a=v; if(a>=be) break; }
+    return any?best:(chInCheck(b,sd)?-MATE+ply:0); }
+  const root=chLegal(st,s); if(!root.length) return -1; let bestM=root[0],prev=null;
+  for(let d=1;d<=maxD;d++){ let a=-MATE-1,bm=null; const list=order(root); if(prev!=null){ list.splice(list.indexOf(prev),1); list.unshift(prev); }
+    for(const m of list){ const u=chMake(st,m); const v=-nm(1-s,d-1,-MATE-1,noise?MATE+1:-a,1); chUnmake(st,u); if(stop) break; const vv=v+(noise?(Math.random()-.5)*noise:0); if(vv>a){ a=vv; bm=m; } }
+    if(stop&&d>1) break; if(bm!=null){ bestM=bm; prev=bm; } if(a>MATE-200||performance.now()-t0>ms*.45) break; }
+  return bestM; }
+let CW=null,CWbad=false,CWid=0; const CWcb=new Map();
+function chWorker(){ if(CW||CWbad) return CW;
+  try{ const src='const CHV='+JSON.stringify(CHV)+';\n'+[chAttacked,chKing,chInCheck,chGen,chMake,chUnmake,chLegal,chEval,chSearch].map(f=>f.toString()).join('\n')+'\nonmessage=e=>{ const [id,st,s,ms,maxD,noise]=e.data; postMessage([id,chSearch(st,s,ms,maxD,noise)]); };';
+    CW=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'}))); CW.onmessage=e=>{ const f=CWcb.get(e.data[0]); CWcb.delete(e.data[0]); if(f) f(e.data[1]); };
+    CW.onerror=()=>{ CWbad=true; CW=null; for(const f of CWcb.values()) f(null); CWcb.clear(); }; }
+  catch(e){ CWbad=true; CW=null; } return CW; }
+// 棋盤與棋子
+const CH_GLY=['','♟','♞','♝','♜','♛','♚'];
+function chBoard(c,ox,oy,cs,col,flip){ const k=cs/52; wood(c,ox-cs*.5,oy-cs*.5,8*cs+cs,8*cs+cs,col,k);
+  const lt=shade(col,1.25),dk=shade(col,.62); for(let r=0;r<8;r++) for(let q=0;q<8;q++){ c.fillStyle=(r+q)%2?dk:lt; c.fillRect(ox+q*cs,oy+r*cs,cs,cs); }
+  c.strokeStyle='rgba(40,20,5,.6)'; c.lineWidth=2; c.strokeRect(ox,oy,8*cs,8*cs);
+  c.fillStyle='rgba(40,20,5,.75)'; c.font='900 '+Math.round(12*k)+'px '+TC; c.textAlign='center'; c.textBaseline='middle';
+  for(let i=0;i<8;i++){ const fi=flip?7-i:i; c.fillText('abcdefgh'[fi],ox+i*cs+cs/2,oy+8*cs+cs*.25); c.fillText(String(8-fi),ox-cs*.25,oy+i*cs+cs/2); } }
+function chPiece(c,x,y,cs,v,o){ const s=v>>3,t=v&7; o=o||{}; c.save(); c.translate(x,y);
+  c.fillStyle='rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(cs*.03,cs*.36,cs*.3,cs*.08,0,0,7); c.fill();
+  c.font=Math.round(cs*.82)+'px "Segoe UI Symbol","Noto Sans Symbols2","DejaVu Sans","Apple Symbols",serif'; c.textAlign='center'; c.textBaseline='middle';
+  c.lineJoin='round'; c.lineWidth=cs*.08; c.strokeStyle=s?'#e8dcc0':'#1a1410'; c.strokeText(CH_GLY[t],0,cs*.02);
+  const g=c.createLinearGradient(0,-cs*.4,0,cs*.4); if(s){ g.addColorStop(0,'#4a4048'); g.addColorStop(1,'#141016'); } else { g.addColorStop(0,'#ffffff'); g.addColorStop(1,'#d8ccb4'); } c.fillStyle=g; c.fillText(CH_GLY[t],0,cs*.02);
+  if(o.hl){ c.strokeStyle=o.hl; c.lineWidth=3; c.beginPath(); c.arc(0,0,cs*.46,0,7); c.stroke(); }
+  c.restore(); }
+
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0,OP=opts.options||{};
-  const si=clamp(opts.stage|0,0,5),kind=GID[si],TWO=kind!=='cc'&&kind!=='mj',local2=!net&&opts.mode==='2p';
+  const si=clamp(opts.stage|0,0,6),kind=GID[si],TWO=kind!=='cc'&&kind!=='mj',local2=!net&&opts.mode==='2p';
   const humans=net?net.count:local2?2:1;
   const np=TWO?2:kind==='cc'?(net?clamp(net.count+(net.bots||0),2,6):clamp(+OP.ccn||3,2,6)):(net?clamp(net.count+(net.bots||0),2,4):clamp(+OP.mjn||4,2,4));
   const LV=Math.max(0,['easy','normal','hard'].indexOf(OP.lv||'normal')),SP=Math.max(0,['slow','normal','fast'].indexOf(OP.speed||'normal'));
@@ -438,6 +522,55 @@ function create(env,opts){
       btns:()=>[],hint:()=>G.chk&&!G.over?(actor()>=0?'你被將軍了！要先解將':'將軍！'):''
     }; }
 
+  /* ===== 西洋棋 ===== */
+  function chMod(){
+    let TH=null;
+    const CS=54,OX=40,OY=30,flip=()=>!local2&&G.side[view()]===1;
+    const P=i=>{ let r=i>>3,q=i&7; if(flip()){ r=7-r; q=7-q; } return [OX+q*CS+CS/2,OY+r*CS+CS/2]; };
+    const hit=(x,y)=>{ let q=Math.floor((x-OX)/CS),r=Math.floor((y-OY)/CS); if(q<0||q>7||r<0||r>7) return -1; if(flip()){ r=7-r; q=7-q; } return r*8+q; };
+    const ST=()=>({b:G.b,cr:G.cr,ep:G.ep}),key=s=>G.b.join(',')+'|'+s+'|'+G.cr+'|'+G.ep;
+    const NAMES=['','兵','馬','象','車','后','王'];
+    function insufficient(){ const left=[]; for(const v of G.b) if(v&&(v&7)!==6) left.push(v&7); return !left.length||(left.length===1&&(left[0]===2||left[0]===3)); }
+    return {
+      setup(){ G.b=CH_INIT.slice(); G.cr=15; G.ep=-1; G.turn=first; G.side=[0,0]; G.side[first]=0; G.side[1-first]=1; G.mv=0; G.half=0; G.rep={}; G.lastM=-1; G.capt=[[],[]]; G.chk=false; log(names[first]+' 執白先走'); },
+      waiting:()=>G.turn,
+      act(p,a){ if(p!==G.turn) return '還沒輪到你'; const s=G.side[p],st=ST(),f=a.f|0,to=a.to|0,legal=chLegal(st,s),m=legal.find(x=>(x&63)===f&&((x>>6)&63)===to);
+        if(m==null) return chGen(st,s).some(x=>(x&63)===f&&((x>>6)&63)===to)?'這樣走自己的王會被吃（被將軍）':'這步不能這樣走';
+        const v=G.b[f]; setAnim([f,to],v); const u=chMake(st,m); G.cr=st.cr; G.ep=st.ep; G.lastM=m; G.mv++;
+        if(u.cp){ G.capt[p].push(u.cp); G.half=0; } else if((v&7)===1) G.half=0; else G.half++;
+        const o=1-s,op=1-p,k=key(o); G.chk=chInCheck(G.b,o); G.rep[k]=(G.rep[k]||0)+1; G.snd=G.chk?'beep':u.cp?'pop':'place';
+        const ext=u.rk>=0?'王車易位':m>>12?'兵升變成后':u.epc>=0?'吃過路兵':'';
+        if(!chLegal(ST(),o).length) G.over=G.chk?{win:p,why:names[op]+' 被將死了（Checkmate）'}:{win:null,why:names[op]+' 沒有合法的步可走，逼和（Stalemate）'};
+        else if(G.rep[k]>=3) G.over={win:null,why:'同一個局面重複三次，和棋'};
+        else if(G.half>=100) G.over={win:null,why:'50 回合沒有吃子也沒有動兵，和棋'};
+        else if(insufficient()) G.over={win:null,why:'雙方都沒辦法將死對方，和棋'};
+        else { G.turn=op; log(G.chk?names[p]+' 將軍！'+(ext?'（'+ext+'）':''):ext?names[p]+' '+ext:u.cp?names[p]+' 吃掉「'+NAMES[u.cp&7]+'」':'第 '+Math.ceil(G.mv/2)+' 回合'); }
+        return null; },
+      think(p){ const ms=[300,700,1500][LV],k=G.seq+'|'+G.b.join();
+        if(!TH||TH.p!==p||TH.k!==k){ const w=chWorker(); TH={p,k,res:undefined,t0:performance.now()}; if(!w){ TH.res=null; return true; }
+          const my=TH,id=++CWid; CWcb.set(id,m=>{ my.res=m; }); w.postMessage([id,ST(),G.side[p],ms,[2,3,7][LV],[160,20,0][LV]]); return false; }
+        return TH.res!==undefined||performance.now()-TH.t0>ms+3000; },
+      ai(p){ let m=TH&&TH.p===p&&TH.k===G.seq+'|'+G.b.join()&&TH.res!=null?TH.res:undefined; TH=null;
+        if(m===undefined) m=chSearch(ST(),G.side[p],[300,700,1500][LV],[2,3,7][LV],[160,20,0][LV]); return m<0?null:{t:'mv',f:m&63,to:(m>>6)&63}; },
+      fallback(p){ const m=chLegal(ST(),G.side[p])[0]; return m==null?null:{t:'mv',f:m&63,to:(m>>6)&63}; },
+      draw(){ chBoard(c,OX,OY,CS,L.board,flip());
+        if(G.lastM>=0) for(const i of [G.lastM&63,(G.lastM>>6)&63]){ const [x,y]=P(i); c.fillStyle='rgba(255,220,60,.35)'; c.fillRect(x-CS/2,y-CS/2,CS,CS); }
+        const A=anim&&G.anim?anim:null,dest=A?A.path[1]:-1,a=actor(),mine=a>=0?G.side[a]:-1;
+        if(sel>=0){ const [x,y]=P(sel); c.fillStyle='rgba(60,160,255,.4)'; c.fillRect(x-CS/2,y-CS/2,CS,CS); }
+        for(let i=0;i<64;i++){ const v=G.b[i]; if(!v||i===dest) continue; const [x,y]=P(i);
+          if(G.chk&&!G.over&&(v&7)===6&&(v>>3)===G.side[G.turn]){ const g=c.createRadialGradient(x,y,CS*.2,x,y,CS*.7); g.addColorStop(0,'rgba(255,40,30,.85)'); g.addColorStop(1,'rgba(255,40,30,0)'); c.fillStyle=g; c.fillRect(x-CS/2,y-CS/2,CS,CS); }
+          chPiece(c,x,y,CS,v); }
+        if(A){ const u=Math.min(1,A.t/.24),e=1-(1-u)*(1-u),[x1,y1]=P(A.path[0]),[x2,y2]=P(A.path[1]); chPiece(c,x1+(x2-x1)*e,y1+(y2-y1)*e-Math.sin(u*Math.PI)*8,CS,A.v); }
+        if(sel>=0&&mine>=0) for(const m of chLegal(ST(),mine)){ if((m&63)!==sel) continue; const to=(m>>6)&63,[x,y]=P(to); if(G.b[to]||(G.b[sel]&7)===1&&to===G.ep){ c.strokeStyle='rgba(255,60,40,.95)'; c.lineWidth=3; c.beginPath(); c.arc(x,y,CS*.44,0,7); c.stroke(); } else { c.fillStyle='rgba(40,180,90,.8)'; c.beginPath(); c.arc(x,y,CS*.14,0,7); c.fill(); } } },
+      animDur:()=>.24,
+      click(x,y){ const i=hit(x,y),a=actor(); if(i<0||a<0) return; const s=G.side[a],v=G.b[i];
+        if(v&&(v>>3)===s){ sel=i===sel?-1:i; sfx('click'); return; }
+        if(sel>=0) act({t:'mv',f:sel,to:i}); },
+      sub:()=>'白先黑後・將死對方的王就贏',
+      rows:()=>[0,1].map(p=>({p,icon:(x,y,r)=>chPiece(c,x,y,r*2.1,G.side[p]<<3|6),info:(G.side[p]?'黑方':'白方')+'・吃 '+G.capt[p].length+' 子'})),
+      btns:()=>[],hint:()=>G.chk&&!G.over?(actor()>=0?'你被將軍了！要先解除':'將軍！'):''
+    }; }
+
   /* ===== 暗棋 ===== */
   function bqMod(){
     const RANK=[0,7,6,5,3,4,2,1],BV=[0,60,35,20,9,12,30,7],CS=58,OX=18,OY=134;
@@ -629,7 +762,7 @@ function create(env,opts){
       sub:()=>'',rows:()=>[],btns:()=>[],hint:()=>''
     }; }
 
-  const M={go:goMod,gm:gmMod,cc:ccMod,xq:xqMod,bq:bqMod,mj:mjMod}[kind]();
+  const M={go:goMod,gm:gmMod,cc:ccMod,xq:xqMod,bq:bqMod,mj:mjMod,ch:chMod}[kind]();
 
   /* ===== 共用流程 ===== */
   function actor(){ if(G.over) return -1; const p=M.waiting(); if(p<0) return -1; if(net) return p===me?p:-1; return isAI(p)?-1:p; }
@@ -742,6 +875,9 @@ function stageShow(ctx,w,h,si,t){
     for(let r=0;r<=4;r++){ ctx.beginPath(); ctx.moveTo(ox,oy+r*cs); ctx.lineTo(ox+8*cs,oy+r*cs); ctx.stroke(); } for(let q=0;q<=8;q++){ ctx.beginPath(); ctx.moveTo(ox+q*cs,oy); ctx.lineTo(ox+q*cs,oy+4*cs); ctx.stroke(); }
     const up={3:[0,5],9:[1,1],12:[1,6],18:[0,2],22:[1,7],27:[0,1]},fl=Math.floor(u*6)%6,keys=Object.keys(up);
     for(let i=0;i<32;i++){ const x=ox+(i&7)*cs+cs/2,y=oy+(i>>3)*cs+cs/2,v=up[i],j=keys.indexOf(String(i)); if(v&&j<=fl) piece(ctx,x,y,cs*.4,v[0],v[1]); else piece(ctx,x,y,cs*.4,0,0,{back:true}); } }
+  else if(si===6){ const cs=h*.085,ox=w/2-4*cs,oy=h*.19; chBoard(ctx,ox,oy,cs,L.board,false); const b=CH_INIT.slice(); b[52]=0; b[36]=1; b[12]=0; b[28]=9; b[62]=0; b[45]=2;
+    const e=Math.min(1,u*2.2); for(let i=0;i<64;i++){ if(!b[i]||i===61) continue; chPiece(ctx,ox+(i&7)*cs+cs/2,oy+(i>>3)*cs+cs/2,cs,b[i]); }
+    const f=61,tt=34,x1=ox+(f&7)*cs+cs/2,y1=oy+(f>>3)*cs+cs/2,x2=ox+(tt&7)*cs+cs/2,y2=oy+(tt>>3)*cs+cs/2; chPiece(ctx,x1+(x2-x1)*e,y1+(y2-y1)*e-Math.sin(e*Math.PI)*8*k,cs,3,{hl:'#ffd23f'}); }
   else { const r=h*.09,hand=[0,1,2,6,6]; const n=Math.floor(u*10); ctx.fillStyle='rgba(0,0,0,.25)'; rr(ctx,w*.06,h*.24,w*.88,h*.66,18*k); ctx.fill();
     hand.forEach((kk,j)=>tile(ctx,w/2+(j-2)*r*2.3,h*.72-(j===4&&n>5?Math.sin(t*6)*3*k:0),r,kk,{hl:n>=8?'#86dc4f':null}));
     [7,7,12,10].forEach((kk,j)=>tile(ctx,w*.3+j*r*1.6,h*.4,r*.7,kk)); ctx.fillStyle='#86dc4f'; ctx.font='900 '+Math.round(h*.06)+'px '+TC; if(n>=8) ctx.fillText('帥仕相＋兵兵　胡！',w/2,h*.88); }
@@ -751,11 +887,11 @@ function thumb(ctx,w,h,t){ drawBg(ctx,w,h,'tea',t); const k=w/480;
   piece(ctx,w*.66,h*.55,34*k,0,1); piece(ctx,w*.82,h*.5+Math.sin(t*2)*4*k,30*k,1,5); piece(ctx,w*.74,h*.78,26*k,0,0,{back:true});
   [0,1,2,3].forEach(i=>marble(ctx,w*.55+i*18*k,h*.86,8*k,CC_COL[i]));
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.13)+'px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#0b0a1c'; ctx.strokeText('棋類派對',w/2,h*.15); ctx.fillStyle='#ffd23f'; ctx.fillText('棋類派對',w/2,h*.15);
-  ctx.font='700 '+Math.round(h*.055)+'px '+TC; ctx.fillStyle='#ffe8c8'; ctx.fillText('圍棋・五子棋・跳棋・象棋・暗棋・象棋麻將',w/2,h*.95); }
+  ctx.font='700 '+Math.round(h*.055)+'px '+TC; ctx.fillStyle='#ffe8c8'; ctx.fillText('圍棋・五子棋・跳棋・象棋・暗棋・象棋麻將・西洋棋',w/2,h*.95); }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).qi={
   name:'棋類派對',tag:'BOARD PARTY',color:'#c8913a',online:true,maxPlayers:si=>si===2?6:si===5?4:2,bots:true,minPlayers:2,
-  desc:'一盒棋玩六種：圍棋、五子棋、跳棋、象棋、暗棋、象棋麻將。和電腦下、兩個人同一台輪流下，或開房間連線對戰。',
+  desc:'一盒棋玩七種：圍棋、五子棋、跳棋、象棋、暗棋、象棋麻將、西洋棋。和電腦下、兩個人同一台輪流下，或開房間連線對戰。',
   goal:'選一種棋開始玩。',
   stages:GAMES,stageLabel:'選擇遊戲',
   stageGoal:si=>[
@@ -764,9 +900,10 @@ function thumb(ctx,w,h,t){ drawBg(ctx,w,h,'tea',t); const k=w/480;
     '跳棋：每人 10 顆彈珠，從自己的角出發，先把全部彈珠移到正對面的角就贏。每次可以走到旁邊的空洞，或跳過旁邊一顆棋子（自己的、別人的都可以）落到後面的空洞，還能一直連跳。對面的角被別人的彈珠卡住時，只要那個角全部填滿、裡面有你的彈珠就算到家。2～6 人，有人到家就結束，其他人照離終點的遠近排名。',
     '象棋：紅先黑後，把對方的帥（將）將死就贏。帥仕不出九宮、相象不過河、馬走日會被絆馬腳、象走田會被塞象眼、車直走、炮要隔一顆棋子才能吃、兵過河後可以橫走；兩個帥不能在同一直線上直接見面。對方無棋可走也算贏；同一局面重複三次或 60 回合沒吃子算和棋。',
     '暗棋：32 顆棋子全部蓋著放在半張棋盤（4×8）上，第一個翻棋的人翻到什麼顏色就執那一色。每回合可以翻一顆棋，或把自己的棋子往上下左右走一格、吃掉旁邊的對手棋子。大小：帥將＞仕士＞相象＞俥車＞傌馬＞炮包＞兵卒，大的吃小的、一樣大可以互吃；但兵卒可以吃帥將，帥將不能吃兵卒。炮包要隔一顆棋子（不論遠近，蓋著的也算）才能吃，而且什麼都能吃。把對方吃光或讓對方無棋可走就贏；連續 50 步沒有翻棋或吃子算和棋。',
-    '象棋麻將（32 張）：一副象棋當麻將牌，帥、將各 1 張，兵、卒各 5 張，其他各 2 張。莊家 5 張先打，其他人 4 張，輪流摸一張打一張，湊成「一組＋一對」就胡。一組是同色的帥仕相、俥傌炮、將士象、車馬包（順子），或三兵、三卒（刻子）；一對是兩張一樣，帥和將也能配成一對；五兵、五卒也算胡。上家打的牌可以「吃」成順子，兩張一樣時可以「碰」。台數：放槍胡 1 台、自摸 2 台、天胡地胡 6 台、將帥聽令（帥將當對子）2 台、五兵合縱／五卒連橫 5 台、紅一色／黑一色 1 台、海底撈月 1 台，莊家多 1 台；底 3 分、每台 1 分。放槍的人付，自摸其他人都付，打完設定的局數比總分。'][si],
+    '象棋麻將（32 張）：一副象棋當麻將牌，帥、將各 1 張，兵、卒各 5 張，其他各 2 張。莊家 5 張先打，其他人 4 張，輪流摸一張打一張，湊成「一組＋一對」就胡。一組是同色的帥仕相、俥傌炮、將士象、車馬包（順子），或三兵、三卒（刻子）；一對是兩張一樣，帥和將也能配成一對；五兵、五卒也算胡。上家打的牌可以「吃」成順子，兩張一樣時可以「碰」。台數：放槍胡 1 台、自摸 2 台、天胡地胡 6 台、將帥聽令（帥將當對子）2 台、五兵合縱／五卒連橫 5 台、紅一色／黑一色 1 台、海底撈月 1 台，莊家多 1 台；底 3 分、每台 1 分。放槍的人付，自摸其他人都付，打完設定的局數比總分。',
+    '西洋棋：白先黑後，把對方的王將死就贏。兵往前走一格（第一步可以走兩格），斜前方吃子，走到底線自動升變成后；馬走日字（可以跳過棋子）、象斜走、車直走、后直斜都能走、王走一格。王和車都沒動過、中間沒有棋子而且王沒被將軍時可以「王車易位」（點王往旁邊走兩格）；對方的兵剛走兩格停在你的兵旁邊，下一步可以「吃過路兵」。輪到的人沒有合法步、又沒被將軍算逼和；同一局面重複三次、50 回合沒吃子也沒動兵、或雙方都將不死對方也算和棋。'][si],
   modes:[{id:'1p',label:'對電腦'},{id:'2p',label:'兩人同一台'}],
-  coin:o=>{ const s=o.stage||0; if(s===2||s===5) return null; return {verb:['執黑先下','執黑先下','','執紅先走','先翻棋'][s],names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}; },
+  coin:o=>{ const s=o.stage||0; if(s===2||s===5) return null; return {verb:['執黑先下','執黑先下','','執紅先走','先翻棋','','執白先走'][s],names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}; },
   options:[{key:'lv',label:'電腦強度',def:'normal',opts:[{id:'easy',label:'簡單'},{id:'normal',label:'中等'},{id:'hard',label:'困難'}]},
     {key:'speed',label:'電腦速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]},
     {key:'gsize',label:'棋盤大小',def:'9',only:[0],opts:[{id:'9',label:'9 路'},{id:'13',label:'13 路'},{id:'19',label:'19 路'}]},
@@ -780,7 +917,8 @@ function thumb(ctx,w,h,t){ drawBg(ctx,w,h,'tea',t); const k=w/480;
       [['點自己的彈珠','選取，能去的洞會亮起黃點'],['點黃點','走過去（連跳會自動照路線跳）'],U],
       [['點自己的棋子','選取，能走的位置亮綠點、能吃的亮紅圈'],['點綠點／紅圈','走棋或吃子'],U,R],
       [['點蓋著的棋','翻開'],['點自己的棋子','選取，再點旁邊的格子走過去或吃子'],U,R],
-      [['點手牌','打出那一張（剛摸的那張在最右邊）'],['自摸／胡','湊成一組＋一對時出現'],['吃／碰','別人打牌時能叫就會跳出按鈕，不要就按「過」'],['聽','手牌上面會提示你在等哪幾張']]][si];
+      [['點手牌','打出那一張（剛摸的那張在最右邊）'],['自摸／胡','湊成一組＋一對時出現'],['吃／碰','別人打牌時能叫就會跳出按鈕，不要就按「過」'],['聽','手牌上面會提示你在等哪幾張']],
+      [['點自己的棋子','選取，能走的格子亮綠點、能吃的亮紅圈'],['點綠點／紅圈','走棋或吃子（王往旁邊走兩格＝王車易位）'],U,R]][si];
     return {help:H,touchHelp:H}; },
   help:[['點棋盤','下子、選棋子、走棋'],['按鈕','虛手、悔棋、認輸、吃碰胡']],
   touch:null,
