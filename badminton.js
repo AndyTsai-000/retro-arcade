@@ -140,7 +140,7 @@ function create(env,opts){
   ps[0].look=Object.assign({color:'#ff5d6d',hair:0},(net?net.looks&&net.looks[0]:opts.look)||{}); ps[1].look=Object.assign({color:ST.col,hair:ST.hair},(net&&vsHuman?net.looks&&net.looks[1]:null)||{});
   if(ps[1].look.color===ps[0].look.color) ps[1].look.color=ps[0].look.color==='#4f9dff'?'#5fd068':'#4f9dff';
   const RW=t=>t?-1:1;
-  let t=0,phase='serve',ptT=0,lastHit=-1,server=opts.first===1?1:0,lastW=-1,ended=false,overT=0,rally=0,best=0,shake=0,aiPred=null,aiT=0,aiDec={n:-1},aiReact=0,aiServeT=1.2,ev=[],sendT=0,msg='',msgT=0,introT=2.4,svSign=1;
+  let t=0,phase='serve',ptT=0,lastHit=-1,server=opts.first===1?1:0,lastW=-1,ended=false,overT=0,rally=0,best=0,shake=0,aiPred=null,aiT=0,aiDec={n:-1},aiReact=0,aiServeT=1.2,aiRecT=0,ev=[],sendT=0,msg='',msgT=0,introT=2.4,svSign=1;
   const rin={dx:0,dy:0,jump:false,sw:false,drop:false};
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
   const pop=(txt,col,x,w,h)=>fx.push({k:'txt',txt,col,x,w,h,t:0});
@@ -161,7 +161,13 @@ function create(env,opts){
     const coming=lastHit===0;
     if(coming){ if((aiT-=dt)<=0||!aiPred){ aiT=.1; aiPred=predict(); if(aiDec.n!==rally){ const ty=sh.type; aiDec={n:rally,whiff:Math.random()<(ty==='smash'?.42-.32*k:ty==='drive'?.18-.14*k:.08-.07*k),jmp:Math.random()<(sh.weak?Math.min(.95,AI.smash*1.7):AI.smash),off:(Math.random()-.5)*AI.err*.25}; } } aiReact-=dt; }
     else { aiPred=null; aiReact=AI.react; }
-    let tx=coming&&aiPred?aiPred.x+6+(aiDec.off||0):620,tw=coming&&aiPred?aiPred.w:0; tx=clamp(tx,NETX+30,W+40);
+    // 站位：打完球回到場中央的基本位置，越強越會依自己剛打的球預先移動（吊球後上前補網、高遠球後退一點、殺球後跟進），
+    //  左右也會跟著對手擊球的位置偏；弱的電腦回位慢、差一點就不動，常常站在後場等。
+    const myT=lastHit===1?sh.type:'',baseX=k<.3?620:myT==='drop'||myT==='net'?lerp(590,NETX+110,k):myT==='smash'?lerp(600,540,k):myT==='clear'||myT==='lift'?lerp(610,600,k):lerp(620,565,k);
+    const shade=clamp(sh.w+(sh.vw||0)*.3,-CW,CW)*(.1+.4*k); if(coming) aiRecT=0; else aiRecT+=dt;
+    let tx=coming&&aiPred?aiPred.x+6+(aiDec.off||0):baseX,tw=coming&&aiPred?aiPred.w:shade;
+    if(!coming&&(aiRecT<(1-k)*.45||Math.hypot(tx-p.x,tw-p.w)<(1-k)*60)){ tx=p.x; tw=p.w; }
+    tx=clamp(tx,NETX+30,W+40);
     o.wx=tx-p.x; o.ww=tw-p.w;
     if(coming&&aiDec.jmp&&p.y>=GY&&sh.vy>0&&GY-sh.y>150&&GY-sh.y<230&&Math.hypot(sh.x-p.x,sh.w-p.w)<70) o.jump=true;
     if(aiReact<=0&&coming&&sh.x>NETX&&reachD(p,sh)<REACH*.9&&!(aiDec.n===rally&&aiDec.whiff)) o.sw=true; return o; }

@@ -191,8 +191,15 @@ function create(env,opts){
     const coming=lastTeam>=0&&lastTeam!==p.team;
     if(coming){ if((A.t-=dt)<=0||!A.pred){ A.t=.1; A.pred=predict(p); if(A.dec.n!==hits){ A.dec={n:hits,whiff:Math.random()<(ball.smash?.42-.3*k:.1-.08*k),off:Math.random()<AI.miss?(Math.random()-.5)*90:0}; } } A.react-=dt; }
     else { A.pred=null; A.react=AI.react; }
-    const homeX=hits>=2&&k>.25?NETX-dir*(KIT+24+(1-k)*60):(p.team?W-BACK-30:BACK+30),homeW=dbl?RW(p.team)*p.side*75:0;
-    let tx=homeX,tw=homeW; if(!A.pred&&servT===p.team&&hits<3) tx=p.team?W-BACK-30:BACK+30;
+    // 站位：照正式打法，接發球方回完球就上網、發球方打完第三拍才上網（雙彈跳規則）；越強越會站到廚房線，
+    //  中等的常停在中場「無人區」，弱的一直留在底線。左右會跟著對手擊球的位置偏過去（雙打兩人一起移動），越強偏得越準。
+    const back=p.team?W-BACK-30:BACK+30,front=NETX-dir*(KIT+18),canNet=p.team!==servT?hits>=2:hits>=3;
+    const homeX=!canNet||k<.3?back:k>.62?front:lerp(back,front,.4+(k-.3)*1.1);
+    const ant=coming?ball.w:ball.w+(ball.vw||0)*.35,shade=clamp(ant,-CW,CW)*(.12+.42*k),homeW=(dbl?RW(p.team)*p.side*(canNet&&k>.3?60:75):0)+shade;
+    let tx=homeX,tw=homeW;
+    // 回位：越弱的電腦打完球越晚回位、而且差一點就懶得動
+    if(coming) A.rt=0; else A.rt=(A.rt||0)+dt; const lazy=!coming&&(A.rt<(1-k)*.5||Math.hypot(tx-p.x,tw-p.w)<(1-k)*70);
+    if(lazy){ tx=p.x; tw=p.w; }
     const go=coming&&A.pred&&mine(p,A.pred); if(go){ tx=A.pred.x-dir*6+(A.dec.off||0); tw=A.pred.w; }
     tx=p.team?clamp(tx,NETX+24,W+56):clamp(tx,-56,NETX-24); if(go&&A.pred.vol) tx=p.team?Math.max(tx,NETX+KIT+8):Math.min(tx,NETX-KIT-8);
     o.wx=tx-p.x; o.ww=tw-p.w;
