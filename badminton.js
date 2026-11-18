@@ -1,4 +1,5 @@
-// 羽球對決：從球員背後看的轉播視角單打（寫實球員、骨架動作）。照真實規則：每球得分，先拿 11／15／21 分（要領先 2 分，最多到 30 分）就贏；
+// 羽球對決：從球員背後看的轉播視角，單打或雙打（寫實球員、骨架動作）。雙打照 BWF：發球區較寬但只到雙打後發球線，發球方得分同一人換邊續發，接發方得分換發球不換位。
+//照真實規則：每球得分，先拿 11／15／21 分（要領先 2 分，最多到 30 分）就贏；
 //  發球：分數偶數站右半場、奇數站左半場，低手發到斜對角的發球區（要過前發球線、不能出界），掛網、太短、出界都是發球失誤。
 //  羽毛球不會彈，落在對方界內就得分；打出界、掛網就失分。擊球依姿勢（撲球、邊跑邊打、太低）會有誤差，自然會掛網或出界。
 // 座標：x＝球場長邊（左邊選手在 x<400）、w＝左右、y＝高度（GY 是地面）。操作：方向鍵前後左右跑、跳（空中揮拍＝殺球）、揮拍（自動判斷高遠球／平抽／挑球）、吊球。
@@ -130,113 +131,143 @@ function drawNet(c,ct){ const DW=CW+24,a=proj(NETX,-DW-6,0,ct),b=proj(NETX,DW+6,
 
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
-  const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',me=net?Math.min(1,net.me):0,vsHuman=!!net&&net.count>1,solo=!net&&!two;
-  const {ctx:c}=env.canvas2d(W,H),OPT=opts.options||{},si=clamp(opts.stage|0,0,LV-1),ST=STAGES[si],GOAL=[11,15,21].includes(+OPT.win)?+OPT.win:11,CAP=GOAL+9;
-  const k=solo||(net&&!vsHuman)?ST.k:1,AI={spd:170+120*k,react:.36-.22*k,err:200-160*k,lat:110-80*k,smash:k<.12?0:.15+.55*k,drop:.1+.35*k};
-  const isAI=n=>n===1&&!two&&!vsHuman,CT=net?me:0;
-  const mk=n=>({n,team:n,x:n?600:200,w:0,y:GY,vy:0,face:n?-1:1,sw:0,hitOK:false,drop:false,moving:false,score:0,tx:n?600:200,tw:0,swType:'ready',run:0,aim:0});
-  const ps=[mk(0),mk(1)],sh={x:200,y:300,w:0,vx:0,vy:0,vw:0,held:0,tx:200,ty:300,tw:0},fx=[];
-  const names=net?[net.names[0]||'玩家 1',vsHuman?(net.names[1]||'玩家 2'):ST.foe+'（電腦）']:two?['1P','2P']:[opts.name||'你',ST.foe+'（電腦）'];
-  ps[0].look=Object.assign({color:'#ff5d6d',hair:0},(net?net.looks&&net.looks[0]:opts.look)||{}); ps[1].look=Object.assign({color:ST.col,hair:ST.hair},(net&&vsHuman?net.looks&&net.looks[1]:null)||{});
-  if(ps[1].look.color===ps[0].look.color) ps[1].look.color=ps[0].look.color==='#4f9dff'?'#5fd068':'#4f9dff';
+  const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',solo=!net&&!two,OPT=opts.options||{};
+  // 雙打：照 BWF 規則。場地兩邊多出雙打邊線；發球區比單打寬，但後面只到雙打後發球線（底線前 40）。
+  const TM=['vs','coop'].includes(OPT.team)?OPT.team:'1v1',pair=two||(!!net&&net.count===2); // 兩個真人：1 對 1、各配電腦 2 對 2、兩人同隊打 2 個電腦
+  const dbl=net&&net.count>2?true:pair?TM!=='1v1':OPT.fmt==='doubles',N=dbl?4:2,coop=pair&&dbl&&TM==='coop',SL=h=>coop&&h===1?2:h,HI=i=>coop?(i===2?1:i===1?-1:i):i,me=net?SL(Math.min(N-1,net.me)):0,DW=CW+24,PW=dbl?DW:CW,SVB=dbl?40:0;
+  const {ctx:c}=env.canvas2d(W,H),si=clamp(opts.stage|0,0,LV-1),ST=STAGES[si],GOAL=[11,15,21].includes(+OPT.win)?+OPT.win:11,CAP=GOAL+9;
+  const vsAI=solo||(net&&net.count<2)||(dbl&&(net?net.count:two?2:1)<N),k=vsAI?ST.k:1,AI={spd:170+120*k,react:.36-.22*k,err:200-160*k,lat:110-80*k,smash:k<.12?0:.15+.55*k,drop:.1+.35*k};
+  const ctrl=[]; for(let i=0;i<N;i++){ let cc='ai';
+    if(net){ const h=HI(i); if(h>=0&&h<net.count) cc=i===me?'self':'net'; }
+    else if(two){ if(!dbl) cc=i===0?'key0':'key1'; else if(coop) cc=i===0?'key0':i===2?'key1':'ai'; else cc=i===0?'key0':i===1?'key1':'ai'; }
+    else cc=i===0?'solo':'ai'; ctrl.push(cc); }
+  const isAI=i=>ctrl[i]==='ai',human=i=>!isAI(i),CT=net?ps0team():0; function ps0team(){ return me%2; }
   const RW=t=>t?-1:1;
-  let t=0,phase='serve',ptT=0,lastHit=-1,server=opts.first===1?1:0,lastW=-1,ended=false,overT=0,rally=0,best=0,shake=0,aiPred=null,aiT=0,aiDec={n:-1},aiReact=0,aiServeT=1.2,aiRecT=0,ev=[],sendT=0,msg='',msgT=0,introT=2.4,svSign=1;
-  const rin={dx:0,dy:0,jump:false,sw:false,drop:false};
+  const mk=n=>({n,team:n%2,side:dbl?(n<2?1:-1):1,x:n%2?600:200,w:0,y:GY,vy:0,face:n%2?-1:1,sw:0,hitOK:false,drop:false,moving:false,tx:n%2?600:200,tw:0,swType:'ready',run:0,aim:0});
+  const ps=Array.from({length:N},(_,i)=>mk(i)),sh={x:200,y:300,w:0,vx:0,vy:0,vw:0,held:0,tx:200,ty:300,tw:0},fx=[],score=[0,0];
+  const ALTC=['#ff5d6d',solo&&!dbl?ST.col:'#4f9dff','#ff9d3d','#3ddbd9'];
+  ps.forEach((p,i)=>{ p.look=Object.assign({color:ALTC[i],hair:i===1&&solo&&!dbl?ST.hair:i%3},(net?net.looks&&HI(i)>=0&&net.looks[HI(i)]:i===0?opts.look:null)||{}); if(!p.look.color) p.look.color=ALTC[i]; });
+  for(let i=1;i<N;i++) if(ps[i].team!==ps[0].team&&ps[i].look.color===ps[0].look.color) ps[i].look.color=ps[0].look.color==='#4f9dff'?'#5fd068':'#4f9dff';
+  const nm=i=>net?(HI(i)>=0&&HI(i)<net.count?(net.names[HI(i)]||'玩家 '+(HI(i)+1)):'電腦'+(i+1)):ctrl[i]==='key0'?'1P':ctrl[i]==='key1'?'2P':ctrl[i]==='solo'?(opts.name||'你'):(dbl&&ps[i].team===0?'電腦隊友':ST.foe+(dbl?(i<2?'A':'B'):'（電腦）'));
+  const names=ps.map((p,i)=>nm(i)),myTeam=me%2,TN=tm=>dbl?(!two&&tm===myTeam?'我方':tm?'右隊':'左隊'):names[tm];
+  let t=0,phase='serve',ptT=0,lastHit=-1,lastTeam=-1,servT=opts.first===1?1:0,server=-1,lastW=-1,ended=false,overT=0,rally=0,best=0,shake=0,aiServeT=1.2,ev=[],sendT=0,msg='',msgT=0,introT=2.4,svSign=1,recv=-1;
+  const aiS=ps.map(()=>({pred:null,t:0,dec:{n:-1},react:0,rt:0})),rin=ps.map(()=>({dx:0,dy:0,jump:false,sw:false,drop:false}));
   const sfx=n=>{ env.sfx(n); if(net&&net.host) ev.push(n); };
   const pop=(txt,col,x,w,h)=>fx.push({k:'txt',txt,col,x,w,h,t:0});
-  function setServe(n){ server=n; phase='serve'; sh.held=n; lastHit=-1; rally=0; aiPred=null; aiServeT=1.1; const S=ps[n]; svSign=RW(n)*(S.score%2?-1:1); // 發球者分數偶數站右、奇數站左
-    for(const p of ps){ p.y=GY; p.vy=0; p.sw=0; if(p.n===n){ p.x=n?NETX+SSL+90:NETX-SSL-90; p.w=svSign*60; } else { p.x=p.n?NETX+SSL+110:NETX-SSL-110; p.w=-svSign*60; } } }
-  setServe(server);
+  const sideOf=p=>dbl?p.side:(score[p.team]%2?-1:1);
+  // 發球的人：單打就是那一隊；雙打是「站在跟發球方分數單雙數對應那一邊」的人（偶數右、奇數左）
+  function pickServer(){ const sd=score[servT]%2?-1:1; return dbl?ps.find(q=>q.team===servT&&q.side===sd).n:servT; }
+  function setServe(){ phase='serve'; lastHit=-1; lastTeam=-1; rally=0; aiServeT=1.1; server=pickServer(); sh.held=server; const S=ps[server]; svSign=RW(S.team)*sideOf(S);
+    recv=dbl?ps.find(q=>q.team!==servT&&RW(q.team)*q.side===-svSign).n:1-servT;
+    for(const p of ps){ p.y=GY; p.vy=0; p.sw=0; const sw=RW(p.team)*sideOf(p),fwd=p.team?-1:1;
+      if(p.n===server){ p.x=NETX-fwd*(SSL+60); p.w=svSign*50; }
+      else if(p.n===recv){ p.x=NETX-fwd*(SSL+70); p.w=-svSign*50; }
+      else if(p.team===servT){ p.x=NETX-fwd*(SSL+150); p.w=-svSign*60; } // 發球方搭檔站在後面另一半
+      else { p.x=NETX-fwd*(SSL+150); p.w=svSign*60; } }
+    for(const a of aiS) a.pred=null; }
+  setServe();
   function keyIn(which){ const kk=env.keys;
     if(which==='key0') return {dx:(kk.KeyD?1:0)-(kk.KeyA?1:0),dy:(kk.KeyW?1:0)-(kk.KeyS?1:0),jump:!!kk.KeyR||!!kk.KeyE,sw:env.hit('KeyF')||env.hit('Space'),drop:env.hit('KeyG')};
     if(which==='key1') return {dx:(kk.ArrowRight?1:0)-(kk.ArrowLeft?1:0),dy:(kk.ArrowUp?1:0)-(kk.ArrowDown?1:0),jump:!!kk.ShiftRight||!!kk.Numpad0,sw:env.hit('Enter')||env.hit('NumpadEnter'),drop:env.hit('Slash')||env.hit('Period')};
     return {dx:(kk.ArrowRight||kk.KeyD?1:0)-(kk.ArrowLeft||kk.KeyA?1:0),dy:(kk.ArrowUp||kk.KeyW?1:0)-(kk.ArrowDown||kk.KeyS?1:0),jump:!!kk.KeyC||!!kk.KeyL,sw:env.hit('Space')||env.hit('KeyJ')||env.hit('Enter'),drop:env.hit('KeyX')||env.hit('KeyK')}; }
-  function inputOf(n,dt){ if(isAI(n)) return aiInput(dt); if(n===0) return keyIn(two?'key0':'solo'); if(two) return keyIn('key1'); const o={dx:rin.dx,dy:rin.dy,jump:rin.jump,sw:rin.sw,drop:rin.drop}; rin.sw=rin.drop=false; return o; }
+  function inputOf(n,dt){ const cc=ctrl[n]; if(cc==='ai') return aiInput(ps[n],dt); if(cc==='net'){ const r=rin[n],o={dx:r.dx,dy:r.dy,jump:r.jump,sw:r.sw,drop:r.drop}; r.sw=r.drop=false; return o; } return keyIn(cc==='self'?'solo':cc); }
+  const mySide=p=>p.team?sh.x>NETX:sh.x<NETX;
   // 電腦：沿著羽毛球路線找最早跑得到、拍子打得到的點
-  function predict(){ const p=ps[1],s={x:sh.x,y:sh.y,w:sh.w,vx:sh.vx,vy:sh.vy,vw:sh.vw}; let last=null; for(let i=1;i<420;i++){ stepSh(s,1/90); if(s.y>=GY) break; if(s.x<=NETX+8) continue; const h=GY-s.y; if(h<20||h>176) continue; last={x:s.x,w:s.w,h,t:i/90};
+  function predict(p){ const s={x:sh.x,y:sh.y,w:sh.w,vx:sh.vx,vy:sh.vy,vw:sh.vw}; let last=null; for(let i=1;i<420;i++){ stepSh(s,1/90); if(s.y>=GY) break; if(p.team?s.x<=NETX+8:s.x>=NETX-8) continue; const h=GY-s.y; if(h<20||h>176) continue; last={x:s.x,w:s.w,h,t:i/90};
       const need=Math.max(0,Math.hypot(s.x-p.x,s.w-p.w)-REACH*.5)/AI.spd+AI.react; if(need<=i/90) return last; } return last||{x:sh.x,w:sh.w,h:0,t:0}; }
-  function aiInput(dt){ const p=ps[1],o={dx:0,dy:0,jump:false,sw:false,drop:false,wx:0,ww:0};
-    if(phase==='serve'){ if(sh.held===1&&introT<=0&&(aiServeT-=dt)<=0){ o.sw=Math.random()>.5*k; o.drop=!o.sw; } return o; }
+  // 雙打誰去接：發球只能由接發球的人接；之後離得近的去（隊友是真人時，照左右半邊分工）
+  function mine(p,pred){ if(!dbl) return true; if(rally===0&&lastTeam>=0) return p.n===recv; const mate=ps.find(q=>q.team===p.team&&q!==p),dm=Math.hypot(mate.x-pred.x,mate.w-pred.w),dp=Math.hypot(p.x-pred.x,p.w-pred.w);
+    return human(mate.n)?(Math.sign(pred.w||1)===Math.sign(p.w||1)&&dp<dm+60):dp<=dm; }
+  function aiInput(p,dt){ const o={dx:0,dy:0,jump:false,sw:false,drop:false,wx:0,ww:0},A=aiS[p.n],dir=p.face;
+    if(phase==='serve'){ if(sh.held===p.n&&introT<=0&&(aiServeT-=dt)<=0){ const sht=dbl?Math.random()<.75:Math.random()<.5*k; o.sw=!sht; o.drop=sht; } return o; }
     if(phase!=='play') return o;
-    const coming=lastHit===0;
-    if(coming){ if((aiT-=dt)<=0||!aiPred){ aiT=.1; aiPred=predict(); if(aiDec.n!==rally){ const ty=sh.type; aiDec={n:rally,whiff:Math.random()<(ty==='smash'?.42-.32*k:ty==='drive'?.18-.14*k:.08-.07*k),jmp:Math.random()<(sh.weak?Math.min(.95,AI.smash*1.7):AI.smash),off:(Math.random()-.5)*AI.err*.25}; } } aiReact-=dt; }
-    else { aiPred=null; aiReact=AI.react; }
-    // 站位：打完球回到場中央的基本位置，越強越會依自己剛打的球預先移動（吊球後上前補網、高遠球後退一點、殺球後跟進），
-    //  左右也會跟著對手擊球的位置偏；弱的電腦回位慢、差一點就不動，常常站在後場等。
-    const myT=lastHit===1?sh.type:'',baseX=k<.3?620:myT==='drop'||myT==='net'?lerp(590,NETX+110,k):myT==='smash'?lerp(600,540,k):myT==='clear'||myT==='lift'?lerp(610,600,k):lerp(620,565,k);
-    const shade=clamp(sh.w+(sh.vw||0)*.3,-CW,CW)*(.1+.4*k); if(coming) aiRecT=0; else aiRecT+=dt;
-    let tx=coming&&aiPred?aiPred.x+6+(aiDec.off||0):baseX,tw=coming&&aiPred?aiPred.w:shade;
-    if(!coming&&(aiRecT<(1-k)*.45||Math.hypot(tx-p.x,tw-p.w)<(1-k)*60)){ tx=p.x; tw=p.w; }
-    tx=clamp(tx,NETX+30,W+40);
+    const coming=lastTeam>=0&&lastTeam!==p.team;
+    if(coming){ if((A.t-=dt)<=0||!A.pred){ A.t=.1; A.pred=predict(p); if(A.dec.n!==rally){ const ty=sh.type; A.dec={n:rally,whiff:Math.random()<(ty==='smash'?.42-.32*k:ty==='drive'?.18-.14*k:.08-.07*k),jmp:Math.random()<(sh.weak?Math.min(.95,AI.smash*1.7):AI.smash),off:(Math.random()-.5)*AI.err*.25}; } } A.react-=dt; }
+    else { A.pred=null; A.react=AI.react; }
+    // 站位：單打回中央，越強越會預判；雙打：進攻時前後站（殺球的人在後、隊友在網前），防守時左右站
+    const mx=x=>p.team?x:W-x,myT=lastTeam===p.team?sh.type:'';
+    let baseX=k<.3?mx(620):myT==='drop'||myT==='net'?mx(lerp(590,NETX+110,k)):myT==='smash'?mx(lerp(600,540,k)):myT==='clear'||myT==='lift'?mx(lerp(610,600,k)):mx(lerp(620,565,k)),baseW=0;
+    if(dbl){ const mate=ps.find(q=>q.team===p.team&&q!==p),attack=lastTeam===p.team&&(sh.type==='smash'||sh.type==='drop'||sh.type==='net'||sh.type==='drive');
+      if(attack&&k>.3){ const front=lastHit===p.n?Math.abs(p.x-NETX)<Math.abs(mate.x-NETX):Math.abs(p.x-NETX)<=Math.abs(mate.x-NETX); baseX=front?NETX-dir*95:NETX-dir*250; baseW=front?clamp(sh.w*.4,-60,60):0; }
+      else { baseX=NETX-dir*215; baseW=RW(p.team)*p.side*68; } }
+    const shade=clamp(sh.w+(sh.vw||0)*.3,-PW,PW)*(.1+.4*k)*(dbl?.5:1); if(coming) A.rt=0; else A.rt+=dt;
+    const go=coming&&A.pred&&mine(p,A.pred);
+    let tx=go?A.pred.x-dir*6+(A.dec.off||0):baseX,tw=go?A.pred.w:baseW+shade;
+    if(!coming&&(A.rt<(1-k)*.45||Math.hypot(tx-p.x,tw-p.w)<(1-k)*60)){ tx=p.x; tw=p.w; }
+    tx=p.team?clamp(tx,NETX+30,W+40):clamp(tx,-40,NETX-30);
     o.wx=tx-p.x; o.ww=tw-p.w;
-    if(coming&&aiDec.jmp&&p.y>=GY&&sh.vy>0&&GY-sh.y>150&&GY-sh.y<230&&Math.hypot(sh.x-p.x,sh.w-p.w)<70) o.jump=true;
-    if(aiReact<=0&&coming&&sh.x>NETX&&reachD(p,sh)<REACH*.9&&!(aiDec.n===rally&&aiDec.whiff)) o.sw=true; return o; }
+    if(go&&A.dec.jmp&&p.y>=GY&&sh.vy>0&&GY-sh.y>150&&GY-sh.y<230&&Math.hypot(sh.x-p.x,sh.w-p.w)<70) o.jump=true;
+    if(A.react<=0&&go&&mySide(p)&&reachD(p,sh)<REACH*.9&&!(A.dec.n===rally&&A.dec.whiff)) o.sw=true; return o; }
   // 擊球
-  function shoot(p,dropKey){ const dir=p.face,o=ps[1-p.n],R=Math.random,ai=isAI(p.n),h=GY-sh.y,air=p.y<GY-10,nearNet=Math.abs(sh.x-NETX)<140;
+  function shoot(p,dropKey){ const dir=p.face,opp=ps.filter(q=>q.team!==p.team),R=Math.random,ai=isAI(p.n),h=GY-sh.y,air=p.y<GY-10,nearNet=Math.abs(sh.x-NETX)<140;
     let type=dropKey?'drop':air&&h>p.y*0+GY-p.y+150?'smash':nearNet&&h<GY-NETTOP+10?'net':h<60?'lift':h>150?'clear':'drive';
-    const oFar=Math.abs(o.x-NETX)/(NETX-BACK);
-    if(ai&&(type==='clear'||type==='drive'||type==='lift')){ if(oFar>.62&&R()<AI.drop*1.6) type='drop'; else if(oFar<.4&&type!=='lift') type='clear'; }
+    const oFar=Math.min(...opp.map(o=>Math.abs(o.x-NETX)))/(NETX-BACK);
+    if(ai&&(type==='clear'||type==='drive'||type==='lift')){ if(oFar>.62&&R()<AI.drop*1.6) type='drop'; else if(oFar<.4&&type!=='lift') type='clear'; else if(dbl&&type==='drive'&&R()<.3) type='drive'; }
     const oppBack=dir>0?W-BACK:BACK; let tx,v=null;
     if(type==='clear'||type==='lift') tx=oppBack-dir*(30+R()*70); else if(type==='drop'||type==='net') tx=NETX+dir*(55+R()*70); else if(type==='smash') tx=oFar>.55?NETX+dir*(110+R()*90):oppBack-dir*(70+R()*80); else tx=NETX+dir*(200+R()*140);
     if(ai) tx+=(R()-.5)*AI.err;
     const ANG={clear:[48,56,64],lift:[62,70,76],drive:[10,18,26,36],drop:[24,34,46,58],net:[30,44,58,70],smash:[-22,-14,-6,4,14]}[type];
     v=(type==='smash'?aimFixed(sh.x,sh.y,tx,(ai?.8+.2*k:1)*(1000+480*clamp(1-Math.abs(sh.x-NETX)/(NETX-BACK),0,1)),dir,-40,20):type==='drive'?aimFixed(sh.x,sh.y,tx,ai?850+250*k:1050,dir,-8,28):null)||aimShot(sh.x,sh.y,tx,ANG,dir)||aimShot(sh.x,sh.y,oppBack-dir*80,[50,60,70,78],dir)||{vx:dir*260,vy:-760,t:1.4};
-    // 左右：按著左右就往那邊，不然打對手不在的那邊
-    let tw=p.aim?p.aim*(60+R()*55):(o.w>0?-1:1)*(40+R()*70); if(type==='net'||type==='drop') tw=clamp(sh.w*.4+(R()-.5)*90,-CW+15,CW-15); if(ai) tw+=(R()-.5)*AI.lat; tw=clamp(tw,-CW+8,CW-8);
-    // 擊球品質：撲著打、邊跑邊打、太低的球、網前細膩的球，越容易掛網或出界（照真人）
+    // 左右：按著左右就往那邊，不然打對手比較少的那一邊（雙打常打兩人中間）
+    const oW=opp.reduce((a,o)=>a+o.w,0)/opp.length; let tw=p.aim?p.aim*(60+R()*(PW-80)):dbl&&R()<.35?(opp[0].w+opp[1].w)/2:(oW>0?-1:1)*(40+R()*(PW-65)); if(type==='net'||type==='drop') tw=clamp(sh.w*.4+(R()-.5)*90,-PW+15,PW-15); if(ai) tw+=(R()-.5)*AI.lat; tw=clamp(tw,-PW+8,PW-8);
     const stretch=clamp(reachD(p,sh)/REACH,0,1),base={net:.3,drop:.34,drive:.24,smash:.2,clear:.18,lift:.2}[type]||.22; let e=base*(1+stretch*1.6+(p.moving?.45:0)+(h<40?.6:0))*(ai?(1.45-1.05*k):1);
     const gs=()=>((R()+R()+R())/1.5-1); v={vx:v.vx*(1+gs()*e*.3),vy:v.vy*(1+gs()*e*.38),t:v.t}; tw+=gs()*e*140;
-    sh.vx=v.vx; sh.vy=v.vy; sh.vw=(tw-sh.w)/Math.max(.3,(v.t||1)*.9); sh.type=type; sh.weak=stretch>.8; sh.net=0; lastHit=p.n; rally++; best=Math.max(best,rally);
+    sh.vx=v.vx; sh.vy=v.vy; sh.vw=(tw-sh.w)/Math.max(.3,(v.t||1)*.9); sh.type=type; sh.weak=stretch>.8; sh.net=0; lastHit=p.n; lastTeam=p.team; rally++; best=Math.max(best,rally);
     p.swType=type==='smash'||type==='clear'?'over':type==='net'||type==='drop'&&h<100?'net':((sh.w-p.w)*RW(p.team)>=0?'fh':'bh'); p.sw=SWD*.55;
     if(type==='smash'){ sfx('boom'); shake=.25; pop('殺球！','#ff5d8f',sh.x,sh.w,h+40); } else { sfx(type==='drop'||type==='net'?'pop':'place'); if(type==='drop'||type==='net') pop('吊球','#7af0ff',sh.x,sh.w,h+40); }
-    fx.push({k:'ring',x:sh.x,w:sh.w,h,t:0,col:type==='smash'?'#ff5d8f':'#fff'}); sh.smash=type==='smash'?.5:0; aiPred=null; }
-  function point(w,why){ ps[w].score++; lastW=w; phase='point'; ptT=1.5; msg=(two?(w?'2P':'1P')+' 得分':w===me||(!net&&w===0)?'得分！':'失分')+'　'+why; msgT=1.5; env.sfx(two||w===me||(!net&&w===0)?'item':'hurt'); if(net) ev.push('p'+w);
-    const a=ps[0].score,b=ps[1].score,hi=Math.max(a,b),lo=Math.min(a,b); if((hi>=GOAL&&hi-lo>=2)||hi>=CAP){ phase='over'; overT=0; } }
-  function conclude(a,b,note){ if(ended) return; ended=true; ps[0].score=a; ps[1].score=b; const w=a>b?0:1,mine=two||w===me;
+    fx.push({k:'ring',x:sh.x,w:sh.w,h,t:0,col:type==='smash'?'#ff5d8f':'#fff'}); sh.smash=type==='smash'?.5:0; for(const a of aiS) a.pred=null; }
+  // 得分（每球得分）：發球方贏＝同一人換到另一邊續發（雙打跟搭檔交換位置）；接發球方贏＝得分並換發球，站位不換
+  function point(w,why){ score[w]++; lastW=w; phase='point'; ptT=1.5; let txt='';
+    if(w===servT){ if(dbl){ const S=ps[server],P=ps.find(q=>q.team===w&&q!==S),sd=S.side; S.side=P.side; P.side=sd; } txt=dbl?'發球方得分，同一人換邊續發':''; }
+    else { servT=w; txt=dbl?'換發球（站位不換）':''; }
+    const my=w===myTeam; msg=(two?(dbl?TN(w):w?'2P':'1P')+' 得分':my?'得分！':'失分')+'　'+why+(txt?'　'+txt:''); msgT=1.6; env.sfx(two||my?'item':'hurt'); if(net) ev.push('p'+w);
+    const a=score[0],b=score[1],hi=Math.max(a,b),lo=Math.min(a,b); if((hi>=GOAL&&hi-lo>=2)||hi>=CAP){ phase='over'; overT=0; } }
+  function conclude(a,b,note){ if(ended) return; ended=true; score[0]=a; score[1]=b; const w=a>b?0:1,mine2=two||w===myTeam;
     if(solo&&w===0){ const old=getRec(si); if(old==null||a-b>+old.split(':')[0]-+old.split(':')[1]) LS(recKey(si),a+':'+b); }
-    env.sfx(mine?'win':'lose'); env.end({title:two?(w?'2P':'1P')+' 獲勝！':mine?(solo?'贏了！過關':'你贏了！'):'輸了',big:a+' : '+b,text:(note?note+' ':'')+(solo?ST.name+'　對手：'+ST.foe+'。':'')+(best>2?'最長來回 '+best+' 拍。':''),score:solo&&w===0?si+1:null,next:solo&&w===0&&si<LV-1}); }
-  function snap(){ const m={s:[ps.map(p=>[r1(p.x),r1(p.w),r1(p.y),r1(p.sw),p.swType,p.moving?1:0]),r1(sh.x),r1(sh.y),r1(sh.w),r1(sh.vx),r1(sh.vy),r1(sh.vw),ps[0].score,ps[1].score,sh.held,['serve','play','point','over'].indexOf(phase),lastW,rally,server],e:ev,m:msgT>0?msg:''}; ev=[]; return m; }
-  if(net){ if(client) net.onmsg=m=>{ if(m.s){ const s=m.s; s[0].forEach((q,i)=>{ const p=ps[i]; p.tx=q[0]; p.tw=q[1]; p.y=q[2]; p.sw=q[3]; p.swType=q[4]; p.moving=!!q[5]; }); sh.tx=s[1]; sh.ty=s[2]; sh.tw=s[3]; sh.vx=s[4]; sh.vy=s[5]; sh.vw=s[6]; ps[0].score=s[7]; ps[1].score=s[8]; sh.held=s[9]; phase=['serve','play','point','over'][s[10]]; lastW=s[11]; rally=s[12]; server=s[13];
-        for(const n of m.e){ if(n==='p0'||n==='p1') env.sfx(+n[1]===me?'item':'hurt'); else env.sfx(n); } if(m.m){ msg=m.m; msgT=1.4; } } else if(m.end) conclude(m.end[0],m.end[1],m.end[2]); };
-    else { net.onmsg=(m,from)=>{ if(from===1&&m.i){ rin.dx=m.i[0]; rin.dy=m.i[1]; rin.jump=!!m.i[2]; if(m.i[3]) rin.sw=true; if(m.i[4]) rin.drop=true; } };
-      net.onleave=i=>{ if(i===1&&!ended){ const a=Math.max(ps[0].score,ps[1].score+1); conclude(a,ps[1].score,'對手離開了。'); } }; } }
-  function movePlayer(p,i,dt){ const sp=isAI(p.n)?AI.spd:255,cam=net?p.n:0,fx2=cam?-1:1; let mx,mw;
+    env.sfx(mine2?'win':'lose'); env.end({title:two?(dbl?TN(w):w?'2P':'1P')+' 獲勝！':mine2?(solo?'贏了！過關':'你們贏了！'):'輸了',big:a+' : '+b,text:(note?note+' ':'')+(solo?ST.name+'　對手：'+ST.foe+(dbl?'隊':'')+'。':'')+(best>2?'最長來回 '+best+' 拍。':''),score:solo&&w===0?si+1:null,next:solo&&w===0&&si<LV-1}); }
+  function snap(){ const m={s:[ps.map(p=>[r1(p.x),r1(p.w),r1(p.y),r1(p.sw),p.swType,p.moving?1:0,p.side]),r1(sh.x),r1(sh.y),r1(sh.w),r1(sh.vx),r1(sh.vy),r1(sh.vw),score[0],score[1],sh.held,['serve','play','point','over'].indexOf(phase),lastW,rally,server,servT,recv],e:ev,m:msgT>0?msg:''}; ev=[]; return m; }
+  if(net){ if(client) net.onmsg=m=>{ if(m.s){ const s=m.s; s[0].forEach((q,i)=>{ const p=ps[i]; if(!p) return; p.tx=q[0]; p.tw=q[1]; p.y=q[2]; p.sw=q[3]; p.swType=q[4]; p.moving=!!q[5]; p.side=q[6]; }); sh.tx=s[1]; sh.ty=s[2]; sh.tw=s[3]; sh.vx=s[4]; sh.vy=s[5]; sh.vw=s[6]; score[0]=s[7]; score[1]=s[8]; sh.held=s[9]; phase=['serve','play','point','over'][s[10]]; lastW=s[11]; rally=s[12]; server=s[13]; servT=s[14]; recv=s[15];
+        for(const n of m.e){ if(n==='p0'||n==='p1') env.sfx(+n[1]===myTeam?'item':'hurt'); else env.sfx(n); } if(m.m){ msg=m.m; msgT=1.4; } } else if(m.end) conclude(m.end[0],m.end[1],m.end[2]); };
+    else { net.onmsg=(m,from)=>{ if(m.i&&rin[SL(from)]){ const r=rin[SL(from)]; r.dx=m.i[0]; r.dy=m.i[1]; r.jump=!!m.i[2]; if(m.i[3]) r.sw=true; if(m.i[4]) r.drop=true; } };
+      net.onleave=i=>{ const j=SL(i); if(j<N&&!ended) ctrl[j]='ai'; }; } }
+  function movePlayer(p,i,dt){ const sp=isAI(p.n)?AI.spd:255,cam=net?myTeam:0,fx2=cam?-1:1; let mx,mw;
     if(isAI(p.n)){ const d=Math.hypot(i.wx||0,i.ww||0); mx=d>4?(i.wx/d)*Math.min(1,d/28):0; mw=d>4?(i.ww/d)*Math.min(1,d/28):0; }
     else { mx=(i.dy||0)*fx2; mw=(i.dx||0)*fx2; const l=Math.hypot(mx,mw); if(l>1){ mx/=l; mw/=l; } p.aim=(i.dx||0)*fx2; }
     p.moving=Math.abs(mx)+Math.abs(mw)>.05; if(p.moving) p.run+=dt*11;
-    if(phase==='serve'&&p.n===server){ /* 發球：站在自己那半邊的發球區內 */ const lo=p.n?NETX+SSL+10:BACK+6,hi=p.n?W-BACK-6:NETX-SSL-10; p.x=clamp(p.x+mx*sp*dt,lo,hi); p.w=svSign>0?clamp(p.w+mw*sp*dt,8,CW-6):clamp(p.w+mw*sp*dt,-CW+6,-8); }
-    else { p.x+=mx*sp*dt; p.w=clamp(p.w+mw*sp*dt,-CW-50,CW+50); const lo=p.n?NETX+22:-60,hi=p.n?W+60:NETX-22; p.x=clamp(p.x,lo,hi); }
+    if(phase==='serve'&&p.n===server){ /* 發球：站在自己那半邊的發球區內 */ const lo=p.team?NETX+SSL+10:BACK+6+SVB,hi=p.team?W-BACK-6-SVB:NETX-SSL-10; p.x=clamp(p.x+mx*sp*dt,lo,hi); p.w=svSign>0?clamp(p.w+mw*sp*dt,8,PW-6):clamp(p.w+mw*sp*dt,-PW+6,-8); }
+    else { p.x+=mx*sp*dt; p.w=clamp(p.w+mw*sp*dt,-PW-50,PW+50); const lo=p.team?NETX+22:-60,hi=p.team?W+60:NETX-22; p.x=clamp(p.x,lo,hi); }
     if(i.jump&&p.y>=GY&&phase==='play'){ p.vy=-560; sfx('land'); } p.vy+=1500*dt; p.y+=p.vy*dt; if(p.y>=GY){ p.y=GY; p.vy=0; }
     const swT=dk=>phase==='serve'&&p.n===server?'serve':GY-sh.y>150||p.y<GY-10?'over':dk&&Math.abs(sh.x-NETX)<160?'net':((sh.w-p.w)*RW(p.team)>=0?'fh':'bh');
     if((i.sw||i.drop)&&p.sw<=0){ p.sw=SWD; p.hitOK=true; p.drop=!!i.drop; p.swType=swT(!!i.drop); } if(p.sw>0) p.sw-=dt; }
   let lastIn='';
   function update(dt){ t+=dt; if(introT>0) introT-=dt; if(shake>0) shake-=dt; if(msgT>0) msgT-=dt; for(const f of fx) f.t+=dt; for(let i=fx.length-1;i>=0;i--) if(fx[i].t>1) fx.splice(i,1);
     if(client){ const i=keyIn('solo'),key=''+i.dx+i.dy+(+i.jump); sendT-=dt; if(key!==lastIn||i.sw||i.drop||sendT<=0){ lastIn=key; sendT=1/20; net.send({i:[i.dx,i.dy,+i.jump,+i.sw,+i.drop]}); }
-      const f=Math.min(1,dt*18); for(const p of ps){ p.x+=(p.tx-p.x)*f; p.w+=(p.tw-p.w)*f; } if(Math.hypot(sh.tx-sh.x,sh.ty-sh.y)>90){ sh.x=sh.tx; sh.y=sh.ty; sh.w=sh.tw; } else { sh.x+=(sh.tx-sh.x)*f; sh.y+=(sh.ty-sh.y)*f; sh.w+=(sh.tw-sh.w)*f; } return; }
+      const f=Math.min(1,dt*18); for(const p of ps){ p.x+=(p.tx-p.x)*f; p.w+=(p.tw-p.w)*f; if(p.moving) p.run+=dt*11; } if(Math.hypot(sh.tx-sh.x,sh.ty-sh.y)>90){ sh.x=sh.tx; sh.y=sh.ty; sh.w=sh.tw; } else { sh.x+=(sh.tx-sh.x)*f; sh.y+=(sh.ty-sh.y)*f; sh.w+=(sh.tw-sh.w)*f; } return; }
     if(ended) return; if(net){ sendT-=dt; if(sendT<=0){ sendT=1/20; net.send(snap()); } }
-    if(phase==='over'){ overT+=dt; if(overT>1.5){ const a=ps[0].score,b=ps[1].score; if(net){ net.send(snap()); net.send({end:[a,b,'']}); } conclude(a,b); } return; }
+    if(phase==='over'){ overT+=dt; if(overT>1.5){ const a=score[0],b=score[1]; if(net){ net.send(snap()); net.send({end:[a,b,'']}); } conclude(a,b); } return; }
     for(const p of ps) movePlayer(p,inputOf(p.n,dt),dt);
-    if(phase==='point'){ ptT-=dt; if(sh.y<GY){ stepSh(sh,dt); if(sh.y>GY) sh.y=GY; } if(ptT<=0) setServe(lastW); return; }
-    if(phase==='serve'){ const p=ps[sh.held]; sh.x=p.x+p.face*16; sh.y=GY-70; sh.w=p.w+RW(p.n)*12; sh.vx=p.face*10; sh.vy=10; sh.vw=0;
+    if(phase==='point'){ ptT-=dt; if(sh.y<GY){ stepSh(sh,dt); if(sh.y>GY) sh.y=GY; } if(ptT<=0) setServe(); return; }
+    if(phase==='serve'){ const p=ps[sh.held]; sh.x=p.x+p.face*16; sh.y=GY-70; sh.w=p.w+RW(p.team)*12; sh.vx=p.face*10; sh.vy=10; sh.vw=0;
       if(p.sw>0&&p.hitOK&&introT<=0){ p.hitOK=false; p.swType='serve'; p.sw=SWD*.55; const dir=p.face,R=Math.random,ai=isAI(p.n),shortS=p.drop;
-        const tx=shortS?NETX+dir*(SSL+20+R()*40):(dir>0?W-BACK-40:BACK+40)-dir*R()*60; let v=(shortS?aimShot(sh.x,sh.y,tx,[18,24,30,38],dir):null)||aimShot(sh.x,sh.y,tx,[58,64,70],dir)||{vx:dir*600,vy:-700,t:1.4};
-        let tw=-svSign*(25+R()*(CW-50)); const gs=()=>((R()+R()+R())/1.5-1),e=(shortS?.3:.18)*(ai?(1.4-1.1*k):1)*(p.moving?1.4:1); v={vx:v.vx*(1+gs()*e*.28),vy:v.vy*(1+gs()*e*.3),t:v.t}; tw+=gs()*e*110;
-        sh.vx=v.vx; sh.vy=v.vy; sh.vw=(tw-sh.w)/Math.max(.3,(v.t||1)*.9); sh.type=shortS?'net':'clear'; sh.weak=false; sh.net=0; lastHit=p.n; phase='play'; rally=0; sfx('place'); pop(shortS?'發短球':'發高遠球','#fff',sh.x,sh.w,110); fx.push({k:'ring',x:sh.x,w:sh.w,h:70,t:0,col:'#fff'}); }
+        const tx=shortS?NETX+dir*(SSL+20+R()*40):(dir>0?W-BACK-40-SVB:BACK+40+SVB)-dir*R()*(60-SVB*.6); let v=(shortS?aimShot(sh.x,sh.y,tx,[18,24,30,38],dir):null)||aimShot(sh.x,sh.y,tx,[58,64,70],dir)||{vx:dir*600,vy:-700,t:1.4};
+        let tw=-svSign*(25+R()*(PW-50)); const gs=()=>((R()+R()+R())/1.5-1),e=(shortS?.3:.18)*(ai?(1.4-1.1*k):1)*(p.moving?1.4:1); v={vx:v.vx*(1+gs()*e*.28),vy:v.vy*(1+gs()*e*.3),t:v.t}; tw+=gs()*e*110;
+        sh.vx=v.vx; sh.vy=v.vy; sh.vw=(tw-sh.w)/Math.max(.3,(v.t||1)*.9); sh.type=shortS?'net':'clear'; sh.weak=false; sh.net=0; lastHit=p.n; lastTeam=p.team; phase='play'; rally=0; sfx('place'); pop(shortS?'發短球':'發高遠球','#fff',sh.x,sh.w,110); fx.push({k:'ring',x:sh.x,w:sh.w,h:70,t:0,col:'#fff'}); }
       return; }
     const n=Math.max(1,Math.ceil(dt*240)); for(let s=0;s<n&&phase==='play';s++){ const px=sh.x; stepSh(sh,dt/n);
-      if((px-NETX)*(sh.x-NETX)<=0&&sh.y>NETTOP&&Math.abs(sh.w)<CW+30){ sh.x=NETX-Math.sign(sh.vx||1)*5; sh.vx*=-.12; sh.vw*=.3; sh.vy=Math.max(0,sh.vy)*.3; sh.net=1; sfx('bump'); fx.push({k:'ring',x:NETX,w:sh.w,h:GY-sh.y,t:0,col:'#ff8a8a'}); }
-      for(const p of ps){ if(p.sw>.04&&p.hitOK&&lastHit!==p.n&&(p.n?sh.x>NETX:sh.x<NETX)&&reachD(p,sh)<REACH){ p.hitOK=false; shoot(p,p.drop); break; } }
-      if(sh.y>=GY){ sh.y=GY; const side=sh.x<NETX?0:1,serve=rally===0,inb=sh.x>=BACK-2&&sh.x<=W-BACK+2&&Math.abs(sh.w)<=CW+2,hitter=lastHit;
-        if(side===hitter) point(1-hitter,(serve?'發球':'')+(sh.net?'掛網':'沒過網'));
-        else if(!inb) point(1-hitter,(serve?'發球':'')+(Math.abs(sh.w)>CW+2?'出邊線':'出底線'));
-        else if(serve&&Math.abs(sh.x-NETX)<SSL) point(1-hitter,'發球太短（沒過前發球線）');
-        else if(serve&&sh.w*-svSign<-2) point(1-hitter,'發球沒落在斜對角發球區');
-        else point(hitter,'界內！');
+      if((px-NETX)*(sh.x-NETX)<=0&&sh.y>NETTOP&&Math.abs(sh.w)<DW+10){ sh.x=NETX-Math.sign(sh.vx||1)*5; sh.vx*=-.12; sh.vw*=.3; sh.vy=Math.max(0,sh.vy)*.3; sh.net=1; sfx('bump'); fx.push({k:'ring',x:NETX,w:sh.w,h:GY-sh.y,t:0,col:'#ff8a8a'}); }
+      for(const p of ps){ if(p.sw>.04&&p.hitOK&&p.team!==lastTeam&&mySide(p)&&reachD(p,sh)<REACH){ if(dbl&&rally===0&&p.n!==recv) continue; /* 發球只能由接發球的人接 */ p.hitOK=false; shoot(p,p.drop); break; } }
+      if(sh.y>=GY){ sh.y=GY; const side=sh.x<NETX?0:1,serve=rally===0,inb=sh.x>=BACK-2&&sh.x<=W-BACK+2&&Math.abs(sh.w)<=PW+2,ht=lastTeam;
+        if(side===ht) point(1-ht,(serve?'發球':'')+(sh.net?'掛網':'沒過網'));
+        else if(!inb) point(1-ht,(serve?'發球':'')+(Math.abs(sh.w)>PW+2?'出邊線':'出底線'));
+        else if(serve&&Math.abs(sh.x-NETX)<SSL) point(1-ht,'發球太短（沒過前發球線）');
+        else if(serve&&dbl&&Math.abs(sh.x-NETX)>NETX-BACK-SVB+2) point(1-ht,'發球太長（超過雙打後發球線）');
+        else if(serve&&sh.w*-svSign<-2) point(1-ht,'發球沒落在斜對角發球區');
+        else point(ht,'界內！');
         fx.push({k:'dust',x:sh.x,w:sh.w,h:0,t:0}); break; } }
     if(sh.smash>0) sh.smash-=dt; }
   function draw(){ c.save(); if(shake>0) c.translate((Math.random()-.5)*7,(Math.random()-.5)*5); const ct=CT; c.drawImage(courtBg(ST.v),0,0);
-    const items=[]; for(const p of ps){ const q=proj(p.x,p.w,0,ct),qa=proj(p.x,p.w,GY-p.y,ct); items.push({d:q[3],f:()=>{ const back=p.n===ct; if(p.y<GY-2){ c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(q[0],q[1],22*q[2]*SCP,6*q[2]*SCP,0,0,TAU); c.fill(); }
-      drawHuman(c,qa[0],qa[1],q[2]*SCP,!back,p.look,{u:p.sw>0?1-p.sw/SWD:0,type:p.sw>0?p.swType:(phase==='serve'&&p.n===server?'serve':'ready'),run:p.run,mv:p.moving?1:0,crouch:phase==='play'?.6:.3,pad:{racket:1,face:p.look.rcol||(p.n?'#3ddbd9':'#ff7a3d')},label:lbl(p),air:p.y<GY-2},t); }}); }
+    const items=[]; for(const p of ps){ const q=proj(p.x,p.w,0,ct),qa=proj(p.x,p.w,GY-p.y,ct); items.push({d:q[3],f:()=>{ const back=p.team===ct; if(p.y<GY-2){ c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(q[0],q[1],22*q[2]*SCP,6*q[2]*SCP,0,0,TAU); c.fill(); }
+      drawHuman(c,qa[0],qa[1],q[2]*SCP,!back,p.look,{u:p.sw>0?1-p.sw/SWD:0,type:p.sw>0?p.swType:(phase==='serve'&&p.n===server?'serve':'ready'),run:p.run,mv:p.moving?1:0,crouch:phase==='play'?.6:.3,pad:{racket:1,face:p.look.rcol||(p.team?'#3ddbd9':'#ff7a3d')},label:lbl(p),air:p.y<GY-2},t); }}); }
     { const q=proj(NETX,0,0,ct); items.push({d:q[3]+.5,f:()=>drawNet(c,ct)}); }
     { const q=proj(sh.x,sh.w,0,ct); items.push({d:q[3]-6,f:()=>{ if(sh.smash>0){ const a=proj(sh.x,sh.w,GY-sh.y,ct),b=proj(sh.x-sh.vx*.05,sh.w-sh.vw*.05,GY-sh.y+sh.vy*.05,ct); c.strokeStyle='rgba(255,93,143,.5)'; c.lineWidth=5; c.beginPath(); c.moveTo(a[0],a[1]); c.lineTo(b[0],b[1]); c.stroke(); } drawShuttle(c,sh,ct); }}); }
     items.sort((a,b)=>b.d-a.d).forEach(it=>it.f());
@@ -244,18 +275,19 @@ function create(env,opts){
       else if(f.k==='dust'){ c.fillStyle='rgba(255,255,255,'+a*.7+')'; for(let i=0;i<6;i++){ const an=Math.PI+i*Math.PI/5; c.beginPath(); c.arc(q[0]+Math.cos(an)*f.t*30*q[2]*.6,q[1]+Math.sin(an)*f.t*10*q[2]*.6,2.5,0,TAU); c.fill(); } }
       else if(f.k==='txt'){ c.globalAlpha=a; c.font='900 21px '+TC; c.textAlign='center'; c.lineWidth=5; c.strokeStyle='#14122b'; c.strokeText(f.txt,q[0],q[1]-f.t*30); c.fillStyle=f.col; c.fillText(f.txt,q[0],q[1]-f.t*30); c.globalAlpha=1; } }
     c.restore();
-    const lt=ct; c.fillStyle='rgba(11,10,28,.8)'; rr(c,W/2-230,6,460,54,14); c.fill(); c.textAlign='center'; c.textBaseline='middle';
-    c.font='900 16px '+TC; c.fillStyle=ps[1-lt].look.color; c.fillText(names[1-lt],W/2-150,22,150); c.fillStyle=ps[lt].look.color; c.fillText(names[lt],W/2+150,22,150);
-    c.font='900 28px '+TC; c.fillStyle='#fff'; c.fillText(ps[1-lt].score+'　:　'+ps[lt].score,W/2,28); c.font='700 13px '+TC; c.fillStyle='#cfd2e8'; c.fillText('先拿 '+GOAL+' 分（要贏 2 分）',W/2,48);
-    c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.fillText('🏸 發球',server===lt?W/2+150:W/2-150,44);
-    const a=ps[0].score,b=ps[1].score; if(phase!=='over'&&Math.max(a,b)>=GOAL-1&&Math.abs(a-b)>=1){ c.font='900 18px '+TC; c.lineWidth=4; c.strokeStyle='#14122b'; c.strokeText('賽末點！',W/2,78); c.fillStyle='#ff5d8f'; c.fillText('賽末點！',W/2,78); }
-    if(phase==='serve'){ c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-190,92,380,28,14); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('報分 '+ps[server].score+'－'+ps[1-server].score+'，'+names[server]+'從'+(ps[server].score%2?'左':'右')+'半場發球（打斜對角）',W/2,106,370); }
-    if(phase==='serve'&&introT<=0&&(two||sh.held===me)){ const tch=document.body.classList.contains('touch'); c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-210,126,420,30,15); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText(tch?'「揮拍」發高遠球、「吊球」發短球':'空白鍵發高遠球、X 發短球（方向鍵可以移動站位）',W/2,141,410); }
+    const lt=ct,tName=tm=>dbl?ps.filter(p=>p.team===tm).map(p=>names[p.n]).join('＋'):names[tm]; c.fillStyle='rgba(11,10,28,.8)'; rr(c,W/2-240,6,480,54,14); c.fill(); c.textAlign='center'; c.textBaseline='middle';
+    c.font='900 15px '+TC; c.fillStyle=ps[1-lt].look.color; c.fillText(tName(1-lt),W/2-160,22,150); c.fillStyle=ps[lt].look.color; c.fillText(tName(lt),W/2+160,22,150);
+    c.font='900 28px '+TC; c.fillStyle='#fff'; c.fillText(score[1-lt]+'　:　'+score[lt],W/2,28); c.font='700 13px '+TC; c.fillStyle='#cfd2e8'; c.fillText((dbl?'雙打・':'')+'先拿 '+GOAL+' 分（要贏 2 分）',W/2,48);
+    c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.fillText('🏸 發球',servT===lt?W/2+160:W/2-160,44);
+    const a=score[0],b=score[1]; if(phase!=='over'&&Math.max(a,b)>=GOAL-1&&Math.abs(a-b)>=1){ c.font='900 18px '+TC; c.lineWidth=4; c.strokeStyle='#14122b'; c.strokeText('賽末點！',W/2,78); c.fillStyle='#ff5d8f'; c.fillText('賽末點！',W/2,78); }
+    if(phase==='serve'&&server>=0){ c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-210,92,420,28,14); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText('報分 '+score[servT]+'－'+score[1-servT]+'，'+names[server]+'從'+(score[servT]%2?'左':'右')+'半場發球給 '+names[recv]+'（打斜對角）',W/2,106,410); }
+    const meServe=two?human(sh.held):sh.held===me;
+    if(phase==='serve'&&introT<=0&&meServe){ const tch=document.body.classList.contains('touch'); c.fillStyle='rgba(11,10,28,.7)'; rr(c,W/2-210,126,420,30,15); c.fill(); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText(tch?'「揮拍」發高遠球、「吊球」發短球':'空白鍵發高遠球、X 發短球（方向鍵可以移動站位）',W/2,141,410); }
     if(rally>=4&&phase==='play'){ c.font='900 15px '+TC; c.fillStyle='#ffd23f'; c.fillText('來回 '+rally+' 拍',W/2,78); }
-    if(msgT>0&&phase!=='serve'){ c.font='900 28px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(msg,W/2,190); c.fillStyle='#ffd23f'; c.fillText(msg,W/2,190); }
-    if(introT>0&&solo){ c.font='900 26px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; const s2='第 '+(si+1)+' 關　對手：'+ST.foe; c.strokeText(s2,W/2,190); c.fillStyle='#ffd23f'; c.fillText(s2,W/2,190); } }
-  const lbl=p=>introT>0?(two?(p.n?'2P':'1P'):net?(p.n===me?'你':''):p.n===0?'你':''):'';
-  return {update,draw,destroy(){},_dbg:{ps,sh,get msg(){ return msg; },get phase(){ return phase; },get rally(){ return rally; },get lastHit(){ return lastHit; },get server(){ return server; },AI,predict}};
+    if(msgT>0&&phase!=='serve'){ c.font='900 26px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(msg,W/2,190,780); c.fillStyle='#ffd23f'; c.fillText(msg,W/2,190,780); }
+    if(introT>0&&solo){ c.font='900 26px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; const s2='第 '+(si+1)+' 關　對手：'+ST.foe+(dbl?'隊':''); c.strokeText(s2,W/2,190); c.fillStyle='#ffd23f'; c.fillText(s2,W/2,190); } }
+  const lbl=p=>introT>0||(dbl&&phase==='serve'&&(p.n===server||p.n===recv))?(two?(ctrl[p.n]==='key0'?'1P':ctrl[p.n]==='key1'?'2P':''):(p.n===me?'你':dbl&&p.team===myTeam?'隊友':'')):'';
+  return {update,draw,destroy(){},_dbg:{ps,sh,score,ctrl,dbl,get msg(){ return msg; },get phase(){ return phase; },get rally(){ return rally; },get lastHit(){ return lastHit; },get lastTeam(){ return lastTeam; },get server(){ return server; },get servT(){ return servT; },get recv(){ return recv; },AI,predict}};
 }
 
 function demo(c,v,t,col0,col1,foe){ c.drawImage(courtBg(v),0,0); const T=2.6,u=(t%T)/T,dir=u<.5?1:-1,kk=u<.5?u*2:(u-.5)*2,x0=dir>0?150:640,x1=dir>0?640:150,bx=x0+(x1-x0)*kk,bw=(dir>0?-40:40)*(1-2*kk),bh=110+Math.sin(kk*Math.PI)*200;
@@ -266,12 +298,13 @@ function preview(c,w,h,L,t){ L=Object.assign({color:'#ff5d6d',hair:0},L||{}); c.
 function thumb(c,w,h,t){ c.save(); c.scale(w/W,h/H); demo(c,6,t,'#ff5d6d','#4f9dff',''); c.font='900 54px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=10; c.strokeStyle='#14122b'; c.strokeText('羽球對決',W/2,110); c.fillStyle='#ffd23f'; c.fillText('羽球對決',W/2,110); c.restore(); }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).badminton={
-  name:'羽球對決',tag:'SHUTTLE DUEL',color:'#5fd068',online:true,maxPlayers:2,
-  coin:o=>({verb:'先發球',names:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}),
-  desc:'從球員背後看的羽球單打！前後左右跑位，揮拍自動判斷高遠球、平抽、挑球，跳起來揮就是殺球，也能輕輕吊網前。發球照分數站左右半場打斜對角。單人 200 關，也能兩人同一台或連線對打。',
-  goal:'羽毛球落在對方界內就得 1 分；打出界、掛網、發球太短或沒發到斜對角都算失分。每球得分，先拿到開始前選的分數、而且領先 2 分就贏（最多到 30 分）。',
+  name:'羽球對決',tag:'SHUTTLE DUEL',color:'#5fd068',online:true,maxPlayers:4,
+  coin:o=>{ const O=o.options||{},pr=o.mode==='2p'&&!o.net||(o.net&&o.net.count===2),d=o.net&&o.net.count>2||(pr?['vs','coop'].includes(O.team):O.fmt==='doubles'); return {verb:'先發球',names:d?['左隊','右隊']:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}; },
+  desc:'從球員背後看的羽球單打或雙打！前後左右跑位，揮拍自動判斷高遠球、平抽、挑球，跳起來揮就是殺球，也能輕輕吊網前。發球照分數站左右半場打斜對角。單人 200 關（1 對 1 或 2 對 2），也能兩人同一台或連線對打（最多 4 人）。',
+  goal:'羽毛球落在對方界內就得 1 分；打出界、掛網、發球太短或沒發到斜對角都算失分。每球得分，先拿到開始前選的分數、而且領先 2 分就贏（最多到 30 分）。雙打：發球方得分時同一人和搭檔換邊續發；接發球方得分就換他們發球、站位不換，由分數偶數站右、奇數站左的那位發。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  options:[{key:'win',label:'打幾分',def:'11',opts:[{id:'11',label:'11 分'},{id:'15',label:'15 分'},{id:'21',label:'21 分（正式）'}]}],
+  options:[{key:'fmt',label:'賽制（單人）',def:'singles',opts:[{id:'singles',label:'單打 1 對 1'},{id:'doubles',label:'雙打：配電腦隊友 2 對 2'}]},{key:'win',label:'打幾分',def:'11',opts:[{id:'11',label:'11 分'},{id:'15',label:'15 分'},{id:'21',label:'21 分（正式）'}]},
+    {key:'team',label:'兩個玩家時（雙人／連線 2 人）',def:'1v1',opts:[{id:'1v1',label:'兩人 1 對 1'},{id:'vs',label:'各配電腦隊友 2 對 2'},{id:'coop',label:'兩人同隊打 2 個電腦'}]}],
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:i=>{ const S=STAGES[i]; return '第 '+(i+1)+' 關・'+S.name+'：打贏 '+S.foe+'。'+(i<10?'對手動作慢、常常打出界，先熟悉跑位和揮拍。':i<60?'對手開始會吊網前，記得往前跑。':i<130?'對手會跳殺，退後一點等球。':'高手對決：殺球又快又準。'); },
   stageLocked:i=>i>0&&getRec(i-1)==null,stageBest:i=>{ const v=getRec(i); return v?'✓ '+v.replace(':',' : '):''; },

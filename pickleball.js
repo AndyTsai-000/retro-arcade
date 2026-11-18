@@ -142,21 +142,22 @@ function drawNet(c,ct){ const a=proj(NETX,-CW-14,0,ct),b=proj(NETX,CW+14,0,ct),a
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',solo=!net&&!two,OPT=opts.options||{};
-  const dbl=net?(net.count>2||OPT.fmt==='doubles'):OPT.fmt==='doubles',N=dbl?4:2,me=net?Math.min(N-1,net.me):0;
+  const TM=['vs','coop'].includes(OPT.team)?OPT.team:'1v1',pair=two||(!!net&&net.count===2); // 兩個真人：1 對 1、各配電腦 2 對 2、兩人同隊打 2 個電腦
+  const dbl=net&&net.count>2?true:pair?TM!=='1v1':OPT.fmt==='doubles',N=dbl?4:2,coop=pair&&dbl&&TM==='coop',SL=h=>coop&&h===1?2:h,HI=i=>coop?(i===2?1:i===1?-1:i):i,me=net?SL(Math.min(N-1,net.me)):0;
   const {ctx:c}=env.canvas2d(W,H),si=clamp(opts.stage|0,0,LV-1),ST=STAGES[si],VEN=solo?ST.v:clamp(+OPT.court||0,0,VENUES.length-1),RALLY=OPT.score==='rally',GOAL=RALLY?15:11;
   const SERVES=[['deep','高遠深球'],['drive','快速平擊'],['top','上旋發球'],['slice','側旋發球']];
-  const vsAI=solo||(net&&net.count<2)||(two&&dbl),k=vsAI?ST.k:1,AI={spd:155+95*k,react:.36-.22*k,err:150-125*k,lat:110-80*k,miss:.14*(1-k)};
+  const vsAI=solo||(net&&net.count<2)||(dbl&&(net?net.count:two?2:1)<N),k=vsAI?ST.k:1,AI={spd:155+95*k,react:.36-.22*k,err:150-125*k,lat:110-80*k,miss:.14*(1-k)};
   const ctrl=[]; for(let i=0;i<N;i++){ let cc='ai';
-    if(net){ if(i<net.count) cc=i===me?'self':'net'; }
-    else if(two){ if(!dbl) cc=i===0?'key0':'key1'; else if(OPT.team==='coop') cc=i===0?'key0':i===2?'key1':'ai'; else cc=i===0?'key0':i===1?'key1':'ai'; }
+    if(net){ const h=HI(i); if(h>=0&&h<net.count) cc=i===me?'self':'net'; }
+    else if(two){ if(!dbl) cc=i===0?'key0':'key1'; else if(coop) cc=i===0?'key0':i===2?'key1':'ai'; else cc=i===0?'key0':i===1?'key1':'ai'; }
     else cc=i===0?'solo':'ai'; ctrl.push(cc); }
   const isAI=i=>ctrl[i]==='ai',human=i=>!isAI(i);
   const ALTC=['#ff5d6d',solo&&!dbl?ST.col:'#4f9dff','#ff7eb6','#3ddbd9'];
   const RW=tm=>tm?-1:1; // 這隊的「右手邊」在 w 的哪個方向
-  const ps=Array.from({length:N},(_,i)=>{ const tm=i%2,lk=Object.assign({},(net?net.looks&&net.looks[i]:null)||(i===0?opts.look:null)||{color:ALTC[i],hair:i%3});
+  const ps=Array.from({length:N},(_,i)=>{ const tm=i%2,lk=Object.assign({},(net?net.looks&&HI(i)>=0&&net.looks[HI(i)]:null)||(i===0?opts.look:null)||{color:ALTC[i],hair:i%3});
     if(!lk.color) lk.color=ALTC[i]; return {n:i,team:tm,side:dbl?(i<2?1:-1):1,x:tm?700:100,w:0,face:tm?-1:1,sw:0,hitOK:false,dk:false,moving:false,volT:0,tx:tm?700:100,tw:0,look:lk,sv:Math.max(0,SERVES.findIndex(q=>q[0]===OPT.serve)),aim:0,swType:'ready',run:0}; });
   for(let i=1;i<N;i++) if(ps[i].team!==ps[0].team&&ps[i].look.color===ps[0].look.color) ps[i].look.color='#4f9dff';
-  const nm=i=>net?(i<net.count?(net.names[i]||'玩家 '+(i+1)):'電腦'+(i+1)):ctrl[i]==='key0'?'1P':ctrl[i]==='key1'?'2P':ctrl[i]==='solo'?(opts.name||'你'):(dbl&&ps[i].team===0?'電腦隊友':ST.foe+(dbl?(i<2?'A':'B'):''));
+  const nm=i=>net?(HI(i)>=0&&HI(i)<net.count?(net.names[HI(i)]||'玩家 '+(HI(i)+1)):'電腦'+(i+1)):ctrl[i]==='key0'?'1P':ctrl[i]==='key1'?'2P':ctrl[i]==='solo'?(opts.name||'你'):(dbl&&ps[i].team===0?'電腦隊友':ST.foe+(dbl?(i<2?'A':'B'):''));
   const names=ps.map((p,i)=>nm(i)),myTeam=ps[me].team,CT=net?myTeam:0,TN=tm=>dbl?(!two&&tm===myTeam?'我方':tm?'右隊':'左隊'):names[tm];
   const ball={x:0,y:0,w:0,vx:0,vy:0,vw:0,bn:0,tx:0,ty:0,tw:0,spin:''},fx=[],score=[0,0];
   let t=0,phase='serve',servT=opts.first===1?1:0,server=-1,sNum=2,hits=0,lastHit=-1,lastTeam=-1,ptT=0,lastW=-1,msg='',msgT=0,ended=false,overT=0,introT=2.4,aiServeT=1.2,rally=0,best=0,ev=[],sendT=0,shake=0,waitTip=0,svSign=1;
@@ -248,8 +249,8 @@ function create(env,opts){
   function snap(){ const m={s:[ps.map(p=>[r1(p.x),r1(p.w),r1(p.sw),p.side,p.sv,p.moving?1:0]),r1(ball.x),r1(ball.y),r1(ball.w),r1(ball.vx),r1(ball.vy),r1(ball.vw),score[0],score[1],servT,server,sNum,['serve','play','point','over'].indexOf(phase),hits,lastW,lastTeam],e:ev,m:msgT>0?msg:''}; ev=[]; return m; }
   if(net){ if(client) net.onmsg=m=>{ if(m.s){ const s=m.s; s[0].forEach((q,i)=>{ const p=ps[i]; if(!p) return; p.tx=q[0]; p.tw=q[1]; p.sw=q[2]; p.side=q[3]; p.sv=q[4]; p.moving=!!q[5]; }); ball.tx=s[1]; ball.ty=s[2]; ball.tw=s[3]; ball.vx=s[4]; ball.vy=s[5]; ball.vw=s[6]; score[0]=s[7]; score[1]=s[8]; servT=s[9]; server=s[10]; sNum=s[11]; phase=['serve','play','point','over'][s[12]]; hits=s[13]; lastW=s[14]; lastTeam=s[15];
         for(const n of m.e){ if(n==='p0'||n==='p1') env.sfx(+n[1]===myTeam?'item':'hurt'); else env.sfx(n); } if(m.m){ msg=m.m; msgT=1.4; } } else if(m.end) conclude(m.end[0],m.end[1],m.end[2]); };
-    else { net.onmsg=(m,from)=>{ if(m.i&&rin[from]){ const r=rin[from]; r.dx=m.i[0]; r.dy=m.i[1]; if(m.i[2]) r.sw=true; if(m.i[3]) r.dk=true; } };
-      net.onleave=i=>{ if(i<N&&!ended) ctrl[i]='ai'; }; } }
+    else { net.onmsg=(m,from)=>{ if(m.i&&rin[SL(from)]){ const r=rin[SL(from)]; r.dx=m.i[0]; r.dy=m.i[1]; if(m.i[2]) r.sw=true; if(m.i[3]) r.dk=true; } };
+      net.onleave=i=>{ const j=SL(i); if(j<N&&!ended) ctrl[j]='ai'; }; } }
   // 移動：方向是照「這個人自己的鏡頭」看的（同一台都用左隊的鏡頭；連線各自從自己這隊看）
   function movePlayer(p,i,dt){ const sp=isAI(p.n)?AI.spd:235,cam=net?p.team:0,fx2=cam?-1:1; let mx,mw;
     if(isAI(p.n)){ const d=Math.hypot(i.wx||0,i.ww||0); mx=d>4?(i.wx/d)*Math.min(1,d/28):0; mw=d>4?(i.ww/d)*Math.min(1,d/28):0; }
@@ -334,14 +335,14 @@ function thumb(c,w,h,t){ c.save(); c.scale(w/W,h/H); demo(c,6,t,'#ff5d6d','#4f9d
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).pickleball={
   name:'匹克球對決',tag:'PICKLEBALL DUEL',color:'#e8f040',online:true,maxPlayers:4,
-  coin:o=>{ const d=(o.options||{}).fmt==='doubles'||(o.net&&o.net.count>2); return {verb:'先發球',names:d?['左隊','右隊']:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}; },
+  coin:o=>{ const O=o.options||{},pr=o.mode==='2p'&&!o.net||(o.net&&o.net.count===2),d=o.net&&o.net.count>2||(pr?['vs','coop'].includes(O.team):O.fmt==='doubles'); return {verb:'先發球',names:d?['左隊','右隊']:o.net?[o.net.names[0]||'玩家 1',o.net.count>1?(o.net.names[1]||'玩家 2'):'電腦']:o.mode==='2p'?['1P','2P']:['你','電腦']}; },
   desc:'從球員背後看的匹克球！單打或雙打，照真實規則：低手發球（四種發球）、雙彈地、廚房區不能截擊。前後左右跑位，揮拍自動判斷抽球或扣殺，「小球」輕輕吊進對方廚房區。單人 200 關（1 對 1 或 2 對 2），雙人同一台，連線最多 4 人。',
   goal:'球在對方那邊落地兩次、或對方失誤（出界、下網、發球落在廚房區或錯的發球區、在廚房區截擊）就贏這球。發球得分制只有發球方贏球才得分，先到 11 分就贏；落地得分制每球都得分，先到 15 分就贏（兩種都不用 Deuce）。發球方得分時，同一位發球員換到另一邊繼續發；雙打發球得分制失誤時換搭檔發，兩人都失誤才換對方。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  options:[{key:'fmt',label:'賽制',def:'singles',opts:[{id:'singles',label:'單打 1 對 1'},{id:'doubles',label:'雙打 2 對 2'}]},
+  options:[{key:'fmt',label:'賽制（單人）',def:'singles',opts:[{id:'singles',label:'單打 1 對 1'},{id:'doubles',label:'雙打：配電腦隊友 2 對 2'}]},
     {key:'score',label:'計分',def:'side',opts:[{id:'side',label:'發球得分制（11 分，不用 Deuce）'},{id:'rally',label:'落地得分制（15 分，不用 Deuce）'}]},
     {key:'serve',label:'預設發球',def:'deep',opts:[{id:'deep',label:'高遠深球'},{id:'drive',label:'快速平擊'},{id:'top',label:'上旋發球'},{id:'slice',label:'側旋發球'}]},
-    {key:'team',label:'雙人玩雙打',def:'vs',opts:[{id:'vs',label:'各帶電腦隊友對打'},{id:'coop',label:'兩人同隊打電腦'}]},
+    {key:'team',label:'兩個玩家時（雙人／連線 2 人）',def:'1v1',opts:[{id:'1v1',label:'兩人 1 對 1'},{id:'vs',label:'各配電腦隊友 2 對 2'},{id:'coop',label:'兩人同隊打 2 個電腦'}]},
     {key:'court',label:'場地（雙人／連線）',def:'0',opts:VENUES.map((v,i)=>({id:String(i),label:v.n}))}],
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:i=>{ const S=STAGES[i]; return '第 '+(i+1)+' 關・'+S.name+'：打贏 '+S.foe+'。'+(i<10?'對手很慢、常失誤，先熟悉發球、等彈地和小球。':i<60?'對手開始會上網打小球，你也試著站到廚房線外。':i<130?'對手會在網前截擊，回球要低、打兩邊。':'高手對決：小球、抽球、扣殺都很準。'); },
