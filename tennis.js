@@ -84,29 +84,64 @@ function poseOf(st,t){ const S=SWING[st.type]||SWING.ready,u=st.u||0,rot=keyAt(S
 function drawHuman(c,X,Y,sc,front,look,st,t){ const J=poseOf(st,t),m=front?-1:1,INK='rgba(30,20,20,.55)',skin=look.skin||SKINS[(look.hair|0)%4],shirt=look.color||'#ff5d6d',shorts=look.shorts||'#2a2c38',hairC=['#2a1a10','#14100c','#6a3a1a'][(look.hair|0)%3];
   const P=v=>[X+v[0]*m*sc,Y-(v[1]+v[2]*(front?-.18:.18))*sc],dz=v=>front?v[2]:-v[2]; // dz 越大越靠近鏡頭
   const limb=(a,b,w1,w2,col)=>{ const A=P(a),B=P(b),dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L,r1=w1*sc/2,r2=w2*sc/2; c.fillStyle=col; c.beginPath(); c.moveTo(A[0]+nx*r1,A[1]+ny*r1); c.lineTo(B[0]+nx*r2,B[1]+ny*r2); c.lineTo(B[0]-nx*r2,B[1]-ny*r2); c.lineTo(A[0]-nx*r1,A[1]-ny*r1); c.closePath(); c.fill(); c.beginPath(); c.arc(A[0],A[1],r1,0,TAU); c.arc(B[0],B[1],r2,0,TAU); c.fill(); };
-  // 影子
-  c.fillStyle='rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(X,Y,30*sc,8*sc,0,0,TAU); c.fill();
+  // ── 寫實人物（v308）：肌肉線條、運動短褲、球衣領口與陰影、球鞋鞋底、臉（眼白、眉毛、鼻子、耳朵）、頭髮層次 ──
+  const skD=shade(skin,.82),skL=shade(skin,1.08),shD=shade(shirt,.72),shL=shade(shirt,1.12),soD=shade(shorts,.7),hairH=shade(hairC,1.6);
+  // 有肌肉弧度的肢體：A→B，中段（mid 位置）鼓起
+  const mus=(a,b,w1,wm,w2,col,mid,edge)=>{ const A=P(a),B=P(b),dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L,u=mid==null?.38:mid,M=[A[0]+dx*u,A[1]+dy*u],r1=w1*sc/2,rm=wm*sc/2,r2=w2*sc/2;
+    c.fillStyle=col; c.beginPath(); c.moveTo(A[0]+nx*r1,A[1]+ny*r1); c.quadraticCurveTo(M[0]+nx*rm*1.15,M[1]+ny*rm*1.15,B[0]+nx*r2,B[1]+ny*r2); c.lineTo(B[0]-nx*r2,B[1]-ny*r2); c.quadraticCurveTo(M[0]-nx*rm*1.15,M[1]-ny*rm*1.15,A[0]-nx*r1,A[1]-ny*r1); c.closePath(); c.fill();
+    c.beginPath(); c.arc(A[0],A[1],r1,0,TAU); c.arc(B[0],B[1],r2,0,TAU); c.fill();
+    if(edge){ c.strokeStyle=edge; c.lineWidth=Math.max(.6,1.1*sc); c.beginPath(); c.moveTo(A[0]-nx*r1*.85,A[1]-ny*r1*.85); c.quadraticCurveTo(M[0]-nx*rm*1.05,M[1]-ny*rm*1.05,B[0]-nx*r2*.85,B[1]-ny*r2*.85); c.stroke(); } };
+  c.fillStyle='rgba(0,0,0,.24)'; c.beginPath(); c.ellipse(X,Y,30*sc,8*sc,0,0,TAU); c.fill();
   const parts=[];
-  // 腳（大腿穿短褲、小腿皮膚、鞋子）
+  // 腿：大腿（短褲蓋住上半）、膝蓋、有小腿肚的小腿、白襪、球鞋
   for(const s of ['R','L']){ const h=J['hip'+s],k=J['knee'+s],a=J['ank'+s],z=(h[2]+a[2])/2;
-    parts.push({z:dz([0,0,z])-20,f:()=>{ limb(h,k,17,13,skin); limb(lerp3(h,k,0),lerp3(h,k,.55),19,16,shorts); limb(k,a,12,8,skin); const A=P(a); c.fillStyle='#f4f4f4'; c.beginPath(); c.ellipse(A[0],A[1]+2*sc,8*sc,5*sc,0,0,TAU); c.fill(); c.fillStyle=shirt; c.fillRect(A[0]-7*sc,A[1]-1*sc,14*sc,2*sc); c.fillStyle='#fff'; c.fillRect(A[0]-4*sc,A[1]-7*sc,8*sc,5*sc); }}); }
-  // 軀幹
-  parts.push({z:0,f:()=>{ const hl=P(J.hipL),hr=P(J.hipR),sl=P(J.shL),sr=P(J.shR),nk=P(J.neck); c.fillStyle=shorts; c.beginPath(); c.moveTo(hl[0]-3*sc*m,hl[1]-6*sc); c.lineTo(hr[0]+3*sc*m,hr[1]-6*sc); c.lineTo(hr[0]+4*sc*m,hr[1]+10*sc); c.lineTo(hl[0]-4*sc*m,hl[1]+10*sc); c.closePath(); c.fill();
-    const g=c.createLinearGradient(sl[0],0,sr[0],0); g.addColorStop(0,shade(shirt,.82)); g.addColorStop(.5,shirt); g.addColorStop(1,shade(shirt,.9)); c.fillStyle=g; c.beginPath(); c.moveTo(sl[0],sl[1]-3*sc); c.quadraticCurveTo(nk[0],nk[1]-4*sc,sr[0],sr[1]-3*sc); c.lineTo(hr[0]+2*sc*m,hr[1]-2*sc); c.lineTo(hl[0]-2*sc*m,hl[1]-2*sc); c.closePath(); c.fill();
-    c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=2*sc; c.beginPath(); c.moveTo(sl[0]+(sr[0]-sl[0])*.3,sl[1]+6*sc); c.lineTo(hl[0]+(hr[0]-hl[0])*.3,hl[1]-6*sc); c.stroke(); limb(J.neck,lerp3(J.neck,J.head,.4),9,9,skin); }});
-  // 頭（正面有臉、背面看到頭髮和帽子）
-  parts.push({z:3,f:()=>{ const H=P(J.head),r=12*sc; c.fillStyle=skin; c.beginPath(); c.ellipse(H[0],H[1],r*.86,r,0,0,TAU); c.fill();
-    if(front){ c.fillStyle=hairC; c.beginPath(); c.ellipse(H[0],H[1]-r*.35,r*.9,r*.7,0,Math.PI,0); c.fill(); c.fillStyle='#2a1a14'; c.beginPath(); c.ellipse(H[0]-r*.33,H[1]+r*.05,r*.1,r*.13,0,0,TAU); c.ellipse(H[0]+r*.33,H[1]+r*.05,r*.1,r*.13,0,0,TAU); c.fill(); c.strokeStyle='rgba(120,60,40,.6)'; c.lineWidth=1.2*sc; c.beginPath(); c.moveTo(H[0],H[1]+r*.15); c.lineTo(H[0]-r*.06,H[1]+r*.38); c.moveTo(H[0]-r*.2,H[1]+r*.6); c.quadraticCurveTo(H[0],H[1]+r*.7,H[0]+r*.2,H[1]+r*.6); c.stroke(); }
-    else { c.fillStyle=hairC; c.beginPath(); c.ellipse(H[0],H[1]-r*.05,r*.9,r*.98,0,0,TAU); c.fill(); if((look.hair|0)%3===1){ c.beginPath(); c.ellipse(H[0],H[1]+r*1.1,r*.25,r*.6,0,0,TAU); c.fill(); } }
-    c.fillStyle=shade(shirt,.9); c.beginPath(); c.ellipse(H[0],H[1]-r*.55,r*.95,r*.52,0,Math.PI,0); c.fill(); if(front){ c.beginPath(); c.ellipse(H[0],H[1]-r*.52,r*1.15,r*.25,0,0,Math.PI); c.fill(); } else { } }});
-  // 手臂＋球拍
+    parts.push({z:dz([0,0,z])-20,f:()=>{ mus(h,k,17,18,12,skin,.35,skD); mus(k,a,12,13,7.5,skin,.3,skD);
+      const kk=P(k); c.fillStyle=skL; c.beginPath(); c.ellipse(kk[0],kk[1],3.2*sc,2.4*sc,0,0,TAU); c.fill(); // 膝蓋亮面
+      mus(lerp3(k,a,.72),a,8.2,8.4,8.2,'#f6f6f2',.5); c.fillStyle='rgba(0,0,0,.08)'; const S1=P(lerp3(k,a,.74)); c.fillRect(S1[0]-4*sc,S1[1],8*sc,1.2*sc); // 襪子
+      mus(h,lerp3(h,k,.52),20,21,18,shorts,.4,soD); // 短褲褲管
+      const A=P(a),fz=front?3:-3; c.fillStyle='#2a2a30'; c.beginPath(); c.ellipse(A[0],A[1]+3.2*sc,9.5*sc,4.6*sc,0,0,TAU); c.fill(); // 鞋底
+      c.fillStyle='#f4f4f4'; c.beginPath(); c.ellipse(A[0],A[1]+fz*.2*sc,8.6*sc,5.4*sc,0,Math.PI,0); c.lineTo(A[0]+8.6*sc,A[1]+2.2*sc); c.lineTo(A[0]-8.6*sc,A[1]+2.2*sc); c.closePath(); c.fill();
+      c.fillStyle=shirt; c.beginPath(); c.moveTo(A[0]-6*sc,A[1]+1*sc); c.quadraticCurveTo(A[0],A[1]-4*sc,A[0]+6*sc,A[1]+1*sc); c.lineTo(A[0]+5*sc,A[1]+2*sc); c.quadraticCurveTo(A[0],A[1]-2.4*sc,A[0]-5*sc,A[1]+2*sc); c.closePath(); c.fill(); }}); } // 鞋子側邊的標誌條
+  // 軀幹：運動短褲（褲頭、側條）＋球衣（肩膀圓弧、腰身、領口、側面陰影、皺褶）
+  parts.push({z:0,f:()=>{ const hl=P(J.hipL),hr=P(J.hipR),sl=P(J.shL),sr=P(J.shR),nk=P(J.neck),hc=P(J.hipC),wd=Math.abs(sr[0]-sl[0]);
+    c.fillStyle=shorts; c.beginPath(); c.moveTo(hl[0]-4*sc*m,hl[1]-8*sc); c.lineTo(hr[0]+4*sc*m,hr[1]-8*sc); c.lineTo(hr[0]+6*sc*m,hr[1]+9*sc); c.lineTo(hc[0],hc[1]+5*sc); c.lineTo(hl[0]-6*sc*m,hl[1]+9*sc); c.closePath(); c.fill();
+    c.fillStyle=soD; c.fillRect(Math.min(hl[0],hr[0])-5*sc,Math.min(hl[1],hr[1])-9*sc,Math.abs(hr[0]-hl[0])+10*sc,3*sc); // 褲頭
+    const mx=(sl[0]+sr[0])/2,top=Math.min(sl[1],sr[1]);
+    const g=c.createLinearGradient(Math.min(sl[0],sr[0])-4*sc,0,Math.max(sl[0],sr[0])+4*sc,0); g.addColorStop(0,shD); g.addColorStop(.35,shirt); g.addColorStop(.6,shL); g.addColorStop(1,shD); c.fillStyle=g;
+    c.beginPath(); c.moveTo(sl[0]-3*sc*m,sl[1]+1*sc); c.quadraticCurveTo(sl[0]-1*sc*m,sl[1]-6*sc,mx,nk[1]-3*sc); c.quadraticCurveTo(sr[0]+1*sc*m,sr[1]-6*sc,sr[0]+3*sc*m,sr[1]+1*sc);
+    c.quadraticCurveTo(sr[0]+1*sc*m,(sr[1]+hr[1])/2,hr[0]+3*sc*m,hr[1]-6*sc); c.lineTo(hl[0]-3*sc*m,hl[1]-6*sc); c.quadraticCurveTo(sl[0]-1*sc*m,(sl[1]+hl[1])/2,sl[0]-3*sc*m,sl[1]+1*sc); c.closePath(); c.fill();
+    c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.moveTo(hl[0]-3*sc*m,hl[1]-6*sc); c.lineTo(hr[0]+3*sc*m,hr[1]-6*sc); c.lineTo(hr[0]+2*sc*m,hr[1]-12*sc); c.lineTo(hl[0]-2*sc*m,hl[1]-12*sc); c.closePath(); c.fill(); // 衣襬陰影
+    c.strokeStyle='rgba(0,0,0,.14)'; c.lineWidth=1.1*sc; c.beginPath(); c.moveTo(mx-wd*.18,top+18*sc); c.quadraticCurveTo(mx-wd*.05,top+30*sc,mx-wd*.14,top+42*sc); c.moveTo(mx+wd*.2,top+22*sc); c.quadraticCurveTo(mx+wd*.08,top+32*sc,mx+wd*.16,top+44*sc); c.stroke(); // 皺褶
+    // 脖子
+    const N=P(J.neck),Hd=P(J.head); c.fillStyle=skD; c.beginPath(); c.moveTo(N[0]-4.5*sc,N[1]+2*sc); c.lineTo(N[0]+4.5*sc,N[1]+2*sc); c.lineTo(Hd[0]+4*sc,Hd[1]+8*sc); c.lineTo(Hd[0]-4*sc,Hd[1]+8*sc); c.closePath(); c.fill();
+    if(front){ c.fillStyle=skin; c.beginPath(); c.moveTo(N[0]-5*sc,N[1]-2*sc); c.lineTo(N[0],N[1]+6*sc); c.lineTo(N[0]+5*sc,N[1]-2*sc); c.closePath(); c.fill(); c.strokeStyle=shD; c.lineWidth=1.6*sc; c.beginPath(); c.moveTo(N[0]-6*sc,N[1]-3*sc); c.lineTo(N[0],N[1]+6.5*sc); c.lineTo(N[0]+6*sc,N[1]-3*sc); c.stroke(); } // V 領
+    else { c.strokeStyle=shD; c.lineWidth=1.6*sc; c.beginPath(); c.arc(N[0],N[1]-4*sc,6*sc,.2,Math.PI-.2); c.stroke(); if(look.num){ c.fillStyle='rgba(255,255,255,.85)'; c.font='900 '+Math.round(15*sc)+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(look.num,mx,(top+hl[1])/2); } } }});
+  // 頭：臉形（下巴收窄）、耳朵、頭髮（短髮／馬尾／捲髮）、運動頭帶；正面有眉毛、眼睛、鼻子、嘴巴
+  parts.push({z:3,f:()=>{ const H=P(J.head),r=11.5*sc,hs=(look.hair|0)%3;
+    const face=()=>{ c.beginPath(); c.moveTo(H[0]-r*.86,H[1]-r*.2); c.bezierCurveTo(H[0]-r*.9,H[1]+r*.55,H[0]-r*.45,H[1]+r*1.02,H[0],H[1]+r*1.05); c.bezierCurveTo(H[0]+r*.45,H[1]+r*1.02,H[0]+r*.9,H[1]+r*.55,H[0]+r*.86,H[1]-r*.2); c.bezierCurveTo(H[0]+r*.86,H[1]-r*1.1,H[0]-r*.86,H[1]-r*1.1,H[0]-r*.86,H[1]-r*.2); c.closePath(); };
+    for(const e of [-1,1]){ c.fillStyle=skD; c.beginPath(); c.ellipse(H[0]+e*r*.9,H[1]+r*.12,r*.17,r*.27,0,0,TAU); c.fill(); } // 耳朵
+    const fg=c.createRadialGradient(H[0]-r*.25,H[1]-r*.2,r*.2,H[0],H[1],r*1.15); fg.addColorStop(0,skL); fg.addColorStop(1,skD); c.fillStyle=fg; face(); c.fill();
+    if(front){ // 頭髮從額頭往後
+      c.fillStyle=hairC; c.beginPath(); c.moveTo(H[0]-r*.92,H[1]+r*.05); c.bezierCurveTo(H[0]-r*1.05,H[1]-r*1.2,H[0]+r*1.05,H[1]-r*1.2,H[0]+r*.92,H[1]+r*.05); c.quadraticCurveTo(H[0]+r*.7,H[1]-r*.45,H[0]+r*.15,H[1]-r*.52); c.quadraticCurveTo(H[0]-r*.4,H[1]-r*.62,H[0]-r*.92,H[1]+r*.05); c.fill();
+      if(hs===2) for(let i=0;i<7;i++){ const a=Math.PI*(1.05+i*.13); c.beginPath(); c.arc(H[0]+Math.cos(a)*r*.86,H[1]-r*.15+Math.sin(a)*r*.86,r*.22,0,TAU); c.fill(); }
+      c.strokeStyle=hairH; c.lineWidth=1*sc; c.beginPath(); c.moveTo(H[0]-r*.4,H[1]-r*.85); c.quadraticCurveTo(H[0]-r*.1,H[1]-r*.95,H[0]+r*.3,H[1]-r*.8); c.stroke();
+      c.strokeStyle=hairC; c.lineWidth=1.5*sc; c.lineCap='round'; for(const e of [-1,1]){ c.beginPath(); c.moveTo(H[0]+e*r*.55,H[1]-r*.12); c.quadraticCurveTo(H[0]+e*r*.35,H[1]-r*.24,H[0]+e*r*.14,H[1]-r*.14); c.stroke(); } // 眉毛
+      for(const e of [-1,1]){ c.fillStyle='#fbf8f2'; c.beginPath(); c.ellipse(H[0]+e*r*.34,H[1]+r*.08,r*.17,r*.1,0,0,TAU); c.fill(); c.fillStyle='#3a2414'; c.beginPath(); c.arc(H[0]+e*r*.33,H[1]+r*.09,r*.085,0,TAU); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(H[0]+e*r*.3,H[1]+r*.06,r*.03,0,TAU); c.fill(); } // 眼睛
+      c.strokeStyle='rgba(110,60,40,.55)'; c.lineWidth=1.1*sc; c.beginPath(); c.moveTo(H[0]+r*.04,H[1]+r*.12); c.quadraticCurveTo(H[0]+r*.1,H[1]+r*.38,H[0]-r*.04,H[1]+r*.44); c.stroke(); // 鼻子
+      c.strokeStyle='#a0504a'; c.lineWidth=1.3*sc; c.beginPath(); c.moveTo(H[0]-r*.22,H[1]+r*.66); c.quadraticCurveTo(H[0],H[1]+r*.74,H[0]+r*.22,H[1]+r*.66); c.stroke(); c.lineCap='butt'; // 嘴巴
+      c.fillStyle='rgba(230,120,110,.18)'; for(const e of [-1,1]){ c.beginPath(); c.ellipse(H[0]+e*r*.5,H[1]+r*.45,r*.16,r*.1,0,0,TAU); c.fill(); } }
+    else { c.fillStyle=hairC; c.beginPath(); c.moveTo(H[0]-r*.95,H[1]+r*.2); c.bezierCurveTo(H[0]-r*1.05,H[1]-r*1.25,H[0]+r*1.05,H[1]-r*1.25,H[0]+r*.95,H[1]+r*.2); c.quadraticCurveTo(H[0]+r*.6,H[1]+r*(hs===1?.9:.75),H[0],H[1]+r*(hs===1?.95:.8)); c.quadraticCurveTo(H[0]-r*.6,H[1]+r*(hs===1?.9:.75),H[0]-r*.95,H[1]+r*.2); c.fill();
+      if(hs===2) for(let i=0;i<9;i++){ const a=Math.PI*(1+i*.125); c.beginPath(); c.arc(H[0]+Math.cos(a)*r*.82,H[1]-r*.05+Math.sin(a)*r*.82,r*.24,0,TAU); c.fill(); }
+      if(hs===1){ c.beginPath(); c.ellipse(H[0],H[1]+r*1.15,r*.22,r*.55,0,0,TAU); c.fill(); c.fillStyle=shirt; c.fillRect(H[0]-r*.22,H[1]+r*.62,r*.44,r*.12); }
+      c.strokeStyle=hairH; c.lineWidth=1*sc; c.beginPath(); c.moveTo(H[0]-r*.3,H[1]-r*.7); c.quadraticCurveTo(H[0],H[1]-r*.2,H[0]+r*.1,H[1]+r*.5); c.moveTo(H[0]+r*.35,H[1]-r*.6); c.quadraticCurveTo(H[0]+r*.45,H[1],H[0]+r*.4,H[1]+r*.45); c.stroke(); }
+    c.fillStyle=shirt; c.beginPath(); c.moveTo(H[0]-r*.95,H[1]-r*.42); c.quadraticCurveTo(H[0],H[1]-r*(front?.72:.62),H[0]+r*.95,H[1]-r*.42); c.lineTo(H[0]+r*.93,H[1]-r*.24); c.quadraticCurveTo(H[0],H[1]-r*(front?.52:.42),H[0]-r*.93,H[1]-r*.24); c.closePath(); c.fill(); }}); // 運動頭帶
   const arm=(s,racket)=>{ const sh=J['sh'+s],el=J['elb'+s],hd=J['hand'+s];
-    parts.push({z:dz([0,0,(sh[2]+hd[2])/2])+(racket?1:0),f:()=>{ limb(sh,lerp3(sh,el,.45),13,12,shirt); limb(sh,el,10,8,skin); limb(lerp3(sh,el,0),lerp3(sh,el,.42),13,11,shirt); limb(el,hd,8,6.5,skin);
+    parts.push({z:dz([0,0,(sh[2]+hd[2])/2])+(racket?1:0),f:()=>{ mus(sh,el,10.5,11,8,skin,.42,skD); mus(lerp3(sh,el,0),lerp3(sh,el,.42),14.5,14.5,12.5,shirt,.4,shD); mus(el,hd,8.6,9.4,6,skin,.3,skD);
       if(racket&&st.pad){ const H=P(hd),E=P(el),a=Math.atan2(H[1]-E[1],H[0]-E[0]),PD=st.pad,fr=PD.face||'#e83a3a'; c.save(); c.translate(H[0],H[1]); c.rotate(a+Math.PI/2); c.scale(sc,sc);
         c.fillStyle=PD.grip||'#333'; rr(c,-2.6,-14,5.2,17,2); c.fill(); c.strokeStyle=fr; c.lineWidth=2.6; c.beginPath(); c.moveTo(-1.5,-14); c.lineTo(-7,-28); c.moveTo(1.5,-14); c.lineTo(7,-28); c.stroke(); // 握把＋拍喉
         c.save(); c.beginPath(); c.ellipse(0,-46,11,19,0,0,TAU); c.clip(); c.fillStyle='rgba(255,255,255,.12)'; c.fill(); c.strokeStyle='rgba(250,250,240,.75)'; c.lineWidth=.7; c.beginPath(); for(let i=-10;i<=10;i+=3.3){ c.moveTo(i,-66); c.lineTo(i,-26); } for(let j=-64;j<=-28;j+=3.6){ c.moveTo(-12,j); c.lineTo(12,j); } c.stroke(); c.restore();
         c.strokeStyle=fr; c.lineWidth=3; c.beginPath(); c.ellipse(0,-46,11,19,0,0,TAU); c.stroke(); c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=1; c.beginPath(); c.ellipse(0,-46,9.6,17.6,0,Math.PI*1.1,Math.PI*1.6); c.stroke(); c.restore(); }
-      const H=P(hd); c.fillStyle=skin; c.beginPath(); c.arc(H[0],H[1],4.2*sc,0,TAU); c.fill(); }}); };
+      const H=P(hd); c.fillStyle=skin; c.beginPath(); c.ellipse(H[0],H[1],4.5*sc,3.9*sc,0,0,TAU); c.fill(); c.fillStyle=skD; c.beginPath(); c.arc(H[0]+1.7*sc*m,H[1]-1.3*sc,1.9*sc,0,TAU); c.fill(); }}); };
   arm('R',true); arm('L',false);
   parts.sort((a,b)=>a.z-b.z).forEach(p=>p.f());
   if(st.label){ const H=P(J.head); c.font='900 17px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=4; c.strokeStyle='#14122b'; c.strokeText(st.label,H[0],H[1]-30*sc-8); c.fillStyle='#ffd23f'; c.fillText(st.label,H[0],H[1]-30*sc-8); } }
@@ -157,7 +192,8 @@ function create(env,opts){
   const {ctx:c}=env.canvas2d(W,H),si=clamp(opts.stage|0,0,LV-1),ST=STAGES[si],VEN=solo?ST.v:clamp(+OPT.court||0,0,VENUES.length-1),V=VENUES[VEN];
   SURF=V.clay?{rest:1.08,sp:.9}:V.grass?{rest:.86,sp:1.04}:{rest:1,sp:1};
   const LEN=OPT.len==='g6'?6:OPT.len==='g4'?4:2,TBAT=LEN>2?LEN:99; // 局數平手 LEN:LEN 時搶七
-  const vsAI=solo||(net&&net.count<2)||(dbl&&(net?net.count:two?2:1)<N),k=vsAI?ST.k:1,AI={spd:150+105*k,react:.4-.24*k,err:190-155*k,lat:130-95*k,miss:.15*(1-k)};
+  const EZ=solo?clamp(1-si/30,0,1):0; // 前 30 關的對手額外放水：跑得慢、常揮空、球比較會偏（只影響對手，不影響電腦隊友）
+  const vsAI=solo||(net&&net.count<2)||(dbl&&(net?net.count:two?2:1)<N),k=vsAI?ST.k:1,AI={ez:EZ,spd:150+105*k,react:.4-.24*k,err:190-155*k,lat:130-95*k,miss:.15*(1-k)};
   const ctrl=[]; for(let i=0;i<N;i++){ let cc='ai';
     if(net){ const h=HI(i); if(h>=0&&h<net.count) cc=i===me?'self':'net'; }
     else if(two){ if(!dbl) cc=i===0?'key0':'key1'; else if(coop) cc=i===0?'key0':i===2?'key1':'ai'; else cc=i===0?'key0':i===1?'key1':'ai'; }
@@ -211,7 +247,7 @@ function create(env,opts){
     if(phase==='serve'){ if(server===p.n&&introT<=0&&tossT<=0&&(aiServeT-=dt)<=0){ o.sw=true; aiServeT=9; } return o; }
     if(phase!=='play') return o;
     const coming=lastTeam>=0&&lastTeam!==p.team;
-    if(coming){ if((A.t-=dt)<=0||!A.pred){ A.t=.1; A.pred=predict(p); if(A.dec.n!==hits){ A.dec={n:hits,whiff:Math.random()<(ball.smash?.4-.3*k:.08-.07*k),off:Math.random()<AI.miss?(Math.random()-.5)*90:0,leave:willOut()&&Math.random()<.35+.65*k}; } } A.react-=dt; }
+    if(coming){ if((A.t-=dt)<=0||!A.pred){ A.t=.1; A.pred=predict(p); if(A.dec.n!==hits){ A.dec={n:hits,whiff:Math.random()<(p.team!==myTeam?AI.ez*.28:0)+(ball.smash?.4-.3*k:.08-.07*k),off:Math.random()<AI.miss?(Math.random()-.5)*90:0,leave:willOut()&&Math.random()<.35+.65*k}; } } A.react-=dt; }
     else { A.pred=null; A.react=AI.react; }
     // 站位：底線中央附近，越強越會往對手打過來的那邊預先偏；雙打發球方搭檔守網前，強的電腦接完發球也會上網
     const base=p.team?W-BACK+14:BACK-14,netPos=NETX-dir*125,mate=dbl?ps.find(q=>q.team===p.team&&q!==p):null;
@@ -242,12 +278,12 @@ function create(env,opts){
     v=v||aimShot(ball.x,ball.y,oppBack-dir*140,[24,32,40,50],dir,12,'top')||aimShot(ball.x,ball.y,NETX+dir*220,[36,48,60],dir)||{vx:dir*320,vy:-420,t:1};
     // 擊球品質 e：撲球、邊跑邊打、低球、放小球最容易失手；電腦照關卡
     const stretch=clamp(reachD(p,ball)/(REACH*(p.rm||1)),0,1),lowB=ball.y>GY-26?1:0,baseE={drop:.4,lob:.32,drive:.24,volley:.26,smash:.22}[type]||.25;
-    let e=baseE*(1+stretch*1.6+(p.moving?.45:0)+lowB*.6)*(ai?(1.45-1.05*k):1);
+    let e=baseE*(1+stretch*1.6+(p.moving?.45:0)+lowB*.6)*(ai?(1.45-1.05*k)+(p.team!==myTeam?.9*AI.ez:0):1);
     const gs=()=>((R()+R()+R())/1.5-1); v={vx:v.vx*(1+gs()*e*.4),vy:v.vy*(1+gs()*e*.4),t:v.t}; tw+=gs()*e*150;
     ball.vx=v.vx; ball.vy=v.vy; ball.vw=(tw-ball.w)/Math.max(.25,v.t||1); ball.bn=0; ball.net=0; ball.spin=type==='drive'||type==='lob'?'top':type==='drop'?'slice':''; ball.smash=type==='smash';
     lastHit=p.n; lastTeam=p.team; hits++; rally++; best=Math.max(best,rally);
     p.swType=type==='smash'?'over':type==='drop'?'slice':type==='volley'?'volley':((ball.w-p.w)*RW(p.team)>=0?'fh':'bh'); p.sw=SWD*.55;
-    if(type==='smash'){ sfx('boom'); shake=.2; pop('高壓扣殺！','#ff5d8f',ball.x,ball.w,GY-ball.y+40); } else { sfx(type==='drive'?'place':'pop'); const L={drop:'放小球',lob:'挑高球',volley:'截擊'}[type]; if(L) pop(L,'#7af0ff',ball.x,ball.w,GY-ball.y+40); }
+    if(type==='smash'){ sfx('racket'); sfx('boom'); shake=.2; pop('高壓扣殺！','#ff5d8f',ball.x,ball.w,GY-ball.y+40); } else { sfx('racket'); const L={drop:'放小球',lob:'挑高球',volley:'截擊'}[type]; if(L) pop(L,'#7af0ff',ball.x,ball.w,GY-ball.y+40); }
     fx.push({k:'ring',x:ball.x,w:ball.w,h:GY-ball.y,t:0,col:ball.smash?'#ff5d8f':'#fff'}); }
   function winGame(wt){ const brk=wt!==servT&&!tb; games[wt]++; pts[0]=pts[1]=0; gIdx++; const wasTb=tb; tb=false;
     if(wasTb){ gIdx=tbFirst+1; } // 搶七之後，由搶七第一位發球員的下一位發下一局
@@ -275,7 +311,7 @@ function create(env,opts){
   function autoT(p,dt){ const A=autoS[p.n],coming=lastTeam>=0&&lastTeam!==p.team;
     if(coming){ if((A.t-=dt)<=0||!A.pred){ A.t=.08; A.pred=predict(p); } if(A.pred&&mine(p,A.pred)) return [A.pred.x-p.face*8,A.pred.w]; } else A.pred=null;
     return [p.team?W-BACK+10:BACK-10,dbl?RW(p.team)*p.side*70:0]; }
-  function movePlayer(p,i,dt){ const sp=isAI(p.n)?AI.spd:240,cam=net?p.team:0,fx2=cam?-1:1; let mx,mw;
+  function movePlayer(p,i,dt){ const sp=isAI(p.n)?AI.spd*(p.team!==myTeam?1-.3*AI.ez:1):240,cam=net?p.team:0,fx2=cam?-1:1; let mx,mw;
     if(isAI(p.n)){ const d=Math.hypot(i.wx||0,i.ww||0); mx=d>4?(i.wx/d)*Math.min(1,d/28):0; mw=d>4?(i.ww/d)*Math.min(1,d/28):0; }
     else if(AUTO(p.n)){ const T=autoT(p,dt),dx=T[0]-p.x,dw=T[1]-p.w,d=Math.hypot(dx,dw); mx=d>4&&phase==='play'||d>4&&phase==='point'?(dx/d)*Math.min(1,d/24):0; mw=d>4&&(phase==='play'||phase==='point')?(dw/d)*Math.min(1,d/24):0; if(phase==='serve'){ mx=0; mw=(p.n===server?(i.dx||0)*fx2:0); } p.aim=(i.dx||0)*fx2; }
     else { mx=(i.dy||0)*fx2; mw=(i.dx||0)*fx2; const l=Math.hypot(mx,mw); if(l>1){ mx/=l; mw/=l; } p.aim=(i.dx||0)*fx2; }
@@ -293,7 +329,7 @@ function create(env,opts){
     let tw=-svSign*(26+R()*(CWS-56)); // 發到斜對角的發球區
     const gs=()=>((R()+R()+R())/1.5-1),e=(first?.6:.22)*(ai?(1.45-1.1*k):1); v={vx:v.vx*(1+gs()*e*.12),vy:v.vy+gs()*e*150,t:v.t}; tw+=gs()*e*110;
     ball.vx=v.vx; ball.vy=v.vy; ball.vw=(tw-ball.w)/Math.max(.3,v.t||1); ball.bn=0; ball.net=0; ball.smash=false; ball.spin=first?'':'top';
-    lastHit=p.n; lastTeam=p.team; hits=1; rally=1; phase='play'; sfx(first?'boom':'pop'); pop(first?'第一發球':'第二發球','#fff',ball.x,ball.w,240); fx.push({k:'ring',x:ball.x,w:ball.w,h:GY-ball.y,t:0,col:'#fff'}); }
+    lastHit=p.n; lastTeam=p.team; hits=1; rally=1; phase='play'; sfx('racket'); if(first) sfx('boom'); pop(first?'第一發球':'第二發球','#fff',ball.x,ball.w,240); fx.push({k:'ring',x:ball.x,w:ball.w,h:GY-ball.y,t:0,col:'#fff'}); }
   let lastIn='';
   function update(dt){ t+=dt; if(introT>0) introT-=dt; if(msgT>0) msgT-=dt; if(shake>0) shake-=dt; for(const f of fx) f.t+=dt; for(let i=fx.length-1;i>=0;i--) if(fx[i].t>1) fx.splice(i,1);
     if(client){ const i=keyIn('solo'),key=''+i.dx+i.dy; sendT-=dt; if(key!==lastIn||i.sw||i.dk||sendT<=0){ lastIn=key; sendT=1/20; net.send({i:[i.dx,i.dy,+i.sw,+i.dk]}); }

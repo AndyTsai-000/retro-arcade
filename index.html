@@ -298,7 +298,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=307; // 每次改版加一
+window.ARCADE_V=308; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge3d','dodge','soccer3d','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','boomcode','tug','truth','charades','party','gems','chair','tacit','piano','stroke','dragon','badminton','cook','fish','pickleball','tennis','pingpong','racket'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -339,12 +339,23 @@ function tone(f,d,type,v,slide,delay){
   g.gain.setValueAtTime(v||.06,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
   o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t+d+.02);
 }
+// 帶通濾波的雜音：做擊球「啪」「咚」的質感
+function bnoise(d,v,freq,q,delay){
+  if(!AC) return; const n=Math.floor(AC.sampleRate*d),buf=AC.createBuffer(1,n,AC.sampleRate),a=buf.getChannelData(0);
+  for(let i=0;i<n;i++) a[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);
+  const s=AC.createBufferSource(),bp=AC.createBiquadFilter(),g=AC.createGain(); bp.type='bandpass'; bp.frequency.value=freq; bp.Q.value=q||1; s.buffer=buf; g.gain.value=v||.2; s.connect(bp); bp.connect(g); g.connect(sfxBus); s.start(AC.currentTime+(delay||0));
+}
 function noise(d,v,delay){
   if(!AC) return; const n=Math.floor(AC.sampleRate*d),buf=AC.createBuffer(1,n,AC.sampleRate),a=buf.getChannelData(0);
   for(let i=0;i<n;i++) a[i]=(Math.random()*2-1)*(1-i/n);
   const s=AC.createBufferSource(),g=AC.createGain(); s.buffer=buf; g.gain.value=v||.12; s.connect(g); g.connect(sfxBus); s.start(AC.currentTime+(delay||0));
 }
 const SFX={
+  paddle(){bnoise(.05,.55,1500,1.6);tone(430,.06,'triangle',.11,.75);}, /* 匹克球拍：空心的「啵」 */
+  racket(){bnoise(.08,.7,850,1.1);tone(170,.07,'sine',.14,.6);bnoise(.03,.25,3200,2,.004);}, /* 網球拍：線床「砰」 */
+  shuttle(){bnoise(.045,.6,3600,1.4);tone(1100,.03,'triangle',.05,.6);}, /* 羽球：清脆「咻啪」 */
+  pong(){tone(1700,.035,'sine',.13,.8);bnoise(.02,.3,4200,2.5);}, /* 桌球拍：「叩」 */
+  tblb(){tone(1050,.03,'sine',.1,.7);bnoise(.015,.15,5000,3);}, /* 桌球彈在桌面 */
   click(){tone(660,.05,'square',.04);},
   land(){tone(300,.06,'square',.05,.6);},
   heal(){tone(700,.05,'square',.04,1.4);},
