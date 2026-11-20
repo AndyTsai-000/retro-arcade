@@ -111,8 +111,8 @@ function create(env,opts){
     if(!tg){ let bd=1e9; for(const m of minions) if(m.team!==s.team&&alive(m)){ const d=dist(m,s); if(d<=R0&&d<bd){ bd=d; tg=m; } } }
     if(!tg){ let bd=1e9; for(const h of heroes) if(h.team!==s.team&&alive(h)){ const d=dist(h,s); if(d<=R0&&d<bd){ bd=d; tg=h; } } }
     if(tg!==s.tgt) s.hits=0; s.tgt=tg;
-    if(tg&&s.cd<=0){ s.cd=s.k==='c'?1:1.1; let a; if(tg.k==='m') a=tg.max*(tg.mt==='cannon'?.22:.42); else { a=(s.k==='c'?240:175)+Tm/60*9; a*=1+Math.min(3,s.hits)*.3; s.hits++; }
-      homing(s,tg,a,{tru:tg.k==='m'},TEAMC[s.team],2.2,26); } }
+    if(tg&&s.cd<=0){ s.cd=s.k==='c'?1:1.1; let a; if(tg.k==='m') a=tg.max*(tg.mt==='cannon'?.22:.42); else { a=(s.k==='c'?240:175)+Tm/60*9; a*=1+Math.min(6,s.hits)*.35; s.hits++; if(s.hits>=2&&tg.me) floatMsg('防禦塔越打越痛！快離開塔下','#ff8a8a',1.2); }
+      const hot=tg.k==='h'?Math.min(6,s.hits-1):0; homing(s,tg,a,{tru:tg.k==='m'},hot>=2?(hot>=4?'#ff3a2a':'#ff9a3d'):TEAMC[s.team],2.2+hot*.35,26); } }
   /* ---------- 野怪 ---------- */
   function spawnMon(m){ const sc=1+Tm/60*.05; m.dead=false; m.hp=m.max=(m.big?4200:900)*sc; m.atk=(m.big?75:30)*sc; m.as=m.big?.7:.8; m.rng=m.big?3.2:2; m.arm=m.big?35:15; m.spd=4; m.x=m.home[0]; m.z=m.home[1]; m.tgt=null; m.ret=false; emit(['ring',m.x,m.z,m.big?6:3,m.big?(m.kind?'#8affc8':'#c08aff'):'#ffd06a',.8]); }
   function monTick(m,dt){ if(m.dead){ m.rsp-=dt; if(m.rsp<=0) spawnMon(m); return; } m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt;
