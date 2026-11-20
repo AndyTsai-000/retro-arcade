@@ -293,12 +293,14 @@ function tableArt(felt){
   g=c.createRadialGradient(W*.45,fh*.42,30,W*.45,fh*.42,W*.62); g.addColorStop(0,'rgba(255,255,255,.13)'); g.addColorStop(.55,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(0,0,0,.42)'); c.fillStyle=g; c.fillRect(fx,fy,fw,fh);
   for(let i=0;i<9000;i++){ c.fillStyle=rnd()<.5?'rgba(255,255,255,.05)':'rgba(0,0,0,.07)'; c.fillRect(fx+rnd()*fw,fy+rnd()*fh,1,1); }
   c.strokeStyle='rgba(255,255,255,.022)'; for(let k=-fh;k<fw;k+=4){ c.beginPath(); c.moveTo(fx+k,fy); c.lineTo(fx+k+fh,fy+fh); c.stroke(); }
-  c.font='900 54px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='rgba(255,255,255,.045)'; c.fillText('RUMMIKUB',W/2-30,fh/2+20);
-  c.lineWidth=1.5; c.strokeStyle='rgba(255,255,255,.04)'; c.beginPath(); c.ellipse(W/2-30,fh/2+20,190,62,0,0,7); c.stroke();
+  { const ex=W/2-30,ey=fh/2+20; c.lineWidth=2; c.strokeStyle='rgba(255,230,160,.07)'; c.beginPath(); c.ellipse(ex,ey,200,70,0,0,7); c.stroke(); c.beginPath(); c.ellipse(ex,ey,186,60,0,0,7); c.stroke();
+    c.fillStyle='rgba(255,230,160,.06)'; for(let k=0;k<4;k++){ const tx=ex-75+k*50; rr(c,tx-16,ey-24,32,44,6); c.fill(); } c.font='900 22px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='rgba(255,230,160,.08)'; c.fillText('1   2   3   4',ex,ey-2);
+    for(const sx of [-1,1]){ c.beginPath(); c.moveTo(ex+sx*150,ey); c.lineTo(ex+sx*138,ey-8); c.lineTo(ex+sx*126,ey); c.lineTo(ex+sx*138,ey+8); c.closePath(); c.fill(); } }
   c.restore();
   // 絨布邊的陰影與金色飾線
   c.save(); rr(c,fx,fy,fw,fh,14); c.clip(); c.shadowColor='rgba(0,0,0,.6)'; c.shadowBlur=14; c.lineWidth=10; c.strokeStyle='rgba(0,0,0,.5)'; rr(c,fx-5,fy-5,fw+10,fh+10,18); c.stroke(); c.restore();
   c.strokeStyle='rgba(222,184,96,.55)'; c.lineWidth=1.2; rr(c,fx+5,fy+5,fw-10,fh-10,10); c.stroke();
+  for(const [cx,cy] of [[fx+2,fy+2],[fx+fw-2,fy+2],[fx+2,fy+fh-2],[fx+fw-2,fy+fh-2]]){ const bg=c.createRadialGradient(cx-3,cy-3,1,cx,cy,11); bg.addColorStop(0,'#fff0b8'); bg.addColorStop(.5,'#d8a840'); bg.addColorStop(1,'#7a5410'); c.fillStyle=bg; c.beginPath(); c.arc(cx,cy,10,0,7); c.fill(); c.strokeStyle='rgba(60,40,10,.6)'; c.lineWidth=1; c.stroke(); } // 銅角
   // 木製牌架
   const ry=RACK_Y-12; g=c.createLinearGradient(0,ry,0,H); g.addColorStop(0,'#a06a36'); g.addColorStop(.12,'#8a5a2e'); g.addColorStop(1,'#5e3a1a'); c.fillStyle=g; c.fillRect(0,ry,W,H-ry);
   for(let i=0;i<40;i++){ const y=ry+rnd()*(H-ry); c.strokeStyle='rgba(0,0,0,'+(.05+rnd()*.07)+')'; c.beginPath(); c.moveTo(0,y); for(let x=0;x<=W;x+=50) c.lineTo(x,y+Math.sin(x*.03+i)*1.5); c.stroke(); }

@@ -329,10 +329,12 @@ function paw(c,x,y,s,col){ c.fillStyle=col; c.beginPath(); c.ellipse(x,y+s*.18,s
 // 貓罐頭（代替愛心）
 function can(c,x,y,s,on){ c.save(); c.translate(x,y); c.globalAlpha=on?1:.3; c.fillStyle='#c9ced8'; c.beginPath(); c.ellipse(0,-s*.32,s*.42,s*.12,0,0,7); c.fill(); c.fillStyle=on?'#ff8a5c':'#b8b0a8'; c.fillRect(-s*.42,-s*.32,s*.84,s*.6); c.fillStyle='#c9ced8'; c.beginPath(); c.ellipse(0,s*.28,s*.42,s*.12,0,0,7); c.fill(); c.fillStyle='#fff'; c.font='900 '+Math.round(s*.34)+'px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('🐟',0,0); c.restore(); }
 function rrect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
-function floor(c,w,y,h,t){ // 下方的木地板和毛線球
-  c.fillStyle='#c8956a'; c.fillRect(0,y,w,h); c.strokeStyle='rgba(90,55,30,.35)'; c.lineWidth=2; for(let x=-40;x<w;x+=90){ c.beginPath(); c.moveTo(x,y); c.lineTo(x+30,y+h); c.stroke(); }
-  c.fillStyle='rgba(255,255,255,.15)'; c.fillRect(0,y,w,4);
-  const ball=(x,yy,r,col)=>{ c.fillStyle=col; c.beginPath(); c.arc(x,yy,r,0,7); c.fill(); c.strokeStyle='rgba(255,255,255,.55)'; c.lineWidth=1.5; for(let i=-2;i<=2;i++){ c.beginPath(); c.ellipse(x,yy,r*.95,r*.35,.6+i*.35,0,7); c.stroke(); } };
+function floor(c,w,y,h,t,fc){ // 下方的木地板和毛線球
+  fc=fc||'#c8956a'; const fg=c.createLinearGradient(0,y,0,y+h); fg.addColorStop(0,mixc(fc,1.08)); fg.addColorStop(1,mixc(fc,.78)); c.fillStyle=fg; c.fillRect(0,y,w,h);
+  for(let x=-40,k=0;x<w;x+=90,k++){ c.fillStyle=k%2?'rgba(255,255,255,.06)':'rgba(0,0,0,.05)'; c.beginPath(); c.moveTo(x,y); c.lineTo(x+90,y); c.lineTo(x+120,y+h); c.lineTo(x+30,y+h); c.fill(); c.strokeStyle='rgba(90,55,30,.35)'; c.lineWidth=2; c.beginPath(); c.moveTo(x,y); c.lineTo(x+30,y+h); c.stroke(); c.strokeStyle='rgba(90,55,30,.14)'; c.lineWidth=1; for(let q=1;q<4;q++){ c.beginPath(); c.moveTo(x+q*22,y+4); c.quadraticCurveTo(x+q*22+10,y+h*.5,x+q*22+8+30*q/4,y+h); c.stroke(); } }
+  c.fillStyle='#fff8ec'; c.fillRect(0,y-10,w,10); c.fillStyle='rgba(0,0,0,.12)'; c.fillRect(0,y-1,w,3); c.fillStyle='rgba(0,0,0,.08)'; c.fillRect(0,y-10,w,1.5);
+  const ball=(x,yy,r,col)=>{ const bg=c.createRadialGradient(x-r*.35,yy-r*.35,1,x,yy,r); bg.addColorStop(0,mixc(col,1.3)); bg.addColorStop(1,mixc(col,.78)); c.fillStyle=bg; c.beginPath(); c.arc(x,yy,r,0,7); c.fill(); c.strokeStyle='rgba(255,255,255,.55)'; c.lineWidth=1.5; for(let i=-2;i<=2;i++){ c.beginPath(); c.ellipse(x,yy,r*.95,r*.35,.6+i*.35,0,7); c.stroke(); } };
+    c.fillStyle='rgba(0,0,0,.15)'; c.beginPath(); c.ellipse(72+Math.sin(t*.8)*6,y+h*.55+14,16,4,0,0,7); c.ellipse(w-78,y+h*.6+11,13,3.5,0,0,7); c.fill();
   ball(70+Math.sin(t*.8)*6,y+h*.55,16,'#ff7aa8'); ball(w-80,y+h*.6,13,'#7ac8ff'); c.strokeStyle='#ff7aa8'; c.lineWidth=2; c.beginPath(); c.moveTo(86+Math.sin(t*.8)*6,y+h*.6); c.quadraticCurveTo(150,y+h*.95,210,y+h*.7); c.stroke();
 }
 /* ---- 紀錄：每一關最快時間 ---- */
@@ -430,7 +432,10 @@ function create(env,opts){
 
   function draw(){
     // 薄荷色壁紙＋小圓點
-    c.fillStyle='#dff3ea'; c.fillRect(0,0,W,H); c.fillStyle='rgba(255,255,255,.55)'; for(let yy=10;yy<H;yy+=28) for(let xx=(yy/28%2)*14;xx<W;xx+=28){ c.beginPath(); c.arc(xx,yy,3,0,7); c.fill(); }
+    { const RM=ROOMS[Math.floor(lv/20)%ROOMS.length],wg=c.createLinearGradient(0,0,0,H); wg.addColorStop(0,RM.wall); wg.addColorStop(1,RM.wall2); c.fillStyle=wg; c.fillRect(0,0,W,H);
+      c.fillStyle='rgba(255,255,255,.22)'; for(let xx=0;xx<W;xx+=36) c.fillRect(xx,0,14,H); c.fillStyle='rgba(255,255,255,.5)'; for(let yy=18;yy<H;yy+=36) for(let xx=25;xx<W;xx+=36){ c.beginPath(); c.arc(xx,yy+((xx/36|0)%2)*18,2.2,0,7); c.fill(); }
+      const lg=c.createLinearGradient(0,0,W,H*.6); lg.addColorStop(0,'rgba(255,250,220,.35)'); lg.addColorStop(1,'rgba(255,250,220,0)'); c.fillStyle=lg; c.beginPath(); c.moveTo(0,0); c.lineTo(W*.55,0); c.lineTo(W*.15,H*.7); c.lineTo(0,H*.7); c.fill();
+      c.fillStyle='rgba(0,0,0,.08)'; c.fillRect(0,H-76-60,W,60); }
     c.textBaseline='middle'; c.textAlign='center';
     // 標題緞帶
     c.fillStyle='#ff8a8a'; c.beginPath(); c.moveTo(W/2-110,26); c.lineTo(W/2+110,26); c.lineTo(W/2+96,48); c.lineTo(W/2+110,70); c.lineTo(W/2-110,70); c.lineTo(W/2-96,48); c.closePath(); c.fill();
@@ -445,11 +450,13 @@ function create(env,opts){
     c.textAlign='center'; c.fillStyle='#6a8a7a'; c.font='700 13px '+TC; c.fillText('點一下蓋腳印，點兩下放貓，點貓可以拿掉',W/2,186);
     // 盤面：木框＋靠墊格子
     const sx=shake>0?Math.sin(shake*60)*6*shake/.35:0; c.save(); c.translate(sx,0);
-    c.fillStyle='#a8743f'; rrect(c,BX-10,BY-10,BS+20,BS+20,18); c.fill(); c.strokeStyle='rgba(70,40,20,.35)'; c.lineWidth=1.5; for(let i=0;i<6;i++){ c.beginPath(); c.moveTo(BX-6,BY-8+i*(BS+16)/6); c.quadraticCurveTo(BX+BS/2,BY-2+i*(BS+16)/6,BX+BS+6,BY-8+i*(BS+16)/6); c.stroke(); }
+    c.fillStyle='rgba(0,0,0,.22)'; rrect(c,BX-6,BY-2,BS+20,BS+20,18); c.fill(); { const fg2=c.createLinearGradient(0,BY-10,0,BY+BS+10); fg2.addColorStop(0,'#c48a50'); fg2.addColorStop(1,'#8a5a2e'); c.fillStyle=fg2; } rrect(c,BX-10,BY-10,BS+20,BS+20,18); c.fill(); c.strokeStyle='rgba(255,230,190,.5)'; c.lineWidth=2; rrect(c,BX-9,BY-9,BS+18,BS+18,17); c.stroke(); c.strokeStyle='rgba(70,40,20,.35)'; c.lineWidth=1.5; for(let i=0;i<6;i++){ c.beginPath(); c.moveTo(BX-6,BY-8+i*(BS+16)/6); c.quadraticCurveTo(BX+BS/2,BY-2+i*(BS+16)/6,BX+BS+6,BY-8+i*(BS+16)/6); c.stroke(); }
     const lit=new Set(); for(const g of glow){ for(let k=0;k<N*N;k++){ const [r,cc]=RC(k); if(g.cells?g.cells.includes(k):g.row!=null?r===g.row:cc===g.col) lit.add(k); } }
     const cs=BS/N,X=k=>BX+(k%N)*cs,Y=k=>BY+((k/N)|0)*cs;
     for(let k=0;k<N*N;k++){ const x=X(k),y=Y(k),col=regCol(P.reg[k]);
-      const g2=c.createLinearGradient(x,y,x,y+cs); g2.addColorStop(0,col); g2.addColorStop(1,mixc(col,.9)); c.fillStyle=g2; c.fillRect(x,y,cs,cs);
+      c.fillStyle=mixc(col,.8); c.fillRect(x,y,cs,cs); const g2=c.createRadialGradient(x+cs*.4,y+cs*.35,cs*.05,x+cs/2,y+cs/2,cs*.75); g2.addColorStop(0,mixc(col,1.12)); g2.addColorStop(.7,col); g2.addColorStop(1,mixc(col,.86)); c.fillStyle=g2; rrect(c,x+1.5,y+1.5,cs-3,cs-3,Math.min(10,cs*.14)); c.fill();
+      c.fillStyle='rgba(255,255,255,.35)'; c.fillRect(x+cs*.18,y+3,cs*.64,1.6); c.fillStyle='rgba(0,0,0,.08)'; c.fillRect(x+cs*.12,y+cs-4,cs*.76,2);
+      c.fillStyle='rgba(255,255,255,.12)'; for(let q=0;q<10;q++) c.fillRect(x+6+((k*31+q*17)%Math.max(1,cs-12)),y+6+((k*13+q*29)%Math.max(1,cs-12)),1.5,1.5);
       c.strokeStyle='rgba(255,255,255,.7)'; c.setLineDash([3,3]); c.lineWidth=1.2; c.strokeRect(x+4,y+4,cs-8,cs-8); c.setLineDash([]); // 縫線
       if(winT<0&&glow.length&&!lit.has(k)){ c.fillStyle='rgba(40,60,50,.22)'; c.fillRect(x,y,cs,cs); }
       if(lit.has(k)){ c.fillStyle='rgba(255,255,255,.28)'; c.fillRect(x,y,cs,cs); } }
@@ -470,9 +477,9 @@ function create(env,opts){
     c.restore();
     // 按鈕（木牌）
     for(const b of BTN){ const dis=ended||b.id==='hint'&&hints<=0||b.id==='undo'&&!hist.length,on=b.id==='auto'&&auto;
-      c.fillStyle=on?'#ff8a8a':dis?'#e8dccd':'#f5e6cf'; rrect(c,b.x,b.y,b.w,b.h,10); c.fill(); c.strokeStyle='#a8743f'; c.lineWidth=2.5; c.stroke();
+      c.fillStyle='rgba(120,80,40,.35)'; rrect(c,b.x,b.y+4,b.w,b.h,10); c.fill(); { const bg=c.createLinearGradient(0,b.y,0,b.y+b.h); const base=on?'#ff8a8a':dis?'#e8dccd':'#f5e6cf'; bg.addColorStop(0,mixc(base,1.08)); bg.addColorStop(1,mixc(base,.9)); c.fillStyle=bg; } rrect(c,b.x,b.y,b.w,b.h,10); c.fill(); c.strokeStyle='#a8743f'; c.lineWidth=2.5; c.stroke(); c.fillStyle='rgba(255,255,255,.45)'; rrect(c,b.x+6,b.y+3,b.w-12,4,2); c.fill();
       c.textAlign='center'; c.fillStyle=dis?'#b8a890':on?'#fff':'#6b4a2a'; c.font='900 17px '+TC; c.fillText(b.label+(b.id==='hint'?' '+hints:''),b.x+b.w/2,b.y+b.h/2+1); }
-    floor(c,W,H-76,76,t);
+    floor(c,W,H-76,76,t,ROOMS[Math.floor(lv/20)%ROOMS.length].floor);
     for(const f of fx){ c.globalAlpha=Math.max(0,Math.min(1,f.life)); c.fillStyle=f.col; c.fillRect(f.x-3,f.y-3,6,6); } c.globalAlpha=1;
     if(winT>=0){ const a=Math.min(1,winT*2.5); c.globalAlpha=a; c.textAlign='center'; c.font='900 38px '+TC; c.lineWidth=8; c.strokeStyle='#fff'; c.strokeText('每隻貓都找到位置了！',W/2,H-112); c.fillStyle='#ff6b6b'; c.fillText('每隻貓都找到位置了！',W/2,H-112); c.globalAlpha=1; }
   }

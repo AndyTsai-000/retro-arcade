@@ -70,7 +70,8 @@ function bgCanvas(mi){ const cv=document.createElement('canvas'),S=2; cv.width=W
 function paintMap(c,mi,t){ const B=buildMap(mi),M=B.M,r=rng(mi*131+7);
   const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,M.g[0]); g.addColorStop(1,M.g[1]); c.fillStyle=g; c.fillRect(0,0,W,H);
   // 地面紋理
-  for(let i=0;i<260;i++){ const x=r()*W,y=r()*H; if(B.segDist(x,y)<34) continue;
+  for(let i=0;i<46;i++){ const x=r()*W,y=r()*H,rad=40+r()*90,gg=c.createRadialGradient(x,y,0,x,y,rad),lt=r()<.5; gg.addColorStop(0,lt?'rgba(255,255,220,.12)':'rgba(0,30,10,.1)'); gg.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=gg; c.fillRect(x-rad,y-rad,rad*2,rad*2); }
+  for(let i=0;i<520;i++){ const x=r()*W,y=r()*H; if(B.segDist(x,y)<34) continue;
     if(M.deco==='snow'){ c.fillStyle='rgba(255,255,255,.7)'; c.beginPath(); c.arc(x,y,1+r()*2,0,7); c.fill(); }
     else if(M.deco==='night'){ c.fillStyle='rgba(255,255,255,'+(.2+r()*.5)+')'; c.fillRect(x,y,1.5,1.5); }
     else if(M.deco==='desert'){ c.fillStyle='rgba(180,120,60,.25)'; c.beginPath(); c.ellipse(x,y,3+r()*3,1.5,0,0,7); c.fill(); }
@@ -82,11 +83,12 @@ function paintMap(c,mi,t){ const B=buildMap(mi),M=B.M,r=rng(mi*131+7);
   if(M.deco==='snow') for(let i=0;i<5;i++){ const x=60+r()*(W-120),y=80+r()*(H-160); if(!free(x,y,60)) continue; c.fillStyle='#fff'; c.beginPath(); c.moveTo(x-40,y+20); c.lineTo(x,y-34); c.lineTo(x+40,y+20); c.fill(); c.fillStyle=['#ff9ec8','#ffe58a','#9ad6ff'][i%3]; c.beginPath(); c.moveTo(x-14,y-14); c.lineTo(x,y-34); c.lineTo(x+14,y-14); c.quadraticCurveTo(x+7,y-8,x,y-12); c.quadraticCurveTo(x-7,y-8,x-14,y-14); c.fill(); }
   // 道路：外框＋餅乾磚
   const road=(w2,col)=>{ c.strokeStyle=col; c.lineWidth=w2; c.lineCap='round'; c.lineJoin='round'; c.beginPath(); M.path.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y)); c.stroke(); };
-  road(52,'rgba(0,0,0,.12)'); road(48,M.road[1]); road(40,M.road[0]);
+  c.save(); c.translate(0,5); road(54,'rgba(0,0,0,.16)'); c.restore(); road(50,shade(M.road[1],.8)); road(46,M.road[1]); road(40,M.road[0]); road(26,'rgba(255,255,255,.12)');
+  for(let d=0;d<B.total;d+=9){ const [x,y]=B.posAt(d),a=r()*6.28,rd=r()*16; c.fillStyle=r()<.5?'rgba(255,255,255,.18)':'rgba(90,60,30,.14)'; c.beginPath(); c.ellipse(x+Math.cos(a)*rd,y+Math.sin(a)*rd,1.5+r()*2,1+r()*1.2,r()*3,0,7); c.fill(); }
   c.save(); c.setLineDash([10,14]); c.lineDashOffset=0; road(3,'rgba(255,255,255,.55)'); c.restore();
   for(let d=0;d<B.total;d+=22){ const [x,y]=B.posAt(d); c.fillStyle='rgba(0,0,0,.06)'; c.beginPath(); c.arc(x+Math.sin(d)*12,y+Math.cos(d*1.3)*12,2.2,0,7); c.fill(); }
   // 裝飾：棒棒糖、杯子蛋糕、樹、仙人掌…
-  for(let i=0;i<34;i++){ const x=20+r()*(W-40),y=70+r()*(H-80); if(!free(x,y,44)) continue; const s=.7+r()*.5,pick=r();
+  for(let i=0;i<34;i++){ const x=20+r()*(W-40),y=70+r()*(H-80); if(!free(x,y,44)) continue; const s=.7+r()*.5,pick=r(); c.fillStyle='rgba(0,0,0,.16)'; c.beginPath(); c.ellipse(x+3*s,y+1,14*s,5*s,0,0,7); c.fill();
     if(M.deco==='desert'){ if(pick<.5){ c.fillStyle='#5aa04a'; rr(c,x-5*s,y-34*s,10*s,34*s,5*s); c.fill(); rr(c,x-16*s,y-26*s,8*s,16*s,4*s); c.fill(); rr(c,x-16*s,y-14*s,14*s,6*s,3*s); c.fill(); } else { c.fillStyle='#d99a5a'; c.beginPath(); c.arc(x,y-10*s,12*s,0,7); c.fill(); c.fillStyle='#8a5a2a'; for(let k=0;k<5;k++){ c.beginPath(); c.arc(x-6*s+k*3*s,y-12*s+(k%2)*5*s,1.6*s,0,7); c.fill(); } } }
     else if(M.deco==='snow'){ c.fillStyle='#fff'; c.beginPath(); c.arc(x,y-8*s,10*s,0,7); c.fill(); c.beginPath(); c.arc(x,y-22*s,7*s,0,7); c.fill(); c.fillStyle='#14122b'; c.beginPath(); c.arc(x-2.5*s,y-23*s,1.2*s,0,7); c.arc(x+2.5*s,y-23*s,1.2*s,0,7); c.fill(); c.fillStyle='#ff8a3d'; c.beginPath(); c.moveTo(x,y-21*s); c.lineTo(x+6*s,y-20*s); c.lineTo(x,y-19*s); c.fill(); }
     else if(M.deco==='night'){ if(pick<.5) lolli(c,x,y,s*.9,['#ffd23f','#7af0ff','#ff7eb6'][i%3]); else { c.fillStyle='#ffe58a'; c.save(); c.translate(x,y-14*s); c.beginPath(); for(let k=0;k<10;k++){ const rad=k%2?5*s:12*s,a=k/10*6.28-Math.PI/2; c.lineTo(Math.cos(a)*rad,Math.sin(a)*rad); } c.closePath(); c.fill(); c.restore(); } }
@@ -217,7 +219,7 @@ function create(env,opts){
     for(const d of decals){ const a=Math.max(0,1-d.t/3); c.fillStyle='rgba(60,30,20,'+(.32*a)+')'; c.beginPath(); c.ellipse(d.x,d.y+4,d.r,d.r*.45,0,0,7); c.fill(); c.fillStyle='rgba(255,150,60,'+(.25*a)+')'; c.beginPath(); c.ellipse(d.x,d.y+4,d.r*.55,d.r*.25,0,0,7); c.fill(); } /* 爆炸焦痕 */
     // 空地：小餅乾
     for(const p of B.pads){ if(towerOn(p)) continue; const hv=hover&&dist(hover[0],hover[1],p.x,p.y)<26,on=menu&&menu.p===p; c.fillStyle='rgba(0,0,0,.15)'; c.beginPath(); c.ellipse(p.x,p.y+4,22,9,0,0,7); c.fill();
-      c.fillStyle=on?'#ffe58a':hv?'#f5d9a8':'#e8c690'; c.beginPath(); c.ellipse(p.x,p.y,21,10,0,0,7); c.fill(); c.strokeStyle=on?'#ff9a00':'#b8864a'; c.lineWidth=2; c.stroke();
+      c.fillStyle='#a8784a'; c.beginPath(); c.ellipse(p.x,p.y+3,21,10,0,0,7); c.fill(); { const pg=c.createLinearGradient(0,p.y-10,0,p.y+10); const base=on?'#ffe58a':hv?'#f5d9a8':'#e8c690'; pg.addColorStop(0,shade(base,1.15)); pg.addColorStop(1,shade(base,.88)); c.fillStyle=pg; } c.beginPath(); c.ellipse(p.x,p.y,21,10,0,0,7); c.fill(); c.strokeStyle=on?'#ff9a00':'#b8864a'; c.lineWidth=2; c.stroke(); c.strokeStyle='rgba(255,255,255,.5)'; c.lineWidth=1.5; c.beginPath(); c.ellipse(p.x,p.y,17,7,0,Math.PI*1.1,Math.PI*1.9); c.stroke();
       c.fillStyle='rgba(138,90,42,.6)'; c.font='900 14px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('+',p.x,p.y); }
     // 射程圈
     const showR=(x,y,r)=>{ c.fillStyle='rgba(255,255,255,.15)'; c.strokeStyle='rgba(255,255,255,.7)'; c.lineWidth=2; c.setLineDash([6,5]); c.beginPath(); c.arc(x,y,r,0,7); c.fill(); c.stroke(); c.setLineDash([]); };

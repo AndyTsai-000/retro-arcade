@@ -123,7 +123,7 @@ function drawTile(c,x,y,w,h,id,o){
   c.fillStyle='rgba(0,0,0,.32)'; rr(c,x+1.5,y+3,w,h+d,R); c.fill();
   c.fillStyle='#17673f'; rr(c,x,y+d,w,h,R); c.fill();
   c.fillStyle='#e3d7b8'; rr(c,x,y+d*.45,w,h,R); c.fill();
-  if(id<0){ const g=c.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'#3fae74'); g.addColorStop(1,'#1f7a4c'); c.fillStyle=g; rr(c,x,y,w,h,R); c.fill(); c.fillStyle='rgba(255,255,255,.2)'; c.fillRect(x+w*.15,y+h*.06,w*.7,Math.max(1,h*.03)); return; }
+  if(id<0){ const g=c.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'#3fae74'); g.addColorStop(1,'#1f7a4c'); c.fillStyle=g; rr(c,x,y,w,h,R); c.fill(); c.fillStyle='rgba(255,255,255,.2)'; c.fillRect(x+w*.15,y+h*.06,w*.7,Math.max(1,h*.03)); c.strokeStyle='rgba(10,60,35,.5)'; c.lineWidth=1; rr(c,x,y,w,h,R); c.stroke(); if(w>14){ c.strokeStyle='rgba(255,255,255,.14)'; rr(c,x+w*.18,y+h*.16,w*.64,h*.66,R*.6); c.stroke(); } return; }
   const g=c.createLinearGradient(x,y,x+w,y+h); g.addColorStop(0,'#ffffff'); g.addColorStop(.6,'#fbf6ea'); g.addColorStop(1,'#efe6cf'); c.fillStyle=g; rr(c,x,y,w,h,R); c.fill();
   c.strokeStyle=o.sel?'#ffd23f':o.last?'#ff5d4f':'rgba(150,130,90,.5)'; c.lineWidth=o.sel||o.last?2:1; c.stroke();
   c.fillStyle='rgba(255,255,255,.9)'; c.fillRect(x+R,y+1,w-R*2,Math.max(1,h*.02));
@@ -156,6 +156,8 @@ function tableArt(felt){
   c.restore();
   c.save(); rr(c,fx,fy,fw,fh,16); c.clip(); c.shadowColor='rgba(0,0,0,.65)'; c.shadowBlur=16; c.lineWidth=12; c.strokeStyle='rgba(0,0,0,.5)'; rr(c,fx-6,fy-6,fw+12,fh+12,20); c.stroke(); c.restore();
   c.strokeStyle='rgba(222,184,96,.5)'; c.lineWidth=1.2; rr(c,fx+6,fy+6,fw-12,fh-12,11); c.stroke();
+  for(const [cx,cy] of [[fx+2,fy+2],[fx+fw-2,fy+2],[fx+2,fy+fh-2],[fx+fw-2,fy+fh-2]]){ const bg=c.createRadialGradient(cx-3,cy-3,1,cx,cy,11); bg.addColorStop(0,'#fff0b8'); bg.addColorStop(.5,'#d8a840'); bg.addColorStop(1,'#7a5410'); c.fillStyle=bg; c.beginPath(); c.arc(cx,cy,10,0,7); c.fill(); c.strokeStyle='rgba(60,40,10,.6)'; c.lineWidth=1; c.stroke(); } // 銅角
+  { c.save(); c.translate(W/2,H/2); c.strokeStyle='rgba(255,230,160,.05)'; c.lineWidth=2; for(const r of [210,196]){ c.beginPath(); c.arc(0,0,r,0,7); c.stroke(); } c.fillStyle='rgba(255,230,160,.045)'; for(let k=0;k<8;k++){ c.rotate(Math.PI/4); c.beginPath(); c.moveTo(0,-186); c.lineTo(10,-166); c.lineTo(0,-146); c.lineTo(-10,-166); c.closePath(); c.fill(); } c.restore(); } // 絨布中央的圓形花紋
   // 中央的骰盤
   c.save(); c.translate(W/2,240); g=c.createLinearGradient(0,-58,0,58); g.addColorStop(0,'rgba(20,14,8,.55)'); g.addColorStop(1,'rgba(20,14,8,.35)'); c.fillStyle=g; rr(c,-96,-42,192,84,16); c.fill();
   c.strokeStyle='rgba(222,184,96,.55)'; c.lineWidth=1.5; rr(c,-96,-42,192,84,16); c.stroke(); rr(c,-90,-36,180,72,12); c.strokeStyle='rgba(222,184,96,.22)'; c.stroke(); c.restore();
