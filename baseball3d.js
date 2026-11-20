@@ -97,13 +97,13 @@ function make(T,o){ const {W,H,ZX,ZY,ZW,ZH,L,fence,FPOS,BASE,kfBK}=o,PI=Math.PI,
     else { P.shL=[-.2,0,1.5+s*.55]; P.elL=[-.3,0,0]; P.shR=[-.2,0,-1.5+s*.55]; P.elR=[-.3,0,0]; if(big){ P.hipL=[-.08-.75*Math.max(0,-s),0,.1]; P.knL=[.12+.8*Math.max(0,-s),0,0]; } }
     H3.pose(E.h.J,P); E.g.rotation.y=yaw; E.g.visible=true; }
   let CH=[];
-  let teamKey='',FL=[],RN=[],BT=null,bat=null,pball=null,ghosts=[];
+  let teamKey='',FL=[],RN=[],BT=null,bat=null,pball=null,ghosts=[]; const MIR=new T.Group(); scene.add(MIR);
   function teamsFor(fc,bc){ const k=fc+'|'+bc; if(k===teamKey) return; teamKey=k;
-    for(const e of FL.concat(RN,BT?[BT]:[])) scene.remove(e.g);
+    for(const e of FL.concat(RN)) scene.remove(e.g); if(BT) MIR.remove(BT.g);
     for(const e of CH) scene.remove(e.g); CH=CHS.map((q,i)=>mkCheer(bc,q,i));
-    FL=FPOS.map((p,i)=>mkPlayer(fc,i,'fld')); RN=[0,1,2,3].map(i=>mkPlayer(bc,i+2,'run')); BT=mkPlayer(bc,5,'bat');
+    FL=FPOS.map((p,i)=>mkPlayer(fc,i,'fld')); RN=[0,1,2,3].map(i=>mkPlayer(bc,i+2,'run')); BT=mkPlayer(bc,5,'bat'); scene.remove(BT.g); MIR.add(BT.g); BT.g.traverse(m=>{ if(m.isMesh&&m.material&&m.material.map&&m.geometry&&m.geometry.type==='PlaneGeometry') BT.numMap=m.material.map; });
     pball=add(new T.SphereGeometry(.045,10,8),ph('#ffffff',30),0,-.08,.06,FL[0].h.J.hdR);
-    if(!bat){ const bg=new T.LatheGeometry([[.001,0],[.024,0],[.024,.012],[.012,.03],[.012,.42],[.017,.56],[.032,.72],[.034,.84],[.03,.862],[.001,.868]].map(q=>new T.Vector2(q[0],q[1])),14); const bm=ph('#d8b07a',70); bm.side=T.DoubleSide; bat=add(bg,bm,0,0,0); ghosts=[.28,.16].map(a=>{ const m=new T.Mesh(bg,new T.MeshBasicMaterial({color:0xfff2d0,transparent:true,opacity:a,depthWrite:false,side:T.DoubleSide})); m.visible=false; scene.add(m); return m; }); } }
+    if(!bat){ const bg=new T.LatheGeometry([[.001,0],[.024,0],[.024,.012],[.012,.03],[.012,.42],[.017,.56],[.032,.72],[.034,.84],[.03,.862],[.001,.868]].map(q=>new T.Vector2(q[0],q[1])),14); const bm=ph('#d8b07a',70); bm.side=T.DoubleSide; bat=add(bg,bm,0,0,0); scene.remove(bat); MIR.add(bat); ghosts=[.28,.16].map(a=>{ const m=new T.Mesh(bg,new T.MeshBasicMaterial({color:0xfff2d0,transparent:true,opacity:a,depthWrite:false,side:T.DoubleSide})); m.visible=false; MIR.add(m); return m; }); } }
   const ball=add(new T.SphereGeometry(.05,16,12),ph('#ffffff',40,{emissive:0x555555}),0,1,0); const bshadow=add(new T.CircleGeometry(.06,16),new T.MeshBasicMaterial({color:0,transparent:true,opacity:.3,depthWrite:false}),0,.01,0); bshadow.rotation.x=-PI/2; bshadow.castShadow=false;
   const ss=x=>x*x*(3-2*x),lerp=(a,b,k)=>a+(b-a)*k,cl=(v,a,b)=>v<a?a:v>b?b:v;
   function frames(F,p){ let i=0; while(i<F.length-2&&p>F[i+1][0]) i++; const A=F[i],B=F[i+1],k=ss(cl((p-A[0])/((B[0]-A[0])||1),0,1)); return [A[1],B[1],k]; }
@@ -131,45 +131,47 @@ function make(T,o){ const {W,H,ZX,ZY,ZW,ZH,L,fence,FPOS,BASE,kfBK}=o,PI=Math.PI,
   const BXP=-1.12,BZP=.05;
   // 打擊分解動作（x 朝本壘板、z 朝捕手、-z 朝投手）：站穩→抬前腳蓄力→踏步、髖先轉→轉肩、手帶棒→擊球點雙臂伸直→收棒到肩後
   // pv 骨盆位置、py 骨盆轉、sy 上身再多轉、lean 前傾；h 下面那隻手的位置；L／R 前後腳踝，th 腳尖方向，pt 腳跟抬起
-  const SWF=[[-1,{pv:[0,.84,.06],py:0,sy:-.2,lean:.34,h:[.12,1.4,.38],L:[0,.078,-.34],Lt:1.72,Lp:0,R:[0,.078,.36],Rt:1.42,Rp:0}],
-    [0,{pv:[-.01,.86,.14],py:-.2,sy:-.42,lean:.32,h:[.08,1.41,.42],L:[.0,.17,-.44],Lt:1.6,Lp:-.2,R:[0,.078,.36],Rt:1.42,Rp:0}],
-    [.16,{pv:[.01,.81,-.03],py:.42,sy:-.14,lean:.24,h:[.27,1.08,.22],L:[-.02,.078,-.64],Lt:1.95,Lp:0,R:[0,.085,.36],Rt:1.6,Rp:.12}],
-    [.32,{pv:[.04,.81,-.14],py:.92,sy:.34,lean:.22,h:[.62,.86,-.13],L:[-.02,.078,-.64],Lt:2.05,Lp:0,R:[-.02,.15,.3],Rt:2.35,Rp:.72}],
-    [.5,{pv:[.05,.83,-.17],py:1.2,sy:.62,lean:.16,h:[.5,1.12,-.5],L:[-.02,.078,-.64],Lt:2.15,Lp:0,R:[-.03,.17,.25],Rt:2.6,Rp:.85}],
-    [.75,{pv:[.04,.86,-.18],py:1.38,sy:.78,lean:.08,h:[.13,1.46,-.52],L:[-.02,.078,-.64],Lt:2.2,Lp:0,R:[-.03,.18,.2],Rt:2.75,Rp:.92}],
-    [1,{pv:[.03,.885,-.17],py:1.46,sy:.82,lean:.04,h:[-.2,1.5,-.24],L:[-.02,.078,-.64],Lt:2.2,Lp:0,R:[-.03,.18,.18],Rt:2.8,Rp:.92}]];
+  // 真實打擊：後腳原地不動，只轉腳尖、抬腳跟；前腳小抬腿再往投手方向踏一小步、擊球時撐直；髖先轉、肩膀跟上、最後收棒到前肩
+  const SWF=[[-1,{pv:[0,.87,.04],py:-.05,sy:-.16,lean:.3,h:[.1,1.36,.31],L:[0,.078,-.33],Lt:1.68,Lp:0,R:[0,.078,.35],Rt:1.5,Rp:0}],
+    [0,{pv:[-.01,.865,.1],py:-.2,sy:-.36,lean:.3,h:[.06,1.38,.38],L:[.02,.15,-.42],Lt:1.62,Lp:-.25,R:[0,.078,.35],Rt:1.5,Rp:0}],
+    [.16,{pv:[.01,.865,-.02],py:.4,sy:-.22,lean:.27,h:[.24,1.16,.26],L:[0,.078,-.6],Lt:1.85,Lp:0,R:[0,.078,.35],Rt:1.72,Rp:.22}],
+    [.32,{pv:[.03,.895,-.07],py:1.0,sy:.3,lean:.22,h:[.6,.88,-.12],L:[0,.078,-.6],Lt:1.95,Lp:0,R:[-.01,.1,.36],Rt:2.35,Rp:.62}],
+    [.5,{pv:[.04,.905,-.09],py:1.28,sy:.58,lean:.16,h:[.5,1.12,-.5],L:[0,.078,-.6],Lt:2.0,Lp:0,R:[-.02,.12,.34],Rt:2.6,Rp:.82}],
+    [.75,{pv:[.04,.91,-.1],py:1.42,sy:.76,lean:.1,h:[.12,1.46,-.5],L:[0,.078,-.6],Lt:2.05,Lp:0,R:[-.02,.13,.32],Rt:2.75,Rp:.95}],
+    [1,{pv:[.03,.915,-.1],py:1.48,sy:.82,lean:.06,h:[-.2,1.5,-.24],L:[0,.078,-.6],Lt:2.05,Lp:0,R:[-.02,.13,.31],Rt:2.8,Rp:1.0}]];
   const swAt=p=>{ const [A,B,k]=frames(SWF,p),o2={}; for(const n in A) o2[n]=Array.isArray(A[n])?lp3(A[n],B[n],k):lerp(A[n],B[n],k); return o2; };
   const batDirAt=(p,wag,cy)=>{ const J0=kfBK(p),a=J0.a+wag,e=J0.e+(p>.2&&p<.45?-cy*.25:0); return new V(Math.cos(e)*Math.cos(a),Math.sin(e),-Math.cos(e)*Math.sin(a)).normalize(); };
   const footQ=(th,pt)=>new T.Quaternion().setFromEuler(new T.Euler(pt,th,0,'YXZ'));
-  function batterPose(E,p,cy,t){ const F=swAt(p),J=E.h.J,breathe=p<=-.99?Math.sin(t*2.2)*.012:0,wag=p<=-.99?Math.sin(t*2.2)*.14:0;
+  function batterPose(E,p,cy,t,lefty){ MIR.scale.x=1; MIR.updateMatrixWorld(true); const F=swAt(p),J=E.h.J,breathe=p<=-.99?Math.sin(t*2.2)*.012:0,wag=p<=-.99?Math.sin(t*2.2)*.14:0;
     H3.pose(J,{spine:[F.lean,F.sy,0],pelvis:[0,F.py,0]}); J.pelvis.position.set(-F.pv[2],F.pv[1]+breathe,F.pv[0]);
     const tv=F.py+F.sy; J.neck.rotation.set(.08,cl(PI/2*.9-tv,-1.1,1.5),0); J.head.rotation.x=.1;
     E.g.position.set(BXP,0,BZP); E.g.rotation.y=PI/2; E.g.scale.setScalar(1); E.g.visible=true; E.g.updateMatrixWorld(true);
     const at=(q,dy)=>new V(BXP+q[0],q[1]+(dy||0),BZP+q[2]);
-    H3.ikLeg(T,J,'L',at(F.L),new V(Math.sin(F.Lt),0,Math.cos(F.Lt)),footQ(F.Lt,F.Lp)); H3.ikLeg(T,J,'R',at(F.R),new V(Math.sin(F.Rt)*1,-.1,Math.cos(F.Rt)),footQ(F.Rt,F.Rp));
+    const kL=F.Lt-.6,kR=F.Rt+.55; /* 膝蓋稍微往內收（運動員預備姿勢），不要 O 型腿 */ H3.ikLeg(T,J,'L',at(F.L),new V(Math.sin(kL),0,Math.cos(kL)),footQ(F.Lt,F.Lp)); H3.ikLeg(T,J,'R',at(F.R),new V(Math.sin(kR),-.1,Math.cos(kR)),footQ(F.Rt,F.Rp));
     const w=p>0&&p<.6?Math.sin(p/.6*PI):0,hd=F.h.slice(); hd[1]+=cy*ZH3*w+breathe; const d=batDirAt(p,wag,cy),K=at(hd);
     H3.ik(T,J,'L',K.clone().addScaledVector(d,.02),new V(.1,-1,-.35)); J.hdL.getWorldPosition(tmpV); const A=tmpV.clone(); H3.ik(T,J,'R',A.clone().addScaledVector(d,.1),new V(.05,-1,.55)); J.hdL.rotation.set(0,0,0);
     bat.visible=true; bat.position.copy(A).addScaledVector(d,-.1); bat.quaternion.setFromUnitVectors(new V(0,1,0),d);
-    ghosts.forEach((g,i)=>{ const pq=p-(i+1)*.05; g.visible=p>.1&&p<.62; if(!g.visible) return; const Fq=swAt(pq),dq=batDirAt(pq,0,cy),hq=Fq.h.slice(); hq[1]+=cy*ZH3*Math.sin(Math.max(0,pq)/.6*PI); g.position.copy(at(hq)).addScaledVector(dq,-.08); g.quaternion.setFromUnitVectors(new V(0,1,0),dq); }); }
+    ghosts.forEach((g,i)=>{ const pq=p-(i+1)*.05; g.visible=p>.1&&p<.62; if(!g.visible) return; const Fq=swAt(pq),dq=batDirAt(pq,0,cy),hq=Fq.h.slice(); hq[1]+=cy*ZH3*Math.sin(Math.max(0,pq)/.6*PI); g.position.copy(at(hq)).addScaledVector(dq,-.08); g.quaternion.setFromUnitVectors(new V(0,1,0),dq); });
+    MIR.scale.x=lefty?-1:1; MIR.updateMatrixWorld(true); if(E.numMap){ E.numMap.repeat.x=lefty?-1:1; E.numMap.offset.x=lefty?1:0; } }
   /* 鏡頭 */
-  const cam=new T.PerspectiveCamera(27,W/H,.1,900),CZ=5,CY=1.2,tp=new V();
+  const cam=new T.PerspectiveCamera(27,W/H,.1,900),CZ=5,CY=1.2,CX=.55,tp=new V(); // 鏡頭稍微偏一壘側，右打者看得到正面
   const proj=(x,y,z)=>{ tp.set(x,y,z).project(cam); return [(tp.x+1)/2*W,(1-tp.y)/2*H]; };
-  function pitchCam(){ // 校正：好球帶寬度對到 ZW、中心對到 ZY
-    let fov=27,ly=CY-.3; for(let it=0;it<8;it++){ cam.fov=fov; cam.position.set(0,CY,CZ); cam.lookAt(0,ly,-20); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
-      const a=proj(-ZW3,ZC,0),b=proj(ZW3,ZC,0),c0=proj(0,ZC,0); const ww=b[0]-a[0]; fov=2*Math.atan(Math.tan(fov*PI/360)*ww/(ZW*2))*180/PI; ly-=(c0[1]-ZY)/25; } }
-  pitchCam(); const pcPos=cam.position.clone(),pcFov=cam.fov,pcQ=cam.quaternion.clone();
+  function pitchCam(CX){ // 校正：好球帶寬度對到 ZW、中心對到 ZX／ZY
+    let fov=27,ly=CY-.3,lx=CX; for(let it=0;it<10;it++){ cam.fov=fov; cam.position.set(CX,CY,CZ); cam.lookAt(lx,ly,-20); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+      const a=proj(-ZW3,ZC,0),b=proj(ZW3,ZC,0),c0=proj(0,ZC,0); const ww=b[0]-a[0]; fov=2*Math.atan(Math.tan(fov*PI/360)*ww/(ZW*2))*180/PI; ly-=(c0[1]-ZY)/25; lx+=(c0[0]-ZX)/25; } }
+  const PC=[CX,-CX].map(x=>{ pitchCam(x); return {pos:cam.position.clone(),fov:cam.fov,q:cam.quaternion.clone()}; }); // [右打用, 左打用]
   let lastT=null,view='pitch',fLook=new V(0,0,-50),fPos=new V(0,46,30),hid=new V(0,-50,0);
   function hideAll(){ for(const e of FL.concat(RN,CH)) e.g.visible=false; for(const g of ghosts) g.visible=false; if(BT) BT.g.visible=false; if(bat) bat.visible=false; }
   return {canvas:cv,
     toScreen:(x,y,z)=>proj(x,y,z),
     // 投打畫面：pp 投手動作、bp 揮棒、pit 這一球、cy 打者瞄準高度
     pitch(st){ const {t,fc,bc,pp,bp,cy,pit,showBall,cheer}=st; board(st.board); const dt=lastT==null?.016:cl(t-lastT,0,.1); lastT=t; teamsFor(fc,bc); hideAll(); view='pitch';
-      cam.position.copy(pcPos); cam.quaternion.copy(pcQ); cam.fov=pcFov; cam.updateProjectionMatrix(); sun.target.position.set(0,0,-10); sun.position.set(night?5:-20,night?60:sunset?22:50,night?25:28);
+      const pc=PC[st.lefty?1:0]; cam.position.copy(pc.pos); cam.quaternion.copy(pc.q); cam.fov=pc.fov; cam.updateProjectionMatrix(); sun.target.position.set(0,0,-10); sun.position.set(night?5:-20,night?60:sunset?22:50,night?25:28);
       if(st.cam){ cam.position.set(...st.cam[0]); cam.lookAt(...st.cam[1]); cam.fov=st.cam[2]||30; cam.updateProjectionMatrix(); } /* 測試用：換個角度看 */
       crowdT.offset.y=cheer?Math.abs(Math.sin(t*9))*.012:0;
       pitcherPose(FL[0],pp,dt); pball.visible=pp<.78;
       for(let i=2;i<9;i++){ const q=FPOS[i]; place(FL[i],q[0]*FT,-q[1]*FT,Math.atan2(0-q[0]*FT,0+q[1]*FT),poseOf(pp>.6&&pp<1||pit?'ready':'stand',t,i),dt); }
-      batterPose(BT,bp,cy||0,t);
+      batterPose(BT,bp,cy||0,t,!!st.lefty);
       for(const E of CH){ E.g.position.set(E.q.at[0],0,E.q.at[1]); dance(E,t,cheer,E.q.at[0]<0?.35:-.35); }
       // 球：投手出手後才離手，飛到好球帶的目標位置（含變化球的位移）
       let bs=null; ball.visible=false; bshadow.visible=false;

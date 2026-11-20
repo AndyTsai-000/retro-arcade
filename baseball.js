@@ -116,8 +116,8 @@ function kf(frames,p){
 }
 // 打者（右打，從捕手後面看）：p<0 準備（-1 站好、0 跨步完成），0~1 揮棒（.32 擊球點）
 const BK=[
-  [-1,{hip:[-1,-45],sh:[2,-73],head:[7,-86],fB:[-17,0],fF:[14,0],h:[-9,-75],a:-2.25,e:.95,tw:0}],
-  [0,{hip:[-4,-46],sh:[-1,-74],head:[5,-86],fB:[-17,0],fF:[9,-8],h:[-14,-77],a:-2.4,e:1.0,tw:-.2}],
+  [-1,{hip:[-1,-45],sh:[2,-73],head:[7,-86],fB:[-17,0],fF:[14,0],h:[-9,-75],a:-2.3,e:.74,tw:0}],
+  [0,{hip:[-4,-46],sh:[-1,-74],head:[5,-86],fB:[-17,0],fF:[9,-8],h:[-14,-77],a:-2.45,e:.8,tw:-.2}],
   [.16,{hip:[1,-44],sh:[3,-72],head:[6,-85],fB:[-17,0],fF:[21,0],h:[-6,-68],a:-2.85,e:.3,tw:.2}],
   [.32,{hip:[5,-44],sh:[7,-71],head:[8,-84],fB:[-15,-3],fF:[22,0],h:[13,-61],a:.05,e:-.1,tw:.6}],
   [.5,{hip:[6,-45],sh:[8,-72],head:[8,-85],fB:[-12,-6],fF:[22,0],h:[19,-66],a:1.3,e:.15,tw:.9}],
@@ -261,6 +261,7 @@ function create(env,opts){
       swung=go?{dt:gauss()*(.075-.035*lv)/b.con,up:rnd()<.3+lv*.25?1:0,at:p.T}:null; }
   }
   function dOutBy(txt){ dOut++; sfx('bump'); banner(txt+'　剩 '+(DOUTS-dOut)+' 球',1.3); endBat(); }
+  const LEFTY=[1,3,6],lefty=()=>LEFTY.includes(S.ord[S.half]%9); // 每隊第 2、4、7 棒是左打
   function resolve(sw){ // 這一球的結果：時機準不準＋對方投的位置和球種，決定擊球品質
     const p=S.pit,b=batter(),inZ=Math.abs(p.ax)<=1&&Math.abs(p.ay)<=1;
     if(DERBY&&!sw){ banner('沒揮棒（不算出局）',.8); nextPitch(.8); return; }
@@ -269,7 +270,7 @@ function create(env,opts){
     const locP=Math.max(0,Math.min(edge,1)-.45)*.3+Math.max(0,edge-1)*.85,brk=Math.hypot(q0.bx,q0.by)*.07;
     const q=1-Math.abs(sw.dt)/WIN*.75-locP-brk+(b.con-1)*.25+gauss()*.04+(DERBY?.05:0);
     if(Math.abs(sw.dt)>WIN||q<=.05){ if(DERBY){ dOutBy('揮棒落空'); return; } strike('揮棒落空！',true); return; }
-    let sa=sw.dt/WIN*36+gauss()*8;
+    let sa=sw.dt/WIN*36+gauss()*8; if(lefty()) sa=-sa; // 左打拉打方向相反（往右外野）
     if(q>.7){ const gaps=[-40,-16,16,40],g=gaps.reduce((a,c)=>Math.abs(c-sa)<Math.abs(a-sa)?c:a); sa+=(g-sa)*Math.min(1,(q-.7)/.3)*.6; } // 打得好，比較容易打到空檔
     let la,evo;
     if(sw.up){ if(q>=.5){ la=24+(.8-Math.min(q,.8))*60+gauss()*3; evo=60+56*q*b.pow; } else { la=46+rnd()*20; evo=55+40*q; } } // ↑：高飛球，打越準飛越遠
@@ -518,7 +519,7 @@ function create(env,opts){
     if(S.phase==='sel') swDone=false;
     let bp=-1; if(S.swing>0){ const e=SW-S.swing; bp=e<.06?e/.06*.32:.32+(e-.06)/(SW-.06)*.68; swDone=true; } else if(swDone) bp=1; else if(p&&S.phase==='pitch') bp=-1+clamp(u/.6,0,1);
     if(hitU>=0&&S.swing<=0) bp=1; /* 擊中後：收棒姿勢 */
-    let b3=null; if(G3){ b3=G3.pitch({t,fc,bc,pp,bp,cy,pit:p?{u,ax:p.ax,ay:p.ay,bx:PITCH[p.type].bx,by:PITCH[p.type].by}:null,showBall:!!p&&S.phase==='pitch'&&hitU<0,cheer:cheerT>0,board:{n:N,line:S.line,sc:S.sc,inn:S.inn,half:S.half,cols,names:tname}}); ctx.drawImage(G3.canvas,0,0,W,H); }
+    let b3=null; if(G3){ b3=G3.pitch({t,fc,bc,pp,bp,cy,lefty:lefty(),pit:p?{u,ax:p.ax,ay:p.ay,bx:PITCH[p.type].bx,by:PITCH[p.type].by}:null,showBall:!!p&&S.phase==='pitch'&&hitU<0,cheer:cheerT>0,board:{n:N,line:S.line,sc:S.sc,inn:S.inn,half:S.half,cols,names:tname}}); ctx.drawImage(G3.canvas,0,0,W,H); }
     else { stadium(ctx,L,t); fig(ctx,W/2,153,.42,1,kf(PK,pp),fc,{front:1,glove:'F',ball:pp<.78?'B':null}); }
     // 好球帶
     ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.lineWidth=2; ctx.strokeRect(ZX-ZW,ZY-ZH,ZW*2,ZH*2); ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1;
@@ -529,10 +530,10 @@ function create(env,opts){
     if(showPit){ ctx.fillStyle='rgba(61,219,217,.12)'; for(let i=-2;i<=2;i++) for(let j=-2;j<=2;j++){ ctx.beginPath(); ctx.arc(ZX+i*.7*ZW,ZY-j*.7*ZH,2.5,0,7); ctx.fill(); }
       const inZ=Math.abs(tx)<=1&&Math.abs(ty)<=1; ctx.font='700 10px '+TC; ctx.textAlign='center'; ctx.fillStyle=inZ?'#5fff7a':'#ff9d9d'; ctx.fillText(inZ?'好球帶':'好球帶外',ZX,ZY+ZH+12);
       const x=ZX+tx*ZW,y=ZY-ty*ZH; ctx.strokeStyle='#3ddbd9'; ctx.lineWidth=2; ctx.strokeRect(x-7,y-7,14,14); ctx.beginPath(); ctx.moveTo(x-11,y); ctx.lineTo(x+11,y); ctx.moveTo(x,y-11); ctx.lineTo(x,y+11); ctx.stroke();
-      ctx.fillStyle='rgba(11,10,28,.8)'; ctx.fillRect(W-118,118,112,PITCH.length*15+22); ctx.textAlign='left'; ctx.textBaseline='middle';
-      PITCH.forEach((q,i)=>{ ctx.font=(i===ptype?'900 ':'700 ')+'11px '+TC; ctx.fillStyle=i===ptype?'#ffd23f':'#aaa4d8'; ctx.fillText((i===ptype?'▶ ':'　')+q.name,W-112,128+i*15); });
+      const MX=lefty()?6:W-118; /* 左打站右邊，選單移到左邊才不會擋到打者 */ ctx.fillStyle='rgba(11,10,28,.8)'; ctx.fillRect(MX,118,112,PITCH.length*15+22); ctx.textAlign='left'; ctx.textBaseline='middle';
+      PITCH.forEach((q,i)=>{ ctx.font=(i===ptype?'900 ':'700 ')+'11px '+TC; ctx.fillStyle=i===ptype?'#ffd23f':'#aaa4d8'; ctx.fillText((i===ptype?'▶ ':'　')+q.name,MX+6,128+i*15); });
       { const c0=client?'k0':ctl(fldTeam()),ky=env.touch?['','']:c0==='k1'?['(G)','(F)']:c0==='k2'?['(.)','(,)']:['(K)','(J)']; /* 按鍵提示：換球種、丟球 */
-        ctx.font='700 9px '+TC; ctx.fillStyle='#6fd3ff'; ctx.fillText('換球種'+ky[0]+'　丟球'+ky[1],W-112,128+PITCH.length*15+2); } }
+        ctx.font='700 9px '+TC; ctx.fillStyle='#6fd3ff'; ctx.fillText('換球種'+ky[0]+'　丟球'+ky[1],MX+6,128+PITCH.length*15+2); } }
     // 球：一開始偏離位移量，越接近本壘越彎進去
     if(p&&S.phase==='pitch'){ const q=PITCH[p.type],uu=Math.min(1.15,u),fxp=ZX+p.ax*ZW,fyp=ZY-p.ay*ZH,bxp=q.bx*ZW,byp=-q.by*ZH,k=Math.min(1,uu);
       let x=W/2+(fxp-bxp-W/2)*k+bxp*k*k,y=128+(fyp-byp-128)*k+byp*k*k,r=2+7*Math.pow(k,1.6);
@@ -640,7 +641,7 @@ function create(env,opts){
     // 計分列
     ctx.fillStyle='rgba(11,10,28,.88)'; ctx.fillRect(0,0,W,34); ctx.textBaseline='middle';
     ctx.textAlign='left'; ctx.font='700 11px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText((S.inn>N?'延長 ':'')+S.inn+' 局'+(S.half?'下':'上'),8,10);
-    ctx.fillStyle='#aaa4d8'; ctx.fillText('打者 '+(S.ord[S.half]%9+1)+' 棒 '+batter().name,8,25);
+    ctx.fillStyle='#aaa4d8'; ctx.fillText('打者 '+(S.ord[S.half]%9+1)+' 棒 '+batter().name+(lefty()?'（左打）':''),8,25);
     for(let tm=0;tm<2;tm++){ const x=118+tm*96; ctx.fillStyle=cols[tm]; ctx.fillRect(x,6+0,6,22); ctx.fillStyle=S.half===tm?'#fff':'#aaa4d8'; ctx.font='700 10px '+TC; ctx.textAlign='left'; ctx.fillText(tname[tm].slice(0,5),x+10,10); ctx.font='13px '+PIX; ctx.fillStyle='#fff'; ctx.fillText(String(S.sc[tm]),x+10,24); }
     const lamp=(lbl,n,max,col,y)=>{ ctx.font='9px '+PIX; ctx.textAlign='left'; ctx.fillStyle='#aaa4d8'; ctx.fillText(lbl,316,y); for(let i=0;i<max;i++){ ctx.fillStyle=i<n?col:'#2b2759'; ctx.beginPath(); ctx.arc(334+i*11,y,4,0,7); ctx.fill(); } };
     lamp('B',S.b,3,'#86dc4f',7); lamp('S',S.s,2,'#ffd23f',17); lamp('O',S.outs,2,'#ff5d8f',27);
