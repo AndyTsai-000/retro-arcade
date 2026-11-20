@@ -1,4 +1,4 @@
-// 鬥魂峽谷：5 對 5 推塔對戰（原創英雄）。模式一：上中下三路＋兩塊野區；模式二：單路激戰。
+// 星界裂谷：5 對 5 推塔對戰（原創英雄）。模式一：上中下三路＋兩塊野區；模式二：單路激戰。
 // 房主（單人時就是自己）算全部戰鬥；連線的客人送自己的位置和按鍵，收房主的畫面資料。
 (function(){
 'use strict';
@@ -92,11 +92,21 @@ const HEROES=[
   HD('花語','support',{skin:'#f8d8c0',c1:'#5aa85a',c2:'#ff9ec8',hair:'#8a4a2a',fx:'#ff9ec8'},[S('藤蔓纏繞','blast',8,{r:9,a:3,d:100,st:1}),S('花之癒','heal',12,{a:8,v:150}),S('百花盛開','buff',40,{spd:.3,dmg:.2,dur:6,ally:1})],{f:1}),
   HD('潮汐','support',{skin:'#d8a880',c1:'#2a6a8a',c2:'#7ae8e8',hair:'#1a2a3a',fx:'#7ae8e8'},[S('浪潮之鉤','pull',10,{r:8,d:80,st:.8}),S('水之盾','shield',12,{v:220,ally:1}),S('漩渦','nova',40,{a:6,d:200,st:1.5})],{}),
   HD('守望','support',{skin:'#c8946a',c1:'#6a5a3a',c2:'#e8d8a0',hair:'#2a2418',fx:'#e8d8a0'},[S('光之箭','shot',7,{r:9,d:100,sl:2}),S('守護之光','heal',12,{a:8,v:170}),S('聖域','blast',40,{r:10,a:6,d:200,st:1.5})],{helm:1,cape:1})];
+const ESK=[S('地裂','blast',9,{r:7,a:3,d:110,sl:1.5}),S('鋼鐵之軀','buff',14,{arm:50,dur:4}),S('寒霜踏步','nova',8,{a:3.5,d:90,sl:2}),S('熔岩鎖鏈','pull',12,{r:7,d:90,st:.6}),S('落石','shot',9,{r:9,d:110,st:.8}),
+  S('破空斬','pierce',8,{r:7,d:130}),S('潮湧','dash',9,{r:7,a:2.5,d:110,sl:1.2}),S('鋼鐵意志','shield',13,{v:260}),S('撕裂','strike',7,{r:3,d:140,sl:1.5}),S('烈焰步','dash',9,{r:7,d:110}),
+  S('鴉群','nova',8,{a:3.5,d:120}),S('毒霧','storm',12,{r:8,a:3.5,d:60,dur:3,sl:1}),S('霧刃連擊','strike',6,{r:2.8,d:150}),S('蝶影','buff',12,{spd:.5,as:.3,dur:3}),S('旋風','nova',8,{a:3.2,d:120,sl:1}),
+  S('星光護盾','shield',13,{v:230}),S('爆炎','nova',9,{a:3.5,d:140}),S('冰牆','pierce',10,{r:9,d:100,st:.8,w:3}),S('雷霆疾步','blink',11,{r:7,d:80}),S('月影縛','blast',10,{r:9,a:3,d:100,st:1.2}),
+  S('鷹之翱翔','blink',11,{r:6,d:0,back:1}),S('星光連射','buff',12,{as:.5,dur:4}),S('焚羽','pierce',8,{r:10,d:130}),S('翻身射擊','blink',10,{r:5,d:0,back:1}),S('銀色疾風','buff',12,{spd:.4,dmg:.15,dur:4}),
+  S('日光衝擊','nova',9,{a:3.5,d:90,sl:1.5}),S('鈴音束縛','shot',9,{r:9,d:90,st:1}),S('花瓣護盾','shield',12,{v:200,ally:1}),S('潮浪','pierce',9,{r:9,d:100,sl:1.5}),S('守望之盾','shield',12,{v:220,ally:1})];
+HEROES.forEach((h,i)=>h.sk.splice(2,0,ESK[i])); // Q W E R：第三招插在大招前面
+// 召喚師技能（D、F）
+const SPELLS={flash:{n:'閃現',cd:60,col:'#ffe066',d:'往滑鼠方向瞬間移動一小段，可以穿過牆和草叢'},heal:{n:'治癒',cd:60,col:'#7aff9a',d:'幫自己和附近隊友補血'},smite:{n:'重擊',cd:25,col:'#ffb040',d:'對附近的野怪或小兵造成大量傷害（打野用）'},
+  ghost:{n:'鬼步',cd:50,col:'#9ad8ff',d:'走路速度大幅提升 6 秒'},barrier:{n:'屏障',cd:60,col:'#e8e8ff',d:'馬上得到一層護盾'},cleanse:{n:'淨化',cd:60,col:'#ff9ec8',d:'解除暈眩和緩速'}};
 HEROES.forEach((h,i)=>{ h.i=i; if(!h.pal.c3) h.pal.c3=['#3a3a48','#4a3a2a','#2a2a38','#3a4a3a'][i%4]; });
 const SK_TXT={dash:'往敵人衝過去',blink:'瞬間移動',strike:'重擊眼前的敵人',nova:'對身邊的敵人造成傷害',blast:'在敵人位置引爆',shot:'射出飛彈打第一個碰到的敵人',pierce:'直線貫穿所有敵人',shield:'得到護盾',heal:'治療',buff:'強化自己',exec:'對殘血敵人造成大量傷害',pull:'把敵人拉過來',storm:'持續傷害一片區域'};
 function skDesc(s){ let t=SK_TXT[s.t]; if(s.t==='heal') t=s.self?'治療自己':'治療自己和附近隊友'; if(s.t==='shield') t=s.ally?'給自己和附近隊友護盾':'給自己護盾'; if(s.t==='buff'&&s.ally) t='強化自己和附近隊友'; if(s.back) t='往後翻滾閃開';
   const ex=[]; if(s.st) ex.push('暈眩 '+s.st+' 秒'); if(s.sl) ex.push('緩速'); return t+(ex.length?'，'+ex.join('、'):''); }
-const ITEMS={jg:{n:'打野刀',c:350,atk:10,jg:1,col:'#8affc8',d:'可以用「懲擊」，打野怪傷害、金幣 +30%'},
+const ITEMS={jg:{n:'打野刀',c:350,atk:10,jg:1,col:'#8affc8',d:'打野怪的傷害、金幣、經驗 +30%，召喚師技能「重擊」也更痛'},
   sword:{n:'長劍',c:400,atk:15,col:'#d8dce8'},boots:{n:'疾行靴',c:450,spd:.12,col:'#c8a060'},vest:{n:'鎖甲',c:450,arm:20,col:'#9aa8c0'},belt:{n:'巨人腰帶',c:600,hp:350,col:'#e8b04a'},tome:{n:'魔法書',c:650,sp:.15,hp:150,col:'#b98cff'},
   axe:{n:'狂戰斧',c:1100,atk:35,as:.15,col:'#ff7a3d'},bow:{n:'速射弓',c:1150,atk:20,as:.35,col:'#86dc4f'},staff:{n:'大法杖',c:1800,sp:.4,col:'#c56bff'},blade:{n:'嗜血刀',c:1500,atk:40,ls:.15,col:'#ff4a4a'},
   plate:{n:'守護戰甲',c:1600,arm:45,hp:400,col:'#7aa8ff'},crown:{n:'智慧之冠',c:1500,sp:.25,hp:300,cdr:.15,col:'#ffd23f'},amulet:{n:'聖光吊墜',c:1300,hp:400,arm:15,heal:.3,col:'#fff0a0'},great:{n:'斬鐵大劍',c:2100,atk:70,col:'#e8e8f0'}};
@@ -120,5 +130,5 @@ function portrait(c,x,y,s,d){ const P=d.pal,cl=CLS[d.cls]; c.save(); c.translate
   c.fillStyle='#1a1420'; c.fillRect(-5,-8,2.6,2.6); c.fillRect(2.4,-8,2.6,2.6);
   c.restore(); c.strokeStyle='rgba(255,255,255,.75)'; c.lineWidth=2; c.beginPath(); c.arc(0,0,29,0,TAU); c.stroke(); c.restore(); }
 function shadeHex(h,k){ const n=parseInt(String(h).slice(1),16); if(isNaN(n)) return h; const f=v=>clamp(Math.round(k>1?v+(255-v)*(k-1):v*k),0,255); return 'rgb('+f(n>>16)+','+f(n>>8&255)+','+f(n&255)+')'; }
-window.__MOBA={HEROES,CLS,ITEMS,BUILD,MIN,buildMap,ROLES,portrait,polyl,along,project,segD,mul,TEAMC};
+window.__MOBA={SPELLS,HEROES,CLS,ITEMS,BUILD,MIN,buildMap,ROLES,portrait,polyl,along,project,segD,mul,TEAMC};
 })();

@@ -1,4 +1,4 @@
-// 鬥魂峽谷的 3D 畫面（three.js）：規則、戰鬥都在 moba.js 算，這裡只負責畫。
+// 星界裂谷的 3D 畫面（three.js）：規則、戰鬥都在 moba.js 算，這裡只負責畫。
 // 座標：公尺；x 往右、z 往畫面下方（藍方主堡在左下、紅方在右上）。
 (function(){
 'use strict';
@@ -243,6 +243,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       cam.position.set(cx,15.5*z,cz+10.5*z*dz); cam.lookAt(cx,0,cz+1.2*dz); cam.updateMatrixWorld(true);
       sun.position.set(cx-18,42,cz+16); sun.target.position.set(cx,0,cz); r.render(scene,cam); },
     toScreen(x,y,z){ tmp.set(x,y,z).project(cam); return [(tmp.x+1)/2*W,(1-tmp.y)/2*H,tmp.z<1]; },
+    pick(sx,sy){ const v=new V(sx/W*2-1,-(sy/H)*2+1,.5).unproject(cam).sub(cam.position).normalize(); if(v.y>-.01) return null; const k=-cam.position.y/v.y; return [cam.position.x+v.x*k,cam.position.z+v.z*k]; },
     destroy(){ scene.traverse(m=>{ if(m.geometry) m.geometry.dispose(); if(m.material){ const ms=Array.isArray(m.material)?m.material:[m.material]; ms.forEach(q=>{ if(q.map) q.map.dispose(); q.dispose(); }); } }); r.dispose(); try{ r.forceContextLoss(); }catch(e){} } }; }
 window.__MOBA3D=make;
 })();
