@@ -217,7 +217,7 @@ function themeBg(c,th,t){ const T=TH[th],g=c.createLinearGradient(0,0,0,H); g.ad
   if(th==='storm'){ c.strokeStyle='rgba(220,240,255,.35)'; c.lineWidth=2; for(let i=0;i<24;i++){ const x=(i*83+t*300)%(W+200)-100,y=(i*41)%H; c.beginPath(); c.moveTo(x,y); c.lineTo(x+60,y+6); c.stroke(); } }
   if(th==='twin'){ c.strokeStyle='rgba(62,209,106,.15)'; c.lineWidth=1; for(let i=0;i<W;i+=40){ c.beginPath(); c.moveTo(i,0); c.lineTo(i,H); c.stroke(); } for(let j=0;j<H;j+=40){ c.beginPath(); c.moveTo(0,j); c.lineTo(W,j); c.stroke(); } } }
 const inPk=(st,a,extra)=>{ for(const p of st.pk){ let d=Math.abs(((a-p.a)%TAU+TAU*1.5)%TAU-Math.PI); if(d<p.w+(extra||0)) return p; } return null; };
-let ATT=60,POCKV=430,BMK=.04,LUNGE=9,KBK=1.3; const OCT_R=AR+60,OCT_Y=16,OCT_H=90,WALL_H=46;
+let ATT=75,POCKV=430,BMK=.04,LUNGE=10,KBK=1.3; const OCT_R=AR+60,OCT_Y=16,OCT_H=90,WALL_H=46;
 const octP=(k,r,dy)=>{ const a=k*Math.PI/4+Math.PI/8; return [sx(Math.cos(a)*r),sy(Math.sin(a)*r)+dy]; };
 function acryl(c,k,al,back){ const [x0,y0]=octP(k,OCT_R-4,OCT_Y),[x1,y1]=octP(k+1,OCT_R-4,OCT_Y),H2=WALL_H; /* 透明壓克力護罩一片 */
   c.save(); c.beginPath(); c.moveTo(x0,y0); c.lineTo(x1,y1); c.lineTo(x1,y1-H2); c.lineTo(x0,y0-H2); c.closePath();
@@ -481,7 +481,7 @@ function create(env,opts){
         if(vr>170&&!(f.wcd>rt)){ f.wcd=rt+.25; wallHits++; addFx('wall',nx*AR,ny*AR,Math.round(vr),K.dir); snd(vr>320?'hurt':'bump'); shake=Math.max(shake,Math.min(.3,vr/1400)); if(vr>320){ hitstop=Math.max(hitstop,.05); roar(.45,1); } f.spin-=vr*.004; }
         if(vr>0){ f.vx-=vr*nx*1.75; f.vy-=vr*ny*1.75; } f.x=nx*wall; f.y=ny*wall; const touch=!f.wallT; f.wallT=(f.wallT||0)+h; if(f.wallT>.7&&f.dashT<=0){ f.wallT=0; f.vx-=nx*200; f.vy-=ny*200; } /* 貼著場邊太久會被彈回中間 */
         const vt=f.vx*(-ny*K.dir)+f.vy*(nx*K.dir);
-        if(f.dashT<=0&&f.railCD<=0&&f.spin>25&&vt>70&&(touch?Math.random()<.42*K.dash:Math.random()<.02*K.dash*(1+vt/200))){ f.dashT=.34; f.railCD=1.6; addFx('dash',f.x,f.y); snd('boost'); }
+        if(f.dashT<=0&&f.railCD<=0&&f.spin>25&&vt>70&&(touch?Math.random()<.55*K.dash:Math.random()<.02*K.dash*(1+vt/200))){ f.dashT=.34; f.railCD=1.6; addFx('dash',f.x,f.y); snd('boost'); }
         if(ST.lava) f.spin-=h*4; } }
     f.spin-=h*(1.3+hyp(f.vx,f.vy)/520)/K.sta*ST.decay*(1-.15*(f.over||0)); if(f.spin<=0){ f.spin=0; finish(f,'spin'); } }
   // 子彈獅鷲：激烈碰撞時內層子彈彈開，變成追撞對手的子彈單位，本體繼續旋轉
@@ -518,8 +518,10 @@ function create(env,opts){
     if(a.bm>=100&&b.bm>=100){ if(a.bm>b.bm) b.bm=99; else a.bm=99; } /* 同時爆裂只算一顆 */
     a.last=b.i; a.lastT=rt; b.last=a.i; b.lastT=rt; a.hs++; b.hs++;
     if(a.dashT>0||rt-a.dEnd<.4) b.lastX=rt; if(b.dashT>0||rt-b.dEnd<.4) a.lastX=rt;
-    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2; addFx('spark',mx,my,Math.round(I)); if(I>150) addFx('clash',mx,my,Math.round(I),Math.round(Math.atan2(ny,nx)*100)); snd(I>260?'hurt':'bump');
-    if(I>260){ hitstop=Math.max(hitstop,.07); shake=Math.max(shake,.22); punch=.5; roar(.4,1); }
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2; addFx('spark',mx,my,Math.round(I+40)); if(I>100) addFx('clash',mx,my,Math.round(I+40),Math.round(Math.atan2(ny,nx)*100)); const dh=(a.dashT>0||b.dashT>0)&&I>140; /* 現實比賽：沿極限軌道衝刺撞上去才是最猛的一擊 */ snd(I>200||dh?'clang':I>90?'clink':'bump'); /* 每次碰撞都有金屬聲和火花，越重越大 */
+    if(I>90) shake=Math.max(shake,Math.min(.16,I/1200));
+    if(I>200||dh){ hitstop=Math.max(hitstop,.05); shake=Math.max(shake,.24); punch=Math.max(punch,.35); }
+    if(I>260||dh&&I>180){ hitstop=Math.max(hitstop,.09); shake=Math.max(shake,.32); punch=.6; roar(.45,1); }
     for(const f of [a,b]) if(f.bm>=100&&f.st==='on') finish(f,'burst');
     if(a.spin<=0&&a.st==='on'){ a.spin=0; finish(a,'spin'); } if(b.spin<=0&&b.st==='on'){ b.spin=0; finish(b,'spin'); } }
   // 連線
@@ -527,7 +529,7 @@ function create(env,opts){
   if(net){
     if(client) net.onmsg=m=>{ if(m.s){ m.s.f.forEach((a,i)=>{ const f=T[i]; if(!f) return; f.x=a[0]; f.y=a[1]; f.vx=a[2]; f.vy=a[3]; f.spin=a[4]; f.bm=a[5]; if(f.st!==a[6]&&a[6]!=='on'){ f.ta=Math.random()*TAU; } f.st=a[6]; f.dashT=a[7]; f.cd=a[8]; f.ox=a[9]; f.oy=a[10]; f.out=a[11]; if(a[12]&&f.P.top!==a[12]&&TOP[a[12]]){ f.P=partsOf({top:a[12]}); f.k=statsOf(f.P); f.col=TOP[a[12]].c; } if(a[15]!=null){ f.lx=a[15]; f.ly=a[16]; } f.split=!!a[17]; if(a[18]!=null){ if(a[18]<0){ f.sh=null; f.lp=0; } else { if(f.sh==null) f.sh=0; f.lp=a[18]; } } }); BUL=(m.s.bl||[]).map(q=>({own:q[0],x:q[1],y:q[2],spin:q[3],ang:0,vx:0,vy:0}));
         Object.assign(score,m.s.sc); if(m.s.fo){ fouls[0]=m.s.fo[0]; fouls[1]=m.s.fo[1]; } if(m.s.ph==='launch'&&phase!=='launch') shootT=0; phase=m.s.ph; PT=m.s.pt; round=m.s.rd; rt=m.s.rt; windA=m.s.wa;
-        for(const e of m.s.ev){ if(e[0]==='s') env.sfx(e[1]); else if(e[0]==='b'){ ban={k:e[1],who:e[2],to:e[3]||null,t:0}; const v=T[e[2]]; if(v) focus={x:v.x,y:v.y,who:v.i,t:e[1]==='spin'?.9:1.4}; if(e[1]!=='spin'){ shake=.35; } } else if(e[0]==='v'){ refSay={txt:e[1],t:Math.max(1.3,e[1].length*.17)}; speak(e[1],e[2]); } else if(e[0]==='c'){ cheer=Math.max(cheer,e[1]*1.3); roarL(e[1],e[2]); } else spawn(e[0],e[1],e[2],e[3],e[4]); } }
+        for(const e of m.s.ev){ if(e[0]==='s'){ env.sfx(e[1]); if(e[1]==='clang') shake=Math.max(shake,.28); else if(e[1]==='clink') shake=Math.max(shake,.1); } else if(e[0]==='b'){ ban={k:e[1],who:e[2],to:e[3]||null,t:0}; const v=T[e[2]]; if(v) focus={x:v.x,y:v.y,who:v.i,t:e[1]==='spin'?.9:1.4}; if(e[1]!=='spin'){ shake=.35; } } else if(e[0]==='v'){ refSay={txt:e[1],t:Math.max(1.3,e[1].length*.17)}; speak(e[1],e[2]); } else if(e[0]==='c'){ cheer=Math.max(cheer,e[1]*1.3); roarL(e[1],e[2]); } else spawn(e[0],e[1],e[2],e[3],e[4]); } }
       if(m.end){ winKey=m.end; phase='over'; PT=2.6; } };
     else { net.onmsg=(m,from)=>{ if(m.deck&&T[from]&&phase==='deck'){ T[from].deck=fixDeck(m.deck.map(q=>({top:q&&q.top}))); rdy[from]=true; } if(m.i){ const b=inBuf[from]||(inBuf[from]={...NOIN,dn:0}); b.mx=m.i[0]; b.my=m.i[1]; if(m.i[2]>b.dn){ b.dash=true; b.dn=m.i[2]; b.spd=m.i[3]||0; } } };
       net.onleave=i=>{ const f=T[i]; if(f){ rdy[i]=true; f.remote=false; f.ai={sk:.6,t:0,mx:0,my:0}; R.names[i]+='（離開）'; } }; } }

@@ -298,7 +298,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=308; // 每次改版加一
+window.ARCADE_V=309; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','dodge3d','dodge','soccer3d','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','boomcode','tug','truth','charades','party','gems','chair','tacit','piano','stroke','dragon','badminton','cook','fish','pickleball','tennis','pingpong','racket'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -371,6 +371,8 @@ const SFX={
   go(){tone(880,.4,'square',.06);},
   boost(){noise(.5,.08);tone(200,.5,'sawtooth',.05,3);},
   bump(){noise(.1,.12);},
+  clink(){bnoise(.04,.45,4200,2.2);tone(2300,.05,'triangle',.05,.85);}, /* 陀螺擦撞：金屬「鏗」 */
+  clang(){bnoise(.12,.9,2600,1.1);tone(760,.16,'square',.05,.55);tone(1480,.12,'triangle',.06,.6);bnoise(.18,.5,700,.8,.01);}, /* 陀螺重擊：金屬「鏘！」 */
   skid(){noise(.4,.07);tone(1100,.35,'sawtooth',.018,.55);},
   rattle(){for(let i=0;i<9;i++) tone(1400+Math.random()*900,.03,'square',.03,.7,i*.095);},
   lap(){tone(784,.1,'square',.05);tone(1047,.2,'square',.05,1,.1);},
