@@ -757,9 +757,21 @@ function buildKart(T,L){
   for(const [x,y,z,r] of [[0,0,0,1.5],[1.3,-.2,.2,1.1],[-1.3,-.2,-.1,1.2],[.4,.5,-.3,1]]) add(new T.SphereGeometry(r,10,8),cm,x,y,z,0,0,0,cl);
   cl.position.set(0,5,1.2); cl.visible=false; g.add(cl);
   const bolt=add(new T.ConeGeometry(.5,2.2,4),new T.MeshBasicMaterial({color:0xffe14a}),0,4.8,0,PI); bolt.visible=false;
+  glossy(T,g); /* 車漆、金屬、玻璃反射天空：比較有質感 */
   g.userData={flame,shield:sd,cloud:cl,bolt,wheels,moto,shadow:shadowM,driver:dv,head:headG,anim};
   return g;
 }
+// 共用的反射環境（天空藍、地平線亮、地面暗），讓亮面材質有真實的反光
+let ENVMAP=null;
+function envMap(T){ if(ENVMAP) return ENVMAP; const face=k=>{ const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
+    if(k==='py'){ const g=x.createRadialGradient(32,32,4,32,32,46); g.addColorStop(0,'#5a6c82'); g.addColorStop(1,'#141e2c'); x.fillStyle=g; x.fillRect(0,0,64,64); }
+    else if(k==='ny'){ x.fillStyle='#101410'; x.fillRect(0,0,64,64); }
+    else { const g=x.createLinearGradient(0,0,0,64); g.addColorStop(0,'#141e2c'); g.addColorStop(.4,'#2e4258'); g.addColorStop(.49,'#f4f8ff'); g.addColorStop(.55,'#283028'); g.addColorStop(1,'#0c100c'); x.fillStyle=g; x.fillRect(0,0,64,64);
+      x.fillStyle='rgba(255,255,255,.9)'; x.fillRect(k==='px'||k==='nx'?10:40,6,14,26); } // 窗光反射的亮條
+    return c; };
+  ENVMAP=new T.CubeTexture(['px','nx','py','ny','pz','nz'].map(face)); ENVMAP.needsUpdate=true; return ENVMAP; }
+function glossy(T,g){ const env=envMap(T),done=new Set(); g.traverse(o=>{ const m=o.material; if(!m||done.has(m)||!m.isMeshPhongMaterial||m.envMap) return; done.add(m);
+  const sh=m.shininess||0; m.envMap=env; const chrome=sh>=130; m.combine=chrome?T.MixOperation:T.AddOperation; m.reflectivity=chrome?.5:sh>=80?.32:sh>=50?.2:.06; /* 鍍鉻用混合；車漆用疊加高光，不洗掉原本的顏色 */ m.needsUpdate=true; }); }
 // 「我的造型」裡可以拖曳旋轉的 3D 預覽
 function viewer(host,look){
   const T=window.THREE,r=new T.WebGLRenderer({antialias:true}),dpr=Math.min(window.devicePixelRatio||1,2);
@@ -1025,7 +1037,11 @@ function buildWorld(T,st,o){
   function cutDist(x,z){ if(!cut) return [1e9,0]; let bd=1e9,bk=0; for(let k=0;k<=cut.M;k++){ const d=(x-cut.cx[k])**2+(z-cut.cz[k])**2; if(d<bd){ bd=d; bk=k; } } return [Math.sqrt(bd),bk]; }
   const gap=s=>j=>cutDist(px[j]+nx[j]*s*(LIM+.6),pz[j]+nz[j]*s*(LIM+.6))[0]<cut.W+6; // 入口開寬一點，斜斜切進去也進得去
   ribbon(LIM+.6,0,LIM+.6,1.5,Math.round(len/8),wallMat,cut?gap(1):null); ribbon(-LIM-.6,0,-LIM-.6,1.5,Math.round(len/8),wallMat,cut?gap(-1):null);
-  const groundTex=tex(64,64,(c,w,h)=>{ c.fillStyle=st.ground[0]; c.fillRect(0,0,w,h); c.fillStyle=st.ground[1]; for(let i=0;i<90;i++) c.fillRect(Math.random()*w,Math.random()*h,4,4); if(GPAT[st.theme]) GPAT[st.theme](c,w,h); },220,220);
+  const groundTex=tex(256,256,(c,w,h)=>{ c.fillStyle=st.ground[0]; c.fillRect(0,0,w,h);
+    for(let i=0;i<14;i++){ const x=Math.random()*w,y=Math.random()*h,r=30+Math.random()*60; for(const [ox,oy] of [[0,0],[w,0],[-w,0],[0,h],[0,-h]]){ const gr=c.createRadialGradient(x+ox,y+oy,0,x+ox,y+oy,r); gr.addColorStop(0,Math.random()<.5?'rgba(255,255,220,.09)':'rgba(0,0,0,.09)'); gr.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=gr; c.fillRect(x+ox-r,y+oy-r,r*2,r*2); } } // 大片明暗（接縫處也連得上）
+    c.fillStyle=st.ground[1]; for(let i=0;i<700;i++) c.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*3,2+Math.random()*3);
+    for(let i=0;i<2200;i++){ c.fillStyle=Math.random()<.5?'rgba(255,255,255,'+(Math.random()*.08)+')':'rgba(0,0,0,'+(Math.random()*.1)+')'; c.fillRect(Math.random()*w,Math.random()*h,1,2+Math.random()*3); } // 細草葉／砂粒
+    if(GPAT[st.theme]) for(const [ox,oy] of [[0,0],[128,0],[0,128],[128,128]]){ c.save(); c.translate(ox,oy); GPAT[st.theme](c,128,128); c.restore(); } },110,110);
   const ground=new T.Mesh(new T.PlaneGeometry(2400,2400),new T.MeshLambertMaterial({map:groundTex})); ground.rotation.x=-Math.PI/2; ground.position.set((minX+maxX)/2,0,(minZ+maxZ)/2); scene.add(ground);
   const h0=Math.atan2(tx[0],tz[0]);
   function flat(w,d,mat,i,y){ const m=new T.Mesh(new T.PlaneGeometry(w,d),mat); m.rotation.order='YXZ'; m.rotation.y=Math.atan2(tx[i],tz[i]); m.rotation.x=-Math.PI/2; m.position.set(px[i],y,pz[i]); scene.add(m); return m; }

@@ -233,7 +233,7 @@ function drawBalloon(ctx,cx,cy,t,r0,shape,col){
     ctx.fillStyle=c; ctx.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5,rr=(i%2?.42:.95)*r; ctx[i?'lineTo':'moveTo'](cx+Math.cos(a)*rr,cy+Math.sin(a)*rr); } ctx.closePath(); ctx.fill();
     ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(cx-r*.2,cy-r*.25,r*.14,0,7); ctx.fill(); return; }
   ctx.fillStyle=mix(c,.62); ctx.beginPath(); ctx.arc(cx,cy+1,r,0,7); ctx.fill();
-  ctx.fillStyle=c; ctx.beginPath(); ctx.arc(cx-1,cy-1,r*.82,0,7); ctx.fill();
+  { const gq=ctx.createRadialGradient(cx-r*.35,cy-r*.4,r*.1,cx,cy,r*.9); gq.addColorStop(0,mix(c,1.45)); gq.addColorStop(.55,c); gq.addColorStop(1,mix(c,.78)); ctx.fillStyle=gq; ctx.beginPath(); ctx.arc(cx-1,cy-1,r*.82,0,7); ctx.fill(); ctx.fillStyle='rgba(255,255,255,.18)'; ctx.beginPath(); ctx.ellipse(cx+r*.25,cy+r*.35,r*.35,r*.18,-.5,0,7); ctx.fill(); }
   if(sh==='melon'){ ctx.strokeStyle=mix(c,.55); ctx.lineWidth=r*.16; for(const k of [-.5,0,.5]){ ctx.beginPath(); ctx.ellipse(cx,cy,Math.abs(k)*r*1.2+.01,r*.82,0,0,7); ctx.stroke(); } }
   ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(cx-r*.35,cy-r*.4,r*.25,r*.16,-.6,0,7); ctx.fill();
   ctx.fillStyle=mix(c,.62); ctx.fillRect(cx-2,cy-r-3,4,4);
@@ -340,16 +340,52 @@ function drawRock(ctx,st,x,y,t){
     ctx.fillStyle='#8a5a2a'; ctx.fillRect(cx-4,cy+10,8,5); }
   else { ctx.fillStyle='#8a8f9e'; ctx.beginPath(); ctx.ellipse(cx,cy+2,15,13,0,0,7); ctx.fill(); ol(); }
 }
+/* ---- 有質感的地圖：地面、木箱、房子先畫成圖存起來（每張地圖畫一次） ---- */
+const SPR=new Map();
+function sprite(key,w,h,fn){ let c=SPR.get(key); if(!c){ c=document.createElement('canvas'); c.width=w*2; c.height=h*2; const g=c.getContext('2d'); g.scale(2,2); fn(g); SPR.set(key,c); } return c; }
+function srnd(seed){ let a=seed>>>0||1; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+const hkey=str=>{ let h=7; for(const ch of str) h=(h*31+ch.charCodeAt(0))|0; return h; };
+function floorTex(st){ return sprite('fl:'+st.name,COLS*T,ROWS*T,g=>{ const R=srnd(hkey(st.name)),W2=COLS*T,H2=ROWS*T;
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ g.fillStyle=st.g[(x+y)%2]; g.fillRect(x*T,y*T,T,T); }
+  for(let i=0;i<26;i++){ const x=R()*W2,y=R()*H2,r=40+R()*90,gr=g.createRadialGradient(x,y,0,x,y,r),lt=R()<.5; gr.addColorStop(0,lt?'rgba(255,255,230,.10)':'rgba(0,30,0,.08)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(x-r,y-r,r*2,r*2); } // 大片明暗
+  const d=mix(st.g[0],.82),l=mix(st.g[0],1.18);
+  for(let i=0;i<COLS*ROWS*26;i++){ const x=R()*W2,y=R()*H2; g.strokeStyle=R()<.55?d:l; g.globalAlpha=.35+R()*.4; g.lineWidth=1; g.beginPath(); g.moveTo(x,y); g.lineTo(x+(R()-.5)*3,y-2-R()*3); g.stroke(); } // 細細的草／砂紋
+  g.globalAlpha=1; for(let i=0;i<COLS*ROWS*.5;i++){ const x=R()*W2,y=R()*H2; g.fillStyle='rgba(0,0,0,.10)'; g.beginPath(); g.ellipse(x,y+1,2.4,1.4,0,0,7); g.fill(); g.fillStyle=mix(st.g[1],1.3); g.beginPath(); g.ellipse(x,y,2,1.3,0,0,7); g.fill(); } // 小石子
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ g.fillStyle='rgba(255,255,255,.07)'; g.fillRect(x*T,y*T,T,1); g.fillRect(x*T,y*T,1,T); g.fillStyle='rgba(0,0,0,.06)'; g.fillRect(x*T,y*T+T-1,T,1); g.fillRect(x*T+T-1,y*T,1,T); } }); }
+function crateTex(st){ return sprite('cr:'+st.b.join(),T,T,g=>{ const a=st.b[0],b=st.b[1],R=srnd(hkey(a));
+  g.fillStyle='rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(T/2+2,T-4,T/2-2,5,0,0,7); g.fill();
+  // 上面（亮）
+  g.fillStyle=mix(a,1.22); g.beginPath(); g.moveTo(4,9); g.lineTo(8,3); g.lineTo(T-4,3); g.lineTo(T-4,9); g.closePath(); g.fill();
+  g.fillStyle=mix(b,1.05); g.fillRect(4,8,T-8,2);
+  // 正面：外框＋三片木板
+  const gr=g.createLinearGradient(0,10,0,T-3); gr.addColorStop(0,mix(a,1.06)); gr.addColorStop(1,mix(a,.82)); g.fillStyle=b; g.fillRect(3,9,T-6,T-12); g.fillStyle=gr; g.fillRect(6,12,T-12,T-18);
+  for(let k=1;k<3;k++){ const y=12+k*(T-18)/3; g.fillStyle='rgba(40,20,5,.35)'; g.fillRect(6,y-1,T-12,1.4); g.fillStyle='rgba(255,240,200,.18)'; g.fillRect(6,y+.6,T-12,1); }
+  g.strokeStyle='rgba(60,30,10,.22)'; g.lineWidth=.7; for(let i=0;i<9;i++){ const y=13+R()*(T-20); g.beginPath(); g.moveTo(6,y); g.bezierCurveTo(14,y+R()*2-1,26,y+R()*2-1,T-6,y); g.stroke(); } // 木紋
+  g.save(); g.beginPath(); g.rect(6,12,T-12,T-18); g.clip(); g.fillStyle=b; g.translate(T/2,12+(T-18)/2); g.rotate(-.62); g.fillRect(-T*.6,-3,T*1.2,6); g.fillStyle='rgba(255,240,200,.25)'; g.fillRect(-T*.6,-3,T*1.2,1.2); g.restore(); // 斜撐
+  g.fillStyle='rgba(255,245,215,.45)'; g.fillRect(3,9,T-6,1.2); g.fillRect(3,9,1.2,T-12); g.fillStyle='rgba(0,0,0,.3)'; g.fillRect(3,T-4,T-6,1.4); g.fillRect(T-4.2,9,1.2,T-12);
+  for(const [x,y] of [[3,9],[T-9,9],[3,T-9],[T-9,T-9]]){ g.fillStyle='#8a8e98'; g.fillRect(x,y,6,6); g.fillStyle='#c8ccd6'; g.fillRect(x,y,6,1.2); g.fillStyle='#4a4e58'; g.beginPath(); g.arc(x+3,y+3,1.1,0,7); g.fill(); } }); } // 鐵角
+function houseTex(st){ return sprite('hs:'+st.s.join(),T,T,g=>{ const roof=st.s[0],wall=st.s[1];
+  g.fillStyle='rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(T/2+2,T-4,T/2-1,5,0,0,7); g.fill();
+  // 牆
+  const wg=g.createLinearGradient(0,15,0,T-3); wg.addColorStop(0,mix(wall,1.08)); wg.addColorStop(1,mix(wall,.86)); g.fillStyle=wg; g.fillRect(4,15,T-8,T-18);
+  g.fillStyle='rgba(0,0,0,.12)'; g.fillRect(T-11,15,7,T-18); g.fillStyle='rgba(0,0,0,.2)'; g.fillRect(4,T-5,T-8,2); // 側面暗、牆腳
+  for(let y=19;y<T-5;y+=4){ g.fillStyle='rgba(0,0,0,.05)'; g.fillRect(4,y,T-8,1); }
+  // 窗（暖光）＋門
+  const wl=g.createLinearGradient(8,20,8,29); wl.addColorStop(0,'#fff6c8'); wl.addColorStop(1,'#ffc860'); g.fillStyle='#5a3a22'; g.fillRect(7,19,11,10); g.fillStyle=wl; g.fillRect(8,20,9,8); g.fillStyle='#5a3a22'; g.fillRect(12,20,1,8); g.fillRect(8,23.5,9,1); g.fillStyle='rgba(255,255,255,.5)'; g.fillRect(8.6,20.6,2.5,2.4);
+  g.fillStyle=mix(roof,.6); g.fillRect(22,21,10,T-24); g.fillStyle=mix(roof,.78); g.fillRect(23,22,8,T-26); g.fillStyle='#ffd23f'; g.beginPath(); g.arc(29,29,1,0,7); g.fill(); g.fillStyle='rgba(0,0,0,.25)'; g.fillRect(21,T-5,12,1.5);
+  // 煙囪
+  g.fillStyle=mix(wall,.7); g.fillRect(T-14,2,5,10); g.fillStyle=mix(wall,.5); g.fillRect(T-15,1,7,2.5);
+  // 屋頂：漸層＋一排排瓦片＋屋脊亮線
+  g.save(); g.beginPath(); g.moveTo(0,18); g.lineTo(T/2,1.5); g.lineTo(T,18); g.lineTo(T-2,20); g.lineTo(2,20); g.closePath(); const rg=g.createLinearGradient(0,2,0,20); rg.addColorStop(0,mix(roof,1.18)); rg.addColorStop(1,mix(roof,.82)); g.fillStyle=rg; g.fill(); g.clip();
+  g.strokeStyle='rgba(0,0,0,.22)'; g.lineWidth=1; for(let y=6;y<21;y+=3.6){ g.beginPath(); for(let x=-4;x<T+4;x+=5){ g.moveTo(x,y); g.quadraticCurveTo(x+2.5,y+2.2,x+5,y); } g.stroke(); }
+  g.fillStyle='rgba(0,0,0,.18)'; g.beginPath(); g.moveTo(T/2,1.5); g.lineTo(T,18); g.lineTo(T,21); g.lineTo(T/2,4); g.closePath(); g.fill(); g.restore();
+  g.strokeStyle=mix(roof,1.4); g.lineWidth=1.4; g.beginPath(); g.moveTo(1.5,17.5); g.lineTo(T/2,2); g.stroke(); g.strokeStyle=mix(roof,.55); g.beginPath(); g.moveTo(T/2,2); g.lineTo(T-1.5,17.5); g.stroke();
+  g.fillStyle='rgba(0,0,0,.22)'; g.fillRect(4,20,T-8,2.5); }); } // 屋簷陰影
 function drawTile(ctx,st,v,x,y,gx,gy,t){
-  if(v===3){ ctx.fillStyle=st.g[(gx+gy)%2]; ctx.fillRect(x,y,T,T); drawRock(ctx,st,x,y,t); return; }
-  ctx.fillStyle=st.g[(gx+gy)%2]; ctx.fillRect(x,y,T,T);
-  if(v===1){ ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(x+3,y+T-6,T-4,5);
-    ctx.fillStyle=st.s[1]; ctx.fillRect(x+3,y+14,T-6,T-18); ctx.fillStyle=st.s[0];
-    ctx.beginPath(); ctx.moveTo(x+1,y+17); ctx.lineTo(x+T/2,y+1); ctx.lineTo(x+T-1,y+17); ctx.fill();
-    ctx.fillStyle='rgba(20,18,43,.55)'; ctx.fillRect(x+16,y+23,8,13); }
-  else if(v===2){ ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(x+3,y+T-5,T-4,4);
-    ctx.fillStyle=st.b[1]; ctx.fillRect(x+2,y+2,T-4,T-5); ctx.fillStyle=st.b[0]; ctx.fillRect(x+5,y+5,T-10,T-11);
-    ctx.strokeStyle=st.b[1]; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x+5,y+5); ctx.lineTo(x+T-5,y+T-6); ctx.moveTo(x+T-5,y+5); ctx.lineTo(x+5,y+T-6); ctx.stroke(); }
+  ctx.drawImage(floorTex(st),(gx%COLS)*T*2,(gy%ROWS)*T*2,T*2,T*2,x,y,T,T);
+  if(v===3){ drawRock(ctx,st,x,y,t); return; }
+  if(v===1) ctx.drawImage(houseTex(st),x,y,T,T);
+  else if(v===2) ctx.drawImage(crateTex(st),x,y,T,T);
 }
 
 function create(env,opts){
