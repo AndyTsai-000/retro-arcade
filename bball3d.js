@@ -44,6 +44,8 @@ function make(T,o){ const {W,H,HX,HY,RIMZ,ARC,CT,bg,shade}=o,PI=Math.PI,H3=windo
     const ftx2=new T.CanvasTexture(fcv); ftx2.wrapS=ftx2.wrapT=T.RepeatWrapping; ftx2.repeat.set(60,8); const fm=new T.MeshBasicMaterial({map:ftx2,transparent:true,side:T.DoubleSide,depthWrite:false});
     const fen=add(new T.PlaneGeometry(30,4),fm,X(900),2,Z(320)); fen.rotation.y=-PI/2; fen.castShadow=false; for(let i=-15;i<=15;i+=3) add(new T.CylinderGeometry(.05,.05,4,8),ph('#8a8e98',60),X(900),2,Z(320)+i); }
   if(night) for(const gy of [-70,710]){ add(new T.CylinderGeometry(.08,.12,9,10),ph('#4a4e58',40),X(900),4.5,Z(gy)); const lp=add(new T.BoxGeometry(.5,.3,1.2),new T.MeshBasicMaterial({color:0xfff6d8}),X(900)-.2,9,Z(gy)); lp.castShadow=false; }
+  const CR=window.__CROWD,big=indoor||CT.bg==='school',ST=CR?CR.stands(T,{len:big?44:22,rows:indoor?10:CT.bg==='school'?6:3,wall:big?1:.45,night,cols:o.cols||[],seed:13,roof:indoor}):null; if(ST){ ST.g.position.set(X(410),0,Z(-70)); scene.add(ST.g); }
+  { const rim=new T.DirectionalLight(night?0xa8b8ff:0xfff0e0,.42); rim.position.set(4,10,-20); scene.add(rim); } // 背光：人物輪廓
   /* 籃架：籃板、籃框、籃網 */
   const RX=X(HX),RY=3.05,RZ=Z(HY),hoop=new T.Group(); scene.add(hoop);
   const boardCv=document.createElement('canvas'); boardCv.width=360; boardCv.height=210; { const c=boardCv.getContext('2d'); c.fillStyle='rgba(230,240,250,.28)'; c.fillRect(0,0,360,210); c.strokeStyle='#ffffff'; c.lineWidth=10; c.strokeRect(5,5,350,200); c.strokeStyle=o.rimC||'#e8402a'; c.lineWidth=8; c.strokeRect(120,92,120,90); }
@@ -90,7 +92,7 @@ function make(T,o){ const {W,H,HX,HY,RIMZ,ARC,CT,bg,shade}=o,PI=Math.PI,H3=windo
       default: { const br=Math.sin(t*2.4+i)*.02; return {y:-.03,spine:[.06+br,0,0],hipL:[-.08,0,.05],hipR:[-.08,0,-.05],knL:[.16,0,0],knR:[.16,0,0],anL:[-.08,0,-.05],anR:[-.08,0,.05],shL:[.05,0,.14],shR:[.05,0,-.14],elL:[-.3,0,0],elR:[-.3,0,0]}; } } }
   /* 鏡頭 */
   const cam=new T.PerspectiveCamera(36,W/H,.1,200); let czS=0,view='side',lastT=null,cx=X(-150),hand=new T.Vector3(),hand2=new T.Vector3(),tmp=new T.Vector3(),bshow=null,blend=0,wasHeld=false,frame=0,fallT=[0,0,0,0,0,0];
-  function render(st){ const {P,b,t,swish}=st,dt=lastT==null?.016:Math.min(.1,Math.max(0,t-lastT)); lastT=t; frame++;
+  function render(st){ const {P,b,t,swish}=st,dt=lastT==null?.016:Math.min(.1,Math.max(0,t-lastT)); lastT=t; frame++; if(ST) ST.update(t,!!swish);
     if(frame%4===1) drawBack(t,swish);
     // 球員
     P.forEach((p,i)=>{ const E=HP[i]; if(E.lx==null){ E.lx=p.x; E.ly=p.y; }

@@ -64,7 +64,8 @@ function make(T,o){ const {W,H,ZX,ZY,ZW,ZH,L,fence,FPOS,BASE,kfBK}=o,PI=Math.PI,
   const crowdT=canv(512,256,(c,w,h)=>{ c.fillStyle=night?'#1a1c34':'#3a3e52'; c.fillRect(0,0,w,h); const C=['#ff5d4f','#ffd23f','#3ddbd9','#ffffff','#ff7eb6','#86dc4f','#4f9dff','#ff9d3d','#e23b3b','#2f6fd0'];
     for(let y=0;y<h;y+=16){ c.fillStyle=night?'#2a2d52':'#6a7090'; c.fillRect(0,y+12,w,4); for(let x=(y/16%2)*6;x<w;x+=12){ const k=(x*7+y*13+((x*y)%7))%C.length; c.fillStyle=C[k]; c.fillRect(x+1,y+5,9,8); c.fillStyle=['#f2c9a0','#c68a5e','#8d5a3a','#e0ac80'][(x+y)%4]; c.beginPath(); c.arc(x+5.5,y+3.5,3.2,0,7); c.fill(); } } });
   crowdT.wrapS=crowdT.wrapT=T.RepeatWrapping; crowdT.repeat.set(1,1);
-  const stands=band(a=>fr(a)+1,a=>fr(a)+48,3.4,30,-1.35,1.35,new T.MeshLambertMaterial({map:crowdT,side:T.DoubleSide}),60); stands.material.map.repeat.set(1,2.4);
+  const CRT=window.__CROWD?window.__CROWD.tex(T,{night,rows:9,seed:3}):null; if(CRT) for(const q of CRT){ q.wrapT=T.RepeatWrapping; q.repeat.set(.3,6); }
+  const stands=band(a=>fr(a)+1,a=>fr(a)+48,3.4,30,-1.35,1.35,new T.MeshLambertMaterial({map:CRT?CRT[0]:crowdT,side:T.DoubleSide}),60); if(!CRT) stands.material.map.repeat.set(1,2.4);
   band(a=>fr(a)+.2,a=>fr(a)+1.2,3.2,3.4,-1.35,1.35,lam('#2a2e40'),1);
   band(a=>fr(a)+48,a=>fr(a)+50,30,36,-1.35,1.35,lam(night?'#14162e':'#4a4f66',{side:T.DoubleSide}),1); // 屋簷
   for(const s of [-1,1]){ const rr=fr(s*PI/4); add(new T.CylinderGeometry(.18,.18,26,10),ph('#ffd23f',40),s*rr*.7071+s*.3,13,-rr*.7071-.3); }
@@ -168,7 +169,7 @@ function make(T,o){ const {W,H,ZX,ZY,ZW,ZH,L,fence,FPOS,BASE,kfBK}=o,PI=Math.PI,
     pitch(st){ const {t,fc,bc,pp,bp,cy,pit,showBall,cheer}=st; board(st.board); const dt=lastT==null?.016:cl(t-lastT,0,.1); lastT=t; teamsFor(fc,bc); hideAll(); view='pitch';
       const pc=PC[st.lefty?1:0]; cam.position.copy(pc.pos); cam.quaternion.copy(pc.q); cam.fov=pc.fov; cam.updateProjectionMatrix(); sun.target.position.set(0,0,-10); sun.position.set(night?5:-20,night?60:sunset?22:50,night?25:28);
       if(st.cam){ cam.position.set(...st.cam[0]); cam.lookAt(...st.cam[1]); cam.fov=st.cam[2]||30; cam.updateProjectionMatrix(); } /* 測試用：換個角度看 */
-      crowdT.offset.y=cheer?Math.abs(Math.sin(t*9))*.012:0;
+      { const mp=stands.material; if(CRT){ const want=cheer&&Math.floor(t*5)%2?CRT[1]:CRT[0]; if(mp.map!==want){ mp.map=want; mp.needsUpdate=true; } mp.map.offset.y=cheer?Math.abs(Math.sin(t*9))*.01:0; } else crowdT.offset.y=cheer?Math.abs(Math.sin(t*9))*.012:0; }
       pitcherPose(FL[0],pp,dt); pball.visible=pp<.78;
       for(let i=2;i<9;i++){ const q=FPOS[i]; place(FL[i],q[0]*FT,-q[1]*FT,Math.atan2(0-q[0]*FT,0+q[1]*FT),poseOf(pp>.6&&pp<1||pit?'ready':'stand',t,i),dt); }
       batterPose(BT,bp,cy||0,t,!!st.lefty);

@@ -26,14 +26,14 @@ function make(T,o){ const {W,H,X0,X1,MID,YB,YF,cols,bg,court}=o,PI=Math.PI,H3=wi
   const fl=add(new T.PlaneGeometry((G1-G0)/SX,(GY1-GY0)/SY),new T.MeshLambertMaterial({map:ftx}),X((G0+G1)/2),0,Z((GY0+GY1)/2)); fl.rotation.x=-PI/2; fl.castShadow=false;
   const outer=add(new T.PlaneGeometry(200,200),new T.MeshLambertMaterial({color:col(o.ground.g)}),0,-.01,0); outer.rotation.x=-PI/2; outer.castShadow=false;
   /* 背景牆：原本的天空、看台與加油布條 */
-  const bc=document.createElement('canvas'); bc.width=960; bc.height=244; const btx=new T.CanvasTexture(bc),BW=56,BH=BW*244/960,BZ=Z(YB)-8;
+  const bc=document.createElement('canvas'); bc.width=960; bc.height=244; const btx=new T.CanvasTexture(bc),BW=56,BH=BW*244/960,BZ=Z(YB)-13;
   const back=add(new T.PlaneGeometry(BW,BH),new T.MeshBasicMaterial({map:btx}),0,BH/2-1.2,BZ); back.castShadow=back.receiveShadow=false;
   const drawBack=()=>{ const c=bc.getContext('2d'); c.save(); c.scale(2,2); bg(c); c.restore(); btx.needsUpdate=true; }; drawBack();
   /* 看台：場邊兩排階梯座位（立體）＋觀眾 */
-  const stand=new T.Group(); scene.add(stand); const crowdC=['#ff5d4f','#ffd23f','#3ddbd9','#ffffff','#ff7eb6','#86dc4f','#4f9dff','#ff9d3d'];
-  for(let r2=0;r2<3;r2++){ add(new T.BoxGeometry(34,.5,1),ph(night?'#3a3860':'#9aa0b4',10),0,.25+r2*.5,BZ+3.2-r2*1,stand); for(let i=0;i<34;i++){ const fan=new T.Group(); fan.position.set(-16.5+i+(r2%2)*.5,.5+r2*.5,BZ+3.2-r2*1); stand.add(fan); add(new T.BoxGeometry(.42,.5,.3),ph(crowdC[(i*3+r2*5)%8],10),0,.25,0,fan); add(new T.SphereGeometry(.16,10,8),ph('#f0c098',20),0,.66,0,fan); fan.userData.ph=i*.9+r2*2; } }
+  const CR=window.__CROWD,ST=CR?CR.stands(T,{len:44,rows:8,night,cols,seed:5,roof:true}):null; if(ST){ ST.g.position.set(0,0,Z(YB)-3.4); scene.add(ST.g); ST.g.traverse(m=>{ if(m.isMesh){ m.castShadow=m.castShadow&&m.geometry.type!=='PlaneGeometry'; m.receiveShadow=true; } }); }
+  { const rim=new T.DirectionalLight(night?0xa8b8ff:0xfff0e0,.45); rim.position.set(4,9,-18); scene.add(rim); } // 背光：人物輪廓更立體
   /* 球 */
-  const ball=add(new T.SphereGeometry(.16,24,16),ph(o.ballCol||'#ffffff',40),0,.16,0); const bglow=add(new T.SphereGeometry(.34,16,12),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}),0,0,0); bglow.castShadow=bglow.receiveShadow=false;
+  const ball=add(new T.SphereGeometry(.16,24,16),CR?new T.MeshPhongMaterial({map:CR.ballTex(T,'dodge',o.ballCol&&o.ballCol!=='#ffffff'?o.ballCol:'#e8402a'),shininess:45,specular:0x444444}):ph(o.ballCol||'#ffffff',40),0,.16,0); const bglow=add(new T.SphereGeometry(.34,16,12),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}),0,0,0); bglow.castShadow=bglow.receiveShadow=false;
   /* 球員 */
   const HAIR=['#2a1a10','#1a1418','#7a3b1d','#3a2418'];
   const HP=o.players.map((p,i)=>{ const h=H3.build(T,{skin:'#e8b890',shirt:cols[p.team],pants:'#2b3f9e',shoes:'#f4f4f4',hair:HAIR[(+p.hair||0)%4],shorts:true,number:(i%6)+1,numCol:'#ffffff',socks:'#ffffff'});
@@ -50,7 +50,7 @@ function make(T,o){ const {W,H,X0,X1,MID,YB,YF,cols,bg,court}=o,PI=Math.PI,H3=wi
     const br=Math.sin(t*2.4+i)*.02; return {y:-.08,spine:[.14+br,0,0],neck:[-.06,0,0],hipL:[-.28,0,.14],hipR:[-.28,0,-.14],knL:[.45,0,0],knR:[.45,0,0],anL:[-.2,0,-.1],anR:[-.2,0,.1],shL:[-.25,0,.25],shR:[-.25,0,-.25],elL:[-.9,0,0],elR:[-.9,0,0]}; }
   const cam=new T.PerspectiveCamera(42,W/H,.1,300),tmp=new T.Vector3(),hand=new T.Vector3(); let lastT=null,frame=0,cx=0;
   function render(st){ const {P,b,t}=st,dt=lastT==null?.016:Math.min(.1,Math.max(0,t-lastT)); lastT=t; frame++; if(frame%6===1) drawBack();
-    stand.children.forEach(f=>{ if(f.userData.ph!=null) f.position.y=f.position.y-(f.userData.j||0)+(f.userData.j=Math.max(0,Math.sin(t*5+f.userData.ph))*.12); });
+    if(ST) ST.update(t,P.some(p=>p.state===4||p.state===5&&p.st<1.6));
     P.forEach((p,i)=>{ const E=HP[i]; const gone=p.state===5&&p.st>1.2; E.wrap.visible=!gone; if(gone) return; if(E.lx==null){ E.lx=p.x; E.ly=p.y; }
       const vx=(p.x-E.lx)/(dt||.016),vy=(p.y-E.ly)/(dt||.016); E.lx=p.x; E.ly=p.y; E.spd+=(Math.hypot(vx,vy)-E.spd)*Math.min(1,dt*10);
       const k=p.state===5||p.state===4?4:p.throwT>0?2:p.duck?3:p.catchT>0?6:p.moving?1:0;

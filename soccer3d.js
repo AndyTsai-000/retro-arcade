@@ -26,9 +26,11 @@ function make(T,o){ const {W,H,FW,X0,X1,YB,YF,GY0,GY1,cols,bgKey}=o,PI=Math.PI,H
   const fl=add(new T.PlaneGeometry((G1-G0)/SX,(GYb-GYa)/SY),new T.MeshLambertMaterial({map:ftx}),X((G0+G1)/2),0,Z((GYa+GYb)/2)); fl.rotation.x=-PI/2; fl.castShadow=false;
   const outer=add(new T.PlaneGeometry(300,200),new T.MeshLambertMaterial({color:col(o.grass).multiplyScalar(.8)}),0,-.01,0); outer.rotation.x=-PI/2; outer.castShadow=false;
   /* 背景牆：原本的看台、觀眾、廣告看板 */
-  const bc=document.createElement('canvas'); bc.width=FW*2; bc.height=288; const btx=new T.CanvasTexture(bc),BW=FW/SX,BH=BW*144/FW*1.7,BZ=Z(YB)-7;
+  const bc=document.createElement('canvas'); bc.width=FW*2; bc.height=288; const btx=new T.CanvasTexture(bc),BW=FW/SX,BH=BW*144/FW*1.7,BZ=Z(YB)-16;
   btx.wrapS=T.RepeatWrapping; btx.repeat.set(1.6,1); const back=add(new T.PlaneGeometry(BW*1.6,BH),new T.MeshBasicMaterial({map:btx}),X(FW/2),BH/2-1.6,BZ); back.castShadow=back.receiveShadow=false;
   const drawBack=t=>{ const c=bc.getContext('2d'); c.save(); c.scale(2,2); o.bg(c,0,t); c.translate(W-40,0); o.bg(c,W-40,t); c.restore(); btx.needsUpdate=true; }; drawBack(0);
+  const CR=window.__CROWD,ST=CR?CR.stands(T,{len:BW*1.6,rows:10,night,cols:o.cols||[],seed:9,roof:true}):null; if(ST){ ST.g.position.set(X(FW/2),0,Z(YB)-3.2); scene.add(ST.g); }
+  { const rim=new T.DirectionalLight(night?0xa8b8ff:0xfff0e0,.45); rim.position.set(6,10,-24); scene.add(rim); } // 背光：人物輪廓
   /* 球門 */
   const post=ph('#ffffff',70),netM=new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.35,side:T.DoubleSide,wireframe:true,depthWrite:false});
   for(const [gx,d] of [[X0,-1],[X1,1]]){ const x=X(gx),z0=Z(GY0),z1=Z(GY1),hh=2.44,dep=1.4,mz=(z0+z1)/2,wd=z1-z0;
@@ -38,7 +40,7 @@ function make(T,o){ const {W,H,FW,X0,X1,YB,YF,GY0,GY1,cols,bgKey}=o,PI=Math.PI,H
   /* 角旗 */ for(const [x,y] of [[X0,YB],[X0,YF],[X1,YB],[X1,YF]]){ add(new T.CylinderGeometry(.025,.025,1.5,6),ph('#f4f4f4',30),X(x),.75,Z(y)); const f=add(new T.PlaneGeometry(.35,.25),ph('#ff3b3b',10,{side:T.DoubleSide}),X(x)+.17,1.35,Z(y)); f.castShadow=false; }
   /* 球：白底黑色五角形 */
   const bcv=document.createElement('canvas'); bcv.width=256; bcv.height=128; { const c=bcv.getContext('2d'); c.fillStyle=o.ballCol||'#ffffff'; c.fillRect(0,0,256,128); c.fillStyle='#1a1a22'; for(const [x,y] of [[32,30],[96,64],[160,30],[224,64],[32,98],[160,98]]){ c.beginPath(); for(let i=0;i<5;i++){ const a=-PI/2+i/5*PI*2; c.lineTo(x+Math.cos(a)*16,y+Math.sin(a)*16); } c.fill(); } }
-  const ball=add(new T.SphereGeometry(.13,24,16),new T.MeshPhongMaterial({map:new T.CanvasTexture(bcv),shininess:40,specular:0x333333}),0,.13,0); const bglow=add(new T.SphereGeometry(.3,16,12),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}),0,0,0); bglow.castShadow=bglow.receiveShadow=false;
+  const ball=add(new T.SphereGeometry(.13,24,16),new T.MeshPhongMaterial({map:CR?CR.ballTex(T,'soccer',o.ballCol):new T.CanvasTexture(bcv),shininess:40,specular:0x333333}),0,.13,0); const bglow=add(new T.SphereGeometry(.3,16,12),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}),0,0,0); bglow.castShadow=bglow.receiveShadow=false;
   /* 球員 */
   const HAIR=['#2a1a10','#1a1418','#7a3b1d','#3a2418'];
   const HP=o.players.map((p,i)=>{ const sh=p.gk?(p.team?'#f2d24a':'#3a3a4a'):cols[p.team],h=H3.build(T,{skin:'#e8b890',shirt:sh,pants:p.gk?'#2a2a30':'#f4f4f4',shoes:'#1a1a22',hair:HAIR[(+p.hair||0)%4],shorts:true,number:p.gk?1:(i%5)+2,numCol:p.gk?'#ffffff':'#ffffff',socks:sh,socksHigh:true});
@@ -52,7 +54,7 @@ function make(T,o){ const {W,H,FW,X0,X1,YB,YF,GY0,GY1,cols,bgKey}=o,PI=Math.PI,H
     if(k===4) return {y:-.7,spine:[-.4,0,0],neck:[.3,0,0],hipR:[-1.5,0,-.05],knR:[.1,0,0],hipL:[-.6,0,.1],knL:[1.4,0,0],shL:[.6,0,.9],shR:[.6,0,-.9],elL:[-.4,0,0],elR:[-.4,0,0]};
     const br=Math.sin(t*2.4+i)*.02; return {y:-.05,spine:[.1+br,0,0],hipL:[-.18,0,.1],hipR:[-.18,0,-.1],knL:[.3,0,0],knR:[.3,0,0],anL:[-.12,0,-.06],anR:[-.12,0,.06],shL:[-.1,0,.2],shR:[-.1,0,-.2],elL:[-.6,0,0],elR:[-.6,0,0]}; }
   const cam=new T.PerspectiveCamera(46,W/H,.1,300),tmp=new T.Vector3(); let lastT=null,frame=0,cx=null,prevB=null;
-  function render(st){ const {P,b,t,camX}=st,dt=lastT==null?.016:Math.min(.1,Math.max(0,t-lastT)); lastT=t; frame++; if(frame%6===1) drawBack(t);
+  function render(st){ const {P,b,t,camX}=st,dt=lastT==null?.016:Math.min(.1,Math.max(0,t-lastT)); lastT=t; frame++; if(frame%6===1) drawBack(t); if(ST) ST.update(t,!!st.cheer);
     P.forEach((p,i)=>{ const E=HP[i]; if(E.lx==null){ E.lx=p.x; E.ly=p.y; } const vx=(p.x-E.lx)/(dt||.016),vy=(p.y-E.ly)/(dt||.016); E.lx=p.x; E.ly=p.y; E.spd+=(Math.hypot(vx,vy)-E.spd)*Math.min(1,dt*10);
       const k=p.state===4||p.slideT>0?4:p.kickT>0?2:p.moving?1:0;
       let ta=p.face>0?PI/2:-PI/2; if((k===1||k===4)&&E.spd>20) ta=Math.atan2(vx/SX,vy/SY); let da=ta-E.ang; while(da>PI) da-=PI*2; while(da<-PI) da+=PI*2; E.ang+=da*Math.min(1,dt*12);

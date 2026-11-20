@@ -316,7 +316,7 @@ function create(env,opts){
 
   function draw(){
     ctx.save(); if(shake>0) ctx.translate((Math.random()-.5)*shake*22,(Math.random()-.5)*shake*16);
-    if(G3){ G3.render({P,b:ball,t,camX:cam,ctrl:[0,1].filter(tm=>human[tm]&&(!net||tm===me)).map(tm=>ctrl[tm]),shotCol:ball.type&&SHOT[ball.type]?SHOT[ball.type].col:null}); ctx.drawImage(G3.canvas,0,0,W,H);
+    if(G3){ G3.render({P,b:ball,t,camX:cam,cheer:goalT>0||!!ball.type,ctrl:[0,1].filter(tm=>human[tm]&&(!net||tm===me)).map(tm=>ctrl[tm]),shotCol:ball.type&&SHOT[ball.type]?SHOT[ball.type].col:null}); ctx.drawImage(G3.canvas,0,0,W,H);
       for(let tm=0;tm<2;tm++) if(human[tm]&&(!net||tm===me)){ const p=P[ctrl[tm]]; if(!p) continue; const [hx,hy]=G3.head(p.id); ctx.fillStyle=tm?'#3ddbd9':'#ffd23f'; ctx.beginPath(); ctx.moveTo(hx-6,hy-8); ctx.lineTo(hx+6,hy-8); ctx.lineTo(hx,hy); ctx.fill(); }
       for(const f of fx){ const [sx,sy]=G3.toScreen(f.x,f.y,0); ctx.globalAlpha=Math.max(0,f.life/f.max); ctx.fillStyle=f.col; const z=f.size*(.5+f.life/f.max*.5); ctx.fillRect(sx-z/2,sy-z/2,z,z); } ctx.globalAlpha=1;
       for(const r of rings){ const u=r.t/r.max,[sx,sy]=G3.toScreen(r.x,r.y,0); ctx.globalAlpha=1-u; ctx.strokeStyle=r.col; ctx.lineWidth=6*(1-u)+1; ctx.beginPath(); ctx.ellipse(sx,sy,r.r*u,r.r*u*.45,0,0,7); ctx.stroke();
