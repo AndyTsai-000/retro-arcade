@@ -18,7 +18,7 @@ function create(env,opts){
   const defRoles=mode?['mid','mid','mid','mid','mid']:size>=5?['top','jg','mid','bot','sup']:size===4?['top','jg','mid','bot']:size===3?['top','mid','bot']:size===2?['mid','bot']:['mid'];
   const slots=[]; for(let tm=0;tm<2;tm++) for(let p=0;p<size;p++) slots.push({team:tm,pos:p,human:-1,hero:-1,role:defRoles[p]||'mid',ok:false});
   for(let k=0;k<humans;k++){ const tm=k%2,p=k>>1; const s=slots[tm*size+p]; s.human=k; }
-  const SP_ROLE={top:['flash','barrier'],jg:['flash','smite'],mid:['flash','heal'],bot:['flash','barrier'],sup:['flash','heal']}; slots.forEach(s=>{ s.sp=(SP_ROLE[s.role]||SP_ROLE.mid).slice(); });
+  const SP_ROLE={top:['flash','ghost'],jg:['flash','smite'],mid:['flash','heal'],bot:['flash','heal'],sup:['flash','heal']}; slots.forEach(s=>{ s.sp=(SP_ROLE[s.role]||SP_ROLE.mid).slice(); });
   slots.forEach((s,i)=>{ s.name=s.human>=0?(net?(net.names&&net.names[s.human])||'玩家'+(s.human+1):(opts.name||'你')):'電腦・'+['阿凱','小雨','大熊','米可','老王','阿哲','小魚','肉丸','阿樂','皮蛋'][i%10]; });
   const mySlot=slots.findIndex(s=>s.human===myIdx),myTeam=slots[mySlot].team,flip=myTeam===1;
   /* ---------- 3D ---------- */
@@ -172,7 +172,6 @@ function create(env,opts){
       case 'heal': { const v=90+h.lvl*28; heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<8).forEach(a=>{ heal(a,v); a.buffs.push({spd:.3,t:1.5}); }); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),8,'#7aff9a',.7,1]); break; }
       case 'smite': if(!smite(h)) return false; break;
       case 'ghost': h.buffs.push({spd:.45,t:6}); emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),.9,'#9ad8ff',.6]); break;
-      case 'barrier': h.shield=Math.max(h.shield,110+h.lvl*28); h.shT=2.5; emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),1.5,'#e8e8ff',.6]); break;
       case 'cleanse': h.stun=0; h.slow=0; emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),.9,'#ff9ec8',.6]); break; }
     h.spCd[j]=S0.cd; if(h.me) emit(['sfx','boost']); return true; }
   function buyNext(h,manual){ const nxt=h.build[h.items.length]; if(!nxt||h.items.length>=6) return false; const it=ITEMS[nxt]; if(h.gold<it.c) return false; h.gold-=it.c; h.items.push(nxt); const r0=h.hp/h.max; h.max=stats(h).hp; h.hp=Math.max(1,h.max*r0); if(h.me){ emit(['sfx','item']); floatMsg('買了 '+it.n,'#ffd23f'); } return true; }
@@ -212,7 +211,6 @@ function create(env,opts){
     else moveUnit(h,x-h.x,z-h.z,Math.min(sp,d/dt),dt); return false; }
   function botSpells(h){ const E=heroes.filter(e=>e.team!==h.team&&alive(e)&&dist(e,h)<9).length,hp=h.hp/h.max; for(let j=0;j<2;j++){ if(h.spCd[j]>0||Math.random()>LV.sk*.2) continue; const id=h.sp[j];
       if(id==='heal'&&(hp<.3&&E||heroes.some(a=>a.team===h.team&&alive(a)&&a.hp/a.max<.25&&dist(a,h)<8))) castSpell(h,j);
-      else if(id==='barrier'&&hp<.3&&E) castSpell(h,j);
       else if(id==='flash'&&hp<.2&&E){ const F=map.fount[h.team]; castSpell(h,j,{x:F[0],z:F[1]}); }
       else if(id==='ghost'&&(hp<.35&&E||h.ai.tgt&&h.ai.tgt.k==='h'&&h.ai.tgt.hp/h.ai.tgt.max<.3)) castSpell(h,j);
       else if(id==='cleanse'&&h.slow>0&&E) castSpell(h,j); } }
