@@ -17,8 +17,8 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
     M.lanes=[polyl([[-56,56],[-58,34],[-58,-50],[-50,-58],[34,-58],[56,-56]]),polyl([[-56,56],[56,-56]]),polyl([[-56,56],[-34,58],[50,58],[58,50],[58,-34],[56,-56]])];
     M.laneName=['上路','中路','下路'];
     M.river={pts:[[-66,-66],[66,66]],w:8,len:Math.hypot(132,132),cx:0,cz:0,ang:-PI/4,at:t=>[lerp(-66,66,t),lerp(-66,66,t)]}; M.riverW=8; M.riverDist=(x,z)=>segD(x,z,-66,-66,66,66);
-    const big=[[-22,-22,0],[22,22,1]],small=[[-47,-20],[-20,-47],[-40,-32],[47,20],[20,47],[40,32]];
-    M.camps=[{x:big[0][0],z:big[0][1],big:1,kind:0,col:'#c08aff',side:0},{x:big[1][0],z:big[1][1],big:1,kind:1,col:'#8affc8',side:1}].concat(small.map((p,i)=>({x:p[0],z:p[1],big:0,kind:i,side:i<3?0:1})));
+    const big=[[-22,-22,0],[22,22,1]],small=[[-47,-20],[-40,-32],[20,47],[32,40],[-20,-47],[-32,-40],[47,20],[40,32]]; /* 前 4 個藍方、後 4 個紅方，沿河道（x、z 對調）完全對稱 */
+    M.camps=[{x:big[0][0],z:big[0][1],big:1,kind:0,col:'#c08aff',side:0},{x:big[1][0],z:big[1][1],big:1,kind:1,col:'#8affc8',side:1}].concat(small.map((p,i)=>({x:p[0],z:p[1],big:0,kind:i,side:i<4?0:1})));
     M.inB=(x,z)=>[clamp(x,-M.B,M.B),clamp(z,-M.B,M.B)]; M.edge=a=>M.B/Math.max(Math.abs(Math.cos(a)),Math.abs(Math.sin(a)));
   } else { M.B=66; M.cliff=11.5; M.base=[[-56,0],[56,0]]; M.fount=[[-64,0],[64,0]]; M.lanes=[polyl([[-56,0],[56,0]])]; M.laneName=['主路']; M.camps=[]; M.riverW=0;
     M.inB=(x,z)=>[clamp(x,-M.B,M.B),clamp(z,-M.cliff+.8,M.cliff-.8)]; M.edge=a=>Math.min(70/Math.max(.001,Math.abs(Math.cos(a))),(M.cliff+4)/Math.max(.001,Math.abs(Math.sin(a)))); }
@@ -29,24 +29,31 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
   M.cores=[0,1].map(tm=>({id:200+tm,team:tm,x:M.base[tm][0],z:M.base[tm][1]}));
   // 給電腦走的路網：三條路、河道、野怪營地
   const N=[],E=[]; const node=(x,z)=>{ N.push([x,z]); return N.length-1; };
-  M.lanes.forEach(L=>{ let prev=-1; for(let s=8;s<=L.len-7.9;s+=8){ const p=along(L,Math.min(s,L.len)),i=node(p[0],p[1]); if(prev>=0) E.push([prev,i]); prev=i; } }); // 頭尾 8 公尺是主堡，不放點
+  const ends=[]; M.lanes.forEach(L=>{ let prev=-1,first=-1; for(let s=8;s<=L.len-7.9;s+=8){ const p=along(L,Math.min(s,L.len)),i=node(p[0],p[1]); if(first<0) first=i; if(prev>=0) E.push([prev,i]); prev=i; } ends.push([first,prev]); }); // 頭尾 8 公尺是主堡，不放點
+  // 主堡前的集合點：三條路在自家門口接起來，出門可以直接走到任何一路（不用繞別路）
+  if(mode===0) for(let tm=0;tm<2;tm++){ const b=M.base[tm],hub=node(b[0]+(tm?-4:4),b[1]+(tm?4:-4)); ends.forEach(e=>E.push([hub,e[tm]])); }
   if(M.river){ let prev=-1; for(let t=-58;t<=58;t+=8){ const i=node(t,t); if(prev>=0) E.push([prev,i]); prev=i; } }
   const nearest=(x,z,skip)=>{ let b=-1,bd=1e9; N.forEach((q,i)=>{ if(skip&&skip.has(i)) return; const d=Math.hypot(q[0]-x,q[1]-z); if(d<bd){ bd=d; b=i; } }); return b; };
   M.camps.forEach(cp=>{ const ci=node(cp.x,cp.z); cp.node=ci; const sk=new Set([ci]); for(let k=0;k<2;k++){ const j=nearest(cp.x,cp.z,sk); sk.add(j); E.push([ci,j]); } });
   M.camps.forEach(a=>M.camps.forEach(b=>{ if(a!==b&&a.side===b.side&&a.node<b.node&&Math.hypot(a.x-b.x,a.z-b.z)<30) E.push([a.node,b.node]); }));
+  // 路網的點不要剛好壓在防禦塔上（會被塔擋住走不到）：往旁邊挪開
+  for(const q of N) for(const t of M.towers){ const dx=q[0]-t.x,dz=q[1]-t.z,d=Math.hypot(dx,dz); if(d<3.2){ const a=d>.05?Math.atan2(dz,dx):Math.atan2(t.x,-t.z); q[0]=t.x+Math.cos(a)*3.2; q[1]=t.z+Math.sin(a)*3.2; } }
   M.N=N; M.E=E; M.adj=N.map(()=>[]); E.forEach(([a,b])=>{ const d=Math.hypot(N[a][0]-N[b][0],N[a][1]-N[b][1]); M.adj[a].push([b,d]); M.adj[b].push([a,d]); });
   // 障礙物：樹叢、大石頭（不擋路、不擋河、不擋營地和路網）
   M.obst=[]; if(mode===0){ for(let k=0;k<2600&&M.obst.length<70;k++){ const x=(R()-.5)*124,z=(R()-.5)*124,r=2.4+R()*3;
       if(M.laneDist(x,z)<M.laneW/2+r+1.5) continue; if(M.riverDist(x,z)<M.river.w/2+r+1.5) continue; if(M.base.concat(M.fount).some(b=>Math.hypot(x-b[0],z-b[1])<18+r)) continue;
       if(M.camps.some(c=>Math.hypot(x-c.x,z-c.z)<(c.big?10:7)+r)) continue; if(E.some(([a,b])=>segD(x,z,N[a][0],N[a][1],N[b][0],N[b][1])<r+3.2)) continue; if(M.obst.some(o=>Math.hypot(o.x-x,o.z-z)<o.r+r+3.5)) continue;
-      M.obst.push({x,z,r,k:R()<.28?'rock':'tree'}); } }
+      M.obst.push({x,z,r,k:R()<.28?'rock':'tree'}); }
+    // 左右對稱：只留藍方那一半，再鏡射到紅方（x、z 對調），兩隊地形一模一樣
+    M.obst=M.obst.filter(o=>o.z-o.x>o.r*1.5); M.obst=M.obst.concat(M.obst.map(o=>Object.assign({},o,{x:o.z,z:o.x}))); }
   // 草叢：英雄躲進去，外面的人看不到（除非有眼或也在同一叢草裡）
   M.bush=[]; const okB=(x,z,r)=>{ if(M.laneDist(x,z)<M.laneW/2+r*.7) return false; if(M.river&&M.riverDist(x,z)<M.river.w/2+r*.5) return false; if(M.base.concat(M.fount).some(b=>Math.hypot(x-b[0],z-b[1])<20)) return false;
     if((M.obst||[]).some(o=>Math.hypot(o.x-x,o.z-z)<o.r+r+.8)) return false; if(M.camps.some(c=>Math.hypot(x-c.x,z-c.z)<(c.big?7:5)+r)) return false; if(M.bush.some(b=>Math.hypot(b.x-x,b.z-z)<b.r+r+2)) return false;
     if(mode===1&&Math.abs(z)>M.cliff-r-.3) return false; return Math.abs(x)<M.B-2&&Math.abs(z)<M.B-2; };
   if(mode===0){ M.lanes.forEach((L,li)=>{ [.24,.37,.5,.63,.76].forEach((f,k)=>{ const p=along(L,L.len*f); for(const sd of k===2?[-1,1]:[(li+k)%2?1:-1]){ const r=2.3,off=M.laneW/2+r+.4,x=p[0]-p[3]*off*sd,z=p[1]+p[2]*off*sd; if(okB(x,z,r)) M.bush.push({x,z,r}); } }); });
     for(const t of [.3,.42,.58,.7]){ const p=M.river.at(t); for(const sd of [-1,1]){ const r=2.2,o=M.river.w/2+r+.3,x=p[0]-.707*o*sd,z=p[1]+.707*o*sd; if(okB(x,z,r)) M.bush.push({x,z,r}); } }
-    M.camps.forEach(c=>{ for(let k=0;k<8;k++){ const a=R()*TAU,d=(c.big?9.5:7)+R()*3,r=2+R()*.6,x=c.x+Math.cos(a)*d,z=c.z+Math.sin(a)*d; if(okB(x,z,r)){ M.bush.push({x,z,r}); break; } } }); }
+    M.camps.forEach(c=>{ for(let k=0;k<8;k++){ const a=R()*TAU,d=(c.big?9.5:7)+R()*3,r=2+R()*.6,x=c.x+Math.cos(a)*d,z=c.z+Math.sin(a)*d; if(okB(x,z,r)){ M.bush.push({x,z,r}); break; } } });
+    M.bush=M.bush.filter(b=>b.z-b.x>b.r*.9); M.bush=M.bush.concat(M.bush.map(b=>({x:b.z,z:b.x,r:b.r}))); }
   else { const L=M.lanes[0]; for(const f of [.27,.4,.6,.73]) for(const sd of [-1,1]){ const p=along(L,L.len*f),r=2.1,z=sd*(M.laneW/2+r+.2),x=p[0]+(sd>0?2:-2); if(okB(x,z,r)) M.bush.push({x,z,r}); } }
   M.nearestNode=(x,z)=>nearest(x,z);
   M.path=(x0,z0,x1,z1)=>{ const s=nearest(x0,z0),g=nearest(x1,z1); if(s===g) return [[x1,z1]]; const dd=N.map(()=>1e9),pv=N.map(()=>-1),done=new Set(); dd[s]=0;
@@ -75,6 +82,7 @@ const HEROES=[
   HD('鐵壁','tank',{skin:'#d8b090',c1:'#3a4a6a',c2:'#c0c8d8',hair:'#2a2a3a',fx:'#a8c8ff'},[S('盾擊','shot',8,{r:8,d:100,st:0.8}),S('守護誓約','shield',12,{v:260,ally:1,spd:0.25}),S('盾牌衝刺','charge',10,{r:7,w:2,d:100,kb:2.5}),S('神盾震爆','nova',42,{a:6,d:220,kb:5,st:0.5})],{helm:1}),
   HD('淚魂','tank',{skin:'#9ad0b8',c1:'#c8c0a8',c2:'#e8e0c8',hair:'#3a5a4a',fx:'#7ae8c8'},[S('繃帶飛索','grapple',12,{r:10,d:80,st:1}),S('絕望光環','aura',1,{a:3,d:20}),S('暴怒','nova',9,{a:3.5,d:110,hr:1}),S('哀傷詛咒','nova',42,{a:5.5,d:200,rt:2})],{}),
   HD('花崗','tank',{skin:'#9a8a7a',c1:'#5a4a3a',c2:'#b8a890',hair:'#3a3028',fx:'#ffb070'},[S('地震碎片','strike',8,{r:8,d:110,sl:2,stl:1}),S('雷霆拍擊','empower',9,{d:50,a:3,arm:30}),S('大地猛擊','nova',8,{a:3.5,d:120,wk:2}),S('勢不可擋','dash',42,{r:10,a:3.5,d:260,ku:1.4,us:1})],{horns:1}),
+  HD('鐵吼','tank',{skin:'#c89070',c1:'#4a4a52',c2:'#d0a040',hair:'#2a1a10',fx:'#ffc040'},[S('鐵壁衝鋒','charge',10,{r:7,w:2,d:90,tn:1}),S('鋼刺皮甲','buff',14,{arm:45,dur:4}),S('盾擊震盪','shot',9,{r:8,d:100,kb:2}),S('萬夫莫敵','nova',42,{a:5.5,d:200,tn:2})],{helm:1,horns:1}),
   // 戰士
   HD('烈刃','fighter',{skin:'#e8b890',c1:'#a83a2a',c2:'#e8c060',hair:'#1a1410',fx:'#ff9a3d'},[S('突進斬','dash',7,{r:6,a:2.2,d:110}),S('迴旋斬','nova',8,{a:3.3,d:120}),S('破空斬','pierce',8,{r:7,d:130}),S('斷罪一擊','exec',35,{r:4,d:220,m:0.4,kb:4})],{cape:1}),
   HD('狂瀾','fighter',{skin:'#d8a880',c1:'#2a5a8a',c2:'#8ad8ff',hair:'#3a2a1a',fx:'#5ab8ff'},[S('怒濤劈','pierce',7,{r:6.5,d:120,sl:1,w:3}),S('戰意沸騰','buff',14,{as:0.5,dur:4}),S('潮湧','dash',9,{r:7,a:2.5,d:110,sl:1.2}),S('巨浪狂瀾','pierce',40,{r:10,d:260,w:4,ku:1})],{f:1}),
@@ -84,6 +92,7 @@ const HEROES=[
   HD('鐵騎','fighter',{skin:'#d8a880',c1:'#5a4a3a',c2:'#c8b070',hair:'#2a1a10',fx:'#ffd890'},[S('長槍突刺','pierce',7,{r:8,d:120,w:1.6}),S('戰馬嘶鳴','buff',12,{spd:0.5,dur:3}),S('橫掃','nova',9,{a:3.8,d:110,sl:1}),S('鐵騎衝鋒','charge',40,{r:12,w:2.6,d:260,kb:4})],{helm:1,cape:1}),
   HD('刀鋒','fighter',{skin:'#e8c0a0',c1:'#6a1a2a',c2:'#e04a5a',hair:'#1a1010',fx:'#ff4a6a'},[S('吸血斬','strike',6,{r:3,d:120,dr:0.6}),S('反擊架式','shield',12,{v:220,spd:0.2}),S('迴旋刃','boom',8,{r:8,d:100}),S('血之狂宴','nova',38,{a:4,d:280,dr:0.5})],{}),
   HD('雷錘','fighter',{skin:'#d8a880',c1:'#3a3a6a',c2:'#ffd860',hair:'#e8e0c0',fx:'#ffe066'},[S('雷錘擲','shot',9,{r:9,d:120,st:0.6}),S('雷霆護體','buff',13,{arm:30,as:0.3,dur:4}),S('震地錘','blast',10,{r:6,a:3,d:120,ku:0.8,dl:0.6}),S('雷神降臨','dash',40,{r:9,a:4,d:300,st:0.6,ku:0.8})],{helm:1,cape:1}),
+  HD('狂獅','fighter',{skin:'#d8a070',c1:'#a87a2a',c2:'#ffd060',hair:'#c87a20',fx:'#ffb040'},[S('獅爪撕裂','strike',6,{r:3,d:130,dr:0.3}),S('獅吼','nova',11,{a:4,d:80,fr:1}),S('撲擊','dash',9,{r:7,a:2.5,d:110,tn:0.8}),S('百獸之王','buff',40,{dmg:0.3,ls:0.25,arm:30,dur:6})],{cape:1}),
   // 刺客
   HD('夜鴉','assassin',{skin:'#e8c8a8',c1:'#2a2238',c2:'#6a4a9a',hair:'#14101a',fx:'#b98cff'},[S('鴉影瞬身','blink',8,{r:8,d:130}),S('暗刃','strike',6,{r:2.8,d:140}),S('鴉群','nova',8,{a:3.5,d:120}),S('夜幕處決','exec',30,{r:6,d:260,m:0.6,blink:1})],{hood:1,cape:1}),
   HD('影蛇','assassin',{skin:'#d8b090',c1:'#2a4a3a',c2:'#5ac88a',hair:'#1a2a1a',fx:'#5ac88a'},[S('毒牙飛鏢','shot',6,{r:9,d:140,sl:1.2}),S('蛇行','blink',10,{r:7,d:0,spd:0.5}),S('毒霧','storm',12,{r:8,a:3.5,d:60,dur:3,sl:1}),S('萬蛇噬咬','storm',35,{r:7,a:3.5,d:180,dur:3,dr:0.5})],{hood:1,f:1}),
@@ -93,6 +102,8 @@ const HEROES=[
   HD('幽刃','assassin',{skin:'#d8c0b0',c1:'#1a1a2a',c2:'#5a5a8a',hair:'#0a0a14',fx:'#8a8aff'},[S('幽影飛刃','shot',6,{r:9,d:130}),S('毒刺陷阱','trap',10,{r:7,d:120,sl:2}),S('致命毒刃','buff',12,{dmg:0.3,dur:3}),S('幽冥斬首','exec',30,{r:5,d:240,m:0.7,rs:1})],{hood:1}),
   HD('紅蠍','assassin',{skin:'#d8a070',c1:'#8a2a1a',c2:'#ff7a4a',hair:'#2a1010',fx:'#ff6a3a'},[S('蠍尾刺','hook',9,{r:7,d:110,st:0.4}),S('甲殼','shield',12,{v:200}),S('毒針連射','chain',9,{r:7,d:90,sl:1}),S('蠍王突襲','dash',35,{r:8,a:2.5,d:300,dr:0.5})],{horns:1}),
   HD('月影','assassin',{skin:'#f0e0d8',c1:'#2a2a5a',c2:'#c8c8ff',hair:'#c8c8e8',fx:'#c8c8ff'},[S('新月斬','pierce',7,{r:7,d:140,w:2.5}),S('月隱','buff',12,{spd:0.5,dmg:0.15,dur:3}),S('影襲','blink',9,{r:7,d:120,sl:1}),S('月之審判','boom',32,{r:10,d:320,w:3,st:0.8})],{f:1,hood:1}),
+  HD('影貓','assassin',{skin:'#e8d0c0',c1:'#2a2a3a',c2:'#8a7ab8',hair:'#1a1a24',fx:'#a890ff'},[S('貓爪','strike',6,{r:2.8,d:140,sl:1}),S('潛影','buff',14,{inv:1,spd:0.4,dur:3}),S('影步','blink',9,{r:7,d:0}),S('暗影突襲','blink',35,{r:9,d:300,inv:1})],{hood:1}),
+  HD('幻夜','assassin',{skin:'#c8b8c8',c1:'#1a1a2a',c2:'#a03a5a',hair:'#0a0a10',fx:'#ff4a8a'},[S('惡夢鐮刀','boom',8,{r:8,d:120,fr:0.6}),S('吸魂','shot',9,{r:9,d:110,dr:0.4}),S('驚嚇','strike',10,{r:4,d:80,fr:1.5}),S('恐懼降臨','storm',40,{r:9,a:4.5,d:100,dur:3,fr:1})],{hood:1,cape:1}),
   // 法師
   HD('星詠','mage',{skin:'#f8e0c8',c1:'#3a3a8a',c2:'#ffd23f',hair:'#f0e080',fx:'#ffe066'},[S('星芒彈','shot',5,{r:10,d:150}),S('星塵爆','blast',8,{r:9,a:3,d:130,sl:1.5,dl:0.5}),S('星光護盾','shield',13,{v:200}),S('流星雨','blast',40,{r:11,a:5.5,d:420,dl:1})],{f:1,hood:1}),
   HD('炎靈','mage',{skin:'#e8b890',c1:'#8a1a1a',c2:'#ff7a1a',hair:'#ff5a2a',fx:'#ff6a1a'},[S('火球','shot',6,{r:9,d:160}),S('烈焰射線','pierce',8,{r:9,d:150}),S('爆炎','nova',9,{a:3.5,d:140,kb:2}),S('焚天烈焰','storm',45,{r:9,a:5,d:110,dur:4})],{}),
@@ -102,9 +113,10 @@ const HEROES=[
   HD('紫煙','mage',{skin:'#e0c8d8',c1:'#4a2a5a',c2:'#b06ad8',hair:'#2a1a3a',fx:'#c07aff'},[S('毒霧彈','storm',7,{r:9,a:3,d:70,dur:3}),S('腐蝕彈','shot',8,{r:9,d:110,dr:0.4}),S('瘴氣爆發','nova',10,{a:3.5,d:120,sl:1.5}),S('毒龍吐息','pierce',40,{r:10,d:320,w:4,sl:2})],{hood:1,f:1}),
   HD('晶靈','mage',{skin:'#f0e8f8',c1:'#3a6a9a',c2:'#a8f0ff',hair:'#d0f0ff',fx:'#a8f0ff'},[S('水晶碎片','chain',6,{r:8,d:110}),S('晶體護盾','shield',13,{v:180,ally:1}),S('晶簇陷阱','trap',11,{r:8,d:90,ku:1}),S('星晶隕落','blast',40,{r:10,a:5,d:380,st:1,dl:1})],{f:1}),
   HD('咒骨','mage',{skin:'#d8d0c0',c1:'#2a2a2a',c2:'#a0e070',hair:'#e8e8e0',fx:'#a0ff70'},[S('咒骨彈','shot',7,{r:9,d:120,a:2.5}),S('亡靈護甲','shield',13,{v:230}),S('冥界之手','hook',12,{r:8,d:100,sl:2}),S('亡者之握','nova',38,{a:5.5,d:260,pl:1,sl:1.5})],{hood:1,horns:1}),
+  HD('魅狐','mage',{skin:'#f8e0d0',c1:'#c83a5a',c2:'#ffb0c8',hair:'#f0f0f8',fx:'#ff8ab8'},[S('狐火球','boom',6,{r:9,d:130}),S('狐火','chain',8,{r:7,d:90,cn:3}),S('魅惑之吻','shot',11,{r:9,d:80,ch:1.4}),S('傾心之舞','nova',40,{a:5,d:220,ch:1.5})],{f:1}),
   // 射手
   HD('鷹眼','marksman',{skin:'#e0b890',c1:'#4a6a3a',c2:'#c8a060',hair:'#3a2a1a',fx:'#ffe066'},[S('專注射擊','buff',10,{as:0.6,dur:4}),S('穿甲箭','shot',8,{r:10,d:140,sl:1.5}),S('鷹之翱翔','blink',11,{r:6,d:0,back:1}),S('鷹擊長空','pierce',35,{r:16,d:420,w:2})],{hood:1}),
-  HD('流星','marksman',{skin:'#f8d8c0',c1:'#c8a020',c2:'#fff0b0',hair:'#f0c040',fx:'#ffd23f'},[S('流星箭','pierce',6,{r:10,d:130}),S('翻滾','blink',8,{r:5,d:0}),S('星光連射','buff',12,{as:0.4,ls:0.2,dur:4}),S('流星箭雨','chain',40,{r:10,d:260,sl:1.5,n:5})],{f:1}),
+  HD('流星','marksman',{skin:'#f8d8c0',c1:'#c8a020',c2:'#fff0b0',hair:'#f0c040',fx:'#ffd23f'},[S('流星箭','pierce',6,{r:10,d:130}),S('翻滾','blink',8,{r:5,d:0}),S('星光連射','buff',12,{as:0.4,ls:0.2,dur:4}),S('流星箭雨','chain',40,{r:10,d:260,sl:1.5,cn:5})],{f:1}),
   HD('赤羽','marksman',{skin:'#d8a880',c1:'#a82a2a',c2:'#ffb04a',hair:'#2a1410',fx:'#ff7a3d'},[S('火羽箭','shot',6,{r:10,d:150}),S('疾奔','buff',12,{spd:0.4,dur:3}),S('焚羽','boom',8,{r:9,d:110}),S('鳳凰之箭','shot',40,{r:16,d:360,st:1.5})],{cape:1}),
   HD('疾矢','marksman',{skin:'#e8c0a0',c1:'#2a4a6a',c2:'#8ac8ff',hair:'#1a1a2a',fx:'#8ac8ff'},[S('連珠箭','buff',10,{as:0.5,dmg:0.15,dur:5}),S('爆裂箭','blast',8,{r:9,a:3,d:120,sl:1.5,dl:0.4}),S('捕網','shot',10,{r:8,d:60,sl:3}),S('致命狙擊','exec',35,{r:12,d:260,m:0.5})],{}),
   HD('銀弦','marksman',{skin:'#f8e0d0',c1:'#6a6a7a',c2:'#e0e0f0',hair:'#e8e8f0',fx:'#e0e8ff'},[S('分裂箭','chain',7,{r:9,d:110}),S('定身箭','shot',10,{r:10,d:100,st:1}),S('銀色疾風','buff',12,{spd:0.4,as:0.3,dur:4}),S('銀月衝擊','pierce',40,{r:12,d:340,w:3,kb:3})],{f:1,cape:1}),
@@ -113,6 +125,7 @@ const HEROES=[
   HD('冰弓','marksman',{skin:'#f8e8e8',c1:'#5a8ab8',c2:'#e0f4ff',hair:'#f0f0ff',fx:'#b0e0ff'},[S('寒冰連射','chain',7,{r:9,d:100,sl:1.5}),S('冰晶甲','shield',12,{v:180,spd:0.3}),S('冰霜射擊','buff',12,{as:0.4,dmg:0.1,dur:4}),S('冰封之箭','shot',40,{r:14,d:280,st:1.2,a:3.5})],{f:1,hood:1}),
   HD('雷弩','marksman',{skin:'#d8b090',c1:'#3a3a5a',c2:'#9ad8ff',hair:'#2a2a3a',fx:'#7ac8ff'},[S('雷弩齊射','pierce',7,{r:9,d:120,w:3}),S('電磁陷阱','trap',12,{r:7,d:70,st:1}),S('超載','buff',12,{as:0.6,spd:0.2,dur:3}),S('雷霆炮','blast',40,{r:12,a:4.5,d:360,sl:2,dl:0.8})],{helm:1}),
   HD('星羽','marksman',{skin:'#f8e0c8',c1:'#6a4ab8',c2:'#ffe0ff',hair:'#f0d0ff',fx:'#ffb0ff'},[S('星光箭','shot',6,{r:10,d:140,dr:0.3}),S('星躍','blink',10,{r:6,d:0,back:1,sl:1.5}),S('星辰護佑','heal',14,{v:160,self:1,cl:1}),S('星河奔流','boom',40,{r:12,d:320,w:3,sl:1.5})],{f:1,cape:1}),
+  HD('暗弩','marksman',{skin:'#c8b090',c1:'#3a4a2a',c2:'#8ab060',hair:'#1a2010',fx:'#a0e060'},[S('潛伏','buff',14,{inv:1,as:0.5,dur:3}),S('毒雲瓶','blast',9,{r:9,a:3,d:90,sl:1.5,dl:0.4}),S('翻滾隱沒','blink',11,{r:5,d:0,back:1,inv:1}),S('狙殺模式','buff',40,{as:0.4,dmg:0.3,ls:0.15,dur:6})],{hood:1}),
   // 輔助
   HD('晨曦','support',{skin:'#f8e0c8',c1:'#f0e0a0',c2:'#ffd23f',hair:'#f0d080',fx:'#fff0a0'},[S('晨光治癒','heal',10,{a:8,v:170}),S('聖光彈','shot',8,{r:9,d:90,st:1}),S('日光衝擊','nova',9,{a:3.5,d:90,sl:1.5}),S('黎明審判','blast',40,{r:10,a:5,d:200,ku:1,hl:1,dl:0.8})],{f:1,cape:1}),
   HD('聖鈴','support',{skin:'#f0d0b8',c1:'#e8e8f0',c2:'#8ad8ff',hair:'#c8a060',fx:'#c8f0ff'},[S('鈴之守護','shield',10,{v:200,ally:1}),S('清音震波','pierce',9,{r:9,d:90,sl:1.5,w:3}),S('鈴音束縛','trap',11,{r:7,d:70,st:1.2}),S('天籟','heal',40,{a:10,v:450,cl:1})],{f:1}),
@@ -121,8 +134,9 @@ const HEROES=[
   HD('守望','support',{skin:'#c8946a',c1:'#6a5a3a',c2:'#e8d8a0',hair:'#2a2418',fx:'#e8d8a0'},[S('光之箭','shot',7,{r:9,d:100,sl:2}),S('守護之光','heal',12,{a:8,v:170}),S('守望之盾','shield',12,{v:220,ally:1}),S('聖域','nova',40,{a:6,d:200,st:1.5})],{helm:1,cape:1}),
   HD('靈蝶','support',{skin:'#f8e8e0',c1:'#a07ad8',c2:'#ffe0f8',hair:'#e0c0ff',fx:'#e0b0ff'},[S('蝶粉','chain',8,{r:8,d:80,sl:1}),S('蝶翼庇護','shield',11,{v:180,ally:1,spd:0.4}),S('靈光一閃','blink',12,{r:6,d:60,ally:1}),S('幻蝶之夢','storm',40,{r:9,a:4.5,d:40,dur:3,st:1})],{f:1}),
   HD('鼓手','support',{skin:'#c88a5a',c1:'#c8402a',c2:'#ffd060',hair:'#2a1a10',fx:'#ffc040'},[S('戰鼓震波','nova',9,{a:4,d:80,kb:2.5}),S('進擊鼓點','buff',12,{spd:0.3,as:0.3,dur:4,ally:1}),S('鼓舞','heal',13,{a:8,v:140,cl:1}),S('萬鼓齊鳴','nova',40,{a:6,d:180,ku:1.2,ally:1})],{}),
-  HD('星護','support',{skin:'#f0d8c0',c1:'#2a3a7a',c2:'#ffe080',hair:'#f0e0a0',fx:'#ffe080'},[S('星光鎖鏈','chain',10,{r:8,d:60,st:0.6,n:3}),S('星盾','shield',12,{v:240,ally:1}),S('星落','blast',10,{r:9,a:3,d:110,kb:2.5,dl:0.6}),S('星界守護','dash',40,{r:9,a:4,d:180,ku:1.1,ally:1})],{f:1,cape:1}),
-  HD('機甲','support',{skin:'#c8c8d0',c1:'#b88a2a',c2:'#ffd860',hair:'#3a3a44',fx:'#ffe066'},[S('火箭鉤爪','hook',13,{r:11,d:90,st:0.65}),S('全速驅動','buff',14,{spd:0.6,as:0.4,dur:4}),S('上勾重拳','empower',8,{d:60,ku:1}),S('靜電力場','nova',40,{a:5.5,d:250,sil:1.5})],{helm:1})];
+  HD('星護','support',{skin:'#f0d8c0',c1:'#2a3a7a',c2:'#ffe080',hair:'#f0e0a0',fx:'#ffe080'},[S('星光鎖鏈','chain',10,{r:8,d:60,st:0.6,cn:3}),S('星盾','shield',12,{v:240,ally:1}),S('星落','blast',10,{r:9,a:3,d:110,kb:2.5,dl:0.6}),S('星界守護','dash',40,{r:9,a:4,d:180,ku:1.1,ally:1})],{f:1,cape:1}),
+  HD('機甲','support',{skin:'#c8c8d0',c1:'#b88a2a',c2:'#ffd860',hair:'#3a3a44',fx:'#ffe066'},[S('火箭鉤爪','hook',13,{r:11,d:90,st:0.65}),S('全速驅動','buff',14,{spd:0.6,as:0.4,dur:4}),S('上勾重拳','empower',8,{d:60,ku:1}),S('靜電力場','nova',40,{a:5.5,d:250,sil:1.5})],{helm:1}),
+  HD('幽鈴','support',{skin:'#f0e0e8',c1:'#5a3a6a',c2:'#c8a8e8',hair:'#1a1020',fx:'#d0a8ff'},[S('迷魂鈴','nova',9,{a:4,d:70,fr:1}),S('安魂曲','heal',13,{a:8,v:150,cl:1}),S('魂之引','hook',13,{r:9,d:60,ch:1}),S('鎮魂結界','blast',40,{r:9,a:5,d:180,fr:1.5,dl:0.7})],{f:1,hood:1})];
 
 // 被動技能、特殊路線
 { const F=n=>HEROES.find(h=>h.n===n);
@@ -135,7 +149,7 @@ const SPELLS={flash:{n:'閃現',cd:60,col:'#ffe066',d:'往滑鼠方向瞬間移�
 HEROES.forEach((h,i)=>{ h.i=i; if(!h.pal.c3) h.pal.c3=['#3a3a48','#4a3a2a','#2a2a38','#3a4a3a'][i%4]; });
 const SK_TXT={dash:'衝到指定位置',blink:'瞬間移動',strike:'重擊眼前的敵人',nova:'對身邊的敵人造成傷害',blast:'在指定位置引爆（地上先出現預警圈，可以閃開）',shot:'射出飛彈，打中第一個敵人（可以閃開）',pierce:'射出一道穿透波，路上的敵人都會中（可以閃開）',shield:'得到護盾',heal:'治療',buff:'強化自己',exec:'對殘血敵人造成大量傷害',hook:'甩出鉤子，鉤中第一個敵人並拉過來（可以閃開）',storm:'持續傷害一片區域',charge:'往前衝鋒，撞到的敵人都會中',boom:'丟出迴旋飛刃，去程和回程都會打中',trap:'在地上放陷阱，敵人踩到才觸發（最多 3 個）',chain:'打中目標後彈到附近的敵人',empower:'強化下一次普攻',grapple:'甩出繃帶，打中後把自己拉到敵人身邊（可以閃開）',aura:'開關光環：開啟時持續傷害身邊的敵人，會一直消耗魔力'};
 function skDesc(s){ let t=SK_TXT[s.t]; if(s.t==='heal') t=s.self?'治療自己':'治療自己和附近隊友'; if(s.t==='shield') t=s.ally?'給自己和附近隊友護盾':'給自己護盾'; if(s.t==='buff'&&s.ally) t='強化自己和附近隊友'; if(s.back) t='往後翻滾閃開'; if(s.t==='chain'&&s.blink) t='在敵人之間來回穿梭斬擊（期間不會被打中）';
-  const ex=[]; if(s.ku) ex.push('擊飛'); if(s.kb) ex.push('擊退'); if(s.pl) ex.push('把敵人吸過來'); if(s.sil) ex.push('沉默 '+s.sil+' 秒（不能放技能）'); if(s.rt) ex.push('定身 '+s.rt+' 秒（不能移動）'); if(s.st) ex.push('暈眩 '+s.st+' 秒'); if(s.wk) ex.push('降低敵人攻擊'); if(s.us) ex.push('衝刺時不受控制'); if(s.hr) ex.push('被普攻時冷卻縮短'); if(s.stl) ex.push('偷取移動速度'); if(s.t==='empower'&&s.a) ex.push('波及周圍敵人'); if(s.t==='empower'&&s.arm) ex.push('並增加護甲'); if(s.sl) ex.push('緩速'); if(s.dr) ex.push('吸血'); if(s.cl) ex.push('解除控制'); if(s.hl) ex.push('治療範圍內隊友'); if(s.ally&&!['shield','heal','buff'].includes(s.t)) ex.push('隊友得到護盾'); if(s.rs) ex.push('擊殺重置冷卻'); if(s.ls) ex.push('吸血'); if(s.spd&&['shield','blink'].includes(s.t)) ex.push('加速'); return t+(ex.length?'，'+ex.join('、'):''); }
+  const ex=[]; if(s.ku) ex.push('擊飛'); if(s.kb) ex.push('擊退'); if(s.pl) ex.push('把敵人吸過來'); if(s.tn) ex.push('嘲諷 '+s.tn+' 秒（強制來打你）'); if(s.fr) ex.push('恐懼 '+s.fr+' 秒（嚇得亂跑）'); if(s.ch) ex.push('魅惑 '+s.ch+' 秒（被吸過來）'); if(s.inv) ex.push('隱身（敵人看不到你，攻擊或放技能就現身）'); if(s.sil) ex.push('沉默 '+s.sil+' 秒（不能放技能）'); if(s.rt) ex.push('定身 '+s.rt+' 秒（不能移動）'); if(s.st) ex.push('暈眩 '+s.st+' 秒'); if(s.wk) ex.push('降低敵人攻擊'); if(s.us) ex.push('衝刺時不受控制'); if(s.hr) ex.push('被普攻時冷卻縮短'); if(s.stl) ex.push('偷取移動速度'); if(s.t==='empower'&&s.a) ex.push('波及周圍敵人'); if(s.t==='empower'&&s.arm) ex.push('並增加護甲'); if(s.sl) ex.push('緩速'); if(s.dr) ex.push('吸血'); if(s.cl) ex.push('解除控制'); if(s.hl) ex.push('治療範圍內隊友'); if(s.ally&&!['shield','heal','buff'].includes(s.t)) ex.push('隊友得到護盾'); if(s.rs) ex.push('擊殺重置冷卻'); if(s.ls) ex.push('吸血'); if(s.spd&&['shield','blink'].includes(s.t)) ex.push('加速'); return t+(ex.length?'，'+ex.join('、'):''); }
 // 裝備（參考英雄聯盟）：基本材料 → 合成成品（材料會折抵價錢）；act＝主動技能（數字鍵 1～6）
 const ITEMS={
   // 基本材料
