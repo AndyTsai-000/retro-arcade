@@ -54,12 +54,12 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
     const out=[[x1,z1]]; let c=g; while(c>=0&&c!==s){ out.unshift(N[c].slice()); c=pv[c]; } return out; };
   return M; }
 /* ================= 英雄、技能、裝備 ================= */
-const CLS={tank:{n:'坦克',col:'#7aa8ff',hp:1050,hpL:125,atk:52,atkL:4,as:.8,rng:2.4,arm:32,armL:3.2,spd:6.2,ad:.3},
-  fighter:{n:'戰士',col:'#ffb04a',hp:880,hpL:108,atk:62,atkL:6,as:.9,rng:2.4,arm:22,armL:2.6,spd:6.4,ad:.6},
-  assassin:{n:'刺客',col:'#ff5d8f',hp:700,hpL:86,atk:66,atkL:7,as:1,rng:2.2,arm:16,armL:2,spd:6.8,ad:.7},
-  mage:{n:'法師',col:'#b98cff',hp:620,hpL:76,atk:46,atkL:3,as:.75,rng:7,arm:12,armL:1.6,spd:6.2,ad:.1},
-  marksman:{n:'射手',col:'#86dc4f',hp:600,hpL:76,atk:58,atkL:6.5,as:.95,rng:7.5,arm:12,armL:1.6,spd:6.3,ad:.6},
-  support:{n:'輔助',col:'#3ddbd9',hp:740,hpL:92,atk:42,atkL:3,as:.8,rng:6.5,arm:18,armL:2.2,spd:6.3,ad:.1}};
+const CLS={tank:{n:'坦克',col:'#7aa8ff',hp:1050,hpL:125,atk:52,atkL:4,as:.8,rng:2.4,mr:32,mrL:1.25,arm:32,armL:3.2,spd:6.2,ad:.3},
+  fighter:{n:'戰士',col:'#ffb04a',hp:880,hpL:108,atk:62,atkL:6,as:.9,rng:2.4,mr:30,mrL:1.2,arm:22,armL:2.6,spd:6.4,ad:.6},
+  assassin:{n:'刺客',col:'#ff5d8f',hp:700,hpL:86,atk:66,atkL:7,as:1,rng:2.2,mr:28,mrL:1,arm:16,armL:2,spd:6.8,ad:.7},
+  mage:{n:'法師',col:'#b98cff',hp:620,hpL:76,atk:46,atkL:3,as:.75,rng:7,mr:28,mrL:0.8,arm:12,armL:1.6,spd:6.2,ad:.1},
+  marksman:{n:'射手',col:'#86dc4f',hp:600,hpL:76,atk:58,atkL:6.5,as:.95,rng:7.5,mr:26,mrL:0.8,arm:12,armL:1.6,spd:6.3,ad:.6},
+  support:{n:'輔助',col:'#3ddbd9',hp:740,hpL:92,atk:42,atkL:3,as:.8,rng:6.5,mr:28,mrL:1,arm:18,armL:2.2,spd:6.3,ad:.1}};
 const CLS_IDS=Object.keys(CLS);
 const S=(n,t,cd,o)=>Object.assign({n,t,cd},o);
 const HD=(n,cls,pal,sk,fl)=>Object.assign({n,cls,pal,sk},fl||{});
@@ -117,31 +117,54 @@ function skDesc(s){ let t=SK_TXT[s.t]; if(s.t==='heal') t=s.self?'治療自己':
 // 裝備（參考英雄聯盟）：基本材料 → 合成成品（材料會折抵價錢）；act＝主動技能（數字鍵 1～6）
 const ITEMS={
   // 基本材料
-  sword:{n:'長劍',c:350,atk:12,cat:'atk',col:'#c8ccd8'},dagger:{n:'短劍',c:300,as:.12,cat:'atk',col:'#9ad870'},tome:{n:'增幅典籍',c:435,sp:.12,cat:'mag',col:'#a88cff'},
-  ruby:{n:'紅水晶',c:400,hp:150,cat:'def',col:'#ff6a7a'},cloth:{n:'布甲',c:300,arm:15,cat:'def',col:'#a8b4c8'},gem:{n:'靈巧寶石',c:350,cdr:.06,mp:200,cat:'mag',col:'#6ad0ff'},
-  boots:{n:'鞋子',c:300,spd:.08,cat:'misc',col:'#c8a060'},
+  sword:{n:'長劍',c:350,atk:12,cat:'atk',col:'#c8ccd8'},dagger:{n:'短劍',c:300,as:.12,cat:'atk',col:'#9ad870'},cloak:{n:'敏捷披風',c:600,crit:.15,cat:'atk',col:'#f0d070'},
+  sheen:{n:'咒刃石',c:700,sb:{a:1},cat:'atk',col:'#a8e8ff',d:'咒刃：放完技能後，下一次普攻多打 100% 基礎攻擊'},
+  tome:{n:'增幅典籍',c:435,sp:.12,cat:'mag',col:'#a88cff'},rod:{n:'巨型魔杖',c:850,sp:.25,cat:'mag',col:'#8a5aff'},gem:{n:'靈巧寶石',c:350,cdr:.06,mp:200,cat:'mag',col:'#6ad0ff'},
+  ruby:{n:'紅水晶',c:400,hp:150,cat:'def',col:'#ff6a7a'},belt:{n:'巨人腰帶',c:900,hp:350,cat:'def',col:'#d0705a'},cloth:{n:'布甲',c:300,arm:15,cat:'def',col:'#a8b4c8'},mantle:{n:'抗魔斗篷',c:450,mr:25,cat:'def',col:'#9a7ad8'},
+  // 起始裝備（只能帶一件，後期自動賣掉）、消耗品
+  dblade:{n:'新手之劍',ic:'新劍',c:450,atk:8,hp:80,ls:.03,st:1,cat:'misc',col:'#e8a070',d:'起始裝備（只能帶一件）'},dring:{n:'新手之戒',ic:'新戒',c:400,sp:.08,hp:70,mp:100,st:1,cat:'misc',col:'#c0a0ff',d:'起始裝備（只能帶一件）'},
+  dshield:{n:'新手之盾',ic:'新盾',c:450,hp:110,arm:6,rg:2.5,st:1,cat:'misc',col:'#8ab0e0',d:'起始裝備（只能帶一件）'},
   pot:{n:'補血藥水',c:50,cons:1,cat:'misc',col:'#ff4a5a',d:'喝下去 12 秒內回復 120 生命（最多帶 5 瓶，放在同一格）'},
+  elx:{n:'戰鬥藥劑',c:400,elix:1,cat:'misc',col:'#ff9a3d',d:'9 等以上才能買，買了馬上喝：3 分鐘內攻擊 +25、技能威力 +20%（不佔格子）'},
   jg:{n:'打野刀',c:350,atk:10,jg:1,cat:'misc',col:'#8affc8',d:'打野怪的傷害、金幣、經驗 +30%，召喚師技能「重擊」也更痛'},
   // 鞋子
-  swift:{n:'疾行之靴',c:900,from:['boots'],spd:.16,cat:'misc',col:'#e0b060'},steel:{n:'鋼鐵護脛',c:1000,from:['boots','cloth'],spd:.1,arm:20,cat:'misc',col:'#8a9ab0'},sorc:{n:'法師之靴',c:1100,from:['boots','tome'],spd:.1,sp:.1,cat:'misc',col:'#b090ff'},
+  boots:{n:'鞋子',c:300,spd:.08,cat:'misc',col:'#c8a060'},
+  swift:{n:'疾行之靴',c:900,from:['boots'],spd:.16,cat:'misc',col:'#e0b060'},lucid:{n:'明智之靴',c:950,from:['boots'],spd:.1,cdr:.15,cat:'misc',col:'#7ad0ff'},
+  bers:{n:'狂暴之靴',c:1100,from:['boots','dagger'],spd:.1,as:.3,cat:'misc',col:'#b8e070'},
+  steel:{n:'鋼鐵護脛',c:1000,from:['boots','cloth'],spd:.1,arm:20,cat:'misc',col:'#8a9ab0'},merc:{n:'水銀之靴',c:1100,from:['boots','mantle'],spd:.1,mr:25,ten:.3,cat:'misc',col:'#b0a0d8'},
+  sorc:{n:'法師之靴',c:1100,from:['boots','tome'],spd:.1,sp:.1,mpen:.1,cat:'misc',col:'#b090ff'},
   // 攻擊
+  exec:{n:'斷魂利刃',c:800,from:['sword'],atk:20,gw:1,cat:'atk',col:'#a03a3a',d:'重傷：打到敵方英雄時，他 3 秒內補血效果 -40%'},
   axe:{n:'狂戰斧',c:1200,from:['sword','dagger'],atk:30,as:.2,cat:'atk',col:'#ff7a3d'},bow:{n:'速射弓',c:1150,from:['dagger','dagger'],atk:15,as:.4,cat:'atk',col:'#86dc4f'},
   blade:{n:'嗜血刀',c:1500,from:['sword','sword'],atk:45,ls:.18,cat:'atk',col:'#ff4a4a'},great:{n:'斬鐵大劍',c:2100,from:['sword','sword','sword'],atk:75,cat:'atk',col:'#e8e8f0'},
+  ldr:{n:'破甲重錘',c:2300,from:['sword','sword'],atk:35,pen:.35,cat:'atk',col:'#c0c0c0',d:'無視敵人 35% 護甲'},
+  ie:{n:'破曉巨刃',c:3000,from:['sword','sword','cloak'],atk:60,crit:.25,critd:.35,cat:'atk',col:'#ffe08a',d:'暴擊傷害提高（175% → 210%）'},
+  pd:{n:'幻影雙刃',c:2500,from:['dagger','dagger','cloak'],as:.4,crit:.25,spd:.07,cat:'atk',col:'#d8b0ff'},
+  tri:{n:'三相神劍',c:3100,from:['sheen','sword','dagger'],atk:30,as:.25,hp:200,cdr:.1,sb:{a:2},cat:'atk',col:'#ffd060',d:'咒刃：放完技能後，下一次普攻多打 200% 基礎攻擊'},
   hydra:{n:'破浪巨斧',c:2000,from:['sword','sword','ruby'],atk:40,ls:.1,hp:150,cat:'atk',col:'#ff9a3d',act:{k:'cleave',cd:10},d:'主動：橫掃身邊，周圍敵人都受傷'},
   ghost:{n:'幽影之刃',c:1800,from:['sword','dagger','gem'],atk:40,cdr:.1,mp:200,cat:'atk',col:'#7a6aa8',act:{k:'haste',cd:45},d:'主動：5 秒內跑更快、攻擊更快'},
-  qss:{n:'淨化彎刀',c:1900,from:['sword','cloth'],atk:35,arm:20,cat:'atk',col:'#c8f0ff',act:{k:'qss',cd:60},d:'主動：解除暈眩、緩速、虛弱、點燃（暈眩時也能用）'},
+  qss:{n:'淨化彎刀',c:1900,from:['sword','mantle'],atk:35,mr:30,cat:'atk',col:'#c8f0ff',act:{k:'qss',cd:60},d:'主動：解除暈眩、緩速、虛弱、點燃（暈眩時也能用）'},
+  ga:{n:'守護天使',ic:'天使',c:2800,from:['sword','cloth','cloth'],atk:35,arm:40,ga:1,pcd:240,cat:'atk',col:'#fff2b0',d:'被擊殺時改成金身 3 秒，再用一半生命復活（240 秒一次）'},
   // 法術
   staff:{n:'大法杖',c:1800,from:['tome','tome'],sp:.4,cat:'mag',col:'#c56bff'},crown:{n:'智慧之冠',c:1500,from:['tome','gem'],sp:.25,hp:150,cdr:.15,mp:350,cat:'mag',col:'#ffd23f'},
+  morello:{n:'禁咒魔典',c:2200,from:['tome','ruby'],sp:.3,hp:250,cdr:.1,gw:1,cat:'mag',col:'#8a3a6a',d:'重傷：技能打到敵方英雄時，他 3 秒內補血效果 -40%'},
+  void:{n:'虛空法杖',c:2500,from:['rod','tome'],sp:.35,mpen:.35,cat:'mag',col:'#6a3aa8',d:'無視敵人 35% 魔抗'},
+  lich:{n:'巫毒魔刃',c:2900,from:['sheen','rod'],sp:.35,cdr:.1,spd:.05,sb:{a:.75,m:90,mag:1},cat:'mag',col:'#4ad0c0',d:'咒刃：放完技能後，下一次普攻多打一次魔法傷害'},
+  banshee:{n:'女妖面紗',c:2500,from:['rod','mantle'],sp:.3,mr:40,ss:1,pcd:40,cat:'mag',col:'#5a8ad8',d:'法術護盾：每 40 秒擋掉一次敵方技能（傷害和暈眩都擋）'},
+  cap:{n:'死亡法帽',c:3200,from:['rod','rod'],sp:.75,cat:'mag',col:'#3a2a6a',d:'大幅提高技能威力'},
   hourglass:{n:'時光沙漏',c:2000,from:['tome','cloth','cloth'],sp:.3,arm:30,cat:'mag',col:'#ffcf6a',act:{k:'stasis',cd:90},d:'主動：變成金身 2.5 秒，不會受傷但也不能動'},
   gun:{n:'電漿槍刃',c:2200,from:['sword','tome'],atk:30,sp:.25,ls:.1,cat:'mag',col:'#ff6ad0',act:{k:'gun',cd:40},d:'主動：電擊附近一個敵方英雄並讓他變慢'},
   // 防禦
-  plate:{n:'守護戰甲',c:1600,from:['ruby','cloth'],arm:45,hp:400,cat:'def',col:'#7aa8ff'},amulet:{n:'聖光吊墜',c:1300,from:['ruby','gem'],hp:400,arm:15,heal:.3,mp:250,cat:'def',col:'#fff0a0'},
-  locket:{n:'守護聖匣',c:1800,from:['ruby','cloth','gem'],hp:250,arm:20,cdr:.1,mp:200,cat:'def',col:'#ffe0a0',act:{k:'locket',cd:60},d:'主動：身邊隊友都得到護盾'},
+  plate:{n:'守護戰甲',ic:'戰甲',c:1600,from:['ruby','cloth'],arm:45,hp:400,cat:'def',col:'#7aa8ff'},amulet:{n:'聖光吊墜',c:1300,from:['ruby','gem'],hp:400,mr:20,heal:.3,mp:250,cat:'def',col:'#fff0a0'},
+  thorn:{n:'荊棘之甲',c:2500,from:['cloth','cloth','ruby'],arm:60,hp:300,thorn:1,cat:'def',col:'#6a8a5a',d:'被普攻時反彈傷害，並讓打你的英雄受到重傷'},
+  visage:{n:'振奮盔甲',c:2400,from:['ruby','mantle'],hp:400,mr:45,cdr:.1,hin:.25,cat:'def',col:'#5ad08a',d:'受到的治療和吸血效果 +25%'},
+  warmog:{n:'狂徒鎧甲',c:3000,from:['belt','ruby'],hp:900,wm:1,cat:'def',col:'#e05a4a',d:'6 秒沒受傷時，每秒回復 3% 生命'},
+  locket:{n:'守護聖匣',ic:'聖匣',c:1800,from:['ruby','mantle','gem'],hp:250,arm:20,mr:25,cdr:.1,mp:200,cat:'def',col:'#ffe0a0',act:{k:'locket',cd:60},d:'主動：身邊隊友都得到護盾'},
   randuin:{n:'蠻王之盾',c:2300,from:['ruby','cloth','cloth'],hp:350,arm:50,cat:'def',col:'#8a7a6a',act:{k:'slowaura',cd:60},d:'主動：身邊的敵人全部變慢'}};
 // 眼（第 7 格，免費、二選一）
 const TRINK={g:{n:'綠眼',col:'#5fff7a',cd:45,s:'插在地上 90 秒，看見暗處和草叢',d:'插在地上 90 秒，看得到周圍和草叢裡的敵人（最多 3 個）'},r:{n:'紅眼',col:'#ff5a5a',cd:60,s:'掃描身邊，找出敵人的綠眼來清掉',d:'8 秒內掃描身邊，找出敵人的綠眼，點三下就能清掉'}};
-const BUILD={tank:['steel','locket','plate','randuin','amulet','plate'],fighter:['steel','hydra','axe','plate','qss','great'],assassin:['swift','ghost','hydra','blade','great','qss'],
-  mage:['sorc','gun','crown','staff','hourglass','staff'],marksman:['swift','bow','blade','great','ghost','qss'],support:['swift','locket','amulet','crown','plate','randuin']};
+const BUILD={tank:['dshield','merc','locket','thorn','visage','randuin','warmog'],fighter:['dblade','steel','tri','ldr','visage','ga','thorn'],assassin:['dblade','lucid','ghost','hydra','ldr','ga','qss'],
+  mage:['dring','sorc','lich','cap','void','banshee','hourglass'],marksman:['dblade','bers','ie','pd','ldr','blade','ga'],support:['dring','lucid','locket','amulet','banshee','visage','randuin']};
 const MIN={melee:{hp:450,atk:22,as:.9,rng:1.8,arm:10,spd:3.7,r:.55,gold:25,xp:50},ranged:{hp:320,atk:30,as:.8,rng:6.5,arm:5,spd:3.7,r:.5,gold:20,xp:40},cannon:{hp:900,atk:48,as:.7,rng:6.5,arm:22,spd:3.4,r:.9,gold:55,xp:90}};
 const BOTN=['阿凱','小雨','大熊','米可','老王','阿哲','小魚','肉丸','阿樂','皮蛋','花生','豆豆','阿光','小綠','黑皮','飯糰','可樂','阿寶','小虎','布丁'];
 const ROLES=[['top','上路'],['jg','打野'],['mid','中路'],['bot','下路'],['sup','輔助']];
