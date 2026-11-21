@@ -126,7 +126,14 @@ const ITEMS={
   dshield:{n:'新手之盾',ic:'新盾',c:450,hp:110,arm:6,rg:2.5,st:1,cat:'misc',col:'#8ab0e0',d:'起始裝備（只能帶一件）'},
   pot:{n:'補血藥水',c:50,cons:1,cat:'misc',col:'#ff4a5a',d:'喝下去 12 秒內回復 120 生命（最多帶 5 瓶，放在同一格）'},
   elx:{n:'戰鬥藥劑',c:400,elix:1,cat:'misc',col:'#ff9a3d',d:'9 等以上才能買，買了馬上喝：3 分鐘內攻擊 +25、技能威力 +20%（不佔格子）'},
-  jg:{n:'打野刀',c:350,atk:10,jg:1,cat:'misc',col:'#8affc8',d:'打野怪的傷害、金幣、經驗 +30%，召喚師技能「重擊」也更痛'},
+  // 打野專屬（要帶重擊、三選一）：打野怪累積成長 → 12 層重擊可以打英雄 → 25 層幼獸覺醒
+  jgf:{n:'烈焰幼獸',ic:'火獸',c:450,atk:10,jg:1,jgt:'f',st:1,keep:1,cat:'misc',col:'#ff7a3d',d:'打野專屬（要帶重擊）：打野怪傷害、金幣、經驗 +30%，打完野怪回血。打 12 層後重擊可以打英雄；25 層覺醒：打到敵方英雄時燃燒，多一段真實傷害'},
+  jgw:{n:'疾風幼獸',ic:'風獸',c:450,atk:10,jg:1,jgt:'w',st:1,keep:1,cat:'misc',col:'#7ae0ff',d:'打野專屬（要帶重擊）：打野怪傷害、金幣、經驗 +30%，打完野怪回血。打 12 層後重擊可以打英雄；25 層覺醒：脫離戰鬥時移動速度 +25%'},
+  jgm:{n:'苔岩幼獸',ic:'岩獸',c:450,atk:10,jg:1,jgt:'m',st:1,keep:1,cat:'misc',col:'#8ad06a',d:'打野專屬（要帶重擊）：打野怪傷害、金幣、經驗 +30%，打完野怪回血。打 12 層後重擊可以打英雄；25 層覺醒：脫離戰鬥 6 秒得到護盾'},
+  // 輔助專屬：賺金幣升級，最後可以插眼
+  sup1:{n:'星界地圖',ic:'地圖',c:400,hp:40,sp:.05,sup:1,st:1,keep:1,cat:'misc',col:'#ffd8a0',d:'輔助專屬：隊友在旁邊時，打殘血小兵會直接收掉，你和隊友都拿金幣（3 次，18 秒回 1 次）；打敵方英雄也賺金幣。賺 400 金升級成符文羅盤'},
+  sup2:{n:'符文羅盤',ic:'羅盤',c:400,hp:150,arm:8,mr:8,sp:.1,sup:2,st:1,keep:1,hide:1,cat:'misc',col:'#ffc070',d:'輔助專屬（星界地圖升級）：效果一樣，再賺到 1000 金變成世界之眼，可以插眼'},
+  sup3:{n:'世界之眼',ic:'世眼',c:400,hp:250,arm:12,mr:12,sp:.15,cdr:.1,sup:3,st:1,keep:1,hide:1,act:{k:'ward',cd:1},cat:'misc',col:'#ffb040',d:'輔助專屬最終型態：主動插一個綠眼（最多 3 次，回泉水補滿，每 50 秒回 1 次），可以多放 2 個眼'},
   // 鞋子
   boots:{n:'鞋子',c:300,spd:.08,cat:'misc',col:'#c8a060'},
   swift:{n:'疾行之靴',c:900,from:['boots'],spd:.16,cat:'misc',col:'#e0b060'},lucid:{n:'明智之靴',c:950,from:['boots'],spd:.1,cdr:.15,cat:'misc',col:'#7ad0ff'},
@@ -164,7 +171,7 @@ const ITEMS={
 // 眼（第 7 格，免費、二選一）
 const TRINK={g:{n:'綠眼',col:'#5fff7a',cd:45,s:'插在地上 90 秒，看見暗處和草叢',d:'插在地上 90 秒，看得到周圍和草叢裡的敵人（最多 3 個）'},r:{n:'紅眼',col:'#ff5a5a',cd:60,s:'掃描身邊，找出敵人的綠眼來清掉',d:'8 秒內掃描身邊，找出敵人的綠眼，點三下就能清掉'}};
 const BUILD={tank:['dshield','merc','locket','thorn','visage','randuin','warmog'],fighter:['dblade','steel','tri','ldr','visage','ga','thorn'],assassin:['dblade','lucid','ghost','hydra','ldr','ga','qss'],
-  mage:['dring','sorc','lich','cap','void','banshee','hourglass'],marksman:['dblade','bers','ie','pd','ldr','blade','ga'],support:['dring','lucid','locket','amulet','banshee','visage','randuin']};
+  mage:['dring','sorc','lich','cap','void','banshee','hourglass'],marksman:['dblade','bers','ie','pd','ldr','blade','ga'],support:['sup1','lucid','locket','amulet','banshee','visage','randuin']};
 const MIN={melee:{hp:450,atk:22,as:.9,rng:1.8,arm:10,spd:3.7,r:.55,gold:25,xp:50},ranged:{hp:320,atk:30,as:.8,rng:6.5,arm:5,spd:3.7,r:.5,gold:20,xp:40},cannon:{hp:900,atk:48,as:.7,rng:6.5,arm:22,spd:3.4,r:.9,gold:55,xp:90}};
 const BOTN=['阿凱','小雨','大熊','米可','老王','阿哲','小魚','肉丸','阿樂','皮蛋','花生','豆豆','阿光','小綠','黑皮','飯糰','可樂','阿寶','小虎','布丁'];
 const ROLES=[['top','上路'],['jg','打野'],['mid','中路'],['bot','下路'],['sup','輔助']];

@@ -56,10 +56,12 @@ function create(env,opts){
     if(h.elxT>Tm){ o.atk+=25; o.sp+=.2; } o.crit=Math.min(1,o.crit); o.mpen=Math.min(.6,o.mpen);
     for(const b of h.buffs){ o.as+=(b.as||0)*C.as; o.spd+=(b.spd||0)*C.spd; o.dmg+=b.dmg||0; o.arm+=b.arm||0; }
     const tb=teamBuff[h.team]; if(tb.dmg>0) o.dmg+=.2; if(tb.reg>0) o.spd*=1.1;
+    if(petOf(h)==='w'&&jgStage(h)>=3&&Tm-(h.ldT==null?-99:h.ldT)>3&&Tm-(h.hitHeroT==null?-99:h.hitHeroT)>3) o.spd*=1.25;
     if(h.slow>0) o.spd*=.6; if(h.weak>0){ o.dmg-=.4; o.as*=.8; } o.as=Math.min(2.6,o.as); return o; }
   function mkHero(s,i){ const d=HEROES[s.hero],h={id:i+1,k:'h',slot:i,team:s.team,def:d,name:s.name,human:s.human>=0,me:i===mySlot,role:s.role,lvl:mode?3:1,xp:0,gold:mode?600:500,items:[],sk:[0,0,0,0],pots:0,potT:0,icd:{},tk:s.human<0&&(s.role==='sup'||s.role==='jg')?'r':'g',tcd:0,lens:0,stasis:0,revT:0,x:map.fount[s.team][0],z:map.fount[s.team][1],face:s.team?PI*.75:-PI/4,hp:1,max:1,r:.7,dead:false,rsp:0,cd:[0,0,0,0],atkCd:0,atkT:0,atkDur:.35,castT:0,shield:0,shT:0,stun:0,slow:0,buffs:[],recall:0,sp:(s.sp||['flash','heal']).slice(),spCd:[0,0],kc:0,dc:0,ac:0,streak:0,hits:{},force:0,dash:null,auto:true,mx:0,mz:0,wantAtk:false,q:[],ai:{t:0,mode:null,tgt:null,goal:null,path:null,pg:null}};
-    h.max=h.hp=stats(h).hp; h.mpMax=h.mp=stats(h).mp; if(s.role==='jg'&&mode===0) h.build=['jg'].concat(BUILD[d.cls].filter(b=>!ITEMS[b].st).slice(0,5)); else h.build=BUILD[d.cls].slice(); return h; }
+    h.max=h.hp=stats(h).hp; h.mpMax=h.mp=stats(h).mp; if(s.role==='jg'&&mode===0) h.build=[{assassin:'jgf',fighter:'jgm',tank:'jgm'}[d.cls]||'jgw'].concat(BUILD[d.cls].filter(b=>!ITEMS[b].st).slice(0,5)); else if(s.role==='sup'&&mode===0) h.build=['sup1'].concat(BUILD[d.cls].filter(b=>!ITEMS[b].st).slice(0,6)); else h.build=BUILD[d.cls].map(b=>ITEMS[b].sup?'dring':b); return h; }
   const isEnemy=(a,b)=>b.team!==a.team;
+  const petOf=h=>{ const id=h.items.find(x=>ITEMS[x]&&ITEMS[x].jgt); return id?ITEMS[id].jgt:null; },jgStage=h=>(h.jst||0)>=25?3:(h.jst||0)>=12?2:1,supOf=h=>{ const id=h.items.find(x=>ITEMS[x]&&ITEMS[x].sup); return id?ITEMS[id].sup:0; };
   const alive=u=>u&&!u.dead&&u.hp>0;
   const myHero=()=>heroes[mySlot];
   /* ---------- 移動、碰撞 ---------- */
@@ -78,6 +80,9 @@ function create(env,opts){
   function dmg(src,tgt,amt,o){ o=o||{}; if(!alive(tgt)||tgt.inv) return 0;
     if(tgt.k==='w'){ tgt.hp-=1; emit(['hit',+tgt.x.toFixed(1),+tgt.z.toFixed(1),'#ff4a4a']); if(tgt.hp<=0) killWard(tgt,src); return 1; }
     if(tgt.stasis>0) return 0; const SS=src&&src.k==='h'?stats(src):null;
+    if(SS){ const sv=supOf(src); if(sv&&sv<3&&tgt.k==='m'&&tgt.hp<tgt.max*.5&&(src.spl==null?3:src.spl)>=1){ const al=heroes.find(a=>a!==src&&a.team===src.team&&alive(a)&&dist(a,src)<10); if(al){ src.spl=(src.spl==null?3:src.spl)-1; const g=MIN[tgt.mt].gold+Math.round(Tm/60); al.gold+=g; emit(['burst',+tgt.x.toFixed(1),1,+tgt.z.toFixed(1),'#ffd23f',8,3]); const hp0=tgt.hp; die(tgt,src); supGain(src,g*2); return hp0; } }
+      if(sv&&sv<3&&tgt.k==='h'&&Tm>=(src.supHT||0)){ src.supHT=Tm+6; src.gold+=10; supGain(src,10); }
+      if(tgt.k==='h'&&!o.pet&&petOf(src)==='f'&&jgStage(src)>=3&&Tm>=(src.fireT||0)){ src.fireT=Tm+4; emit(['burst',+tgt.x.toFixed(1),1.4,+tgt.z.toFixed(1),'#ff6a1a',8,3]); dmg(src,tgt,20+src.lvl*6,{tru:1,pet:1}); if(!alive(tgt)) return 0; } }
     if(o.skill&&!o.refl&&SS&&tgt.k==='h'){ if(tgt.ssB===Tm) return 0; if(Tm>=(tgt.ssT||0)&&stats(tgt).ss){ tgt.ssT=Tm+40; tgt.ssB=Tm; tgt.icd.banshee=40; emit(['ring',+tgt.x.toFixed(1),+tgt.z.toFixed(1),1.4,'#7ab0ff',.5]); if(tgt.me) floatMsg('法術護盾擋下了技能','#9ac8ff',1.2); return 0; } }
     if(SS){ amt*=1+SS.dmg; if(!src.human) amt*=LV.dm; if(tgt.k==='j'&&SS.jg) amt*=1.3; if(SS.gw&&tgt.k==='h'&&!o.refl) tgt.gwT=Tm+3; }
     if(!o.tru){ let res=o.skill?mrOf(tgt):armorOf(tgt); if(SS) res*=1-(o.skill?SS.mpen:SS.pen); amt*=100/(100+Math.max(0,res)); }
@@ -101,7 +106,7 @@ function create(env,opts){
       if(killer&&killer.streak>=3) emit(['feed',killer.def.n+' '+['三連殺！','四連殺！','五連殺！','勢不可擋！'][Math.min(3,killer.streak-3)],killer.team]); }
     else if(u.k==='m'){ u.dead=true; const S=MIN[u.mt]; if(src&&src.k==='h'){ src.gold+=S.gold+Math.round(Tm/60); } const near=heroes.filter(hh=>alive(hh)&&hh.team!==u.team&&dist(hh,u)<13); near.forEach(hh=>gainXp(hh,S.xp*1.25/Math.max(1,near.length)));
       emit(['burst',+u.x.toFixed(1),1,+u.z.toFixed(1),TEAMC[u.team],6,3]); }
-    else if(u.k==='j'){ u.dead=true; u.rsp=u.big?120:60; u.tgt=null; const killer=src&&src.k==='h'?src:null; if(killer){ const S=stats(killer),m=S.jg?1.3:1; killer.gold+=Math.round((u.big?220:55)*m); gainXp(killer,(u.big?320:80)*m); heroes.filter(hh=>hh!==killer&&hh.team===killer.team&&alive(hh)&&dist(hh,u)<12).forEach(hh=>gainXp(hh,u.big?160:30));
+    else if(u.k==='j'){ u.dead=true; u.rsp=u.big?120:60; u.tgt=null; const killer=src&&src.k==='h'?src:null; if(killer){ const S=stats(killer),m=S.jg?1.3:1; if(petOf(killer)){ const st0=jgStage(killer); killer.jst=(killer.jst||0)+(u.big?3:1); heal(killer,u.big?150:60); const st1=jgStage(killer); if(st1>st0){ emit(['beam',+killer.x.toFixed(1),+killer.z.toFixed(1),1.2,'#8affc8',1]); emit(['feed',TEAMN(killer.team)+' '+killer.def.n+(st1===3?' 的打野幼獸覺醒了！':' 的重擊升級了（可以打英雄）'),killer.team]); if(killer.me) floatMsg(st1===3?'幼獸覺醒！':'重擊升級：可以對敵方英雄使用','#8affc8',2); } } killer.gold+=Math.round((u.big?220:55)*m); gainXp(killer,(u.big?320:80)*m); heroes.filter(hh=>hh!==killer&&hh.team===killer.team&&alive(hh)&&dist(hh,u)<12).forEach(hh=>gainXp(hh,u.big?160:30));
         if(u.big){ const tb=teamBuff[killer.team]; if(u.kind===0) tb.dmg=90; else tb.reg=90; emit(['feed',TEAMN(killer.team)+' 擊敗了 '+(u.kind===0?'紫晶岩魔（全隊傷害提升）':'翠鱗巨獸（全隊回血、加速）'),killer.team]); emit(['beam',+u.x.toFixed(1),+u.z.toFixed(1),3,u.kind?'#8affc8':'#c08aff',1.2]); } }
       emit(['boom',+u.x.toFixed(1),+u.z.toFixed(1),u.big?4:2,u.big?'#c08aff':'#ffd06a']); }
     else if(u.k==='t'){ heroes.forEach(hh=>{ if(hh.team!==u.team) hh.gold+=150; }); emit(['feed',TEAMN(1-u.team)+' 摧毀了 '+map.laneName[u.lane]+(u.tier?'內塔':'外塔'),1-u.team]); emit(['ann','摧毀防禦塔',src&&src.k==='h'?src.id:0,u.id,1-u.team]); emit(['boom',+u.x.toFixed(1),+u.z.toFixed(1),5,'#ffb040']); emit(['sfx','boom']); invUpdate(); }
@@ -191,8 +196,10 @@ function create(env,opts){
       case 'storm': { const [px,pz]=s.self?[sx,sz]:gp; zones.push({h,x:px,z:pz,a:s.a,dps:pw*.5,t:s.dur||4,tick:0,cc:{sl:s.sl?1:0},col,follow:s.self}); break; }
     }
     h.mp=Math.max(0,h.mp-skCost(h,i)); if(S.sb) h.sbT=Tm+10; if(h.bi>=0) h.revT=Tm+1.5; h.cd[i]=s.cd*(1-(i===3?.15:.05)*(Math.max(1,h.sk[i])-1))*(1-Math.min(.4,S.cdr)); h.castT=.45; h.atkT=0; if(h.me||(myHero()&&dist(h,myHero())<20)) emit(['sfx',i===3?'boost':'pop']); return true; }
-  const SPELLS=M0.SPELLS,smiteDmg=h=>(600+h.lvl*60)*(stats(h).jg?1.3:1);
-  function smite(h){ let tg=null,bd=6.5; for(const u of mons) if(alive(u)&&dist(h,u)<bd){ bd=dist(h,u); tg=u; } if(!tg) for(const u of minions) if(u.team!==h.team&&alive(u)&&dist(h,u)<bd){ bd=dist(h,u); tg=u; } if(!tg) return false;
+  const SPELLS=M0.SPELLS,smiteDmg=h=>(600+h.lvl*60)*(stats(h).jg?1.3:1)*(petOf(h)&&jgStage(h)>=2?1.3:1);
+  function smite(h){ let tg=null,bd=6.5; for(const u of mons) if(alive(u)&&dist(h,u)<bd){ bd=dist(h,u); tg=u; }
+    if(!tg&&petOf(h)&&jgStage(h)>=2){ let hb=6.5,he=null; for(const e of heroes) if(e.team!==h.team&&alive(e)&&seen(e,h.team)&&dist(h,e)<hb){ hb=dist(h,e); he=e; } if(he){ dmg(h,he,60+h.lvl*12,{tru:1}); applyCC(he,{sl:1.5}); emit(['beam',+he.x.toFixed(1),+he.z.toFixed(1),1.2,'#ffb040',.5]); emit(['sfx','boom']); return true; } }
+    if(!tg) for(const u of minions) if(u.team!==h.team&&alive(u)&&dist(h,u)<bd){ bd=dist(h,u); tg=u; } if(!tg) return false;
     dmg(h,tg,smiteDmg(h),{tru:1}); emit(['beam',+tg.x.toFixed(1),+tg.z.toFixed(1),1.2,'#ffb040',.5]); emit(['sfx','boom']); return true; }
   function castSpell(h,j,aim){ const id=h.sp[j],S0=SPELLS[id]; if(!S0||h.dead||h.spCd[j]>0) return false; if(h.stun>0&&id!=='cleanse') return false;
     switch(id){
@@ -214,28 +221,33 @@ function create(env,opts){
     const P0=priceFor(h,target); if(h.gold>=P0.cost&&P0.slotsOk) return target; const have=pool.slice(); for(const f of ITEMS[target].from||[]){ const k=have.indexOf(f); if(k>=0) have.splice(k,1); else return f; } return target; }
   function buyItem(h,id,manual){ const it=ITEMS[id]; if(!it) return false; const say=(m,c2)=>{ if(h.me&&manual) floatMsg(m,c2||'#ffb0b0'); }; if(!canShop(h)){ say(mode?'單路激戰要陣亡時才能買裝備':'要回城（回到泉水）才能買裝備'); return false; }
     if(id==='pot'&&(h.pots||0)>=5){ say('藥水最多帶 5 瓶'); return false; }
-    if(it.st&&h.items.some(x=>ITEMS[x].st)){ say('起始裝備只能帶一件'); return false; } if(it.elix&&h.lvl<9){ say('9 等以上才能買戰鬥藥劑'); return false; } if(it.elix&&h.elxT>Tm+60){ say('藥劑效果還很久'); return false; }
+    if(it.jgt&&mode!==0){ say('單路激戰沒有野區'); return false; } if(it.jgt&&!h.sp.includes('smite')){ say('要帶召喚師技能「重擊」才能買打野裝備'); return false; } if(it.hide) return false;
+    if(it.st&&h.items.some(x=>ITEMS[x].st)){ say(ITEMS[id].keep?'打野裝備、輔助裝備和起始裝備只能帶一件':'起始裝備只能帶一件'); return false; } if(it.elix&&h.lvl<9){ say('9 等以上才能買戰鬥藥劑'); return false; } if(it.elix&&h.elxT>Tm+60){ say('藥劑效果還很久'); return false; }
     const P0=priceFor(h,id); if(!P0.slotsOk){ say('裝備格滿了，先賣掉一件'); return false; } if(h.gold<P0.cost){ say('金幣不夠'); return false; }
     h.gold-=P0.cost; if(it.st) h.stDone=1; if(it.elix){ h.elxT=Tm+180; emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),.9,it.col,.6]); if(h.me){ emit(['sfx','heal']); floatMsg('喝下戰鬥藥劑：3 分鐘內更強','#ffb060'); } return true; } if(id==='pot'){ if(!h.items.includes('pot')) h.items.push('pot'); h.pots=(h.pots||0)+1; } else { P0.used.forEach(f=>h.items.splice(h.items.indexOf(f),1)); h.items.push(id); }
     const r0=h.hp/h.max; h.max=stats(h).hp; h.hp=Math.max(1,h.max*r0); if(h.me){ emit(['sfx','item']); floatMsg('買了 '+it.n,'#ffd23f'); } return true; }
   function buyNext(h,manual){ const id=planBuy(h);
     if(!id){ if(h.lvl>=9&&!(h.elxT>Tm+30)&&h.gold>=400&&canShop(h)) return buyItem(h,'elx',manual); return false; }
-    const P0=priceFor(h,id); if(!P0.slotsOk&&h.gold>=P0.cost&&canShop(h)){ let k=h.items.findIndex(x=>ITEMS[x].st); if(k<0) k=h.items.indexOf('pot'); if(k>=0) sellItem(h,k); }
+    const P0=priceFor(h,id); if(!P0.slotsOk&&h.gold>=P0.cost&&canShop(h)){ let k=h.items.findIndex(x=>ITEMS[x].st&&!ITEMS[x].keep); if(k<0) k=h.items.indexOf('pot'); if(k>=0) sellItem(h,k); }
     return buyItem(h,id,manual); }
   function sellItem(h,i){ const id=h.items[i]; if(!id||!canShop(h)) return false; const it=ITEMS[id]; let back=Math.floor(it.c*.7); if(id==='pot'){ back=20*(h.pots||0); h.pots=0; } h.items.splice(i,1); h.gold+=back;
     const r0=h.hp/h.max; h.max=stats(h).hp; h.hp=Math.max(1,Math.min(h.max,h.max*r0)); if(h.me){ emit(['sfx','item']); floatMsg('賣掉 '+it.n+'　+'+back,'#ffd23f'); } return true; }
   function killWard(w,src){ const k=wards.indexOf(w); if(k>=0) wards.splice(k,1); emit(['burst',+w.x.toFixed(1),1,+w.z.toFixed(1),'#5fff7a',10,4]); if(src&&src.k==='h'){ src.gold+=30; if(src.me) floatMsg('清掉一個眼　+30','#ffd23f'); } emit(['sfx','pop']); }
   function useTrinket(h,aim){ const TK=TRINK[h.tk]; if(h.tcd>0){ if(h.me) floatMsg(TK.n+' 還要 '+Math.ceil(h.tcd)+' 秒','#ffb0b0'); return false; }
     if(h.tk==='r'){ h.lens=8; h.tcd=TK.cd; emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),9,'#ff5a5a',.8]); if(h.me) floatMsg('紅眼掃描中：敵人的眼會現形，點三下清掉','#ff9a9a',2.2); return true; }
-    let tx,tz; if(aim){ const dx=aim.x-h.x,dz=aim.z-h.z,d=Math.hypot(dx,dz)||1,k=Math.min(1,6.5/d); tx=h.x+dx*k; tz=h.z+dz*k; } else { tx=h.x+Math.cos(h.face)*3; tz=h.z+Math.sin(h.face)*3; } [tx,tz]=map.inB(tx,tz);
-    const mine=wards.filter(w=>w.owner===h.id); if(mine.length>=3){ const o=mine.reduce((a,b)=>a.t<b.t?a:b); wards.splice(wards.indexOf(o),1); }
-    wards.push({id:wardId++,k:'w',team:h.team,owner:h.id,x:+tx.toFixed(1),z:+tz.toFixed(1),t:90,hp:3,max:3,r:.4}); h.tcd=TK.cd; emit(['ring',+tx.toFixed(1),+tz.toFixed(1),2,'#5fff7a',.6]); if(h.me) emit(['sfx','pop']); updVis(); return true; }
+    placeWard(h,aim); h.tcd=TK.cd; return true; }
+  function placeWard(h,aim){ let tx,tz; if(aim){ const dx=aim.x-h.x,dz=aim.z-h.z,d=Math.hypot(dx,dz)||1,k=Math.min(1,6.5/d); tx=h.x+dx*k; tz=h.z+dz*k; } else { tx=h.x+Math.cos(h.face)*3; tz=h.z+Math.sin(h.face)*3; } [tx,tz]=map.inB(tx,tz);
+    const mine=wards.filter(w=>w.owner===h.id); if(mine.length>=(supOf(h)===3?5:3)){ const o=mine.reduce((a,b)=>a.t<b.t?a:b); wards.splice(wards.indexOf(o),1); }
+    wards.push({id:wardId++,k:'w',team:h.team,owner:h.id,x:+tx.toFixed(1),z:+tz.toFixed(1),t:90,hp:3,max:3,r:.4}); emit(['ring',+tx.toFixed(1),+tz.toFixed(1),2,'#5fff7a',.6]); if(h.me) emit(['sfx','pop']); updVis(); }
+  function supGain(h,g){ h.sq=(h.sq||0)+g; const i1=h.items.indexOf('sup1'),i2=h.items.indexOf('sup2'); let up=null; if(i1>=0&&h.sq>=400){ h.items[i1]='sup2'; up='符文羅盤'; } else if(i2>=0&&h.sq>=1000){ h.items[i2]='sup3'; h.wc=3; up='世界之眼（可以插眼了）'; }
+    if(up){ const r0=h.hp/h.max; h.max=stats(h).hp; h.hp=Math.max(1,h.max*r0); emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),1.2,'#ffd23f',1]); emit(['feed',TEAMN(h.team)+' '+h.def.n+' 的輔助裝備升級成 '+up,h.team]); if(h.me){ floatMsg('輔助裝備升級：'+up,'#ffd23f',2.2); emit(['sfx','item']); } } }
   function useItem(h,i,aim){ if(!alive(h)||h.stasis>0) return false; if(i===6) return useTrinket(h,aim); const id=h.items[i]; if(!id) return false; const it=ITEMS[id];
     if(id==='pot'){ if(!(h.pots>0)) return false; if(h.hp>=h.max){ if(h.me) floatMsg('血是滿的','#ffb0b0'); return false; } h.pots--; h.potT=12; if(h.pots<=0) h.items.splice(i,1); emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),.7,'#ff6a7a',.5]); if(h.me) emit(['sfx','heal']); return true; }
     if(!it.act){ if(h.me) floatMsg(it.n+' 沒有主動技能','#ffb0b0'); return false; } if((h.icd[id]||0)>0){ if(h.me) floatMsg(it.n+' 還在冷卻','#ffb0b0'); return false; } if(h.stun>0&&it.act.k!=='qss') return false;
     const S=stats(h),col=it.col;
     switch(it.act.k){
       case 'cleave': areaHit(h,h.x,h.z,3.4,S.atk*1.2+60,null,col); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),3.4,col,.4]); emit(['slash',+h.x.toFixed(1),+h.z.toFixed(1),3,+h.face.toFixed(2),col]); break;
+      case 'ward': if(!((h.wc||0)>=1)){ if(h.me) floatMsg('眼用完了（每 50 秒回 1 次，回泉水補滿）','#ffb0b0'); return false; } placeWard(h,aim); h.wc-=1; break;
       case 'stasis': h.stasis=2.5; h.dash=null; h.recall=0; emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),1,'#ffd23f',2.5]); break;
       case 'locket': heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<8).forEach(a=>{ a.shield=Math.max(a.shield,160+h.lvl*18); a.shT=3; }); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),8,'#ffe0a0',.6,1]); break;
       case 'qss': h.stun=0; h.slow=0; h.weak=0; h.burn=null; h.buffs.push({spd:.5,t:1}); emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),.9,'#c8f0ff',.6]); break;
@@ -252,13 +264,16 @@ function create(env,opts){
       else if(k==='locket'&&E.length&&heroes.some(a=>a.team===h.team&&alive(a)&&dist(a,h)<8&&a.hp/a.max<.5)) useItem(h,i);
       else if(k==='haste'&&E.length&&(hp<.3||fight)) useItem(h,i);
       else if(k==='slowaura'&&fight&&E.some(e=>dist(e,h)<5)) useItem(h,i);
-      else if(k==='gun'&&fight&&E.length) useItem(h,i,{x:E[0].x,z:E[0].z}); });
+      else if(k==='gun'&&fight&&E.length) useItem(h,i,{x:E[0].x,z:E[0].z});
+      else if(k==='ward'&&(h.wc||0)>=1&&!h.recall&&Math.random()<.3){ const b=BUSH.find(b=>Math.hypot(b.x-h.x,b.z-h.z)<7&&!wards.some(w=>w.team===h.team&&Math.hypot(w.x-b.x,w.z-b.z)<6)); if(b) useItem(h,i,{x:b.x,z:b.z}); } });
     if(h.tcd<=0&&!h.recall){ if(h.tk==='g'){ const b=BUSH.find(b=>Math.hypot(b.x-h.x,b.z-h.z)<7&&!wards.some(w=>w.team===h.team&&Math.hypot(w.x-b.x,w.z-b.z)<6)); if(b&&Math.random()<.5) useTrinket(h,{x:b.x,z:b.z}); }
       else if(wards.some(w=>w.team!==h.team&&Math.hypot(w.x-h.x,w.z-h.z)<10)&&Math.random()<.35) useTrinket(h); } }
   /* ---------- 英雄每一刻 ---------- */
   function heroTick(h,dt){ h.cd=h.cd.map(v=>Math.max(0,v-dt)); h.spCd=h.spCd.map(v=>Math.max(0,v-dt)); h.atkCd-=dt; if(h.atkT>0) h.atkT-=dt; if(h.castT>0) h.castT-=dt; if(h.shT>0){ h.shT-=dt; if(h.shT<=0) h.shield=0; }
     h.buffs=h.buffs.filter(b=>(b.t-=dt)>0); if(h.slow>0) h.slow-=dt; if(h.weak>0) h.weak-=dt;
     for(const k in h.icd) if(h.icd[k]>0) h.icd[k]=Math.max(0,h.icd[k]-dt); if(h.tcd>0) h.tcd=Math.max(0,h.tcd-dt); if(h.lens>0) h.lens=Math.max(0,h.lens-dt);
+    { const sv=supOf(h); if(sv&&sv<3) h.spl=Math.min(3,(h.spl==null?3:h.spl)+dt/18); if(sv===3){ h.wc=Math.min(3,(h.wc||0)+dt/50); if(mode===0&&Math.hypot(h.x-map.fount[h.team][0],h.z-map.fount[h.team][1])<8) h.wc=3; } }
+    if(!h.dead&&petOf(h)==='m'&&jgStage(h)>=3&&Tm-(h.ldT==null?-99:h.ldT)>6&&Tm-(h.hitHeroT==null?-99:h.hitHeroT)>6){ const v=120+h.lvl*15; if(h.shield<v){ h.shield=v; } h.shT=Math.max(h.shT,2); }
     if(h.potT>0){ h.potT-=dt; if(!h.dead) h.hp=Math.min(h.max,h.hp+10*dt*(h.burn?.5:h.gwT>Tm?.6:1)); }
     if(h.bot&&!h.potB&&!h.dead){ h.potB=1; buyItem(h,'pot'); }
     if(h.burn){ const b=h.burn; b.t-=dt; b.tick-=dt; if(b.tick<=0){ b.tick=.5; if(!h.dead) dmg(b.src,h,b.dps*.5,{tru:1,burn:1}); if(!h.dead) emit(['burst',+h.x.toFixed(1),1.6,+h.z.toFixed(1),'#ff7a2a',5,2]); } if(b.t<=0||h.dead) h.burn=null; }
@@ -441,7 +456,7 @@ function create(env,opts){
   const TABS=()=>(mode===0?[['fit','適合'+(ROLE_N[slots[mySlot].role]||'')],['all','全部']]:[['all','全部']]).concat(Object.entries(CLS).map(([k,v])=>[k,v.n]));
   const pkList=()=>{ const t=TABS()[pkTab]||TABS()[0],k=t[0],R0=ROLE_CLS[slots[mySlot].role]||[]; return HEROES.filter(h=>k==='all'||(k==='fit'?R0.includes(h.cls):h.cls===k)); };
   const fitPick=()=>{ const R0=ROLE_CLS[slots[mySlot].role]||[],L=HEROES.filter(h=>R0.includes(h.cls)&&!takenBy(myTeam,h.i,mySlot)); return L.length?L[Math.floor(Math.random()*L.length)].i:pkSel; };
-  const ROLE_D={top:['上路單挑，耐打能扛','坦克、戰士','#ff9a3d'],jg:['在野區打野怪，到處支援隊友（自動帶打野刀和重擊）','刺客、戰士','#5fd08a'],mid:['中路對線，技能爆發高','法師、刺客','#b98cff'],bot:['下路射手，後期主力輸出','射手','#86dc4f'],sup:['跟著射手，保護隊友、多插眼','輔助、坦克','#3ddbd9']};
+  const ROLE_D={top:['上路單挑，耐打能扛','坦克、戰士','#ff9a3d'],jg:['在野區打野怪，到處支援隊友（帶重擊、買打野幼獸）','刺客、戰士','#5fd08a'],mid:['中路對線，技能爆發高','法師、刺客','#b98cff'],bot:['下路射手，後期主力輸出','射手','#86dc4f'],sup:['跟著射手保護隊友，買輔助裝備賺錢、插眼','輔助、坦克','#3ddbd9']};
   const RC=i=>({x:22+i*186,y:96,w:176,h:340});
   function chooseRole(id){ setRole(mySlot,id); pkStep='hero'; pkTab=0; const R0=ROLE_CLS[id]||[]; if(!R0.includes(HEROES[pkSel].cls)||takenBy(myTeam,pkSel,mySlot)) pkSel=fitPick(); sfx('click'); }
   function drawRoleStep(){ c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText('選擇路線',22,28); c.fillStyle='#cfc8ff'; c.font='700 13px '+TC; c.fillText(MODES[mode]+'　'+size+' 對 '+size+'　電腦：'+LV.n+'　剩 '+Math.max(0,Math.ceil(pickT))+' 秒',130,29);
@@ -480,14 +495,14 @@ function create(env,opts){
       net.onleave=i=>{ const s=slots.find(q=>q.human===i); if(!s) return; s.name+='（離開）'; s.human=-1; if(s.hero<0) botPicks(); const h=heroes[slots.indexOf(s)]; if(h){ h.bot=true; h.human=false; h.name=s.name; } }; } }
   function setRoleHost(si,role){ const s=slots[si]; const o=slots.find((q,i)=>i!==si&&q.team===s.team&&q.role===role&&q.human<0); if(o){ o.role=s.role; o.sp=(SP_ROLE[o.role]||SP_ROLE.mid).slice(); } s.role=role; }
   function sendSnap(){ const r1=v=>Math.round(v*10)/10;
-    const hs=heroes.map(h=>[r1(h.x),r1(h.z),r1(h.face),Math.round(h.hp),Math.round(h.max),h.lvl,Math.round(h.xp),Math.round(h.gold),h.dead?r1(h.rsp):0,Math.round(h.shield),r1(h.stun),r1(h.recall),r1(Math.max(0,h.atkT)),r1(Math.max(0,h.castT)),h.kc,h.dc,h.ac,h.items.join(','),h.cd.map(r1),h.spCd.map(r1),h.force,h.auto?1:0,h.buffs.length?1:0,h.pots||0,h.tk,r1(h.tcd),r1(h.lens),h.items.map(id=>r1(h.icd[id]||0)).join(','),r1(Math.max(0,h.potT)),r1(Math.max(0,h.stasis)),h.revT>Tm?1:0,Math.round(h.mp),Math.round(h.mpMax),h.sk.join('')]);
+    const hs=heroes.map(h=>[r1(h.x),r1(h.z),r1(h.face),Math.round(h.hp),Math.round(h.max),h.lvl,Math.round(h.xp),Math.round(h.gold),h.dead?r1(h.rsp):0,Math.round(h.shield),r1(h.stun),r1(h.recall),r1(Math.max(0,h.atkT)),r1(Math.max(0,h.castT)),h.kc,h.dc,h.ac,h.items.join(','),h.cd.map(r1),h.spCd.map(r1),h.force,h.auto?1:0,h.buffs.length?1:0,h.pots||0,h.tk,r1(h.tcd),r1(h.lens),h.items.map(id=>r1(h.icd[id]||0)).join(','),r1(Math.max(0,h.potT)),r1(Math.max(0,h.stasis)),h.revT>Tm?1:0,Math.round(h.mp),Math.round(h.mpMax),h.sk.join(''),h.jst||0,Math.floor(h.sq||0),Math.floor(h.wc||0)]);
     const ms=minions.map(m=>[m.id,['melee','ranged','cannon'].indexOf(m.mt),m.team,r1(m.x),r1(m.z),Math.round(m.hp),Math.round(m.max),r1(m.face),r1(Math.max(0,m.atkT))]);
     const jm=mons.map(m=>[m.dead?1:0,Math.round(m.hp),Math.round(m.max),r1(m.x),r1(m.z),r1(m.face),r1(Math.max(0,m.atkT||0))]);
     net.send({t:'s',T:r1(Tm),hs,ms,jm,tw:towers.map(q=>Math.round(q.hp)),ti:towers.map(q=>q.inv?1:0),co:cores.map(q=>Math.round(q.hp)),ci:cores.map(q=>q.inv?1:0),tb:teamBuff.map(q=>[r1(q.dmg),r1(q.reg)]),kl:kills,wd:wards.map(w=>[w.id,w.team,w.x,w.z,r1(w.t),w.hp,w.owner]),ev:sendEV}); sendEV=[]; }
   function applySnap(m){ Tm=m.T; kills[0]=m.kl[0]; kills[1]=m.kl[1]; m.tb.forEach((q,i)=>{ teamBuff[i].dmg=q[0]; teamBuff[i].reg=q[1]; });
     m.hs.forEach((a,i)=>{ const h=heroes[i]; if(!h) return; const mine=i===mySlot,forced=a[20]!==h.force; h.tx=a[0]; h.tz=a[1];
       if(!mine||forced||a[8]>0||a[10]>0){ if(mine&&(forced||a[8]>0)){ h.x=a[0]; h.z=a[1]; } if(!mine) h.face=a[2]; }
-      h.force=a[20]; h.hp=a[3]; h.max=a[4]; h.lvl=a[5]; h.xp=a[6]; h.gold=a[7]; h.dead=a[8]>0; h.rsp=a[8]; h.shield=a[9]; h.stun=a[10]; h.recall=a[11]; h.atkT=a[12]; h.castT=a[13]; h.kc=a[14]; h.dc=a[15]; h.ac=a[16]; h.items=a[17]?a[17].split(','):[]; h.cd=a[18]; h.spCd=a[19]; h.auto=!!a[21]; if(a.length>23){ h.pots=a[23]; h.tk=a[24]; h.tcd=a[25]; h.lens=a[26]; const ic=a[27]?String(a[27]).split(',').map(Number):[]; h.icd={}; h.items.forEach((id,k)=>{ if(ic[k]) h.icd[id]=Math.max(h.icd[id]||0,ic[k]); }); h.potT=a[28]; h.stasis=a[29]; h.revT=a[30]?Tm+.3:0; h.mp=a[31]; h.mpMax=a[32]; if(a[33]!=null) h.sk=String(a[33]).split('').map(Number); } });
+      h.force=a[20]; h.hp=a[3]; h.max=a[4]; h.lvl=a[5]; h.xp=a[6]; h.gold=a[7]; h.dead=a[8]>0; h.rsp=a[8]; h.shield=a[9]; h.stun=a[10]; h.recall=a[11]; h.atkT=a[12]; h.castT=a[13]; h.kc=a[14]; h.dc=a[15]; h.ac=a[16]; h.items=a[17]?a[17].split(','):[]; h.cd=a[18]; h.spCd=a[19]; h.auto=!!a[21]; if(a.length>23){ h.pots=a[23]; h.tk=a[24]; h.tcd=a[25]; h.lens=a[26]; const ic=a[27]?String(a[27]).split(',').map(Number):[]; h.icd={}; h.items.forEach((id,k)=>{ if(ic[k]) h.icd[id]=Math.max(h.icd[id]||0,ic[k]); }); h.potT=a[28]; h.stasis=a[29]; h.revT=a[30]?Tm+.3:0; h.mp=a[31]; h.mpMax=a[32]; if(a[33]!=null) h.sk=String(a[33]).split('').map(Number); if(a.length>34){ h.jst=a[34]; h.sq=a[35]; h.wc=a[36]; } } });
     wards.length=0; (m.wd||[]).forEach(a=>wards.push({id:a[0],k:'w',team:a[1],x:a[2],z:a[3],t:a[4],hp:a[5],max:3,owner:a[6],r:.4}));
     const seen=new Set(); m.ms.forEach(a=>{ seen.add(a[0]); let u=minions.find(q=>q.id===a[0]); if(!u){ u={id:a[0],k:'m',mt:['melee','ranged','cannon'][a[1]],team:a[2],x:a[3],z:a[4],r:.6,big:a[1]===2}; u.big=u.mt==='cannon'; minions.push(u); } u.tx=a[3]; u.tz=a[4]; u.hp=a[5]; u.max=a[6]; u.face=a[7]; u.atkT=a[8]; u.dead=false; });
     for(let i=minions.length-1;i>=0;i--) if(!seen.has(minions[i].id)) minions.splice(i,1);
@@ -578,14 +593,16 @@ function create(env,opts){
   const SHOP_TABS=[['rec','推薦'],['atk','攻擊'],['mag','法術'],['def','防禦'],['misc','起始・鞋・藥']],SP0={x:110,y:46,w:740,h:452};
   const inShop=(x,y)=>x>=SP0.x&&x<=SP0.x+SP0.w&&y>=SP0.y&&y<=SP0.y+SP0.h;
   function shopList(){ const mh=myHero(),tb=SHOP_TABS[shopTab][0]; if(tb==='rec'){ const o=[]; for(const b of mh.build){ for(const f of ITEMS[b].from||[]) if(!o.includes(f)) o.push(f); if(!o.includes(b)) o.push(b); } if(!o.includes('pot')) o.push('pot'); o.push('elx'); return o; }
-    return Object.keys(ITEMS).filter(id=>ITEMS[id].cat===tb&&(id!=='jg'||mode===0)); }
+    return Object.keys(ITEMS).filter(id=>ITEMS[id].cat===tb&&!ITEMS[id].hide&&(!ITEMS[id].jgt||mode===0)&&(!ITEMS[id].sup||mode===0)); }
   function itemIcon(x,y,w,h,id,dim){ const it=ITEMS[id]; c.save(); const g=c.createLinearGradient(x,y,x+w,y+h); g.addColorStop(0,shadeHex(it.col,1.35)); g.addColorStop(1,shadeHex(it.col,.55)); c.fillStyle=g; rr(c,x,y,w,h,Math.min(6,w*.2)); c.fill();
     c.strokeStyle=it.act?'#ffd23f':'rgba(0,0,0,.45)'; c.lineWidth=it.act?2:1; c.stroke(); c.fillStyle='#14122b'; c.font='900 '+Math.max(8,Math.round(w*.34))+'px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText((it.ic||it.n.slice(0,2)),x+w/2,y+h/2+1);
     if(dim){ c.fillStyle='rgba(0,0,0,.45)'; rr(c,x,y,w,h,Math.min(6,w*.2)); c.fill(); } c.restore(); }
   function cdCover(x,y,w,h,v,m){ if(!(v>0)) return; c.save(); rr(c,x,y,w,h,5); c.clip(); c.fillStyle='rgba(0,0,0,.6)'; c.beginPath(); c.moveTo(x+w/2,y+h/2); c.arc(x+w/2,y+h/2,Math.max(w,h),-PI/2,-PI/2+TAU*clamp(v/m,0,1)); c.closePath(); c.fill(); c.restore(); c.fillStyle='#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(Math.ceil(v),x+w/2,y+h/2+1); }
   function slotIcon(mh,i,x,y,w,h,key){ c.fillStyle='rgba(255,255,255,.07)'; rr(c,x,y,w,h,5); c.fill();
     if(i===6){ const TK=TRINK[mh.tk]; c.fillStyle=shadeHex(TK.col,.5); c.beginPath(); c.arc(x+w/2,y+h/2,Math.min(w,h)/2-1,0,TAU); c.fill(); c.strokeStyle=TK.col; c.lineWidth=1.5; c.stroke(); c.fillStyle='#fff'; c.font='900 10px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(TK.n.slice(0,1)+'眼',x+w/2,y+h/2+1); cdCover(x,y,w,h,mh.tcd,TK.cd); }
-    else { const id=mh.items[i]; if(id){ itemIcon(x+1,y+1,w-2,h-2,id); if(id==='pot'){ c.fillStyle='#fff'; c.font='900 10px '+TC; c.textAlign='right'; c.fillText(mh.pots,x+w-3,y+h-6); cdCover(x,y,w,h,mh.potT,12); } else if(ITEMS[id].act) cdCover(x,y,w,h,mh.icd[id]||0,ITEMS[id].act.cd); else if(ITEMS[id].pcd) cdCover(x,y,w,h,mh.icd[id]||0,ITEMS[id].pcd); } }
+    else { const id=mh.items[i]; if(id){ itemIcon(x+1,y+1,w-2,h-2,id); if(id==='pot'){ c.fillStyle='#fff'; c.font='900 10px '+TC; c.textAlign='right'; c.fillText(mh.pots,x+w-3,y+h-6); cdCover(x,y,w,h,mh.potT,12); } else if(ITEMS[id].act) cdCover(x,y,w,h,mh.icd[id]||0,ITEMS[id].act.cd); else if(ITEMS[id].pcd) cdCover(x,y,w,h,mh.icd[id]||0,ITEMS[id].pcd);
+      const IT=ITEMS[id]; let pr=null; if(IT.jgt){ const st=jgStage(mh); pr=st>=3?'覺醒':(mh.jst||0)+'/'+(st===1?12:25); } else if(IT.sup===1) pr=Math.floor(mh.sq||0)+'/400'; else if(IT.sup===2) pr=Math.floor(mh.sq||0)+'/1k'; else if(IT.sup===3) pr='眼'+Math.floor(mh.wc||0);
+      if(pr){ c.fillStyle='rgba(0,0,0,.7)'; rr(c,x+1,y,w-2,10,3); c.fill(); c.fillStyle='#ffe066'; c.font='900 8px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(pr,x+w/2,y+5); } } }
     if(key){ c.fillStyle='rgba(0,0,0,.65)'; rr(c,x,y+h-10,10,10,3); c.fill(); c.fillStyle='#ffe066'; c.font='900 8px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(key,x+5,y+h-4.5); } }
   function itemLines(it){ const o=[]; if(it.atk) o.push('攻擊 +'+it.atk); if(it.as) o.push('攻速 +'+Math.round(it.as*100)+'%'); if(it.sp) o.push('技能威力 +'+Math.round(it.sp*100)+'%'); if(it.hp) o.push('生命 +'+it.hp); if(it.arm) o.push('護甲 +'+it.arm); if(it.spd) o.push('移動速度 +'+Math.round(it.spd*100)+'%'); if(it.cdr) o.push('冷卻縮減 '+Math.round(it.cdr*100)+'%'); if(it.ls) o.push('吸血 '+Math.round(it.ls*100)+'%'); if(it.heal) o.push('治療效果 +'+Math.round(it.heal*100)+'%'); if(it.mr) o.push('魔抗 +'+it.mr); if(it.mp) o.push('魔力 +'+it.mp); if(it.crit) o.push('暴擊率 +'+Math.round(it.crit*100)+'%'); if(it.pen) o.push('護甲穿透 '+Math.round(it.pen*100)+'%'); if(it.mpen) o.push('魔法穿透 '+Math.round(it.mpen*100)+'%'); if(it.ten) o.push('韌性 '+Math.round(it.ten*100)+'%（控制時間變短）'); if(it.rg) o.push('每秒回血 +'+it.rg); return o; }
   function wrapText(str,x,y,maxW,lh){ let line=''; for(const ch of str){ if(c.measureText(line+ch).width>maxW){ c.fillText(line,x,y); y+=lh; line=ch; } else line+=ch; } if(line) c.fillText(line,x,y); return y+lh; }
@@ -693,7 +710,7 @@ function create(env,opts){
       portrait(c,x+47,y+30,46,h); c.fillStyle=taken?'#7a7690':'#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText(h.n,x+47,y+62); c.fillStyle=CLS[h.cls].col; c.font='700 9px '+TC; c.fillText(CLS[h.cls].n+(mode===0?'・'+rolesOf(h).join('/'):''),x+47,y+72); if(taken){ c.fillStyle='rgba(0,0,0,.5)'; rr(c,x,y,94,76,10); c.fill(); c.fillStyle='#fff'; c.fillText('隊友已選',x+47,y+38); } });
     const d=HEROES[pkSel],x0=632; c.fillStyle='rgba(255,255,255,.06)'; rr(c,x0,46,316,486,14); c.fill(); portrait(c,x0+52,96,80,d); c.textAlign='left'; c.fillStyle='#fff'; c.font='900 22px '+TC; c.fillText(d.n,x0+102,82); c.fillStyle=CLS[d.cls].col; c.font='900 14px '+TC; c.fillText(CLS[d.cls].n+(mode===0?'　適合：'+rolesOf(d).join('、'):''),x0+102,108);
     d.sk.forEach((s,i)=>{ const y=156+i*42; c.fillStyle=i===3?'#c8a0ff':'#9ad8ff'; c.font='900 12px '+TC; c.fillText((TOUCH?['技能一','技能二','技能三','大招'][i]:'QWER'[i])+'：'+s.n+(i===3?'（6 等起可學，最多 3 點）':'（最多 5 點）'),x0+12,y); c.fillStyle='#cfc8ff'; c.font='700 10px '+TC; c.fillText(skDesc2(s)+'（冷卻 '+s.cd+' 秒、魔力 '+SKC[i]+'）',x0+12,y+17); });
-    if(mode===0){ const rl=slots[mySlot].role,ok=(ROLE_CLS[rl]||[]).includes(d.cls); c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textAlign='left'; c.fillText('路線：'+ROLE_N[rl],x0+8,343); c.font='700 10px '+TC; if(!ok){ c.fillStyle='#ffb0a0'; c.fillText('這位英雄比較適合 '+rolesOf(d).join('、'),x0+8,366); } else if(rl==='jg'){ c.fillStyle='#cfc8ff'; c.fillText('打野會自動帶打野刀和重擊',x0+8,366); }
+    if(mode===0){ const rl=slots[mySlot].role,ok=(ROLE_CLS[rl]||[]).includes(d.cls); c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textAlign='left'; c.fillText('路線：'+ROLE_N[rl],x0+8,343); c.font='700 10px '+TC; if(!ok){ c.fillStyle='#ffb0a0'; c.fillText('這位英雄比較適合 '+rolesOf(d).join('、'),x0+8,366); } else if(rl==='jg'){ c.fillStyle='#cfc8ff'; c.fillText('打野會帶重擊，先買打野幼獸',x0+8,366); } else if(rl==='sup'){ c.fillStyle='#cfc8ff'; c.fillText('輔助先買星界地圖，升級後可以插眼',x0+8,366); }
       c.fillStyle='rgba(255,255,255,.12)'; rr(c,820,328,120,30,12); c.fill(); c.strokeStyle='rgba(255,210,63,.7)'; c.lineWidth=1.5; c.stroke(); c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText('換路線',880,344); c.textAlign='left'; }
     { const sp=slots[mySlot].sp; [0,1].forEach(row=>{ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.fillText(TOUCH?(row?'技能 2':'技能 1'):(row?'F 鍵':'D 鍵'),x0+6,412+row*32); const by0=398+row*32; c.save(); c.beginPath(); c.rect(SPX0,by0-2,SPX1-SPX0,32); c.clip(); SP_IDS.forEach((id,j)=>{ const bx=SPX0+j*45-spOff,by=398+row*32,on=sp[row]===id,S0=M0.SPELLS[id]; c.fillStyle=on?S0.col:'rgba(255,255,255,.1)'; rr(c,bx,by,42,28,10); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText(S0.n,bx+21,by+15); }); c.restore();
         // 左右還有技能時，邊緣顯示箭頭（可左右滑動）
@@ -726,14 +743,14 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   ctx.fillStyle='rgba(10,10,24,.7)'; ctx.fillRect(0,h-34,w,34); ctx.fillStyle='#ffd23f'; ctx.font='900 '+Math.round(h*.07)+'px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(MODES[si]+(si?'：一條路、5 對 5':'：三路＋野區、5 對 5'),w/2,h-17); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).moba={
   name:'星界裂谷',tag:'STAR RIFT',color:'#7a5cff',online:true,maxPlayers:10,netVariants:false,wide:true,
-  desc:'5 對 5 推塔對戰！30 位原創英雄（坦克、戰士、刺客、法師、射手、輔助），每位 Q W E R 四招，再挑兩個召喚師技能（閃現、治癒、重擊、鬼步…）。上中下三路、兩塊野區和打野刀，也有一條路的單路激戰。電腦版滑鼠點擊操作，手機版搖桿加技能鍵。連線最多 10 人，不夠的位置由電腦補。',
+  desc:'5 對 5 推塔對戰！30 位原創英雄（坦克、戰士、刺客、法師、射手、輔助），每位 Q W E R 四招，再挑兩個召喚師技能（閃現、治癒、重擊、鬼步…）。上中下三路、兩塊野區、打野幼獸和輔助裝備，也有一條路的單路激戰。電腦版滑鼠點擊操作，手機版搖桿加技能鍵。連線最多 10 人，不夠的位置由電腦補。',
   goal:'跟著小兵推掉對方的防禦塔，最後打掉對方主堡就贏。打小兵、野怪、敵人拿金幣買裝備；等級 2、3 學會第二、三招，等級 5 學會大招。',
   ownP:true,stages:MODES,stageLabel:'選擇模式',previewWarm:.3,stageShow:(ctx,w,h,si,t)=>art(ctx,w,h,si,t),
-  stageGoal:si=>si?'單路激戰：只有一條路，沒有野區，雙方各兩座塔和主堡，一路打到底。':'三路峽谷：上中下三條路各有兩座塔，中路和上路、中路和下路之間各有一塊野區（1 隻大野怪＋3 隻小野怪）。選「打野」路線會先買打野刀，記得帶召喚師技能「重擊」。',
+  stageGoal:si=>si?'單路激戰：只有一條路，沒有野區，雙方各兩座塔和主堡，一路打到底。':'三路峽谷：上中下三條路各有兩座塔，中路和上路、中路和下路之間各有一塊野區（1 隻大野怪＋3 隻小野怪）。選「打野」路線要帶召喚師技能「重擊」，先買打野幼獸；選「輔助」先買星界地圖，賺錢升級後可以插眼。',
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦強度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
   optNote:()=>'連線時真人輪流分到兩隊，不夠的位置由電腦補上。',
-  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明']],
+  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變世界之眼，可以插眼']],
   touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使，點商店裡的裝備看說明']],
   touch:{left:[],right:[]},
   best:{label:'勝場',fmt:v=>v+' 勝',lower:false},
