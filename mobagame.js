@@ -318,7 +318,7 @@ function create(env,opts){
     if(!TOUCH){ const P=deskPanel(); for(const b of P.boxes) if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ acts.push({a:b.k}); sfx('click'); return true; } if(x>=P.x0&&x<=P.x0+500&&y>=P.y0) return true;
       if(x>=W-162&&y>=H-162&&mode===0) return true; }
     return false; }
-  function onDown(e){ e.preventDefault(); const [x,y]=toL(e); if(phase==='pick'){ pickClick(x,y); return; } if(phase!=='play') return;
+  function onDown(e){ e.preventDefault(); const [x,y]=toL(e); if(phase==='pick'){ if(x>=SPX0&&x<=SPX1&&y>=396&&y<=460&&!pkDone){ spDrag={id:e.pointerId,x0:x,o0:spOff,mv:false,x,y}; return; } pickClick(x,y); return; } if(phase!=='play') return;
     if(hudClick(x,y)) return;
     if(TOUCH){ for(const b of BTN()){ if(Math.hypot(x-b.x,y-b.y)<b.r+6){ sfx('click');
           if(b.k==='atk'||b.k==='min'||b.k==='tw'){ hold=true; holdKind=b.k==='atk'?null:b.k; ptr.set(e.pointerId,'atk'); }
@@ -326,11 +326,12 @@ function create(env,opts){
           else acts.push({a:b.k}); return; } }
       if(x<W*.5&&y>H*.3){ J.on=true; J.id=e.pointerId; J.cx=x; J.cy=y; J.x=0; J.y=0; ptr.set(e.pointerId,'joy'); } return; }
     mouse.btn=true; mouse.x=x; mouse.y=y; mouse.in=true; mouse.lastT=t; command(x,y,false); }
-  function onMove(e){ const [x,y]=toL(e); if(!TOUCH){ mouse.x=x; mouse.y=y; mouse.in=true; } const k=ptr.get(e.pointerId);
+  function onMove(e){ const [x,y]=toL(e); if(spDrag&&spDrag.id===e.pointerId){ const dx=x-spDrag.x0; if(Math.abs(dx)>6) spDrag.mv=true; if(spDrag.mv) spOff=clamp(spDrag.o0-dx,0,spMax()); } if(!TOUCH){ mouse.x=x; mouse.y=y; mouse.in=true; } const k=ptr.get(e.pointerId);
     if(k==='joy'){ const dx=x-J.cx,dy=y-J.cy,l=Math.hypot(dx,dy),R0=56; J.x=dx/Math.max(R0,l); J.y=dy/Math.max(R0,l); if(l>R0*1.4){ J.cx=x-dx/l*R0*1.4; J.cy=y-dy/l*R0*1.4; } }
     else if(k==='aim'&&aimSk){ aimSk.dx=x-aimSk.x0; aimSk.dy=y-aimSk.y0; } }
-  function onUp(e){ const k=ptr.get(e.pointerId); if(k==='atk'){ hold=false; holdKind=null; } if(k==='joy'){ J.on=false; J.x=J.y=0; } if(k==='aim'&&aimSk){ acts.push(aimAct(aimSk)); aimSk=null; } if(!TOUCH) mouse.btn=false; ptr.delete(e.pointerId); }
+  function onUp(e){ if(spDrag&&spDrag.id===e.pointerId){ const d=spDrag; spDrag=null; if(!d.mv&&phase==='pick') pickClick(d.x,d.y); } const k=ptr.get(e.pointerId); if(k==='atk'){ hold=false; holdKind=null; } if(k==='joy'){ J.on=false; J.x=J.y=0; } if(k==='aim'&&aimSk){ acts.push(aimAct(aimSk)); aimSk=null; } if(!TOUCH) mouse.btn=false; ptr.delete(e.pointerId); }
   const noMenu=e=>e.preventDefault(),leave=()=>{ mouse.in=false; mouse.btn=false; };
+  const onWheel=e=>{ if(phase!=='pick') return; const [x,y]=toL(e); if(x>=SPX0&&x<=SPX1&&y>=396&&y<=460){ e.preventDefault(); spOff=clamp(spOff+(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)*.5,0,spMax()); } }; canvas.addEventListener('wheel',onWheel,{passive:false});
   canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); addEventListener('pointercancel',onUp); canvas.addEventListener('contextmenu',noMenu); canvas.addEventListener('pointerleave',leave); canvas.style.touchAction='none';
   /* ---------- 選英雄 ---------- */
   let pkSel=Math.floor(Math.random()*30),pkTab=0,pkDone=false;
@@ -340,9 +341,9 @@ function create(env,opts){
   function pickClick(x,y){ if(pkDone) return; TABS.forEach((tb,i)=>{ if(x>=20+i*84&&x<20+i*84+78&&y>=52&&y<=80){ pkTab=i; sfx('click'); } });
     pkList().forEach((h,i)=>{ const cx=24+(i%6)*100,cy=92+Math.floor(i/6)*82; if(x>=cx&&x<cx+94&&y>=cy&&y<cy+76){ pkSel=h.i; sfx('click'); } });
     if(mode===0) ROLES.forEach(([id,n],i)=>{ const bx=640+(i%3)*102,by=330+Math.floor(i/3)*32; if(x>=bx&&x<bx+96&&y>=by&&y<by+28){ setRole(mySlot,id); sfx('click'); } });
-    SP_IDS.forEach((id,j)=>[0,1].forEach(row=>{ const bx=676+j*45,by=398+row*32; if(x>=bx&&x<bx+42&&y>=by&&y<by+28){ const sp=slots[mySlot].sp; if(sp[1-row]===id) sp[1-row]=sp[row]; sp[row]=id; spTouched=true; sfx('click'); if(client) net.send({t:'pk',sp}); } }));
+    SP_IDS.forEach((id,j)=>[0,1].forEach(row=>{ const bx=SPX0+j*45-spOff,by=398+row*32; if(x>=Math.max(bx,SPX0)&&x<Math.min(bx+42,SPX1)&&y>=by&&y<by+28){ const sp=slots[mySlot].sp; if(sp[1-row]===id) sp[1-row]=sp[row]; sp[row]=id; spTouched=true; sfx('click'); if(client) net.send({t:'pk',sp}); } }));
     if(x>=700&&x<=940&&y>=470&&y<=514) confirmPick(); }
-  const SP_IDS=Object.keys(M0.SPELLS); let spTouched=false;
+  const SP_IDS=Object.keys(M0.SPELLS),SPX0=676,SPX1=942,spMax=()=>Math.max(0,SP_IDS.length*45-3-(SPX1-SPX0)); let spTouched=false,spOff=0,spDrag=null;
   function setRole(si,role){ const s=slots[si]; if(s.role===role) return; const o=slots.find((q,i)=>i!==si&&q.team===s.team&&q.role===role&&q.human<0); if(o){ o.role=s.role; o.sp=(SP_ROLE[o.role]||SP_ROLE.mid).slice(); } s.role=role; if(si===mySlot&&!spTouched) s.sp=(SP_ROLE[role]||SP_ROLE.mid).slice(); if(client) net.send({t:'pk',role,sp:s.sp}); }
   function confirmPick(){ if(takenBy(myTeam,pkSel,mySlot)){ floatMsg('隊友已經選了這位英雄','#ffb0b0'); return; } slots[mySlot].hero=pkSel; slots[mySlot].ok=true; pkDone=true; sfx('go'); if(client) net.send({t:'pk',h:pkSel,role:slots[mySlot].role,sp:slots[mySlot].sp,ok:1}); }
   function botPicks(){ slots.forEach((s,i)=>{ if(s.hero>=0) return; const want=ROLE_CLS[s.role]||CLS_IDS(); let pool=HEROES.filter(h=>want.includes(h.cls)&&!takenBy(s.team,h.i,i)); if(!pool.length) pool=HEROES.filter(h=>!takenBy(s.team,h.i,i)); s.hero=pool[Math.floor(Math.random()*pool.length)].i; s.ok=true; }); }
@@ -409,7 +410,8 @@ function create(env,opts){
       inT-=dt; if(inT<=0||myIn.acts.length){ inT=1/15; net.send({t:'i',x:+mh.x.toFixed(2),z:+mh.z.toFixed(2),fc:+mh.face.toFixed(2),f:mh.force,a:myIn.atk?1:0,k:myIn.kind,at:myIn.ord&&myIn.ord.k==='atk'?myIn.ord.id:null,q:myIn.acts}); myIn.acts=[]; } }
     runEvents(); vprojTick(dt);
     for(const f of floats) f.t+=dt; for(let i=floats.length-1;i>=0;i--) if(floats[i].t>1) floats.splice(i,1);
-    if(mh){ const tx=mh.x,tz=mh.z; camX+=(tx-camX)*Math.min(1,dt*6); camZ+=(tz-camZ)*Math.min(1,dt*6); }
+    let fh=mh; if(opts.preview&&(!mh||mh.dead||mh.recall>0)) fh=heroes.find(h=>h.team===myTeam&&!h.dead&&!(h.recall>0))||mh;
+    if(fh){ const tx=fh.x,tz=fh.z; camX+=(tx-camX)*Math.min(1,dt*6); camZ+=(tz-camZ)*Math.min(1,dt*6); }
   }
   /* ---------- 畫面 ---------- */
   let lt=0,tS=0,tN=0,lvl=0,frame3=0;
@@ -419,7 +421,7 @@ function create(env,opts){
     G3.render(GS,camX,camZ,flip,t); c.drawImage(G3.canvas,0,0,W,H);
     const now=performance.now()/1000; if(lt){ const d=now-lt; if(d<.3){ tS+=d; tN++; } } lt=now; if(tN>=90){ const av=tS/tN; tS=0; tN=0; if(av>.034&&lvl<2){ lvl++; if(lvl===1) G3.shadows(false); else G3.setQ(Math.max(.8,G3.Q-.3)); } }
     if(!TOUCH&&mouse.in&&!(frame3=(frame3+1)%3)){ hover=unitAt(mouse.x,mouse.y); canvas.style.cursor=hover&&hover.team!==myTeam?'crosshair':'default'; }
-    drawBars(); drawFloats(); drawHUD(); drawMini(); drawFeed(); drawAnn(); }
+    drawBars(); drawFloats(); if(opts.preview){ drawAnn(); return; } drawHUD(); drawMini(); drawFeed(); drawAnn(); }
   function bar(x,y,w,h,k,col,bg){ c.fillStyle=bg||'rgba(10,10,20,.75)'; rr(c,x-1,y-1,w+2,h+2,2); c.fill(); c.fillStyle=col; c.fillRect(x,y,w*clamp(k,0,1),h); }
   function drawBars(){ const mh=myHero();
     for(const s of towers.concat(cores)){ if(s.hp<=0) continue; const p=G3.toScreen(s.x,s.k==='c'?8.5:7.4,s.z); if(!p[2]||p[0]<-50||p[0]>W+50||p[1]<-20||p[1]>H+20) continue; const w=s.k==='c'?80:64; bar(p[0]-w/2,p[1],w,6,s.hp/s.max,s.team===myTeam?'#3d8bff':'#ff4a4a'); if(s.inv){ c.fillStyle='#ffd23f'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText('🛡',p[0],p[1]-8); }
@@ -507,8 +509,10 @@ function create(env,opts){
     const d=HEROES[pkSel],x0=632; c.fillStyle='rgba(255,255,255,.06)'; rr(c,x0,46,316,486,14); c.fill(); portrait(c,x0+52,96,80,d); c.textAlign='left'; c.fillStyle='#fff'; c.font='900 22px '+TC; c.fillText(d.n,x0+102,82); c.fillStyle=CLS[d.cls].col; c.font='900 14px '+TC; c.fillText(CLS[d.cls].n,x0+102,108);
     d.sk.forEach((s,i)=>{ const y=156+i*42; c.fillStyle=i===3?'#c8a0ff':'#9ad8ff'; c.font='900 12px '+TC; c.fillText((TOUCH?['技能一','技能二','技能三','大招'][i]:'QWER'[i])+'：'+s.n+(i===3?'（Lv5）':i?'（Lv'+UNL[i]+'）':''),x0+12,y); c.fillStyle='#cfc8ff'; c.font='700 10px '+TC; c.fillText(skDesc2(s)+'（冷卻 '+s.cd+' 秒）',x0+12,y+17); });
     if(mode===0){ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.fillText('路線',x0+8,320); ROLES.forEach(([id,n],i)=>{ const bx=640+(i%3)*102,by=330+Math.floor(i/3)*32,on=slots[mySlot].role===id; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.1)'; rr(c,bx,by,96,28,12); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText(n+(id==='jg'?'（打野刀）':''),bx+48,by+15); c.textAlign='left'; }); }
-    { const sp=slots[mySlot].sp; [0,1].forEach(row=>{ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.fillText(TOUCH?(row?'技能 2':'技能 1'):(row?'F 鍵':'D 鍵'),x0+6,412+row*32); SP_IDS.forEach((id,j)=>{ const bx=676+j*45,by=398+row*32,on=sp[row]===id,S0=M0.SPELLS[id]; c.fillStyle=on?S0.col:'rgba(255,255,255,.1)'; rr(c,bx,by,42,28,10); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText(S0.n,bx+21,by+15); }); });
-      const hv=SP_IDS.find((id,j)=>[0,1].some(row=>hoverPk&&hoverPk[0]>=676+j*45&&hoverPk[0]<718+j*45&&hoverPk[1]>=398+row*32&&hoverPk[1]<426+row*32)); c.textAlign='left'; c.fillStyle='#cfc8ff'; c.font='700 10px '+TC; c.fillText('召喚師技能：'+(hv?M0.SPELLS[hv].n+'－'+M0.SPELLS[hv].d:sp.map(q=>M0.SPELLS[q].n).join('＋')),x0+8,464); }
+    { const sp=slots[mySlot].sp; [0,1].forEach(row=>{ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.fillText(TOUCH?(row?'技能 2':'技能 1'):(row?'F 鍵':'D 鍵'),x0+6,412+row*32); const by0=398+row*32; c.save(); c.beginPath(); c.rect(SPX0,by0-2,SPX1-SPX0,32); c.clip(); SP_IDS.forEach((id,j)=>{ const bx=SPX0+j*45-spOff,by=398+row*32,on=sp[row]===id,S0=M0.SPELLS[id]; c.fillStyle=on?S0.col:'rgba(255,255,255,.1)'; rr(c,bx,by,42,28,10); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText(S0.n,bx+21,by+15); }); c.restore();
+        // 左右還有技能時，邊緣顯示箭頭（可左右滑動）
+        for(const [side,show] of [[-1,spOff>1],[1,spOff<spMax()-1]]){ if(!show) continue; const ex=side<0?SPX0:SPX1,gr=c.createLinearGradient(ex,0,ex-side*22,0); gr.addColorStop(0,'rgba(26,20,64,.95)'); gr.addColorStop(1,'rgba(26,20,64,0)'); c.fillStyle=gr; c.fillRect(Math.min(ex,ex-side*22),by0-2,22,32); c.fillStyle='#ffd23f'; c.font='900 16px '+TC; c.textAlign='center'; c.fillText(side<0?'‹':'›',ex-side*7,by0+14); } });
+      const hv=SP_IDS.find((id,j)=>[0,1].some(row=>hoverPk&&hoverPk[0]>=SPX0&&hoverPk[0]<=SPX1&&hoverPk[0]>=SPX0+j*45-spOff&&hoverPk[0]<SPX0+42+j*45-spOff&&hoverPk[1]>=398+row*32&&hoverPk[1]<426+row*32)); c.textAlign='left'; c.fillStyle='#cfc8ff'; c.font='700 10px '+TC; c.fillText('召喚師技能：'+(hv?M0.SPELLS[hv].n+'－'+M0.SPELLS[hv].d:sp.map(q=>M0.SPELLS[q].n).join('＋')+'　（技能列可左右滑動）'),x0+8,464); }
     c.fillStyle=pkDone?'#5a5a7a':'#ffd23f'; rr(c,700,470,240,44,14); c.fill(); c.fillStyle='#14122b'; c.font='900 18px '+TC; c.textAlign='center'; c.fillText(pkDone?'等待其他玩家…':'確定（Enter）',820,493);
     // 隊友
     c.textAlign='left';
@@ -519,7 +523,9 @@ function create(env,opts){
   function skDesc2(s){ const SK_TXT={dash:'往敵人衝過去',blink:'瞬間移動',strike:'重擊眼前的敵人',nova:'傷害身邊的敵人',blast:'在敵人位置引爆',shot:'射出飛彈',pierce:'直線貫穿敵人',shield:'得到護盾',heal:'治療',buff:'強化自己',exec:'斬殺殘血敵人',pull:'把敵人拉過來',storm:'持續傷害一片區域'};
     let t2=SK_TXT[s.t]; if(s.t==='heal') t2=s.self?'治療自己':'治療自己和隊友'; if(s.t==='shield'&&s.ally) t2='自己和隊友得到護盾'; if(s.t==='buff'&&s.ally) t2='強化自己和隊友'; if(s.back) t2='往後翻滾閃開'; const ex=[]; if(s.st) ex.push('暈眩'); if(s.sl) ex.push('緩速'); return t2+(ex.length?'＋'+ex.join('、'):''); }
   function shadeHex(h,k){ const n=parseInt(String(h).slice(1),16); if(isNaN(n)) return h; const f=v=>clamp(Math.round(k>1?v+(255-v)*(k-1):v*k),0,255); return 'rgb('+f(n>>16)+','+f(n>>8&255)+','+f(n&255)+')'; }
-  return {update,draw,destroy(){ canvas.removeEventListener('contextmenu',noMenu); canvas.removeEventListener('pointerleave',leave); canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); removeEventListener('pointercancel',onUp); G3.destroy(); },
+  // 開始畫面左邊預覽：跳過選英雄，全部電腦直接開打
+  const PV=!!(opts.preview||env.preview); if(PV){ botPicks(); startPlay(); heroes.forEach(h=>h.bot=true); for(let k=0;k<20*62;k++) sim(.05); EV=[]; feed.length=0; anns.length=0; const fh=heroes.find(h=>h.team===myTeam&&!h.dead&&!(h.recall>0))||heroes[mySlot]; camX=fh.x; camZ=fh.z; }
+  return {update,draw,destroy(){ canvas.removeEventListener('contextmenu',noMenu); canvas.removeEventListener('pointerleave',leave); canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('wheel',onWheel); canvas.removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); removeEventListener('pointercancel',onUp); G3.destroy(); },
     _dbg:{G3,castSpell,anns,clearEv(){ EV=[]; feed.length=0; floats.length=0; },get heroes(){return heroes;},get minions(){return minions;},towers,cores,mons,slots,get phase(){return phase;},get T(){return Tm;},confirmPick,botPicks,map,stats,sim,cast,get winner(){return winner;},setPick(i){ pkSel=i; },kills}}; }
 /* ---------- 開始畫面的示意圖 ---------- */
 function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1e3a24'); g.addColorStop(1,'#0e1e12'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); if(!M0) return;
@@ -536,7 +542,7 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   name:'星界裂谷',tag:'STAR RIFT',color:'#7a5cff',online:true,maxPlayers:10,netVariants:false,wide:true,
   desc:'5 對 5 推塔對戰！30 位原創英雄（坦克、戰士、刺客、法師、射手、輔助），每位 Q W E R 四招，再挑兩個召喚師技能（閃現、治癒、重擊、鬼步…）。上中下三路、兩塊野區和打野刀，也有一條路的單路激戰。電腦版滑鼠點擊操作，手機版搖桿加技能鍵。連線最多 10 人，不夠的位置由電腦補。',
   goal:'跟著小兵推掉對方的防禦塔，最後打掉對方主堡就贏。打小兵、野怪、敵人拿金幣買裝備；等級 2、3 學會第二、三招，等級 5 學會大招。',
-  stages:MODES,stageLabel:'選擇模式',stageShow:(ctx,w,h,si,t)=>art(ctx,w,h,si,t),
+  stages:MODES,stageLabel:'選擇模式',previewWarm:.3,stageShow:(ctx,w,h,si,t)=>art(ctx,w,h,si,t),
   stageGoal:si=>si?'單路激戰：只有一條路，沒有野區，雙方各兩座塔和主堡，一路打到底。':'三路峽谷：上中下三條路各有兩座塔，中路和上路、中路和下路之間各有一塊野區（1 隻大野怪＋3 隻小野怪）。選「打野」路線會先買打野刀，記得帶召喚師技能「重擊」。',
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦強度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
@@ -545,6 +551,6 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備']],
   touch:{left:[],right:[]},
   best:{label:'勝場',fmt:v=>v+' 勝',lower:false},
-  load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); },
+  ready:()=>!!window.THREE,load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); },
   thumb:(ctx,w,h,t)=>art(ctx,w,h,0,t),create};
 })();
