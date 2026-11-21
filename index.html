@@ -298,7 +298,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=353; // 每次改版加一
+window.ARCADE_V=358; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','crowd3d','moba3d','moba','mobagame','dodge3d','dodge','soccer3d','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','boomcode','tug','truth','charades','party','gems','chair','tacit','piano','stroke','dragon','badminton','cook','fish','pickleball','tennis','pingpong','racket'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -703,6 +703,7 @@ addEventListener('keydown',e=>{
   if(BLOCK[e.code]) e.preventDefault();
   if(e.repeat) return;
   if(e.altKey&&(e.code==='Enter'||e.code==='NumpadEnter')){ e.preventDefault(); if(window.__toggleFull) window.__toggleFull(); return; }
+  if(e.code==='KeyP'&&cur.ownP&&state==='running'&&modal.hidden){ press(e.code); return; } // 星界裂谷：P 是開商店（暫停改用 Esc）
   if(e.code==='Escape'||e.code==='KeyP'){ if(!modal.hidden){ const b=$('#hOk')||$('#sndOk')||$('#pCancel'); if(b) b.click(); return; } togglePause(); return; } // 有視窗開著先關視窗，不然遊戲會在視窗底下繼續跑
   if(e.code==='Enter'&&state==='over'&&!Net.peer&&performance.now()>ovAt+500){ start(lastOpts); return; }
   press(e.code);

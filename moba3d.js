@@ -42,6 +42,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
     for(let tm=0;tm<2;tm++){ const b=map.base[tm],f=map.fount[tm]; for(const [p,rr] of [[b,13],[f,7.5]]){ const x=U(p[0]),y=Vz(p[1]); c.fillStyle='#8f8778'; c.beginPath(); c.arc(x,y,rr*gk,0,TAU); c.fill();
         for(let ring=1;ring<rr;ring+=1.1){ const n=Math.max(6,ring*5|0); for(let k=0;k<n;k++){ const a0=k/n*TAU,a1=(k+1)/n*TAU-.04; const s=165+R()*35|0; c.fillStyle='rgb('+s+','+(s-6)+','+(s-20)+')'; c.beginPath(); c.arc(x,y,(ring+.95)*gk,a0,a1); c.arc(x,y,(ring+.08)*gk,a1,a0,true); c.closePath(); c.fill(); } }
         c.strokeStyle=TEAMC[tm]; c.globalAlpha=.55; c.lineWidth=.35*gk; c.beginPath(); c.arc(x,y,(rr-1.4)*gk,0,TAU); c.stroke(); c.globalAlpha=1; } }
+    for(const b of map.bush||[]){ const g=c.createRadialGradient(U(b.x),Vz(b.z),0,U(b.x),Vz(b.z),(b.r+1.2)*gk); g.addColorStop(0,'rgba(20,50,15,.75)'); g.addColorStop(.75,'rgba(25,55,18,.45)'); g.addColorStop(1,'rgba(25,55,18,0)'); c.fillStyle=g; c.beginPath(); c.arc(U(b.x),Vz(b.z),(b.r+1.2)*gk,0,TAU); c.fill(); }
     // 碎石子、落葉、小白花
     for(let i=0;i<9000;i++){ const x=R()*GT,y=R()*GT,k=R(); if(k<.5){ c.fillStyle=R()<.5?'rgba(170,160,140,.6)':'rgba(90,80,60,.5)'; c.fillRect(x,y,1.5,1.2); } else if(k<.8){ c.fillStyle=['rgba(160,110,40,.5)','rgba(190,150,60,.45)','rgba(120,80,30,.45)'][i%3]; c.beginPath(); c.ellipse(x,y,2,1,R()*3,0,TAU); c.fill(); } else { c.fillStyle=['#ffffff','#ffe066','#ff9ec8','#c8b0ff'][i%4]; c.globalAlpha=.75; c.beginPath(); c.arc(x,y,1,0,TAU); c.fill(); c.globalAlpha=1; } }
   });
@@ -250,6 +251,28 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
     else if(k==='px'){ const q=proj.get(e[1]); if(q){ scene.remove(q.m); proj.delete(e[1]); burst(q.m.position.x,q.m.position.y,q.m.position.z,q.c,6,3); } }
     else if(k==='boom'){ ringFx(e[1],e[2],e[3]||3,e[4]||'#ffb040',.6); ringFx(e[1],e[2],(e[3]||3)*.7,'#ffffff',.35,true); burst(e[1],1,e[2],e[4]||'#ffb040',18,7); }
   }
+  const NL=String.fromCharCode(10);
+  /* ===== 草叢（高草，可以躲人） ===== */
+  const bushMs=(map.bush||[]).map((b,bi)=>{ const n=Math.round(b.r*b.r*8)+10,mat=sway(new T.MeshLambertMaterial({map:bladeT,alphaTest:.45,side:T.DoubleSide,transparent:true})),im=new T.InstancedMesh(tuftG,mat,n),m=new T.Matrix4(),cc=new T.Color();
+    for(let i=0;i<n;i++){ const a=R()*TAU,d=Math.sqrt(R())*b.r*.95,k=1+R()*.5; m.makeRotationY(R()*TAU); m.scale(new V(k,2.3+R()*1.1,k)); m.setPosition(b.x+Math.cos(a)*d,0,b.z+Math.sin(a)*d); im.setMatrixAt(i,m); cc.setHSL(.24+R()*.06,.5+R()*.15,.42+R()*.15); im.setColorAt(i,cc); }
+    im.frustumCulled=false; im.castShadow=true; scene.add(im); return im; });
+  let bushCur=-1;
+  /* ===== 戰爭迷霧：看不到的地方變暗 ===== */
+  const FN=128,fogCv=document.createElement('canvas'); fogCv.width=fogCv.height=FN; const fctx=fogCv.getContext('2d'); fctx.fillStyle='#fff'; fctx.fillRect(0,0,FN,FN);
+  const fogTex=new T.CanvasTexture(fogCv); fogTex.minFilter=fogTex.magFilter=T.LinearFilter; fogTex.generateMipmaps=false;
+  const fogU={fogT:{value:fogTex},fogB:{value:new T.Vector3(G0,GS,0)}};
+  const fogPatch=m=>{ if(m.userData.fog) return; m.userData.fog=1; const prev=m.onBeforeCompile,pk=prev?String(prev):''; m.onBeforeCompile=(sh,r2)=>{ if(prev) prev(sh,r2); sh.uniforms.fogT=fogU.fogT; sh.uniforms.fogB=fogU.fogB;
+      sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>'+NL+'varying vec2 vFogW;').replace('#include <project_vertex>','#include <project_vertex>'+NL+'{ vec4 fwp=vec4(transformed,1.0);'+NL+'#ifdef USE_INSTANCING'+NL+'fwp=instanceMatrix*fwp;'+NL+'#endif'+NL+'fwp=modelMatrix*fwp; vFogW=fwp.xz; }');
+      sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>'+NL+'uniform sampler2D fogT; uniform vec3 fogB; varying vec2 vFogW;').replace('#include <dithering_fragment>','{ vec2 fu=(vFogW-vec2(fogB.x))/fogB.y; float fv=texture2D(fogT,vec2(fu.x,1.0-fu.y)).r; gl_FragColor.rgb=mix(gl_FragColor.rgb*vec3(.34,.38,.5),gl_FragColor.rgb,fv); }'+NL+'#include <dithering_fragment>'); };
+    m.customProgramCacheKey=()=>'fog|'+pk; m.needsUpdate=true; };
+  scene.traverse(o=>{ if(!o.isMesh) return; (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if((m.isMeshLambertMaterial||m.isMeshPhongMaterial||m.isMeshStandardMaterial)&&m.blending!==T.AdditiveBlending) fogPatch(m); }); });
+  function fogDraw(src){ fctx.globalCompositeOperation='source-over'; if(!src){ fctx.fillStyle='#fff'; fctx.fillRect(0,0,FN,FN); fogTex.needsUpdate=true; return; } fctx.fillStyle='#000'; fctx.fillRect(0,0,FN,FN); fctx.globalCompositeOperation='lighter'; const k=FN/GS;
+    for(const q of src){ const cx=(q[0]-G0)*k,cy=(q[1]-G0)*k,rr=q[2]*k,g=fctx.createRadialGradient(cx,cy,rr*.55,cx,cy,rr); g.addColorStop(0,'#fff'); g.addColorStop(1,'rgba(255,255,255,0)'); fctx.fillStyle=g; fctx.fillRect(cx-rr,cy-rr,rr*2,rr*2); } fctx.globalCompositeOperation='source-over'; fogTex.needsUpdate=true; }
+  /* ===== 眼（插在地上的小水晶） ===== */
+  const WD=new Map();
+  function wardModel(w){ const g=new T.Group(),tc=w.tk==='r'?'#ff5a5a':'#5fff7a'; add(new T.CylinderGeometry(.035,.055,1,6),ph('#3a2a1a',6),0,.5,0,g); const cry=add(new T.OctahedronGeometry(.17,0),new T.MeshPhongMaterial({color:col(tc),emissive:col(shade(tc,.45)),shininess:90,transparent:true,opacity:.9}),0,1.15,0,g,false);
+    const gl=glow(tc,.9); gl.position.y=1.15; g.add(gl); const ring=add(new T.RingGeometry(.38,.5,28),new T.MeshBasicMaterial({color:col(w.en?'#ff4a4a':TEAMC[w.team]),transparent:true,opacity:.8,depthWrite:false,side:T.DoubleSide}),0,.06,0,g,false); ring.rotation.x=-PI/2;
+    g.userData.cry=cry; scene.add(g); return g; }
   /* ===== 鏡頭 ===== */
   const cam=new T.PerspectiveCamera(40,W/H,.5,400),tmp=new V();
   let lastT=0;
@@ -257,6 +280,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
     const seen=new Set();
     for(const u of G.units()){ if(u.k==='t'||u.k==='c') continue; seen.add(u.id); let M=U.get(u.id);
       if(!M){ M=u.k==='h'?heroModel(u):u.k==='m'?minionModel(u):monsterModel(u); M.k=u.k; if(M.ang==null) M.ang=u.face||0; U.set(u.id,M); }
+      if(u.vh){ M.wrap.visible=false; M.lx=null; continue; }
       const dead=u.dead; if(M.k==='h'){ M.fade+=((dead?0:1)-M.fade)*Math.min(1,dt*4); M.wrap.visible=M.fade>.05; }
       else M.wrap.visible=!dead;
       if(!M.wrap.visible) continue;
@@ -266,11 +290,12 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       if(M.k==='h'){ const P=heroPose(u,t,mv,spd); M.cur=M.cur?H3.mix(M.cur,P,Math.min(1,dt*14)):P; H3.pose(M.J,M.cur); M.h.root.rotation.x=dead?-Math.min(1.4,(1-M.fade)*3):0;
         M.ring.material.color.set(u.me?'#ffd23f':TEAMC[u.team]); M.ring.material.opacity=u.me?.95:.6; if(M.cape) M.cape.rotation.x=.12+(mv?.5:0)+Math.sin(t*6)*.05;
         if(M.wp.userData.orb) M.wp.userData.orb.rotation.y=t*3;
-        if(u.shield>0){ if(!M.bub){ M.bub=add(new T.SphereGeometry(1.3,16,12),new T.MeshPhongMaterial({color:0x9ad8ff,transparent:true,opacity:.22,shininess:120,depthWrite:false,emissive:0x2a4a6a}),0,1.2,0,M.wrap,false); } M.bub.visible=true; M.bub.scale.setScalar(1+Math.sin(t*6)*.03); } else if(M.bub) M.bub.visible=false;
+        if(u.shield>0||u.stasis>0){ if(!M.bub){ M.bub=add(new T.SphereGeometry(1.3,16,12),new T.MeshPhongMaterial({color:0x9ad8ff,transparent:true,opacity:.22,shininess:120,depthWrite:false,emissive:0x2a4a6a}),0,1.2,0,M.wrap,false); } M.bub.visible=true; M.bub.material.color.set(u.stasis>0?0xffd23f:0x9ad8ff); M.bub.material.opacity=u.stasis>0?.45:.22; M.bub.scale.setScalar(1+Math.sin(t*6)*.03); } else if(M.bub) M.bub.visible=false;
         if(u.stun>0){ if(!M.st){ M.st=new T.Group(); for(let k=0;k<3;k++){ const s=glow('#ffe066',.45); s.position.set(Math.cos(k/3*TAU)*.45,0,Math.sin(k/3*TAU)*.45); M.st.add(s); } M.st.position.y=2.6; M.wrap.add(M.st); } M.st.visible=true; M.st.rotation.y=t*6; } else if(M.st) M.st.visible=false;
         if(u.recall>0){ if(!M.rc){ M.rc=add(new T.CylinderGeometry(1,1,3,20,1,true),new T.MeshBasicMaterial({color:0x9ad8ff,transparent:true,opacity:.3,side:T.DoubleSide,depthWrite:false,blending:T.AdditiveBlending}),0,1.5,0,M.wrap,false); } M.rc.visible=true; M.rc.scale.y=.6+Math.sin(t*8)*.1; } else if(M.rc) M.rc.visible=false; }
       else { const L=M.wrap.userData.legs; if(L){ const s=mv?Math.sin(t*10+u.id)*.55:0; L.forEach((l,i)=>l.rotation.x=(i%2?s:-s)); } const A=M.wrap.userData.arm; if(A) A.rotation.x=(M.k==='m'?-.15+(mv?Math.sin(t*10+u.id)*.35:0):.6)-(u.atkT>0?Math.sin(u.atkT/.3*PI)*1.5:0); const WH=M.wrap.userData.wheels; if(WH&&mv) WH.forEach(w=>w.rotation.x+=.15); const FL=M.wrap.userData.flag; if(FL) FL.rotation.y=Math.sin(t*4+u.id)*.3; if(M.k==='j'&&u.atkT>0&&M.wrap.userData.head) M.wrap.userData.head.position.z=.85+Math.sin(u.atkT/.4*PI)*.3; } }
     for(const [id,M] of U) if(!seen.has(id)){ scene.remove(M.wrap); U.delete(id); }
+    { const ws=G.wards?G.wards():[],wseen=new Set(); for(const w of ws){ wseen.add(w.id); let M=WD.get(w.id); if(!M){ M=wardModel(w); WD.set(w.id,M); } M.position.set(w.x,0,w.z); M.userData.cry.rotation.y=t*2; M.userData.cry.position.y=1.15+Math.sin(t*3+w.id)*.08; } for(const [id,M] of WD) if(!wseen.has(id)){ scene.remove(M); WD.delete(id); } }
     for(const tw of G.towers){ const M=S.tow.get(tw.id); if(!M) continue; const dead=tw.hp<=0; M.parts.forEach(p=>p.visible=!dead); M.rub.visible=dead; if(!dead){ M.cry.rotation.y=t*1.2; M.cry.position.y=7.3+Math.sin(t*2+tw.id)*.15; M.gl.material.opacity=tw.inv?.35:.9; } }
     for(const c0 of G.cores){ const M=S.core[c0.team]; if(!M) continue; const dead=c0.hp<=0; M.cry.visible=!dead; M.ring.visible=!dead; M.gl.visible=!dead; M.cry.rotation.y=t*.8; M.cry.position.y=4.6+Math.sin(t*1.5)*.25; M.ring.rotation.z=t*.6; }
     for(const f of S.fount) if(f){ f.gl.material.opacity=.6+Math.sin(t*3)*.2; }
@@ -298,6 +323,8 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       for(const M of S.tow.values()){ const b=(M.z-cz)*dz,want=b>-1&&b<10&&Math.abs(M.x-cx)<4.5?.3:1; if(Math.abs(want-M.fade)>.01){ M.fade+=(want-M.fade)*.2; M.mats.forEach(m=>{ m.transparent=true; m.opacity=M.fade; m.depthWrite=M.fade>.9; }); } }
       cam.position.set(cx,15.5*z,cz+10.5*z*dz); cam.lookAt(cx,0,cz+1.2*dz); cam.updateMatrixWorld(true);
       sun.position.set(cx-18,42,cz+16); sun.target.position.set(cx,0,cz); r.render(scene,cam); },
+    fog:fogDraw,
+    bushIn(i){ if(i===bushCur) return; if(bushCur>=0&&bushMs[bushCur]) bushMs[bushCur].material.opacity=1; bushCur=i; if(i>=0&&bushMs[i]) bushMs[i].material.opacity=.4; },
     towerRange(x,z,rad,danger){ if(x==null){ twRing.visible=false; return; } twRing.visible=true; twRing.position.set(x,.1,z); twRing.scale.set(rad,rad,1); twRing.material.color.set(danger?0xff3030:0xff9a7a); twRing.material.opacity=danger?.75+.2*Math.sin(lastT*10):.4; },
     toScreen(x,y,z){ tmp.set(x,y,z).project(cam); return [(tmp.x+1)/2*W,(1-tmp.y)/2*H,tmp.z<1]; },
     pick(sx,sy){ const v=new V(sx/W*2-1,-(sy/H)*2+1,.5).unproject(cam).sub(cam.position).normalize(); if(v.y>-.01) return null; const k=-cam.position.y/v.y; return [cam.position.x+v.x*k,cam.position.z+v.z*k]; },

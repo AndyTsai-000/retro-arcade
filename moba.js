@@ -40,6 +40,14 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
       if(M.laneDist(x,z)<M.laneW/2+r+1.5) continue; if(M.riverDist(x,z)<M.river.w/2+r+1.5) continue; if(M.base.concat(M.fount).some(b=>Math.hypot(x-b[0],z-b[1])<18+r)) continue;
       if(M.camps.some(c=>Math.hypot(x-c.x,z-c.z)<(c.big?10:7)+r)) continue; if(E.some(([a,b])=>segD(x,z,N[a][0],N[a][1],N[b][0],N[b][1])<r+3.2)) continue; if(M.obst.some(o=>Math.hypot(o.x-x,o.z-z)<o.r+r+3.5)) continue;
       M.obst.push({x,z,r,k:R()<.28?'rock':'tree'}); } }
+  // 草叢：英雄躲進去，外面的人看不到（除非有眼或也在同一叢草裡）
+  M.bush=[]; const okB=(x,z,r)=>{ if(M.laneDist(x,z)<M.laneW/2+r*.7) return false; if(M.river&&M.riverDist(x,z)<M.river.w/2+r*.5) return false; if(M.base.concat(M.fount).some(b=>Math.hypot(x-b[0],z-b[1])<20)) return false;
+    if((M.obst||[]).some(o=>Math.hypot(o.x-x,o.z-z)<o.r+r+.8)) return false; if(M.camps.some(c=>Math.hypot(x-c.x,z-c.z)<(c.big?7:5)+r)) return false; if(M.bush.some(b=>Math.hypot(b.x-x,b.z-z)<b.r+r+2)) return false;
+    if(mode===1&&Math.abs(z)>M.cliff-r-.3) return false; return Math.abs(x)<M.B-2&&Math.abs(z)<M.B-2; };
+  if(mode===0){ M.lanes.forEach((L,li)=>{ [.24,.37,.5,.63,.76].forEach((f,k)=>{ const p=along(L,L.len*f); for(const sd of k===2?[-1,1]:[(li+k)%2?1:-1]){ const r=2.3,off=M.laneW/2+r+.4,x=p[0]-p[3]*off*sd,z=p[1]+p[2]*off*sd; if(okB(x,z,r)) M.bush.push({x,z,r}); } }); });
+    for(const t of [.3,.42,.58,.7]){ const p=M.river.at(t); for(const sd of [-1,1]){ const r=2.2,o=M.river.w/2+r+.3,x=p[0]-.707*o*sd,z=p[1]+.707*o*sd; if(okB(x,z,r)) M.bush.push({x,z,r}); } }
+    M.camps.forEach(c=>{ for(let k=0;k<8;k++){ const a=R()*TAU,d=(c.big?9.5:7)+R()*3,r=2+R()*.6,x=c.x+Math.cos(a)*d,z=c.z+Math.sin(a)*d; if(okB(x,z,r)){ M.bush.push({x,z,r}); break; } } }); }
+  else { const L=M.lanes[0]; for(const f of [.27,.4,.6,.73]) for(const sd of [-1,1]){ const p=along(L,L.len*f),r=2.1,z=sd*(M.laneW/2+r+.2),x=p[0]+(sd>0?2:-2); if(okB(x,z,r)) M.bush.push({x,z,r}); } }
   M.nearestNode=(x,z)=>nearest(x,z);
   M.path=(x0,z0,x1,z1)=>{ const s=nearest(x0,z0),g=nearest(x1,z1); if(s===g) return [[x1,z1]]; const dd=N.map(()=>1e9),pv=N.map(()=>-1),done=new Set(); dd[s]=0;
     for(;;){ let u=-1,ud=1e9; for(let i=0;i<N.length;i++) if(!done.has(i)&&dd[i]<ud){ ud=dd[i]; u=i; } if(u<0||u===g) break; done.add(u); for(const [v,w] of M.adj[u]) if(dd[u]+w<dd[v]){ dd[v]=dd[u]+w; pv[v]=u; } }
@@ -106,12 +114,34 @@ HEROES.forEach((h,i)=>{ h.i=i; if(!h.pal.c3) h.pal.c3=['#3a3a48','#4a3a2a','#2a2
 const SK_TXT={dash:'往敵人衝過去',blink:'瞬間移動',strike:'重擊眼前的敵人',nova:'對身邊的敵人造成傷害',blast:'在敵人位置引爆',shot:'射出飛彈打第一個碰到的敵人',pierce:'直線貫穿所有敵人',shield:'得到護盾',heal:'治療',buff:'強化自己',exec:'對殘血敵人造成大量傷害',pull:'把敵人拉過來',storm:'持續傷害一片區域'};
 function skDesc(s){ let t=SK_TXT[s.t]; if(s.t==='heal') t=s.self?'治療自己':'治療自己和附近隊友'; if(s.t==='shield') t=s.ally?'給自己和附近隊友護盾':'給自己護盾'; if(s.t==='buff'&&s.ally) t='強化自己和附近隊友'; if(s.back) t='往後翻滾閃開';
   const ex=[]; if(s.st) ex.push('暈眩 '+s.st+' 秒'); if(s.sl) ex.push('緩速'); return t+(ex.length?'，'+ex.join('、'):''); }
-const ITEMS={jg:{n:'打野刀',c:350,atk:10,jg:1,col:'#8affc8',d:'打野怪的傷害、金幣、經驗 +30%，召喚師技能「重擊」也更痛'},
-  sword:{n:'長劍',c:400,atk:15,col:'#d8dce8'},boots:{n:'疾行靴',c:450,spd:.12,col:'#c8a060'},vest:{n:'鎖甲',c:450,arm:20,col:'#9aa8c0'},belt:{n:'巨人腰帶',c:600,hp:350,col:'#e8b04a'},tome:{n:'魔法書',c:650,sp:.15,hp:150,col:'#b98cff'},
-  axe:{n:'狂戰斧',c:1100,atk:35,as:.15,col:'#ff7a3d'},bow:{n:'速射弓',c:1150,atk:20,as:.35,col:'#86dc4f'},staff:{n:'大法杖',c:1800,sp:.4,col:'#c56bff'},blade:{n:'嗜血刀',c:1500,atk:40,ls:.15,col:'#ff4a4a'},
-  plate:{n:'守護戰甲',c:1600,arm:45,hp:400,col:'#7aa8ff'},crown:{n:'智慧之冠',c:1500,sp:.25,hp:300,cdr:.15,col:'#ffd23f'},amulet:{n:'聖光吊墜',c:1300,hp:400,arm:15,heal:.3,col:'#fff0a0'},great:{n:'斬鐵大劍',c:2100,atk:70,col:'#e8e8f0'}};
-const BUILD={tank:['boots','belt','vest','plate','amulet','plate'],fighter:['sword','boots','axe','plate','blade','great'],assassin:['sword','boots','blade','great','axe','plate'],
-  mage:['tome','boots','crown','staff','staff','plate'],marksman:['sword','boots','bow','blade','great','bow'],support:['belt','boots','amulet','crown','plate','vest']};
+// 裝備（參考英雄聯盟）：基本材料 → 合成成品（材料會折抵價錢）；act＝主動技能（數字鍵 1～6）
+const ITEMS={
+  // 基本材料
+  sword:{n:'長劍',c:350,atk:12,cat:'atk',col:'#c8ccd8'},dagger:{n:'短劍',c:300,as:.12,cat:'atk',col:'#9ad870'},tome:{n:'增幅典籍',c:435,sp:.12,cat:'mag',col:'#a88cff'},
+  ruby:{n:'紅水晶',c:400,hp:150,cat:'def',col:'#ff6a7a'},cloth:{n:'布甲',c:300,arm:15,cat:'def',col:'#a8b4c8'},gem:{n:'靈巧寶石',c:350,cdr:.06,cat:'mag',col:'#6ad0ff'},
+  boots:{n:'鞋子',c:300,spd:.08,cat:'misc',col:'#c8a060'},
+  pot:{n:'補血藥水',c:50,cons:1,cat:'misc',col:'#ff4a5a',d:'喝下去 12 秒內回復 120 生命（最多帶 5 瓶，放在同一格）'},
+  jg:{n:'打野刀',c:350,atk:10,jg:1,cat:'misc',col:'#8affc8',d:'打野怪的傷害、金幣、經驗 +30%，召喚師技能「重擊」也更痛'},
+  // 鞋子
+  swift:{n:'疾行之靴',c:900,from:['boots'],spd:.16,cat:'misc',col:'#e0b060'},steel:{n:'鋼鐵護脛',c:1000,from:['boots','cloth'],spd:.1,arm:20,cat:'misc',col:'#8a9ab0'},sorc:{n:'法師之靴',c:1100,from:['boots','tome'],spd:.1,sp:.1,cat:'misc',col:'#b090ff'},
+  // 攻擊
+  axe:{n:'狂戰斧',c:1200,from:['sword','dagger'],atk:30,as:.2,cat:'atk',col:'#ff7a3d'},bow:{n:'速射弓',c:1150,from:['dagger','dagger'],atk:15,as:.4,cat:'atk',col:'#86dc4f'},
+  blade:{n:'嗜血刀',c:1500,from:['sword','sword'],atk:45,ls:.18,cat:'atk',col:'#ff4a4a'},great:{n:'斬鐵大劍',c:2100,from:['sword','sword','sword'],atk:75,cat:'atk',col:'#e8e8f0'},
+  hydra:{n:'破浪巨斧',c:2000,from:['sword','sword','ruby'],atk:40,ls:.1,hp:150,cat:'atk',col:'#ff9a3d',act:{k:'cleave',cd:10},d:'主動：橫掃身邊，周圍敵人都受傷'},
+  ghost:{n:'幽影之刃',c:1800,from:['sword','dagger','gem'],atk:40,cdr:.1,cat:'atk',col:'#7a6aa8',act:{k:'haste',cd:45},d:'主動：5 秒內跑更快、攻擊更快'},
+  qss:{n:'淨化彎刀',c:1900,from:['sword','cloth'],atk:35,arm:20,cat:'atk',col:'#c8f0ff',act:{k:'qss',cd:60},d:'主動：解除暈眩、緩速、虛弱、點燃（暈眩時也能用）'},
+  // 法術
+  staff:{n:'大法杖',c:1800,from:['tome','tome'],sp:.4,cat:'mag',col:'#c56bff'},crown:{n:'智慧之冠',c:1500,from:['tome','gem'],sp:.25,hp:150,cdr:.15,cat:'mag',col:'#ffd23f'},
+  hourglass:{n:'時光沙漏',c:2000,from:['tome','cloth','cloth'],sp:.3,arm:30,cat:'mag',col:'#ffcf6a',act:{k:'stasis',cd:90},d:'主動：變成金身 2.5 秒，不會受傷但也不能動'},
+  gun:{n:'電漿槍刃',c:2200,from:['sword','tome'],atk:30,sp:.25,ls:.1,cat:'mag',col:'#ff6ad0',act:{k:'gun',cd:40},d:'主動：電擊附近一個敵方英雄並讓他變慢'},
+  // 防禦
+  plate:{n:'守護戰甲',c:1600,from:['ruby','cloth'],arm:45,hp:400,cat:'def',col:'#7aa8ff'},amulet:{n:'聖光吊墜',c:1300,from:['ruby','gem'],hp:400,arm:15,heal:.3,cat:'def',col:'#fff0a0'},
+  locket:{n:'守護聖匣',c:1800,from:['ruby','cloth','gem'],hp:250,arm:20,cdr:.1,cat:'def',col:'#ffe0a0',act:{k:'locket',cd:60},d:'主動：身邊隊友都得到護盾'},
+  randuin:{n:'蠻王之盾',c:2300,from:['ruby','cloth','cloth'],hp:350,arm:50,cat:'def',col:'#8a7a6a',act:{k:'slowaura',cd:60},d:'主動：身邊的敵人全部變慢'}};
+// 眼（第 7 格，免費、二選一）
+const TRINK={g:{n:'綠眼',col:'#5fff7a',cd:45,s:'插在地上 90 秒，看見暗處和草叢',d:'插在地上 90 秒，看得到周圍和草叢裡的敵人（最多 3 個）'},r:{n:'紅眼',col:'#ff5a5a',cd:60,s:'掃描身邊，找出敵人的綠眼來清掉',d:'8 秒內掃描身邊，找出敵人的綠眼，點三下就能清掉'}};
+const BUILD={tank:['steel','locket','plate','randuin','amulet','plate'],fighter:['steel','hydra','axe','plate','qss','great'],assassin:['swift','ghost','hydra','blade','great','qss'],
+  mage:['sorc','gun','crown','staff','hourglass','staff'],marksman:['swift','bow','blade','great','ghost','qss'],support:['swift','locket','amulet','crown','plate','randuin']};
 const MIN={melee:{hp:450,atk:22,as:.9,rng:1.8,arm:10,spd:3.7,r:.55,gold:25,xp:50},ranged:{hp:320,atk:30,as:.8,rng:6.5,arm:5,spd:3.7,r:.5,gold:20,xp:40},cannon:{hp:900,atk:48,as:.7,rng:6.5,arm:22,spd:3.4,r:.9,gold:55,xp:90}};
 const BOTN=['阿凱','小雨','大熊','米可','老王','阿哲','小魚','肉丸','阿樂','皮蛋','花生','豆豆','阿光','小綠','黑皮','飯糰','可樂','阿寶','小虎','布丁'];
 const ROLES=[['top','上路'],['jg','打野'],['mid','中路'],['bot','下路'],['sup','輔助']];
@@ -130,5 +160,5 @@ function portrait(c,x,y,s,d){ const P=d.pal,cl=CLS[d.cls]; c.save(); c.translate
   c.fillStyle='#1a1420'; c.fillRect(-5,-8,2.6,2.6); c.fillRect(2.4,-8,2.6,2.6);
   c.restore(); c.strokeStyle='rgba(255,255,255,.75)'; c.lineWidth=2; c.beginPath(); c.arc(0,0,29,0,TAU); c.stroke(); c.restore(); }
 function shadeHex(h,k){ const n=parseInt(String(h).slice(1),16); if(isNaN(n)) return h; const f=v=>clamp(Math.round(k>1?v+(255-v)*(k-1):v*k),0,255); return 'rgb('+f(n>>16)+','+f(n>>8&255)+','+f(n&255)+')'; }
-window.__MOBA={SPELLS,HEROES,CLS,ITEMS,BUILD,MIN,buildMap,ROLES,portrait,polyl,along,project,segD,mul,TEAMC};
+window.__MOBA={SPELLS,HEROES,CLS,ITEMS,TRINK,BUILD,MIN,buildMap,ROLES,portrait,polyl,along,project,segD,mul,TEAMC};
 })();
