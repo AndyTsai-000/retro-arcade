@@ -56,7 +56,7 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
 /* ================= 英雄、技能、裝備 ================= */
 const CLS={tank:{n:'坦克',col:'#7aa8ff',hp:1050,hpL:125,atk:52,atkL:4,as:.8,rng:2.4,mr:32,mrL:1.25,arm:32,armL:3.2,spd:6.2,ad:.3},
   fighter:{n:'戰士',col:'#ffb04a',hp:880,hpL:108,atk:62,atkL:6,as:.9,rng:2.4,mr:30,mrL:1.2,arm:22,armL:2.6,spd:6.4,ad:.6},
-  assassin:{n:'刺客',col:'#ff5d8f',hp:700,hpL:86,atk:66,atkL:7,as:1,rng:2.2,mr:28,mrL:1,arm:16,armL:2,spd:6.8,ad:.7},
+  assassin:{n:'刺客',col:'#ff5d8f',hp:760,hpL:94,atk:66,atkL:7,as:1,rng:2.2,mr:30,mrL:1.1,arm:20,armL:2.3,spd:6.8,ad:.7},
   mage:{n:'法師',col:'#b98cff',hp:620,hpL:76,atk:46,atkL:3,as:.75,rng:7,mr:28,mrL:0.8,arm:12,armL:1.6,spd:6.2,ad:.1},
   marksman:{n:'射手',col:'#86dc4f',hp:600,hpL:76,atk:58,atkL:6.5,as:.95,rng:7.5,mr:26,mrL:0.8,arm:12,armL:1.6,spd:6.3,ad:.6},
   support:{n:'輔助',col:'#3ddbd9',hp:740,hpL:92,atk:42,atkL:3,as:.8,rng:6.5,mr:28,mrL:1,arm:18,armL:2.2,spd:6.3,ad:.1}};
