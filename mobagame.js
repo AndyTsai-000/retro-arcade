@@ -6,7 +6,7 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,k)=>a+(b-a)*k,dist=(a,b)=>Math.hypo
 function rr(c,x,y,w,h,r){ r=Math.min(r,w/2,h/2); c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 const MODES=['三路峽谷','單路激戰'];
 const LVS={easy:{dm:.68,re:.7,sk:.45,ret:.38,n:'簡單'},mid:{dm:.88,re:.4,sk:.8,ret:.3,n:'中等'},hard:{dm:1.05,re:.22,sk:1,ret:.24,n:'困難'}};
-const ROLE_CLS={top:['tank','fighter'],jg:['assassin','fighter'],mid:['mage'],bot:['marksman'],sup:['support','tank']};
+const ROLE_CLS={top:['tank','fighter'],jg:['assassin','fighter'],mid:['mage','assassin'],bot:['marksman'],sup:['support','tank']};
 const TW_R=8.5,CORE_R=9.5,XPN=l=>120+l*80,MAXL=18;
 function create(env,opts){
   const M0=window.__MOBA,G3M=window.__MOBA3D,T=window.THREE,H3=window.__H3D,{ctx:c,canvas}=env.canvas2d(W,H);
@@ -416,7 +416,7 @@ function create(env,opts){
     if(!TOUCH){ const P=deskPanel(); for(const b of P.boxes) if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ acts.push(b.k.slice(0,2)==='it'?{a:'it',i:+b.k.slice(2)}:b.k.slice(0,2)==='lv'?{a:'lv',i:+b.k[2]}:{a:b.k}); sfx('click'); return true; } if(x>=P.x0&&x<=P.x0+532&&y>=P.y0) return true;
       if(x>=W-162&&y>=H-162&&mode===0) return true; }
     return false; }
-  function onDown(e){ e.preventDefault(); const [x,y]=toL(e); if(phase==='pick'){ if(x>=SPX0&&x<=SPX1&&y>=396&&y<=460&&!pkDone){ spDrag={id:e.pointerId,x0:x,o0:spOff,mv:false,x,y}; return; } pickClick(x,y); return; } if(phase!=='play') return;
+  function onDown(e){ e.preventDefault(); const [x,y]=toL(e); if(phase==='pick'){ if(pkStep!=='role'&&x>=SPX0&&x<=SPX1&&y>=396&&y<=460&&!pkDone){ spDrag={id:e.pointerId,x0:x,o0:spOff,mv:false,x,y}; return; } pickClick(x,y); return; } if(phase!=='play') return;
     if(shopOpen){ if(inShop(x,y)){ shopClick(x,y); return; } if(TOUCH){ shopOpen=false; return; } }
     if(hudClick(x,y)) return;
     if(TOUCH){ for(const b of BTN()){ if(Math.hypot(x-b.x,y-b.y)<b.r+6){ sfx('click');
@@ -435,18 +435,38 @@ function create(env,opts){
   const onWheel=e=>{ if(phase!=='pick') return; const [x,y]=toL(e); if(x>=SPX0&&x<=SPX1&&y>=396&&y<=460){ e.preventDefault(); spOff=clamp(spOff+(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)*.5,0,spMax()); } }; canvas.addEventListener('wheel',onWheel,{passive:false});
   canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); addEventListener('pointercancel',onUp); canvas.addEventListener('contextmenu',noMenu); canvas.addEventListener('pointerleave',leave); canvas.style.touchAction='none';
   /* ---------- 選英雄 ---------- */
-  let pkSel=Math.floor(Math.random()*30),pkTab=0,pkDone=false;
-  const TABS=[['all','全部']].concat(Object.entries(CLS).map(([k,v])=>[k,v.n]));
-  const pkList=()=>HEROES.filter(h=>TABS[pkTab][0]==='all'||h.cls===TABS[pkTab][0]);
+  let pkSel=Math.floor(Math.random()*30),pkTab=0,pkDone=false,pkStep=mode===0?'role':'hero';
+  // 先選路線再選英雄：英雄依職業自動分到適合的路線
+  const rolesOf=h=>ROLES.filter(([r])=>(ROLE_CLS[r]||[]).includes(h.cls)).map(([,n])=>n);
+  const TABS=()=>(mode===0?[['fit','適合'+(ROLE_N[slots[mySlot].role]||'')],['all','全部']]:[['all','全部']]).concat(Object.entries(CLS).map(([k,v])=>[k,v.n]));
+  const pkList=()=>{ const t=TABS()[pkTab]||TABS()[0],k=t[0],R0=ROLE_CLS[slots[mySlot].role]||[]; return HEROES.filter(h=>k==='all'||(k==='fit'?R0.includes(h.cls):h.cls===k)); };
+  const fitPick=()=>{ const R0=ROLE_CLS[slots[mySlot].role]||[],L=HEROES.filter(h=>R0.includes(h.cls)&&!takenBy(myTeam,h.i,mySlot)); return L.length?L[Math.floor(Math.random()*L.length)].i:pkSel; };
+  const ROLE_D={top:['上路單挑，耐打能扛','坦克、戰士','#ff9a3d'],jg:['在野區打野怪，到處支援隊友（自動帶打野刀和重擊）','刺客、戰士','#5fd08a'],mid:['中路對線，技能爆發高','法師、刺客','#b98cff'],bot:['下路射手，後期主力輸出','射手','#86dc4f'],sup:['跟著射手，保護隊友、多插眼','輔助、坦克','#3ddbd9']};
+  const RC=i=>({x:22+i*186,y:96,w:176,h:340});
+  function chooseRole(id){ setRole(mySlot,id); pkStep='hero'; pkTab=0; const R0=ROLE_CLS[id]||[]; if(!R0.includes(HEROES[pkSel].cls)||takenBy(myTeam,pkSel,mySlot)) pkSel=fitPick(); sfx('click'); }
+  function drawRoleStep(){ c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText('選擇路線',22,28); c.fillStyle='#cfc8ff'; c.font='700 13px '+TC; c.fillText(MODES[mode]+'　'+size+' 對 '+size+'　電腦：'+LV.n+'　剩 '+Math.max(0,Math.ceil(pickT))+' 秒',130,29);
+    c.fillStyle='#fff'; c.font='700 14px '+TC; c.fillText('先選你要打哪一路，下一步會列出適合這一路的英雄',22,66);
+    ROLES.forEach(([id,n],i)=>{ const {x,y,w,h}=RC(i),D0=ROLE_D[id],hv=hoverPk&&hoverPk[0]>=x&&hoverPk[0]<x+w&&hoverPk[1]>=y&&hoverPk[1]<y+h,mine=slots[mySlot].role===id;
+      c.fillStyle=hv?'rgba(255,210,63,.18)':'rgba(255,255,255,.06)'; rr(c,x,y,w,h,14); c.fill(); c.strokeStyle=mine?'#ffd23f':hv?D0[2]:'rgba(255,255,255,.15)'; c.lineWidth=mine||hv?2.5:1; c.stroke();
+      c.fillStyle=D0[2]; c.beginPath(); c.arc(x+w/2,y+46,30,0,TAU); c.fill(); c.fillStyle='#14122b'; c.font='900 24px '+TC; c.textAlign='center'; c.fillText(n.slice(0,1),x+w/2,y+47);
+      c.fillStyle='#fff'; c.font='900 20px '+TC; c.fillText(n,x+w/2,y+100); c.fillStyle='#ffd23f'; c.font='700 11px '+TC; c.fillText((TOUCH?'':(i+1)+'　')+'適合：'+D0[1],x+w/2,y+124);
+      c.fillStyle='#cfc8ff'; c.font='700 11px '+TC; c.textAlign='left'; wrapText(D0[0],x+12,y+150,w-24,16);
+      const ex=HEROES.filter(hh=>(ROLE_CLS[id]||[]).includes(hh.cls)).slice(0,6); ex.forEach((hh,k)=>portrait(c,x+30+(k%3)*58,y+222+Math.floor(k/3)*50,40,hh));
+      const mates=slots.filter((q,k)=>k!==mySlot&&q.team===myTeam&&q.human>=0&&q.role===id); c.textAlign='center'; c.font='700 11px '+TC;
+      if(mates.length){ c.fillStyle='#ff9a9a'; c.fillText('隊友 '+mates.map(q=>q.name).join('、')+' 選了',x+w/2,y+h-18); } else if(mine){ c.fillStyle='#ffd23f'; c.fillText('目前的路線',x+w/2,y+h-18); } });
+    c.textAlign='center'; c.fillStyle='#9a94c0'; c.font='700 12px '+TC; c.fillText(TOUCH?'點一個路線，下一步選英雄':'點一個路線（或按 1～5），下一步選英雄',W/2,470);
+    const K=env; ROLES.forEach(([id],i)=>{ if(K.hit('Digit'+(i+1))||K.hit('Numpad'+(i+1))) chooseRole(id); });
+    drawFeed(); }
   const takenBy=(team,hid,except)=>slots.some((s,i)=>i!==except&&s.team===team&&s.hero===hid);
-  function pickClick(x,y){ if(pkDone) return; TABS.forEach((tb,i)=>{ if(x>=20+i*84&&x<20+i*84+78&&y>=52&&y<=80){ pkTab=i; sfx('click'); } });
+  function pickClick(x,y){ if(pkDone) return; if(pkStep==='role'){ ROLES.forEach(([id],i)=>{ const r=RC(i); if(x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h) chooseRole(id); }); return; }
+    TABS().forEach((tb,i)=>{ if(x>=20+i*74&&x<20+i*74+70&&y>=52&&y<=80){ pkTab=i; sfx('click'); } });
     pkList().forEach((h,i)=>{ const cx=24+(i%6)*100,cy=92+Math.floor(i/6)*82; if(x>=cx&&x<cx+94&&y>=cy&&y<cy+76){ pkSel=h.i; sfx('click'); } });
-    if(mode===0) ROLES.forEach(([id,n],i)=>{ const bx=640+(i%3)*102,by=330+Math.floor(i/3)*32; if(x>=bx&&x<bx+96&&y>=by&&y<by+28){ setRole(mySlot,id); sfx('click'); } });
+    if(mode===0&&x>=820&&x<=940&&y>=328&&y<=358){ pkStep='role'; sfx('click'); }
     SP_IDS.forEach((id,j)=>[0,1].forEach(row=>{ const bx=SPX0+j*45-spOff,by=398+row*32; if(x>=Math.max(bx,SPX0)&&x<Math.min(bx+42,SPX1)&&y>=by&&y<by+28){ const sp=slots[mySlot].sp; if(sp[1-row]===id) sp[1-row]=sp[row]; sp[row]=id; spTouched=true; sfx('click'); if(client) net.send({t:'pk',sp}); } }));
     if(x>=700&&x<=940&&y>=470&&y<=514) confirmPick(); }
   const SP_IDS=Object.keys(M0.SPELLS),SPX0=676,SPX1=942,spMax=()=>Math.max(0,SP_IDS.length*45-3-(SPX1-SPX0)); let spTouched=false,spOff=0,spDrag=null;
   function setRole(si,role){ const s=slots[si]; if(s.role===role) return; const o=slots.find((q,i)=>i!==si&&q.team===s.team&&q.role===role&&q.human<0); if(o){ o.role=s.role; o.sp=(SP_ROLE[o.role]||SP_ROLE.mid).slice(); } s.role=role; if(si===mySlot&&!spTouched) s.sp=(SP_ROLE[role]||SP_ROLE.mid).slice(); if(client) net.send({t:'pk',role,sp:s.sp}); }
-  function confirmPick(){ if(takenBy(myTeam,pkSel,mySlot)){ floatMsg('隊友已經選了這位英雄','#ffb0b0'); return; } slots[mySlot].hero=pkSel; slots[mySlot].ok=true; pkDone=true; sfx('go'); if(client) net.send({t:'pk',h:pkSel,role:slots[mySlot].role,sp:slots[mySlot].sp,ok:1}); }
+  function confirmPick(){ if(pkStep==='role'){ pkStep='hero'; pkSel=fitPick(); } if(takenBy(myTeam,pkSel,mySlot)){ floatMsg('隊友已經選了這位英雄','#ffb0b0'); return; } slots[mySlot].hero=pkSel; slots[mySlot].ok=true; pkDone=true; sfx('go'); if(client) net.send({t:'pk',h:pkSel,role:slots[mySlot].role,sp:slots[mySlot].sp,ok:1}); }
   function botPicks(){ slots.forEach((s,i)=>{ if(s.hero>=0) return; const want=ROLE_CLS[s.role]||CLS_IDS(); let pool=HEROES.filter(h=>want.includes(h.cls)&&!takenBy(s.team,h.i,i)); if(!pool.length) pool=HEROES.filter(h=>!takenBy(s.team,h.i,i)); s.hero=pool[Math.floor(Math.random()*pool.length)].i; s.ok=true; }); }
   const CLS_IDS=()=>Object.keys(CLS);
   function startPlay(){ phase='play'; slots.forEach((s,i)=>{ const h=mkHero(s,i); h.bot=s.human<0; if(h.bot) botLv(h); heroes.push(h); }); emit(['sfx','go']); floatMsg('全軍出擊！','#ffd23f',2.5); updVis(); }
@@ -498,7 +518,7 @@ function create(env,opts){
     if(anns.length){ anns[0].t-=dt; if(anns[0].t<=0) anns.shift(); }
     for(const f of feed) f.t-=dt; for(let i=feed.length-1;i>=0;i--) if(feed[i].t<=0) feed.splice(i,1);
     if(phase==='pick'){ pickT-=dt; if(host){ const allOk=slots.every(s=>s.human<0||s.ok); if(net){ sendT-=dt; if(sendT<=0){ sendT=.3; net.send({t:'pks',sl:slots.map(s=>[s.hero,s.role,s.ok?1:0,s.sp]),tl:pickT}); } }
-        if(pickT<=0||allOk){ slots.forEach((s,i)=>{ if(s.human>=0&&s.hero<0){ if(i===mySlot&&!pkDone){ if(takenBy(s.team,pkSel,i)) pkSel=HEROES.find(h=>!takenBy(s.team,h.i,i)).i; s.hero=pkSel; pkDone=true; } } }); botPicks(); if(net) net.send({t:'go',sl:slots.map(s=>[s.hero,s.role,s.sp])}); startPlay(); } }
+        if(pickT<=0||allOk){ slots.forEach((s,i)=>{ if(s.human>=0&&s.hero<0){ if(i===mySlot&&!pkDone){ if(pkStep==='role'){ pkStep='hero'; pkSel=fitPick(); } if(takenBy(s.team,pkSel,i)) pkSel=HEROES.find(h=>!takenBy(s.team,h.i,i)).i; s.hero=pkSel; pkDone=true; } } }); botPicks(); if(net) net.send({t:'go',sl:slots.map(s=>[s.hero,s.role,s.sp])}); startPlay(); } }
       else if(pickT<=0&&!pkDone) confirmPick(); return; }
     if(phase!=='play') return;
     const mh=myHero();
@@ -666,13 +686,15 @@ function create(env,opts){
     c.restore(); }
   let hoverPk=null;
   function drawPick(){ if(!TOUCH&&mouse.in) hoverPk=[mouse.x,mouse.y]; const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,'#1a1440'); g.addColorStop(1,'#0a0a1c'); c.fillStyle=g; c.fillRect(0,0,W,H);
+    if(pkStep==='role'&&!pkDone){ drawRoleStep(); return; }
     c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText('選擇英雄',22,28); c.fillStyle='#cfc8ff'; c.font='700 13px '+TC; c.fillText(MODES[mode]+'　'+size+' 對 '+size+'　電腦：'+LV.n+'　剩 '+Math.max(0,Math.ceil(pickT))+' 秒',130,29);
-    TABS.forEach((tb,i)=>{ const x=20+i*84,on=i===pkTab; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.08)'; rr(c,x,52,78,28,14); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText(tb[1],x+39,67); });
+    TABS().forEach((tb,i)=>{ const x=20+i*74,on=i===pkTab; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.08)'; rr(c,x,52,70,28,14); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 '+(tb[1].length>3?12:13)+'px '+TC; c.textAlign='center'; c.fillText(tb[1],x+35,67); });
     pkList().forEach((h,i)=>{ const x=24+(i%6)*100,y=92+Math.floor(i/6)*82,on=h.i===pkSel,taken=takenBy(myTeam,h.i,mySlot); c.fillStyle=on?'rgba(255,210,63,.25)':'rgba(255,255,255,.06)'; rr(c,x,y,94,76,10); c.fill(); if(on){ c.strokeStyle='#ffd23f'; c.lineWidth=2.5; c.stroke(); }
-      portrait(c,x+47,y+30,46,h); c.fillStyle=taken?'#7a7690':'#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText(h.n,x+47,y+62); c.fillStyle=CLS[h.cls].col; c.font='700 9px '+TC; c.fillText(CLS[h.cls].n,x+47,y+72); if(taken){ c.fillStyle='rgba(0,0,0,.5)'; rr(c,x,y,94,76,10); c.fill(); c.fillStyle='#fff'; c.fillText('隊友已選',x+47,y+38); } });
-    const d=HEROES[pkSel],x0=632; c.fillStyle='rgba(255,255,255,.06)'; rr(c,x0,46,316,486,14); c.fill(); portrait(c,x0+52,96,80,d); c.textAlign='left'; c.fillStyle='#fff'; c.font='900 22px '+TC; c.fillText(d.n,x0+102,82); c.fillStyle=CLS[d.cls].col; c.font='900 14px '+TC; c.fillText(CLS[d.cls].n,x0+102,108);
+      portrait(c,x+47,y+30,46,h); c.fillStyle=taken?'#7a7690':'#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText(h.n,x+47,y+62); c.fillStyle=CLS[h.cls].col; c.font='700 9px '+TC; c.fillText(CLS[h.cls].n+(mode===0?'・'+rolesOf(h).join('/'):''),x+47,y+72); if(taken){ c.fillStyle='rgba(0,0,0,.5)'; rr(c,x,y,94,76,10); c.fill(); c.fillStyle='#fff'; c.fillText('隊友已選',x+47,y+38); } });
+    const d=HEROES[pkSel],x0=632; c.fillStyle='rgba(255,255,255,.06)'; rr(c,x0,46,316,486,14); c.fill(); portrait(c,x0+52,96,80,d); c.textAlign='left'; c.fillStyle='#fff'; c.font='900 22px '+TC; c.fillText(d.n,x0+102,82); c.fillStyle=CLS[d.cls].col; c.font='900 14px '+TC; c.fillText(CLS[d.cls].n+(mode===0?'　適合：'+rolesOf(d).join('、'):''),x0+102,108);
     d.sk.forEach((s,i)=>{ const y=156+i*42; c.fillStyle=i===3?'#c8a0ff':'#9ad8ff'; c.font='900 12px '+TC; c.fillText((TOUCH?['技能一','技能二','技能三','大招'][i]:'QWER'[i])+'：'+s.n+(i===3?'（6 等起可學，最多 3 點）':'（最多 5 點）'),x0+12,y); c.fillStyle='#cfc8ff'; c.font='700 10px '+TC; c.fillText(skDesc2(s)+'（冷卻 '+s.cd+' 秒、魔力 '+SKC[i]+'）',x0+12,y+17); });
-    if(mode===0){ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.fillText('路線',x0+8,320); ROLES.forEach(([id,n],i)=>{ const bx=640+(i%3)*102,by=330+Math.floor(i/3)*32,on=slots[mySlot].role===id; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.1)'; rr(c,bx,by,96,28,12); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText(n+(id==='jg'?'（打野刀）':''),bx+48,by+15); c.textAlign='left'; }); }
+    if(mode===0){ const rl=slots[mySlot].role,ok=(ROLE_CLS[rl]||[]).includes(d.cls); c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textAlign='left'; c.fillText('路線：'+ROLE_N[rl],x0+8,343); c.font='700 10px '+TC; if(!ok){ c.fillStyle='#ffb0a0'; c.fillText('這位英雄比較適合 '+rolesOf(d).join('、'),x0+8,366); } else if(rl==='jg'){ c.fillStyle='#cfc8ff'; c.fillText('打野會自動帶打野刀和重擊',x0+8,366); }
+      c.fillStyle='rgba(255,255,255,.12)'; rr(c,820,328,120,30,12); c.fill(); c.strokeStyle='rgba(255,210,63,.7)'; c.lineWidth=1.5; c.stroke(); c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText('換路線',880,344); c.textAlign='left'; }
     { const sp=slots[mySlot].sp; [0,1].forEach(row=>{ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.fillText(TOUCH?(row?'技能 2':'技能 1'):(row?'F 鍵':'D 鍵'),x0+6,412+row*32); const by0=398+row*32; c.save(); c.beginPath(); c.rect(SPX0,by0-2,SPX1-SPX0,32); c.clip(); SP_IDS.forEach((id,j)=>{ const bx=SPX0+j*45-spOff,by=398+row*32,on=sp[row]===id,S0=M0.SPELLS[id]; c.fillStyle=on?S0.col:'rgba(255,255,255,.1)'; rr(c,bx,by,42,28,10); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText(S0.n,bx+21,by+15); }); c.restore();
         // 左右還有技能時，邊緣顯示箭頭（可左右滑動）
         for(const [side,show] of [[-1,spOff>1],[1,spOff<spMax()-1]]){ if(!show) continue; const ex=side<0?SPX0:SPX1,gr=c.createLinearGradient(ex,0,ex-side*22,0); gr.addColorStop(0,'rgba(26,20,64,.95)'); gr.addColorStop(1,'rgba(26,20,64,0)'); c.fillStyle=gr; c.fillRect(Math.min(ex,ex-side*22),by0-2,22,32); c.fillStyle='#ffd23f'; c.font='900 16px '+TC; c.textAlign='center'; c.fillText(side<0?'‹':'›',ex-side*7,by0+14); } });
@@ -690,7 +712,7 @@ function create(env,opts){
   // 開始畫面左邊預覽：跳過選英雄，全部電腦直接開打
   const PV=!!(opts.preview||env.preview); if(PV){ botPicks(); startPlay(); heroes.forEach(h=>{ h.bot=true; botLv(h); }); for(let k=0;k<20*62;k++) sim(.05); EV=[]; feed.length=0; anns.length=0; const fh=heroes.find(h=>h.team===myTeam&&!h.dead&&!(h.recall>0))||heroes[mySlot]; camX=fh.x; camZ=fh.z; }
   return {update,draw,destroy(){ canvas.removeEventListener('contextmenu',noMenu); canvas.removeEventListener('pointerleave',leave); canvas.removeEventListener('pointerdown',onDown); canvas.removeEventListener('wheel',onWheel); canvas.removeEventListener('pointermove',onMove); removeEventListener('pointerup',onUp); removeEventListener('pointercancel',onUp); G3.destroy(); },
-    _dbg:{shopSet(t,sel){ shopOpen=true; shopTab=t; shopSel=sel; },G3,castSpell,anns,VIS,wards,useItem,buyItem,applyAct:(h,a)=>applyInput(h,.05,{acts:[a]},true),clearEv(){ EV=[]; feed.length=0; floats.length=0; },get heroes(){return heroes;},get minions(){return minions;},towers,cores,mons,slots,get phase(){return phase;},get T(){return Tm;},confirmPick,botPicks,map,stats,sim,cast,get winner(){return winner;},setPick(i){ pkSel=i; },kills}}; }
+    _dbg:{chooseRole:id=>chooseRole(id),shopSet(t,sel){ shopOpen=true; shopTab=t; shopSel=sel; },G3,castSpell,anns,VIS,wards,useItem,buyItem,applyAct:(h,a)=>applyInput(h,.05,{acts:[a]},true),clearEv(){ EV=[]; feed.length=0; floats.length=0; },get heroes(){return heroes;},get minions(){return minions;},towers,cores,mons,slots,get phase(){return phase;},get T(){return Tm;},confirmPick,botPicks,map,stats,sim,cast,get winner(){return winner;},setPick(i){ pkSel=i; },kills}}; }
 /* ---------- 開始畫面的示意圖 ---------- */
 function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1e3a24'); g.addColorStop(1,'#0e1e12'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); if(!M0) return;
   const map=M0.buildMap(si,7),s=Math.min(w,h)/(si?60:150),P=(x,z)=>[w/2+x*(si?w/150:s),h/2+z*(si?h/40:s)];
