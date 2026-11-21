@@ -173,11 +173,16 @@ function worldMap(c,cam,t,cur,avatar,L){ // 六個區域連成一條路
   // 主角站在節點上
   hero(c,avatar.x-cam,avatar.y-10,{t,L,run:avatar.moving?t:0,moving:avatar.moving,face:avatar.face,air:false,big:false});
   const lv=LEVELS[cur],rec=getRec(cur); c.fillStyle='rgba(11,10,28,.82)'; rr(c,W/2-210,H-74,420,60,18); c.fill(); c.fillStyle='#ffd23f'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText('第 '+(cur+1)+' 關　'+lv.name,W/2,H-52);
-  c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText((document.body.classList.contains('touch')?'◀ ▶ 選關卡　按「跳」進入':'← → 選關卡　空白鍵進入')+(rec!=null&&rec>=8?'　星星金幣 '+starsOf(rec)+' / 3':''),W/2,H-28); }
+  c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText((document.body.classList.contains('touch')?'點關卡走過去，或 ◀ ▶ 選、按「跳」進入':'用滑鼠點關卡，或 ← → 選、空白鍵進入')+(rec!=null&&rec>=8?'　星星金幣 '+starsOf(rec)+' / 3':''),W/2,H-28); }
 
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
-  const {ctx:c}=env.canvas2d(W,H),L=opts.look||{},sfx=n=>env.sfx(n);
+  const {ctx:c,canvas:cv}=env.canvas2d(W,H),L=opts.look||{},sfx=n=>env.sfx(n);
+  // 世界地圖：滑鼠點、手指點關卡，主角走過去就進入
+  let mapGoal=null; const toL=e=>{ const r=cv.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=(r.width-W*s)/2,oy=(r.height-H*s)/2; return [(e.clientX-r.left-ox)/s,(e.clientY-r.top-oy)/s]; };
+  const onPD=e=>{ if(opts.preview||mode!=='map') return; const [x,y]=toL(e); if(y>=H-74&&x>=W/2-210&&x<=W/2+210){ if(!avatar.moving) enter(cur); return; }
+    for(let i=0;i<NODES.length;i++){ const n=NODES[i]; if(Math.hypot(n.x-mapCam-x,n.y-y)<24){ if(i!==0&&!unlocked(i)){ msg='先過前面的關卡才能玩這一關'; msgT=1.4; sfx('bump'); return; } mapGoal=i; sfx('click'); if(i===cur&&!avatar.moving){ mapGoal=null; enter(cur); } return; } } };
+  if(cv&&cv.addEventListener&&!opts.preview) cv.addEventListener('pointerdown',onPD);
   let mode='map',cur=clamp(opts.stage|0,0,LEVELS.length-1),t=0,lives=5,totalCoins=0,ended=false,endT=0,mapCam=0,avatar={x:NODES[cur].x,y:NODES[cur].y,face:1,moving:false,target:cur};
   let lv=null,P=null,cam=0,ents=[],coins=[],stars=[],movers=[],items=[],fx=[],gotStars=0,cpOn=false,clearT=0,deathT=0,bossObj=null,coinsLv=0,msg='',msgT=0,introT=0;
   const unlocked=i=>i===0||getRec(i-1)!=null;
@@ -224,9 +229,10 @@ function create(env,opts){
     if(mode==='map'){ const goal=NODES[avatar.target]; const dx=goal.x-avatar.x,dy=goal.y-avatar.y,d=Math.hypot(dx,dy);
       if(d>2){ const sp=260*dt; avatar.x+=dx/d*Math.min(sp,d); avatar.y+=dy/d*Math.min(sp,d); avatar.moving=true; avatar.face=dx<0?-1:1; }
       else { avatar.moving=false; avatar.x=goal.x; avatar.y=goal.y; cur=avatar.target;
+        if(mapGoal!=null){ if(mapGoal===cur){ mapGoal=null; enter(cur); return; } avatar.target=cur+(mapGoal>cur?1:-1); }
         if((env.hit('ArrowRight')||env.hit('KeyD'))&&cur<LEVELS.length-1&&unlocked(cur+1)){ avatar.target=cur+1; sfx('click'); }
         else if((env.hit('ArrowRight')||env.hit('KeyD'))&&cur<LEVELS.length-1){ msg='先過這一關才能往前走'; msgT=1.4; sfx('bump'); }
-        if((env.hit('ArrowLeft')||env.hit('KeyA'))&&cur>0){ avatar.target=cur-1; sfx('click'); }
+        if((env.hit('ArrowLeft')||env.hit('KeyA'))&&cur>0){ avatar.target=cur-1; mapGoal=null; sfx('click'); }
         if(env.hit('Space')||env.hit('Enter')||env.hit('KeyJ')||env.hit('ArrowUp')) enter(cur); }
       mapCam+=(clamp(avatar.x-W/2,0,MAPW-W)-mapCam)*Math.min(1,dt*5); return; }
     if(mode==='play'){ if(introT>0){ introT-=dt; return; } move(dt); if(mode!=='play') return;
@@ -295,7 +301,7 @@ function create(env,opts){
       c.fillStyle='#cfd0ff'; c.font='700 13px '+TC; c.fillText(lv.L.name,240,25); }
     else { c.fillStyle='#cfd0ff'; c.font='700 13px '+TC; c.fillText('世界地圖',170,25); } }
   if(opts.preview) enter(cur); /* 開始畫面預覽：直接進關卡 */
-  return {update,draw,destroy(){},_dbg:{get mode(){return mode;},get P(){return P;},get lv(){return lv;},enter,get lives(){return lives;},set lives(v){lives=v;},get boss(){return bossObj;},get cur(){return cur;},get avatar(){return avatar;},levelClear}};
+  return {update,draw,destroy(){ if(cv&&cv.removeEventListener) cv.removeEventListener('pointerdown',onPD); },_dbg:{get mode(){return mode;},get P(){return P;},get lv(){return lv;},enter,get lives(){return lives;},set lives(v){lives=v;},get boss(){return bossObj;},get cur(){return cur;},get avatar(){return avatar;},levelClear}};
 }
 
 /* ---------- 開始畫面、縮圖、造型 ---------- */

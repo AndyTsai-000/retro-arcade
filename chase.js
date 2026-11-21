@@ -385,7 +385,7 @@ const keycap=(c,x,y,txt)=>{ c.font='900 11px '+TC; const w=Math.max(18,c.measure
 let VID=0;
 function create(env,opts){
   const si=clamp(opts.stage|0,0,NST-1),ST=STAGES[si],dd=ST.d,Wd=getWorld(ST.di),TH=Object.assign({},THEMES[ST.th]),O=ST.o||{},prev=!!opts.preview||!!opts.bot,local2=opts.mode==='2p',np=local2?2:1;
-  const {ctx:c}=env.canvas2d(W,H),sfx=n=>{ if(!opts.preview) env.sfx(n); },R=mul(((Date.now()&0xffff)*31+si*7777)>>>0||5);
+  const {ctx:c,canvas:cv}=env.canvas2d(W,H),sfx=n=>{ if(!opts.preview) env.sfx(n); },R=mul(((Date.now()&0xffff)*31+si*7777)>>>0||5);
   const LCV=document.createElement('canvas'); LCV.width=W; LCV.height=H; const lc=LCV.getContext('2d');
   let t=0,V=[],PD=[],FX=[],SK=[],BUB=[],DQ=[],DLG=null,ended=false,over=null,cd=prev?0:4.2,acc=0,tix=0,flash=0,shake=0,evT=12,EV=[],chatT=5;
   const lookCol=(opts.look&&opts.look.color)||'#c8202a';
@@ -730,6 +730,14 @@ function create(env,opts){
     const w=PD.find(z=>z!==q&&z.st!=='down'&&Math.hypot(z.x-q.x,z.y-q.y)<220); if(w) say(w,pick(R,['啊——！撞到人了！','快叫救護車！','肇事逃逸啊！','我記下車牌了！']));
     if(v.drv>=0){ const p=PL[v.drv]; crime(p,WT.lv>=1?2:1,'撞到行人'); } }
   /* ---- 捷運：入口按 F → 選站 → 搭車 ---- */
+  // 捷運選站：滑鼠點、手指點一站就出發
+  const toL=e=>{ const r=cv.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=(r.width-W*s)/2,oy=(r.height-H*s)/2; return [(e.clientX-r.left-ox)/s,(e.clientY-r.top-oy)/s]; };
+  const mrtBox=vw=>{ const w=vw.w,bw=Math.min(380,w-40); return {bx:vw.x+w/2-bw/2,by:H/2-120,bw}; };
+  const mrtHit=(vw,x,y)=>{ const p=vw.p,m=p&&p.mrt; if(!m||m.st!=='menu'||x<vw.x||x>vw.x+vw.w) return -1; const {bx,by,bw}=mrtBox(vw); for(let i=0;i<m.list.length;i++){ const yy=by+70+i*44; if(x>=bx+20&&x<=bx+bw-20&&y>=yy-17&&y<=yy+19) return i; } return -1; };
+  const mViews=()=>local2?[{x:0,y:0,w:W/2-2,h:H,p:PL[0]},{x:W/2+2,y:0,w:W/2-2,h:H,p:PL[1]}]:[{x:0,y:0,w:W,h:H,p:PL[0]}];
+  const onPD=e=>{ if(prev) return; const [x,y]=toL(e); for(const vw of mViews()){ const i=mrtHit(vw,x,y); if(i<0) continue; const m=vw.p.mrt; m.sel=i; m.st='ride'; m.T=0; m.to=m.list[i]; sfx('go'); hint(vw.p,'mrtride','搭捷運的時候警察找不到你，可以拿來甩掉通緝'); } };
+  const onPM=e=>{ if(prev||e.pointerType==='touch') return; const [x,y]=toL(e); for(const vw of mViews()){ const i=mrtHit(vw,x,y); if(i>=0) vw.p.mrt.sel=i; } };
+  if(cv&&cv.addEventListener&&!prev){ cv.addEventListener('pointerdown',onPD); cv.addEventListener('pointermove',onPM); }
   function mrtStep(p,I,dt,fe){ const m=p.mrt,mi=p.mi,nx=I.dx||I.dy,edge=nx&&!(mi.dx||mi.dy); p.mi={dx:I.dx,dy:I.dy,n:I.n};
     if(m.st==='menu'){ if(prev){ m.sel=0; fe=true; } if(edge){ m.sel=(m.sel+(I.dx>0||I.dy>0?1:-1)+m.list.length)%m.list.length; sfx('click'); } if(I.n&&!mi.n){ p.mrt=null; return; } if(fe){ m.st='ride'; m.T=0; m.to=m.list[m.sel]; sfx('go'); hint(p,'mrtride','搭捷運的時候警察找不到你，可以拿來甩掉通緝'); } }
     else { m.T+=dt; if(m.T>=4.2){ const e=m.to; p.foot.x=e.ex; p.foot.y=e.ey; p.foot.a=-PI/2; p.mrt=null; p.cam.x=e.ex; p.cam.y=e.ey; toast(p,'抵達捷運'+e.n); if(WT.lv>0&&WT.lv<=3) clearWanted('嫌犯搭捷運離開了，失去蹤影。'); else if(WT.lv>3){ WT.heat-=2; WT.lv=Math.floor(WT.heat); WT.heli=null; } if(M.onMrt) M.onMrt(p,e); } } }
@@ -974,7 +982,7 @@ function create(env,opts){
   function drawMRT(vw,p){ const m=p.mrt,x0=vw.x,w=vw.w; c.save(); c.beginPath(); c.rect(x0,0,w,H); c.clip();
     if(m.st==='menu'){ c.fillStyle='rgba(8,14,30,.78)'; c.fillRect(x0,0,w,H); const bw=Math.min(380,w-40),bx=x0+w/2-bw/2,by=H/2-120; c.fillStyle='#f4f6f8'; rr(c,bx,by,bw,240,14); c.fill(); c.fillStyle='#1d6ab8'; rr(c,bx,by,bw,46,14); c.fill(); c.fillRect(bx,by+30,bw,16); c.fillStyle='#fff'; c.font='900 18px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('捷運'+m.from.n+'　要去哪一站？',x0+w/2,by+24);
       m.list.forEach((e,i)=>{ const yy=by+70+i*44,sel=i===m.sel; c.fillStyle=sel?'#ffd23f':'#e2e8ee'; rr(c,bx+20,yy-17,bw-40,36,8); c.fill(); c.fillStyle='#1a2a44'; c.font='900 16px '+TC; c.textAlign='left'; c.fillText((sel?'▶ ':'　')+e.n,bx+34,yy+1); c.textAlign='right'; c.font='700 12px '+TC; c.fillStyle='#55606e'; c.fillText(Math.max(2,Math.round(Math.hypot(e.x-m.from.x,e.y-m.from.y)/600))+' 分鐘',bx+bw-34,yy+1); });
-      c.fillStyle='#55606e'; c.font='700 12px '+TC; c.textAlign='center'; const K=KN[Math.min(p.i,KN.length-1)]; c.fillText('方向鍵選站，按 '+K.f+' 上車；按 '+K.n+' 取消',x0+w/2,by+220); }
+      c.fillStyle='#55606e'; c.font='700 12px '+TC; c.textAlign='center'; const K=KN[Math.min(p.i,KN.length-1)]; c.fillText((env.touch?'點一站就出發，或用方向選站按「上下車」':'用滑鼠點一站就出發，或方向鍵選站按 '+K.f+'')+'；按 '+K.n+' 取消',x0+w/2,by+220,bw-20); }
     else { const T0=m.T; c.fillStyle='#2a3038'; c.fillRect(x0,0,w,H); const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,'#c8d0d8'); g.addColorStop(.5,'#e8eef2'); g.addColorStop(1,'#9aa2aa'); c.fillStyle=g; c.fillRect(x0,40,w,H-120);
       for(let i=0;i<4;i++){ const wx=x0+30+i*(w-60)/4,ww=(w-60)/4-30; c.fillStyle='#10161e'; rr(c,wx,90,ww,120,10); c.fill(); for(let k=0;k<6;k++){ const lx=wx+((k*97-T0*900)%ww+ww)%ww; c.fillStyle='rgba(255,230,160,.8)'; c.fillRect(lx,120+(k%3)*30,30,4); } }
       c.fillStyle='#1d6ab8'; c.fillRect(x0,230,w,10); c.fillStyle='#5a6a7a'; c.fillRect(x0,H-80,w,40); c.fillStyle='#3a8adf'; for(let i=0;i<5;i++) rr(c,x0+20+i*(w-40)/5,H-130,(w-40)/5-14,50,8),c.fill();
@@ -994,7 +1002,7 @@ function create(env,opts){
     if(cd>0){ const n=Math.ceil(cd); c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(0,0,W,H); c.font='900 20px '+TC; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText('第 '+(si+1)+' 關　'+ST.n,W/2,H/2-80); c.font='700 13px '+TC; c.fillStyle='#ddd'; c.fillText(Wd.D.n+'・'+TH.n,W/2,H/2-56); if(n<=3){ c.font='900 76px '+TC; c.fillStyle='#fff'; c.lineWidth=6; c.strokeStyle='rgba(0,0,0,.6)'; c.strokeText(n,W/2,H/2); c.fillText(n,W/2,H/2); } }
     else if(t-goAt<1){ c.globalAlpha=1-(t-goAt); c.font='900 60px '+TC; c.fillStyle='#4ade70'; c.textAlign='center'; c.fillText('出發！',W/2,H/2); c.globalAlpha=1; }
     if(over){ c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(0,H/2-40,W,80); c.font='900 40px '+TC; c.textAlign='center'; c.fillStyle=over.win?'#ffd23f':'#ff6a5a'; c.fillText(over.win?'任務完成！':over.why||'任務失敗',W/2,H/2); } }
-  return {update,draw,pause(pz){ if(eg) eg.gain.value=pz?0:.018; },destroy(){ if(osc){ try{ osc.stop(); }catch(e){} } if(sOsc){ try{ sOsc.stop(); }catch(e){} } if(G3){ try{ G3.destroy(); }catch(e){} } },previewWarm:2,
+  return {update,draw,pause(pz){ if(eg) eg.gain.value=pz?0:.018; },destroy(){ if(cv&&cv.removeEventListener){ cv.removeEventListener('pointerdown',onPD); cv.removeEventListener('pointermove',onPM); } if(osc){ try{ osc.stop(); }catch(e){} } if(sOsc){ try{ sOsc.stop(); }catch(e){} } if(G3){ try{ G3.destroy(); }catch(e){} } },previewWarm:2,
     _dbg:{PL,get V(){ return V; },get PD(){ return PD; },get M(){ return M; },get EV(){ return EV; },get over(){ return over; },Wd,ST,win,toggleCar,spawnEvent,WT,WX,setWanted,crime,people,get G3(){ return G3; },get VIEW(){ return VIEW; },set VIEW(v){ VIEW=v; },get t(){ return t; },set cd(v){ cd=v; if(v<=0) goAt=t-2; },navTo,step}}; }
 
 /* 開始畫面示意圖 */

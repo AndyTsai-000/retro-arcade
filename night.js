@@ -299,7 +299,15 @@ function pinStall(env,o){ o=initO(o); const S=STALLS[3]; S.th=PTH(10);
     if(lit.includes(lane)){ const pay=b.bet*mul; balls+=pay; pour(pay); lastWin={lane,l:1.8}; say('中了！'+b.bet+' 顆 × '+mul+' ＝ '+pay+' 顆','#86dc4f',2.2); env.sfx('win'); }
     else { say('沒中，差一點！','#cfc8ff'); env.sfx('die'); }
     st='res'; resT=1.9; }
-  const g={ score:()=>balls,lbl:'彈珠（顆）',left:()=>round,leftLbl:'局數',leftTxt:()=>'第 '+(round+(st==='res'?0:1))+' 局',ended:()=>ended&&endT<=0,
+  function doBuy(){ start=balls=BUYS[sel]; S.th=PTH(start); bet=Math.max(1,Math.round(start/10)); env.sfx('coin'); say('買了 '+start+' 顆彈珠！','#ffd23f'); startSpin(); }
+  function launch(){ balls-=bet; ball={x:611,y:PB.bot-10,vx:0,vy:-(480+pow*140)*rnd(.98,1.02),left:false,t:0,still:0,bet}; plunge=0; st='fly'; rest=null; env.sfx('spring'); }
+  const BETB=[[-10,655],[-1,683],[1,711],[10,739]],inR=(x,y,a,b,w,h)=>x>=a&&x<=a+w&&y>=b&&y<=b+h;
+  const g={ score:()=>balls,lbl:'彈珠（顆）',
+    // 滑鼠點、手指點
+    tap(x,y){ if(ended) return; if(st==='buy'&&!o.noBuy){ BUYS.forEach((n,i)=>{ const bx=W/2-120+i*120; if(inR(x,y,bx-52,200,104,96)){ sel=i; doBuy(); } }); return; }
+      if(st==='bet'){ for(const [dv,bx] of BETB) if(inR(x,y,bx,145,26,18)){ const nb=clamp(bet+dv,1,Math.min(99,balls)); if(nb!==bet){ bet=nb; env.sfx('click'); } return; } if(inR(x,y,650,170,120,190)){ launch(); return; } }
+      if(inR(x,y,650,366,120,52)) g.quit(); },
+    move(x,y){ if(st==='buy') BUYS.forEach((n,i)=>{ const bx=W/2-120+i*120; if(inR(x,y,bx-52,200,104,96)&&sel!==i) sel=i; }); },left:()=>round,leftLbl:'局數',leftTxt:()=>'第 '+(round+(st==='res'?0:1))+' 局',ended:()=>ended&&endT<=0,
     quit(){ if(ended||st==='buy'||st==='fly') return false; ended=true; endT=1.2; say('收手！拿 '+balls+' 顆換獎品','#ffd23f'); env.sfx('coin'); return true; },
     update(dt,t){ const K=env.keys; if(msg&&(msg.l-=dt)<=0) msg=null; if(flash>0) flash-=dt; if(lastWin&&(lastWin.l-=dt)<=0) lastWin=null;
       for(const d of drops){ if(d.d>0){ d.d-=dt; continue; } d.vy+=700*dt; d.x+=d.vx*dt; d.y+=d.vy*dt; if(d.x>762){ d.x=762; d.vx=-Math.abs(d.vx)*.3; } if(d.y>470&&d.x>654) d.gone=true; }
@@ -307,7 +315,7 @@ function pinStall(env,o){ o=initO(o); const S=STALLS[3]; S.th=PTH(10);
       if(ended){ endT-=dt; return; }
       const hitAny=(...ks)=>ks.some(k=>env.hit(k)),go=()=>hitAny('Space','KeyJ','Enter');
       if(st==='buy'){ if(hitAny('ArrowLeft','KeyA','ArrowUp','KeyW')&&sel>0){ sel--; env.sfx('click'); } if(hitAny('ArrowRight','KeyD','ArrowDown','KeyS')&&sel<2){ sel++; env.sfx('click'); }
-        if(go()){ start=balls=BUYS[sel]; S.th=PTH(start); bet=Math.max(1,Math.round(start/10)); env.sfx('coin'); say('買了 '+start+' 顆彈珠！','#ffd23f'); startSpin(); } return; }
+        if(go()) doBuy(); return; }
       if(st==='spin'){ spin.nt-=dt; if(spin.nt<=0){ spin.k++; lampI=(spin.start+spin.k)%5; env.sfx('click'); if(spin.k>=spin.steps){ stopSpin(); return; } const left=spin.steps-spin.k; spin.nt=left>6?.06:.06+(6-left)*.05; } return; }
       if(st==='res'){ resT-=dt; if(resT<=0){ if(balls<=0){ ended=true; endT=1.4; say('彈珠用完了','#cfc8ff'); } else startSpin(); } return; }
       if(st==='bet'){ pt+=dt; pow=.5-.5*Math.cos(pt*3.4); plunge=pow; const mx=Math.min(99,balls);
@@ -315,16 +323,16 @@ function pinStall(env,o){ o=initO(o); const S=STALLS[3]; S.th=PTH(10);
           if(hit){ hold[id]=0; } else if(down){ hold[id]=(hold[id]||0)+dt; } else { hold[id]=-1; continue; }
           if(hit||hold[id]>.4){ if(!hit) hold[id]-=.06; const nb=clamp(bet+dv,1,mx); if(nb!==bet){ bet=nb; env.sfx('click'); } } }
         bet=clamp(bet,1,mx);
-        if(go()){ balls-=bet; ball={x:611,y:PB.bot-10,vx:0,vy:-(480+pow*140)*rnd(.98,1.02),left:false,t:0,still:0,bet}; plunge=0; st='fly'; rest=null; env.sfx('spring'); } return; }
+        if(go()) launch(); return; }
       if(st==='fly'){ const n=4,h=dt/n; for(let s=0;s<n&&ball;s++) step(h); trail.push([ball?ball.x:0,ball?ball.y:0]); if(trail.length>8||!ball) trail.shift(); } },
     draw(c,t){ marketBG(c,t); drawPinBooth(c,t,S); drawMachine(c,t); canopy(c,160,W,S,t); hud(c,g,S,t,o);
       // 押注
       c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,66,120,98,12); c.fill(); c.textAlign='center'; c.textBaseline='alphabetic'; c.font='900 12px '+TC; c.fillStyle='#cfc8ff'; c.fillText('押注',710,84);
       const bb=ball?ball.bet:st==='res'?(rest&&rest.bet)||bet:bet; c.font='900 26px '+TC; c.fillStyle='#fff'; c.fillText(bb+' 顆',710,114);
-      if(st==='bet'||st==='fly'||st==='res'){ c.font='900 12px '+TC; c.fillStyle=mul>=8?'#ff7a5a':'#ffd23f'; c.fillText('中獎 ×'+mul+' ＝ '+bb*mul+' 顆',710,136,112); }
-      if(st==='bet'&&!ended){ c.font='700 10px '+TC; c.fillStyle='#cfc8ff'; c.fillText('↑↓ ±1　←→ ±10',710,156); }
-      if(st==='bet'&&!ended){ c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,170,120,190,12); c.fill(); c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText('力道',710,190); const gx=694,gy=206,gh=136; c.fillStyle='#2a2440'; c.fillRect(gx,gy,32,gh); const gg=c.createLinearGradient(0,gy+gh,0,gy); gg.addColorStop(0,'#3ed16a'); gg.addColorStop(.6,'#ffd23f'); gg.addColorStop(1,'#ff4a3a'); c.fillStyle=gg; c.fillRect(gx,gy+gh*(1-pow),32,gh*pow); c.strokeStyle='#fff'; c.lineWidth=2; c.strokeRect(gx,gy,32,gh); c.font='700 11px '+TC; c.fillStyle='#fff'; c.fillText(env.touch?'GO！彈出':'空白鍵彈出',710,352); }
-      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,366,120,52,12); c.fill(); c.font='900 12px '+TC; c.fillStyle='#cfc8ff'; c.textAlign='center'; c.fillText('第 '+(round+(st==='res'?0:1))+' 局',710,384); c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.fillText(env.touch?'按「結束」換獎品':'X 鍵 結束換獎品',710,406,112);
+      if(st==='bet'||st==='fly'||st==='res'){ c.font='900 12px '+TC; c.fillStyle=mul>=8?'#ff7a5a':'#ffd23f'; c.fillText('中獎 ×'+mul+' ＝ '+bb*mul+' 顆',710,134,112); }
+      if(st==='bet'&&!ended){ c.font='900 11px '+TC; for(const [dv,bx] of BETB){ c.fillStyle=dv<0?'#5a3a6a':'#2a6a4a'; rr(c,bx,145,26,18,5); c.fill(); c.fillStyle='#fff'; c.fillText((dv>0?'+':'−')+Math.abs(dv),bx+13,158); } }
+      if(st==='bet'&&!ended){ c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,170,120,190,12); c.fill(); c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.textAlign='center'; c.fillText('力道',710,190); const gx=694,gy=206,gh=136; c.fillStyle='#2a2440'; c.fillRect(gx,gy,32,gh); const gg=c.createLinearGradient(0,gy+gh,0,gy); gg.addColorStop(0,'#3ed16a'); gg.addColorStop(.6,'#ffd23f'); gg.addColorStop(1,'#ff4a3a'); c.fillStyle=gg; c.fillRect(gx,gy+gh*(1-pow),32,gh*pow); c.strokeStyle='#fff'; c.lineWidth=2; c.strokeRect(gx,gy,32,gh); c.font='700 11px '+TC; c.fillStyle='#fff'; c.fillText(env.touch?'點這裡或 GO！彈出':'點這裡或空白鍵彈出',710,352,112); }
+      c.fillStyle='rgba(11,10,28,.85)'; rr(c,650,366,120,52,12); c.fill(); c.font='900 12px '+TC; c.fillStyle='#cfc8ff'; c.textAlign='center'; c.fillText('第 '+(round+(st==='res'?0:1))+' 局',710,384); c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.fillText(env.touch?'點這裡結束換獎品':'點這裡或 X 鍵結束',710,406,112);
       // 不鏽鋼接珠盤
       { const tg=c.createLinearGradient(0,424,0,484); tg.addColorStop(0,'#c8ccd4'); tg.addColorStop(1,'#6a707a'); c.fillStyle=tg; rr(c,648,424,124,60,8); c.fill(); c.fillStyle='#3a3e46'; rr(c,654,442,112,36,6); c.fill(); c.fillStyle='rgba(255,255,255,.35)'; c.fillRect(652,426,116,2); c.font='900 11px '+TC; c.fillStyle='#14141a'; c.fillText('接珠盤　'+balls+' 顆',710,435); }
       for(let i=0;i<Math.min(balls,30);i++) ballDraw(c,663+(i%10)*10.4,471-Math.floor(i/10)*9);
@@ -333,7 +341,7 @@ function pinStall(env,o){ o=initO(o); const S=STALLS[3]; S.th=PTH(10);
         c.textAlign='center'; c.textBaseline='middle'; c.font='900 22px '+TC; c.fillStyle='#c81414'; c.fillText('要買幾顆彈珠？',W/2,174);
         BUYS.forEach((n,i)=>{ const x=W/2-120+i*120,on=i===sel; c.fillStyle=on?'#ffd23f':'#efe6d0'; rr(c,x-52,200,104,96,12); c.fill(); if(on){ c.strokeStyle='#c81414'; c.lineWidth=3; c.stroke(); }
           for(let k=0;k<Math.min(6,1+i*2+(i?1:0));k++) ballDraw(c,x-15+(k%3)*15,224+Math.floor(k/3)*12); c.font='900 20px '+TC; c.fillStyle='#14122b'; c.fillText(n+' 顆',x,258); c.font='700 13px '+TC; c.fillStyle='#6a4a2a'; c.fillText(BUYP[i],x,282); });
-        c.font='700 13px '+TC; c.fillStyle='#14122b'; c.fillText(env.touch?'← → 選擇，按 GO！':'← → 選擇，空白鍵確定',W/2,326); }
+        c.font='700 13px '+TC; c.fillStyle='#14122b'; c.fillText(env.touch?'點一下就買（也可以 ◀ ▶ 選、按 GO！）':'用滑鼠點一下就買（也可以 ← → 選、空白鍵確定）',W/2,326,360); }
       if(msg) banner(c,msg,470,198); } };
   function step(h){ const b=ball; b.t+=h; b.vy+=520*h; b.x+=b.vx*h; b.y+=b.vy*h; const r=PB.br;
     if(b.y<PB.acy){ const dx=b.x-PB.acx,dy=b.y-PB.acy,d=hyp(dx,dy); if(d>PB.ar-r){ const nx=dx/d,ny=dy/d,vn=b.vx*nx+b.vy*ny; b.x=PB.acx+nx*(PB.ar-r); b.y=PB.acy+ny*(PB.ar-r); if(vn>0){ b.vx-=vn*nx*1.15; b.vy-=vn*ny*1.15; } } }
@@ -628,6 +636,8 @@ function mjTile(c,x,y,w,h,id,faceUp,glow){ c.fillStyle='rgba(0,0,0,.35)'; rr(c,x
 const MJB={x:500,y:96,w:44,h:54,gx:46,gy:56},MJD={x:182,y:96,w:42,h:52,gx:47,gy:56};
 function mahjongStall(env,o){ o=initO(o); const S=STALLS[7],N=[12,13,15].includes(o.N)?o.N:15,SIZE={15:['中型','bear'],13:['大型','bigbear'],12:['超大','bigbear']}[N];
   S.pz=[[SIZE[0]+'布偶娃娃 1 隻',SIZE[1]],[SIZE[0]+'布偶娃娃 2 隻',SIZE[1]],[SIZE[0]+'布偶娃娃 3 隻',SIZE[1]]];
+  const mjAt=(x,y)=>{ for(let i=0;i<36;i++){ const cx=MJD.x+(i%6)*MJD.gx,cy=MJD.y+Math.floor(i/6)*MJD.gy; if(x>=cx&&x<=cx+MJD.w&&y>=cy&&y<=cy+MJD.h) return i; } return -1; };
+  function flipSel(){ if(flyT||next>0||draws<=0||ended) return; if(drawn[sel]){ msg={s:'這張翻過了，選別張',l:1.2,c:'#cfc8ff'}; return; } drawn[sel]=true; draws--; env.sfx('place'); const id=deck[sel]; flyT={id,u:0,from:sel,bi:board.indexOf(id)}; }
   let board,deck,lit,flip,drawn,sel=0,draws=N,extra=false,best=0,lines=0,round=1,rounds=6,dolls=0,msg=null,ended=false,endT=0,mv=0,flyT=null,next=0;
   const say=(s,col)=>{ msg={s,l:2,c:col||'#ffd23f'}; react(o,col); };
   function deal(){ board=MJ_ALL.slice().sort(()=>Math.random()-.5); deck=MJ_ALL.slice().sort(()=>Math.random()-.5); lit=Array(36).fill(false); flip=Array(36).fill(0); drawn=Array(36).fill(false); draws=N; extra=false; best=0; lines=0; }
@@ -644,7 +654,8 @@ function mahjongStall(env,o){ o=initO(o); const S=STALLS[7],N=[12,13,15].include
       if(ended){ endT-=dt; return; }
       mv-=dt; const mx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0),my=(K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0);
       if((mx||my)&&mv<=0){ sel=clamp(sel%6+mx,0,5)+clamp(Math.floor(sel/6)+my,0,5)*6; mv=.14; env.sfx('click'); } else if(!mx&&!my) mv=0;
-      if(!flyT&&next<=0&&draws>0&&(env.hit('Space')||env.hit('KeyJ')||env.hit('Enter'))){ if(drawn[sel]){ msg={s:'這張翻過了，選別張',l:1.2,c:'#cfc8ff'}; return; } drawn[sel]=true; draws--; env.sfx('place'); const id=deck[sel]; flyT={id,u:0,from:sel,bi:board.indexOf(id)}; } },
+      if(env.hit('Space')||env.hit('KeyJ')||env.hit('Enter')) flipSel(); },
+    tap(x,y){ const i=mjAt(x,y); if(i<0||ended) return; sel=i; flipSel(); }, move(x,y){ const i=mjAt(x,y); if(i>=0&&!ended) sel=i; },
     draw(c,t){ marketBG(c,t); c.fillStyle='#2a1a10'; c.fillRect(170,58,W-170,H-58);
       const fl=c.createLinearGradient(0,80,0,H); fl.addColorStop(0,'#1f6a3a'); fl.addColorStop(1,'#124a26'); c.fillStyle=fl; rr(c,172,82,316,360,10); c.fill();
       c.fillStyle='#e8d8b0'; rr(c,490,82,292,360,10); c.fill(); c.fillStyle='#c8b080'; c.fillRect(490,82,292,6);
@@ -710,6 +721,8 @@ const PK={x0:236,y0:150,cols:10,rows:6,cw:48,ch:42};
 function pokeStall(env,o){ o=initO(o); const S=STALLS[9],N=PK.cols*PK.rows,cells=[]; const pool=[]; for(let i=0;i<N;i++){ const r=Math.random(); pool.push(r<.04?'big':r<.14?'mid':r<.4?'small':r<.48?'again':'none'); }
   for(let i=0;i<N;i++) cells.push({k:pool[i],open:0,col:['#e83a3a','#e8a020','#2a8ad8','#3aa84a','#c84aa8'][(i*7+Math.floor(i/10)*3)%5]});
   let sel=24,pokes=6,score=0,msg=null,ended=false,endT=0,cool=0,hand=0,got={big:0,mid:0,small:0};
+  const pkAt=(x,y)=>{ const cx=Math.floor((x-PK.x0)/PK.cw),cy=Math.floor((y-PK.y0)/PK.ch); return cx>=0&&cx<PK.cols&&cy>=0&&cy<PK.rows?cy*PK.cols+cx:-1; };
+  function pokeSel(){ if(!(pokes>0&&cool<=0)||ended) return; const c2=cells[sel]; if(c2.open){ say('這個洞戳過了，換一個','#cfc8ff'); } else { pokes--; cool=.9; hand=.35; c2.open=.01; c2.pend=.38; env.sfx('pop'); } }
   const PTS={big:8,mid:3,small:1,again:0,none:0},TXT={big:'大獎',mid:'中獎',small:'小獎',again:'再來一次',none:'銘謝惠顧'},TC2={big:'#e81e1e',mid:'#e88a1a',small:'#2a8ad8',again:'#3aa84a',none:'#8a8a8a'};
   const say=(s,col)=>{ msg={s,l:1.8,c:col||'#ffd23f'}; react(o,col); };
   const g={ score:()=>score,left:()=>pokes,leftLbl:'次',ended:()=>ended&&endT<=0,
@@ -717,9 +730,10 @@ function pokeStall(env,o){ o=initO(o); const S=STALLS[9],N=PK.cols*PK.rows,cells
       if(ended){ endT-=dt; return; }
       const mv=(k,dx,dy)=>{ if(env.hit(k)){ const cx=sel%PK.cols+dx,cy=Math.floor(sel/PK.cols)+dy; if(cx>=0&&cx<PK.cols&&cy>=0&&cy<PK.rows){ sel=cy*PK.cols+cx; env.sfx('click'); } } };
       mv('ArrowLeft',-1,0); mv('KeyA',-1,0); mv('ArrowRight',1,0); mv('KeyD',1,0); mv('ArrowUp',0,-1); mv('KeyW',0,-1); mv('ArrowDown',0,1); mv('KeyS',0,1);
-      if(pokes>0&&cool<=0&&(env.hit('Space')||env.hit('KeyJ')||env.hit('Enter'))){ const c2=cells[sel]; if(c2.open){ say('這個洞戳過了，換一個','#cfc8ff'); } else { pokes--; cool=.9; hand=.35; c2.open=.01; c2.pend=.38; env.sfx('pop'); } }
+      if(env.hit('Space')||env.hit('KeyJ')||env.hit('Enter')) pokeSel();
       for(const c2 of cells) if(c2.pend>0&&(c2.pend-=dt)<=0){ const k=c2.k; score+=PTS[k]; if(got[k]!=null) got[k]++; if(k==='again'){ pokes++; say('再來一次！多一戳','#86dc4f'); env.sfx('heal'); } else if(k==='none') { say('銘謝惠顧～','#cfc8ff'); env.sfx('land'); } else { say('戳到'+TXT[k]+'！+'+PTS[k],k==='big'?'#86dc4f':'#ffd23f'); env.sfx(k==='big'?'win':'item'); } }
       if(pokes<=0&&cool<=0&&!cells.some(q=>q.pend>0)&&!ended){ ended=true; endT=1.6; } },
+    tap(x,y){ const i=pkAt(x,y); if(i<0||ended) return; sel=i; pokeSel(); }, move(x,y){ const i=pkAt(x,y); if(i>=0&&!ended) sel=i; },
     draw(c,t){ marketBG(c,t); c.fillStyle='#2a1810'; c.fillRect(170,58,W-170,H-58);
       // 紙板外框＋上方獎品圖
       const bx=PK.x0-26,by=78,bw=PK.cols*PK.cw+52,bh=PK.y0-by+PK.rows*PK.ch+30; c.fillStyle='#f4e8c8'; rr(c,bx,by,bw,bh,6); c.fill(); c.strokeStyle='#c81e1e'; c.lineWidth=5; rr(c,bx+5,by+5,bw-10,bh-10,4); c.stroke();
@@ -787,17 +801,18 @@ const FACT=[fishStall,ringStall,balloonStall,pinStall,nineStall,bagStall,pistolS
 const STREET=(()=>{ const q=[{k:'arch'},{k:'food',f:0},{k:'game',i:0},{k:'game',i:1},{k:'food',f:1},{k:'game',i:2},{k:'game',i:3},{k:'food',f:2},{k:'game',i:4},{k:'game',i:5},{k:'food',f:10},{k:'game',i:6},{k:'game',i:7},{k:'food',f:5},{k:'game',i:8},{k:'game',i:9},{k:'food',f:3},{k:'game',i:10},{k:'food',f:7},{k:'exit'}]; let x=0; q.forEach(s=>{ s.w=s.k==='arch'||s.k==='exit'?240:270; s.x=x; x+=s.w; }); q.W=x; return q; })();
 function settle(si,sc){ const S=STALLS[si]; let tier=-1; S.th.forEach((v,i)=>{ if(sc>=v) tier=i; }); const b=load('best.'+si,0); if(sc>b) store('best.'+si,sc); const al=load('album.'+si,{}); if(tier>=0){ al[tier]=(al[tier]||0)+1; store('album.'+si,al); } return {tier,pz:tier>=0?S.pz[tier]:null,al}; }
 const snapCache={}; function stallSnap(i){ if(snapCache[i]) return snapCache[i]; const cv=document.createElement('canvas'); cv.width=400; cv.height=250; const x=cv.getContext('2d'); x.scale(.5,.5); const G=FACT[i]({keys:{},hit:()=>false,sfx:()=>{}},{noBuy:1}); if(i===3){ G.dbg.buy(1); G.dbg.showBet(); } G.draw(x,1.2); return snapCache[i]=cv; }
-function stroll(env,opts,preview){ const Q={owner:{},N:15}; let px=STREET[2].x+135,cam=0,ph=0,moving=0,face=1,st='walk',inner=null,innerI=-1,res=null,fade=0,got=[],near=null,tt=0;
+function stroll(env,opts,preview){ const Q={owner:{},N:15}; let goal=null,resTap=false,px=STREET[2].x+135,cam=0,ph=0,moving=0,face=1,st='walk',inner=null,innerI=-1,res=null,fade=0,got=[],near=null,tt=0;
   const W2=[]; for(let i=0;i<20;i++) W2.push({x:rnd(0,STREET.W),v:(Math.random()<.5?-1:1)*rnd(38,70),d:rnd(0,1),ph:rnd(0,TAU),L:randLook(i*5+11),stop:0,stopT:rnd(2,9)});
   const me={sk:'#f0c8a0',hr:'#1a1210',top:'#3a8ad8',bot:'#2a3a5a',shoe:'#f4f4f4'};
   function update(dt,t){ tt=t;
     for(const p of W2){ if(p.stop>0){ p.stop-=dt; continue; } p.x+=p.v*dt; p.ph+=dt*6.5; p.stopT-=dt; if(p.stopT<=0){ p.stop=rnd(1.5,4); p.stopT=rnd(5,12); } if(p.x<-60) p.x=STREET.W+40; if(p.x>STREET.W+60) p.x=-40; }
     if(fade>0) fade=Math.max(0,fade-dt*3);
     if(st==='in'){ if(env.hit('KeyX')&&inner.quit) inner.quit(); inner.update(dt,t); if(inner.ended()){ const r=settle(innerI,inner.score()); res={i:innerI,sc:inner.score(),...r}; if(r.pz) got.push(r.pz); st='res'; env.sfx(r.tier>=1?'win':r.tier===0?'heal':'lose'); } return; }
-    if(st==='res'){ if(env.hit('Space')||env.hit('Enter')||env.hit('KeyJ')){ st='walk'; inner=null; fade=1; } return; }
-    const K=env.keys,mx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0); moving=mx; if(mx){ face=mx; px=clamp(px+mx*230*dt,60,STREET.W-60); ph+=dt*8; }
+    if(st==='res'){ if(env.hit('Space')||env.hit('Enter')||env.hit('KeyJ')||resTap){ resTap=false; st='walk'; inner=null; fade=1; } return; }
+    const K=env.keys; let mx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0); if(mx) goal=null; else if(goal){ const gx=goal.x+goal.w/2; if(Math.abs(px-gx)>6) mx=Math.sign(gx-px); } moving=mx; if(mx){ face=mx; px=clamp(px+mx*230*dt,60,STREET.W-60); ph+=dt*8; }
     cam=clamp(px-W/2,0,STREET.W-W); near=null; for(const s of STREET){ if(s.k!=='game'&&s.k!=='exit') continue; if(Math.abs(px-(s.x+s.w/2))<s.w*.42) near=s; }
-    if(near&&(env.hit('Space')||env.hit('Enter')||env.hit('KeyJ'))){ if(near.k==='exit'){ st='done'; const html=got.length?'<table class="ls"><tr><th>今天換到的獎品</th></tr>'+got.map(p=>'<tr><td>'+p[0]+'</td></tr>').join('')+'</table>':''; env.end({title:got.length?'滿載而歸！':'下次再來逛！',big:got.length+' 樣獎品',html,text:'謝謝光臨，下次再來玩！',score:null}); return; }
+    const arrived=goal&&near===goal&&Math.abs(px-(goal.x+goal.w/2))<=8; if(arrived) goal=null;
+    if(near&&(env.hit('Space')||env.hit('Enter')||env.hit('KeyJ')||arrived)){ if(near.k==='exit'){ st='done'; const html=got.length?'<table class="ls"><tr><th>今天換到的獎品</th></tr>'+got.map(p=>'<tr><td>'+p[0]+'</td></tr>').join('')+'</table>':''; env.end({title:got.length?'滿載而歸！':'下次再來逛！',big:got.length+' 樣獎品',html,text:'謝謝光臨，下次再來玩！',score:null}); return; }
       innerI=near.i; Q.owner={}; inner=FACT[innerI](env,Q); st='in'; fade=1; env.sfx('go'); } }
   function facade(c,s,X,t){ const top=70,base=372,w=s.w-14,x=X+7;
     if(s.k==='arch'||s.k==='exit'){ const cx=X+s.w/2; c.fillStyle='#8a1a10'; c.fillRect(cx-100,90,18,base-90); c.fillRect(cx+82,90,18,base-90); const g=c.createLinearGradient(0,60,0,120); g.addColorStop(0,'#e83a20'); g.addColorStop(1,'#a01a10'); c.fillStyle=g; rr(c,cx-118,56,236,62,10); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=3; c.stroke();
@@ -873,21 +888,28 @@ function stroll(env,opts,preview){ const Q={owner:{},N:15}; let px=STREET[2].x+1
     c.font='900 16px '+TC; c.fillStyle='#14122b'; const S=STALLS[res.i]; c.fillText(S.n+'　'+fmtSc(S,res.sc),W/2,178);
     if(res.pz){ prize(c,W/2,300,3.2,res.pz[1]); c.font='900 18px '+TC; c.fillStyle='#c81414'; c.fillText('「'+res.pz[0]+'」',W/2,330); } else { c.font='700 14px '+TC; c.fillStyle='#5a5a6a'; c.fillText('差一點就有獎品了',W/2,260); }
     c.font='900 14px '+TC; c.fillStyle='#14122b'; c.fillText(document.body.classList.contains('touch')?'按 GO！ 回到街上':'按空白鍵回到街上',W/2,362); }
-  return {update,draw,get st(){return st;},get innerI(){return innerI;},get px(){return px;},set px(v){px=v;},get near(){return near;},get inner(){return inner;},W2}; }
+  function tap(x,y){ if(st==='in'){ if(inner&&inner.tap) inner.tap(x,y); return; } if(st==='res'){ resTap=true; return; } if(st!=='walk'||y<50||y>390) return; for(const s of STREET){ if(s.k!=='game'&&s.k!=='exit') continue; const X=s.x-cam; if(x>=X&&x<=X+s.w){ goal=s; env.sfx('click'); return; } } }
+  function move(x,y){ if(st==='in'&&inner&&inner.move) inner.move(x,y); }
+  return {update,draw,tap,move,get st(){return st;},get innerI(){return innerI;},get px(){return px;},set px(v){px=v;},get near(){return near;},get inner(){return inner;},W2}; }
 
 const fmtSc=(S,v)=>S.unit?v+' '+S.unit:v+' 分';
 // ───────── 外殼介面 ─────────
 /* 手機的「結束」鈕只有彈珠台用得到：其他時候藏起來 */
 function quitBtn(on){ try{ const box=document.getElementById('padR'); if(!box) return; for(const b of box.querySelectorAll('button')) if(b.textContent==='結束') b.style.display=on?'':'none'; }catch(e){} }
-function create(env,opts){ const stg=clamp(opts.stage|0,0,STALLS.length),{ctx:c}=env.canvas2d(W,H); let t=0,done=false;
-  if(stg===0){ const R=stroll(env,opts); quitBtn(false); return {update(dt){ dt=Math.min(dt,.05); t+=dt; R.update(dt,t); if(!opts.preview) quitBtn(R.st==='in'&&R.innerI===3); },draw(){ c.save(); R.draw(c,t); c.restore(); },destroy(){},helpStage:()=>R.st==='in'||R.st==='res'?R.innerI+1:0 /* 在攤位裡按「遊戲操作」顯示這一攤的說明 */,_dbg:{R}}; }
-  const si=stg-1,S=STALLS[si],G=FACT[si](env,{owner:{},N:+((opts.options||{}).mjn)||15}); if(!opts.preview) quitBtn(si===3);
+function create(env,opts){ const stg=clamp(opts.stage|0,0,STALLS.length),{ctx:c,canvas:cv}=env.canvas2d(W,H); let t=0,done=false,TAP=null;
+  // 電腦版用滑鼠點、手機平板用手指點：換算成遊戲畫面座標
+  const toL=e=>{ const r=cv.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H),ox=(r.width-W*s)/2,oy=(r.height-H*s)/2; return [(e.clientX-r.left-ox)/s,(e.clientY-r.top-oy)/s]; };
+  const onPD=e=>{ if(!TAP||opts.preview) return; const [x,y]=toL(e); TAP.tap&&TAP.tap(x,y); },onPM=e=>{ if(!TAP||opts.preview||e.pointerType==='touch') return; const [x,y]=toL(e); TAP.move&&TAP.move(x,y); };
+  if(cv&&cv.addEventListener&&!opts.preview){ cv.addEventListener('pointerdown',onPD); cv.addEventListener('pointermove',onPM); }
+  const unbind=()=>{ if(cv&&cv.removeEventListener){ cv.removeEventListener('pointerdown',onPD); cv.removeEventListener('pointermove',onPM); } };
+  if(stg===0){ const R=stroll(env,opts); TAP=R; quitBtn(false); return {update(dt){ dt=Math.min(dt,.05); t+=dt; R.update(dt,t); if(!opts.preview) quitBtn(R.st==='in'&&R.innerI===3); },draw(){ c.save(); R.draw(c,t); c.restore(); },destroy:unbind,helpStage:()=>R.st==='in'||R.st==='res'?R.innerI+1:0 /* 在攤位裡按「遊戲操作」顯示這一攤的說明 */,_dbg:{R}}; }
+  const si=stg-1,S=STALLS[si],G=FACT[si](env,{owner:{},N:+((opts.options||{}).mjn)||15}); TAP=G; if(!opts.preview) quitBtn(si===3);
   function update(dt){ dt=Math.min(dt,.05); t+=dt; if(t<.3&&!opts.preview) quitBtn(si===3); if(env.hit('KeyX')&&G.quit) G.quit(); G.update(dt,t); if(!done&&G.ended()){ done=true; finish(); } }
   function finish(){ const sc=G.score(),{tier,pz,al}=settle(si,sc); env.sfx(tier>=1?'win':tier===0?'heal':'lose');
     env.end({title:pz?'老闆：恭喜！拿去吧！':'老闆：再來一次啦！',big:fmtSc(S,sc),html:'<table class="ls"><tr><th>獎項</th><th>條件</th><th>獎品</th></tr>'+S.th.map((v,i)=>'<tr><td>'+(i===tier?'★ ':'')+['小獎','中獎','大獎'][i]+'</td><td>'+fmtSc(S,v)+'</td><td>'+S.pz[i][0]+(al[i]?'　✓':'')+'</td></tr>').join('')+'</table>',
       text:pz?'你換到「'+pz[0]+'」！':'差一點就有獎品了。',score:S.unit?null:(sc||null)}); }
   function draw(){ c.save(); G.draw(c,t); c.restore(); }
-  return {update,draw,destroy(){},_dbg:G.dbg?Object.assign(G.dbg,{G}):{G}}; }
+  return {update,draw,destroy:unbind,_dbg:G.dbg?Object.assign(G.dbg,{G}):{G}}; }
 function stageShow(ctx,w,h,stg,t){ ctx.save(); ctx.scale(w/W,h/H); const env={keys:{},hit:()=>false,sfx:()=>{},end:()=>{}};
   const k='__nightPv'+stg; if(!stageShow[k]){ if(stg===0){ const R=stroll(env,{}); R.px=STREET[3].x+40; R.update(0,0); stageShow[k]={draw:(c,t)=>{ R.update(1/60,t); R.draw(c,t); }}; } else { const G=FACT[stg-1](env,{}); if(stg===3) G.dbg.aim(480,220); if(stg===4){ G.dbg.buy(1); G.dbg.showBet(); } if(stg===7) G.dbg.aim(470,200); stageShow[k]=G; } }
   stageShow[k].draw(ctx,t||0); ctx.restore(); }
