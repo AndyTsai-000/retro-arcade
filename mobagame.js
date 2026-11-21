@@ -25,9 +25,9 @@ function create(env,opts){
   const G3=G3M(T,{W,H,map,low:!!env.touch});
   /* ---------- 狀態 ---------- */
   let phase='pick',pickT=net?40:75,Tm=0,t=0,ended=false,winner=-1,acc=0,nextWave=12,waveN=0,minId=1000,vpId=1,sendT=0,inT=0,overT=0;
-  const heroes=[],minions=[],TWHP=mode?[2200,2800]:[4000,4800],COHP=mode?4200:8000,towers=map.towers.map(q=>Object.assign({k:'t',hp:TWHP[q.tier],max:TWHP[q.tier],r:1.7,cd:0,tgt:null,hits:0,inv:false},q)),cores=map.cores.map(q=>Object.assign({k:'c',hp:COHP,max:COHP,r:3.6,cd:0,tgt:null,hits:0,inv:true},q));
+  const heroes=[],minions=[],TWHP=mode?[2200,2800]:[4600,5400],COHP=mode?4200:8000,towers=map.towers.map(q=>Object.assign({k:'t',hp:TWHP[q.tier],max:TWHP[q.tier],r:1.7,cd:0,tgt:null,hits:0,inv:false},q)),cores=map.cores.map(q=>Object.assign({k:'c',hp:COHP,max:COHP,r:3.6,cd:0,tgt:null,hits:0,inv:true},q));
   const mons=map.camps.map((cp,i)=>({id:300+i,k:'j',camp:cp,big:cp.big,kind:cp.kind,team:2,x:cp.x,z:cp.z,home:[cp.x,cp.z],hp:0,max:1,dead:true,rsp:cp.big?75:25,face:PI/2,cd:0,tgt:null,r:cp.big?1.8:1,slam:6}));
-  const teamBuff=[{dmg:0,reg:0},{dmg:0,reg:0}],kills=[0,0],projs=[],zones=[],timers=[],floats=[],feed=[],anns=[],vproj=new Map(); let firstB=0;
+  const teamBuff=[{dmg:0,reg:0},{dmg:0,reg:0}],kills=[0,0],projs=[],zones=[],traps=[],timers=[],floats=[],feed=[],anns=[],vproj=new Map(); let firstB=0;
   let EV=[],sendEV=[];
   /* ---------- 視野：草叢、眼、戰爭迷霧 ---------- */
   const wards=[],VIS=[new Set(),new Set()],VSRC=[[],[]],BUSH=map.bush||[]; let wardId=5000,visT=0,fogLast=-9;
@@ -54,7 +54,7 @@ function create(env,opts){
     for(const id of h.items){ const it=ITEMS[id]; o.atk+=it.atk||0; o.as+=(it.as||0)*C.as; o.arm+=it.arm||0; o.hp+=it.hp||0; o.spd+=(it.spd||0)*C.spd; o.sp+=it.sp||0; o.cdr+=it.cdr||0; o.ls+=it.ls||0; o.heal+=it.heal||0; o.mp+=it.mp||0; if(it.jg) o.jg=1; o.mr+=it.mr||0; o.crit+=it.crit||0; o.critd+=it.critd||0; o.pen=Math.max(o.pen,it.pen||0); o.mpen+=it.mpen||0; o.ten+=it.ten||0; o.rg+=it.rg||0; o.hin+=it.hin||0;
       if(it.gw) o.gw=1; if(it.thorn) o.thorn=1; if(it.ga) o.ga=1; if(it.ss) o.ss=1; if(it.wm) o.wm=1; if(it.sb&&(!o.sb||it.sb.a+(it.sb.m||0)/60>o.sb.a+(o.sb.m||0)/60)) o.sb=it.sb; }
     if(h.elxT>Tm){ o.atk+=25; o.sp+=.2; } o.crit=Math.min(1,o.crit); o.mpen=Math.min(.6,o.mpen);
-    for(const b of h.buffs){ o.as+=(b.as||0)*C.as; o.spd+=(b.spd||0)*C.spd; o.dmg+=b.dmg||0; o.arm+=b.arm||0; }
+    for(const b of h.buffs){ o.ls+=b.ls||0; o.as+=(b.as||0)*C.as; o.spd+=(b.spd||0)*C.spd; o.dmg+=b.dmg||0; o.arm+=b.arm||0; }
     const tb=teamBuff[h.team]; if(tb.dmg>0) o.dmg+=.2; if(tb.reg>0) o.spd*=1.1;
     if(petOf(h)==='w'&&jgStage(h)>=3&&Tm-(h.ldT==null?-99:h.ldT)>3&&Tm-(h.hitHeroT==null?-99:h.hitHeroT)>3) o.spd*=1.25;
     if(h.slow>0) o.spd*=.6; if(h.weak>0){ o.dmg-=.4; o.as*=.8; } o.as=Math.min(2.6,o.as); return o; }
@@ -79,7 +79,7 @@ function create(env,opts){
   function mrOf(u){ return u.k==='h'?stats(u).mr:u.k==='t'||u.k==='c'?u.arm||0:u.mr!=null?u.mr:(u.arm||0)*.5; }
   function dmg(src,tgt,amt,o){ o=o||{}; if(!alive(tgt)||tgt.inv) return 0;
     if(tgt.k==='w'){ tgt.hp-=1; emit(['hit',+tgt.x.toFixed(1),+tgt.z.toFixed(1),'#ff4a4a']); if(tgt.hp<=0) killWard(tgt,src); return 1; }
-    if(tgt.stasis>0) return 0; const SS=src&&src.k==='h'?stats(src):null;
+    if(tgt.stasis>0||tgt.untg>Tm) return 0; const SS=src&&src.k==='h'?stats(src):null;
     if(SS){ const sv=supOf(src); if(sv&&sv<3&&tgt.k==='m'&&tgt.hp<tgt.max*.5&&(src.spl==null?3:src.spl)>=1){ const al=heroes.find(a=>a!==src&&a.team===src.team&&alive(a)&&dist(a,src)<10); if(al){ src.spl=(src.spl==null?3:src.spl)-1; const g=MIN[tgt.mt].gold+Math.round(Tm/60); al.gold+=g; emit(['burst',+tgt.x.toFixed(1),1,+tgt.z.toFixed(1),'#ffd23f',8,3]); const hp0=tgt.hp; die(tgt,src); supGain(src,g*2); return hp0; } }
       if(sv&&sv<3&&tgt.k==='h'&&Tm>=(src.supHT||0)){ src.supHT=Tm+6; src.gold+=10; supGain(src,10); }
       if(tgt.k==='h'&&!o.pet&&petOf(src)==='f'&&jgStage(src)>=3&&Tm>=(src.fireT||0)){ src.fireT=Tm+4; emit(['burst',+tgt.x.toFixed(1),1.4,+tgt.z.toFixed(1),'#ff6a1a',8,3]); dmg(src,tgt,20+src.lvl*6,{tru:1,pet:1}); if(!alive(tgt)) return 0; } }
@@ -117,16 +117,29 @@ function create(env,opts){
   invUpdate();
   /* ---------- 投射物 ---------- */
   function homing(src,tgt,amt,o,col,size,spd){ const id=vpId++; projs.push({id,src,tgt,amt,o,spd:spd||24,x:src.x,y:src.k==='t'?6.8:src.k==='c'?4.6:1.3,z:src.z}); emit(['P',id,+src.x.toFixed(1),src.k==='t'?6.8:src.k==='c'?4.6:1.3,+src.z.toFixed(1),tgt.id,spd||24,col,size||1]); }
-  function skillshot(src,ang,len,amt,o,col,size){ const id=vpId++; projs.push({id,src,ang,len,amt,o,spd:28,x:src.x,y:1.2,z:src.z,trav:0,line:1}); emit(['Q',id,+src.x.toFixed(1),+src.z.toFixed(1),+ang.toFixed(3),len,28,col,size||1.5]); }
+  function skillshot(src,ang,len,amt,o,col,size,spd){ const id=vpId++; spd=spd||28; projs.push({id,src,ang,len,amt,o,spd,size:size||1.5,x:src.x,y:1.2,z:src.z,trav:0,line:1,hs:new Set()}); emit(['Q',id,+src.x.toFixed(1),+src.z.toFixed(1),+ang.toFixed(3),len,spd,col,size||1.5]); }
   function projTick(dt){ for(let i=projs.length-1;i>=0;i--){ const p=projs[i];
-      if(p.line){ const st=p.spd*dt; p.x+=Math.cos(p.ang)*st; p.z+=Math.sin(p.ang)*st; p.trav+=st; let hit=null; for(const u of enemiesOf(p.src.team)){ if(dist(u,p)<u.r+.8){ hit=u; break; } } if(hit){ dmg(p.src,hit,p.amt,p.o); applyCC(hit,p.o); emit(['hit',+hit.x.toFixed(1),+hit.z.toFixed(1),p.o.col]); projs.splice(i,1); continue; } if(p.trav>=p.len) projs.splice(i,1); continue; }
+      if(p.line){ const st=p.spd*dt; p.x+=Math.cos(p.ang)*st; p.z+=Math.sin(p.ang)*st; p.trav+=st; const o=p.o,h=p.src,ox=p.x-Math.cos(p.ang)*2,oz=p.z-Math.sin(p.ang)*2;
+        if(o.pass){ for(const u of [...enemiesOf(h.team)]){ if(p.hs.has(u.id)||dist(u,p)>u.r+(o.w||1.6)/2) continue; p.hs.add(u.id); const got=dmg(h,u,p.amt,o); if(o.dr&&got>0) heal(h,got*o.dr); ccHit(u,o,ox,oz); emit(['hit',+u.x.toFixed(1),+u.z.toFixed(1),o.col]); }
+          if(p.trav>=p.len){ if(o.boom&&!p.back&&alive(h)){ p.back=1; p.ang=Math.atan2(h.z-p.z,h.x-p.x); p.len=Math.hypot(h.x-p.x,h.z-p.z); p.trav=0; p.hs.clear(); emit(['QX',p.id]); emit(['Q',p.id,+p.x.toFixed(1),+p.z.toFixed(1),+p.ang.toFixed(3),+p.len.toFixed(1),p.spd,o.col,p.size]); } else projs.splice(i,1); } continue; }
+        let hit=null; for(const u of enemiesOf(h.team)){ if(dist(u,p)<u.r+.8){ hit=u; break; } }
+        if(hit){ emit(['QX',p.id]);
+          if(o.hook&&hit.k!=='t'&&hit.k!=='c'&&alive(h)){ const a2=Math.atan2(hit.z-h.z,hit.x-h.x),[nx,nz]=map.inB(h.x+Math.cos(a2)*1.6,h.z+Math.sin(a2)*1.6); emit(['line',+h.x.toFixed(1),+h.z.toFixed(1),+a2.toFixed(3),0,+dist(h,hit).toFixed(1),.5,o.col]); if(hit.k==='h'){ hit.dash={x:nx,z:nz}; hit.recall=0; } else { hit.x=nx; hit.z=nz; } }
+          if(o.a){ areaHit(h,hit.x,hit.z,o.a,p.amt,o,o.col); emit(['boom',+hit.x.toFixed(1),+hit.z.toFixed(1),o.a,o.col]); }
+          else { const got=dmg(h,hit,p.amt,o); if(o.dr&&got>0) heal(h,got*o.dr); ccHit(hit,o,ox,oz); emit(['hit',+hit.x.toFixed(1),+hit.z.toFixed(1),o.col]); }
+          projs.splice(i,1); continue; } if(p.trav>=p.len) projs.splice(i,1); continue; }
       if(!alive(p.tgt)){ projs.splice(i,1); continue; } const dx=p.tgt.x-p.x,dz=p.tgt.z-p.z,d=Math.hypot(dx,dz),st=p.spd*dt; if(d<=st+.4){ dmg(p.src,p.tgt,p.amt,p.o); if(p.o.cc) applyCC(p.tgt,p.o.cc); projs.splice(i,1); continue; } p.x+=dx/d*st; p.z+=dz/d*st; } }
   const enemiesOf=function*(tm){ for(const h of heroes) if(h.team!==tm&&alive(h)) yield h; for(const m of minions) if(m.team!==tm&&alive(m)) yield m; for(const m of mons) if(alive(m)) yield m; };
-  function applyCC(u,o){ if(!o||!alive(u)||u.ssB===Tm||u.stasis>0) return; const t=u.k==='h'?Math.min(.6,stats(u).ten):0; if(o.st){ u.stun=Math.max(u.stun||0,o.st*(1-t)); u.recall=0; } if(o.sl) u.slow=Math.max(u.slow||0,o.sl*(1-t)); }
+  function applyCC(u,o){ if(!o||!alive(u)||u.ssB===Tm||u.stasis>0) return; const t=u.k==='h'?Math.min(.6,stats(u).ten):0; if(o.st){ u.stun=Math.max(u.stun||0,o.st*(1-t)); u.recall=0; } if(o.sl) u.slow=Math.max(u.slow||0,o.sl*(1-t));
+    if(o.ku&&u.k!=='t'&&u.k!=='c'){ u.stun=Math.max(u.stun||0,o.ku); u.air=Math.max(u.air||0,o.ku); u.recall=0; if(u.k==='h') u.dash=null; } }
+  // 擊退（d>0 往外推）、吸過來（d<0 拉到中心）
+  function knock(u,ox,oz,d){ if(!alive(u)||u.k==='t'||u.k==='c'||u.k==='w'||u.stasis>0||u.ssB===Tm) return; let dx=u.x-ox,dz=u.z-oz,l=Math.hypot(dx,dz); if(l<.05){ dx=1; dz=0; l=1; } const k=d>0?d:Math.max(0,l-1.2)*-1;
+    let [nx,nz]=map.inB(u.x+dx/l*k,u.z+dz/l*k); if(u.k==='h'){ u.dash={x:nx,z:nz}; u.recall=0; } else { u.x=nx; u.z=nz; } }
+  function ccHit(u,cc,ox,oz){ applyCC(u,cc); if(cc&&cc.kb) knock(u,ox,oz,cc.kb); if(cc&&cc.pl) knock(u,ox,oz,-1); }
   /* ---------- 小兵 ---------- */
   function spawnWave(){ waveN++; const sc=1+Tm/60*.05; map.lanes.forEach((L,li)=>{ for(let tm=0;tm<2;tm++){ const comp=['melee','melee','melee','ranged','ranged']; if(waveN%3===0||Tm>900) comp.push('cannon'); if(Tm>600) comp.push('melee'); const lost=towers.filter(q=>q.team!==tm&&q.lane===li&&q.tier===1&&q.hp<=0).length; if(lost) comp.push('cannon'); comp.forEach((mt,k)=>{ const S=MIN[mt],s0=tm?L.len-3-k*1.6:3+k*1.6,p=along(L,s0);
         minions.push({id:minId++,k:'m',mt,big:mt==='cannon',team:tm,lane:li,x:p[0]+(k%2?.6:-.6),z:p[1]+(k%2?-.6:.6),hp:S.hp*sc,max:S.hp*sc,atk:S.atk*(1+Tm/60*.04),as:S.as,rng:S.rng,arm:S.arm,spd:S.spd,r:S.r,cd:0,tgt:null,face:0,atkT:0,s:s0,think:0}); }); } }); }
-  function minionTick(m,dt){ const L=map.lanes[m.lane]; m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt; m.think-=dt;
+  function minionTick(m,dt){ if(m.air>0) m.air-=dt; const L=map.lanes[m.lane]; m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt; m.think-=dt;
     if(m.think<=0){ m.think=.3; if(!(alive(m.tgt)&&dist(m,m.tgt)<9&&!(m.tgt.inv))){ m.tgt=null; let best=null,bd=8; for(const o of minions) if(o.team!==m.team&&alive(o)){ const d=dist(m,o); if(d<bd){ bd=d; best=o; } }
         if(!best) for(const s of towers.concat(cores)) if(s.team!==m.team&&s.hp>0&&!s.inv&&dist(m,s)<9){ best=s; break; }
         if(!best){ let hd=6; for(const h of heroes) if(h.team!==m.team&&alive(h)&&dist(m,h)<hd&&seen(h,m.team)){ hd=dist(m,h); best=h; } } m.tgt=best; } }
@@ -146,7 +159,7 @@ function create(env,opts){
       const hot=tg.k==='h'?Math.min(6,s.hits-1):0; homing(s,tg,a,{tru:tg.k==='m'},hot>=2?(hot>=4?'#ff3a2a':'#ff9a3d'):TEAMC[s.team],2.2+hot*.35,26); } }
   /* ---------- 野怪 ---------- */
   function spawnMon(m){ const sc=1+Tm/60*.05; m.dead=false; m.hp=m.max=(m.big?4200:900)*sc; m.atk=(m.big?75:30)*sc; m.as=m.big?.7:.8; m.rng=m.big?3.2:2; m.arm=m.big?35:15; m.spd=4; m.x=m.home[0]; m.z=m.home[1]; m.tgt=null; m.ret=false; emit(['ring',m.x,m.z,m.big?6:3,m.big?(m.kind?'#8affc8':'#c08aff'):'#ffd06a',.8]); }
-  function monTick(m,dt){ if(m.dead){ m.rsp-=dt; if(m.rsp<=0) spawnMon(m); return; } m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt;
+  function monTick(m,dt){ if(m.air>0) m.air-=dt; if(m.dead){ m.rsp-=dt; if(m.rsp<=0) spawnMon(m); return; } m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt;
     const hd=Math.hypot(m.x-m.home[0],m.z-m.home[1]);
     if(m.tgt&&(!alive(m.tgt)||hd>14||dist(m.tgt,{x:m.home[0],z:m.home[1]})>16)){ m.tgt=null; m.ret=true; }
     if(m.ret||!m.tgt){ if(hd>.5) moveUnit(m,m.home[0]-m.x,m.home[1]-m.z,m.spd*1.4,dt); else { m.ret=false; m.face=PI/2; } m.hp=Math.min(m.max,m.hp+m.max*(m.ret?.2:.05)*dt); return; }
@@ -172,28 +185,36 @@ function create(env,opts){
     for(const u of [...heroes,...mons,...minions]){ if(!alive(u)||u.team===h.team||dist(h,u)>R0||!seen(u,h.team)) continue;
       const sc=aim?Math.hypot(u.x-aim.x,u.z-aim.z)-(u.k==='h'?1.5:0):(u.k==='h'?u.hp/u.max+dist(h,u)*.02:u.k==='j'?2:3+u.hp/u.max); if(sc<bs){ bs=sc; best=u; } }
     return best; }
-  function areaHit(h,x,z,a,amt,cc,col){ let n=0; for(const u of [...enemiesOf(h.team)]) if(Math.hypot(u.x-x,u.z-z)<=a+u.r*.5){ dmg(h,u,amt,{skill:1}); applyCC(u,cc); n++; } for(const s of towers.concat(cores)) if(s.team!==h.team&&s.hp>0&&!s.inv&&Math.hypot(s.x-x,s.z-z)<=a+s.r) dmg(h,s,amt*.4,{skill:1}); return n; }
-  function cast(h,i,aim){ if(h.dead||h.stun>0||h.dash||!unlocked(h,i)||h.cd[i]>0||h.mp<skCost(h,i)) return false; const s=h.def.sk[i],S=stats(h),pw=skPow(h,s,i),col=h.def.pal.fx,cc={st:s.st,sl:s.sl},R0=s.r||s.a||6;
-    const tg=skillTarget(h,s,aim); if(['strike','exec','pull'].includes(s.t)&&!tg) return false;
-    let ang; if(aim&&(['shot','pierce','dash','blink'].includes(s.t)||!tg)) ang=Math.atan2(aim.z-h.z,aim.x-h.x); else ang=tg?Math.atan2(tg.z-h.z,tg.x-h.x):h.face;
+  function areaHit(h,x,z,a,amt,cc,col){ let n=0,got=0; for(const u of [...enemiesOf(h.team)]) if(Math.hypot(u.x-x,u.z-z)<=a+u.r*.5){ got+=dmg(h,u,amt,{skill:1})||0; ccHit(u,cc,x,z); n++; }
+    if(cc&&cc.dr&&got>0) heal(h,Math.min(got,amt*2)*cc.dr); if(cc&&(cc.ally||cc.hl)) heroes.filter(q=>q.team===h.team&&alive(q)&&Math.hypot(q.x-x,q.z-z)<=a+1).forEach(q=>{ if(cc.ally){ q.shield=Math.max(q.shield,amt*.6); q.shT=3; } if(cc.hl) heal(q,amt*.5); }); for(const s of towers.concat(cores)) if(s.team!==h.team&&s.hp>0&&!s.inv&&Math.hypot(s.x-x,s.z-z)<=a+s.r) dmg(h,s,amt*.4,{skill:1}); return n; }
+  function cast(h,i,aim){ if(h.dead||h.stun>0||h.dash||!unlocked(h,i)||h.cd[i]>0||h.mp<skCost(h,i)) return false; const s=h.def.sk[i],S=stats(h),pw=skPow(h,s,i),col=h.def.pal.fx,cc={st:s.st,sl:s.sl,ku:s.ku,kb:s.kb,pl:s.pl,dr:s.dr,ally:s.ally,hl:s.hl},R0=s.r||s.a||6;
+    const tg=skillTarget(h,s,aim); if(['strike','exec','chain'].includes(s.t)&&!tg) return false;
+    let ang; if(aim&&(['shot','pierce','dash','blink','hook','boom','charge'].includes(s.t)||!tg)) ang=Math.atan2(aim.z-h.z,aim.x-h.x); else ang=tg?Math.atan2(tg.z-h.z,tg.x-h.x):h.face;
     const gp=aim?(()=>{ const dx=aim.x-h.x,dz=aim.z-h.z,d=Math.hypot(dx,dz)||1,k=Math.min(1,R0/d); return [h.x+dx*k,h.z+dz*k]; })():tg?[tg.x,tg.z]:[h.x+Math.cos(ang)*R0*.7,h.z+Math.sin(ang)*R0*.7];
     h.face=ang; h.recall=0; const sx=h.x,sz=h.z,ax=Math.cos(ang),az=Math.sin(ang);
     switch(s.t){
-      case 'dash': { const dd=aim?Math.min(R0,Math.hypot(aim.x-sx,aim.z-sz)):tg?Math.max(0,Math.min(R0,dist(h,tg)-1.2)):R0; h.dash={x:sx+ax*dd,z:sz+az*dd,cb:()=>{ if(s.d) areaHit(h,h.x,h.z,s.a||2.2,pw,cc,col); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col,.45]); }}; break; }
+      case 'dash': { const dd=aim?Math.min(R0,Math.hypot(aim.x-sx,aim.z-sz)):tg?Math.max(0,Math.min(R0,dist(h,tg)-1.2)):R0,[ex,ez]=map.inB(sx+ax*dd,sz+az*dd); if(s.ku||s.st) emit(['ring',+ex.toFixed(1),+ez.toFixed(1),s.a||2.2,col,.35,1]); h.dash={x:ex,z:ez,cb:()=>{ if(s.d) areaHit(h,h.x,h.z,s.a||2.2,pw,cc,col); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col,.45]); if(s.ku) emit(['boom',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col]); }}; break; }
+      case 'charge': { const dd=aim?Math.min(R0,Math.max(2,Math.hypot(aim.x-sx,aim.z-sz))):R0,[ex,ez]=map.inB(sx+ax*dd,sz+az*dd),w=(s.w||2.2)/2; h.dash={x:ex,z:ez,cb:()=>{ const L=Math.hypot(h.x-sx,h.z-sz)+1; for(const u of [...enemiesOf(h.team)]){ const rx=u.x-sx,rz=u.z-sz,al=rx*ax+rz*az,sd=Math.abs(-rx*az+rz*ax); if(al>-.5&&al<L&&sd<w+u.r*.5){ dmg(h,u,pw,{skill:1}); ccHit(u,cc,sx+ax*al-az*.01,sz+az*al+ax*.01); } } emit(['line',+sx.toFixed(1),+sz.toFixed(1),+ang.toFixed(3),0,+L.toFixed(1),w*2,col]); if(s.ku) emit(['boom',+h.x.toFixed(1),+h.z.toFixed(1),2.5,col]); }}; break; }
+      case 'hook': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,hook:1},cc),col,1.3,30); break;
+      case 'boom': skillshot(h,ang,R0,pw,Object.assign({skill:1,col,pass:1,boom:1,w:s.w||1.8},cc),col,(s.w||1.8)*.9,20); break;
+      case 'trap': { const [px,pz]=gp; const mine=traps.filter(q=>q.h===h); if(mine.length>=3) traps.splice(traps.indexOf(mine[0]),1); traps.push({h,x:+px.toFixed(1),z:+pz.toFixed(1),arm:.6,t:30,pw,cc,col,vt:0}); emit(['ring',+px.toFixed(1),+pz.toFixed(1),1.3,col,.6]); break; }
+      case 'chain': { const n=s.n||(s.blink?4:3),hit=[tg]; let last=tg; for(let k=1;k<n;k++){ let nb=null,bd=6; for(const u of enemiesOf(h.team)){ if(hit.includes(u)||!seen(u,h.team)) continue; const d=dist(u,last); if(d<bd&&(u.k==='h'||u.k==='m'||u.k==='j')){ bd=d; nb=u; } } if(!nb) break; hit.push(nb); last=nb; }
+        if(s.blink){ h.untg=Tm+hit.length*.18+.1; h.recall=0; }
+        hit.forEach((u,k)=>timers.push({t:k*.16,fn:()=>{ if(!alive(u)) return; const from=k?hit[k-1]:h; if(s.blink&&alive(h)){ const a2=Math.atan2(h.z-u.z,h.x-u.x); emit(['burst',+h.x.toFixed(1),1,+h.z.toFixed(1),col,6,3]); [h.x,h.z]=map.inB(u.x+Math.cos(a2)*1.1,u.z+Math.sin(a2)*1.1); h.force++; emit(['slash',+u.x.toFixed(1),+u.z.toFixed(1),2.2,+a2.toFixed(2),col]); } else emit(['line',+from.x.toFixed(1),+from.z.toFixed(1),+Math.atan2(u.z-from.z,u.x-from.x).toFixed(3),0,+dist(from,u).toFixed(1),.4,col]);
+          dmg(h,u,pw*(k?.75:1),{skill:1}); ccHit(u,cc,from.x,from.z); emit(['hit',+u.x.toFixed(1),+u.z.toFixed(1),col]); }})); break; }
       case 'blink': { let dd,a2=ang; if(aim) dd=Math.min(R0,Math.max(1.5,Math.hypot(aim.x-sx,aim.z-sz))); else if(s.back){ a2=ang+PI; dd=R0; } else dd=tg?Math.max(0,Math.min(R0,dist(h,tg)-1)):R0;
         const [nx,nz]=map.inB(sx+Math.cos(a2)*dd,sz+Math.sin(a2)*dd); emit(['burst',sx,1,sz,col,10,4]); h.x=nx; h.z=nz; h.face=a2; h.force++; emit(['burst',+nx.toFixed(1),1,+nz.toFixed(1),col,10,4]);
-        if(s.d&&!s.back){ const t2=tg&&dist(h,tg)<3.5?tg:null; if(t2){ dmg(h,t2,pw,{skill:1}); applyCC(t2,cc); } } break; }
-      case 'strike': dmg(h,tg,pw,{skill:1}); applyCC(tg,cc); emit(['slash',+tg.x.toFixed(1),+tg.z.toFixed(1),2.2,+ang.toFixed(2),col]); emit(['hit',+tg.x.toFixed(1),+tg.z.toFixed(1),col]); break;
+        if(s.d&&!s.back){ const t2=tg&&dist(h,tg)<3.5?tg:null; if(t2){ dmg(h,t2,pw,{skill:1}); ccHit(t2,cc,h.x,h.z); } } if(s.spd) h.buffs.push({spd:s.spd,t:2}); if(s.ally) heroes.filter(q=>q.team===h.team&&alive(q)&&dist(q,h)<5).forEach(q=>{ q.shield=Math.max(q.shield,120+h.lvl*12); q.shT=3; }); if(s.back&&s.sl) for(const u of [...enemiesOf(h.team)]) if(Math.hypot(u.x-sx,u.z-sz)<3) applyCC(u,{sl:s.sl}); break; }
+      case 'strike': { const got=dmg(h,tg,pw,{skill:1}); if(s.dr&&got>0) heal(h,got*s.dr); ccHit(tg,cc,h.x,h.z); } emit(['slash',+tg.x.toFixed(1),+tg.z.toFixed(1),2.2,+ang.toFixed(2),col]); emit(['hit',+tg.x.toFixed(1),+tg.z.toFixed(1),col]); break;
       case 'nova': areaHit(h,sx,sz,s.a,pw,cc,col); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.a,col,.5]); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.a,col,.35,1]); break;
-      case 'blast': { const [px,pz]=gp; emit(['ring',+px.toFixed(1),+pz.toFixed(1),s.a,col,.45,1]); timers.push({t:.4,fn:()=>{ areaHit(h,px,pz,s.a,pw,cc,col); emit(['boom',+px.toFixed(1),+pz.toFixed(1),s.a,col]); }}); break; }
-      case 'shot': skillshot(h,ang,R0+1,pw,{skill:1,st:s.st,sl:s.sl,col},col,1.6); break;
-      case 'pierce': { const len=R0+1,w=(s.w||2.2)/2; for(const u of [...enemiesOf(h.team)]){ const rx=u.x-sx,rz=u.z-sz,along2=rx*ax+rz*az,side=Math.abs(-rx*az+rz*ax); if(along2>-.5&&along2<len&&side<w+u.r*.5){ dmg(h,u,pw,{skill:1}); applyCC(u,cc); } } emit(['line',+sx.toFixed(1),+sz.toFixed(1),+ang.toFixed(3),0,len,w*2,col]); break; }
-      case 'shield': { const v=s.v*rkM(h,i)*(1+S.heal); const L0=s.ally?heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<10):[h]; L0.forEach(a=>{ a.shield=Math.max(a.shield,v); a.shT=4; emit(['ring',+a.x.toFixed(1),+a.z.toFixed(1),1.4,'#9ad8ff',.5]); }); break; }
-      case 'heal': { const v=s.v*rkM(h,i)*(1+S.heal+S.sp*.5); const L0=s.self?[h]:heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<(s.a||8)); L0.forEach(a=>heal(a,v)); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.self?1.6:(s.a||8),'#7aff9a',.6,1]); break; }
-      case 'buff': { const L0=s.ally?heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<10):[h]; L0.forEach(a=>{ a.buffs.push({as:s.as,spd:s.spd,dmg:s.dmg,arm:s.arm,t:s.dur||4}); emit(['beam',+a.x.toFixed(1),+a.z.toFixed(1),.9,col,.6]); }); break; }
-      case 'exec': { if(s.blink){ const a2=Math.atan2(h.z-tg.z,h.x-tg.x); emit(['burst',sx,1,sz,col,8,4]); [h.x,h.z]=map.inB(tg.x+Math.cos(a2)*1.2,tg.z+Math.sin(a2)*1.2); h.force++; } dmg(h,tg,pw+(tg.max-tg.hp)*s.m,{skill:1}); emit(['slash',+tg.x.toFixed(1),+tg.z.toFixed(1),2.6,+ang.toFixed(2),col]); emit(['boom',+tg.x.toFixed(1),+tg.z.toFixed(1),1.6,col]); break; }
-      case 'pull': { const a2=Math.atan2(tg.z-h.z,tg.x-h.x); emit(['line',+sx.toFixed(1),+sz.toFixed(1),+a2.toFixed(3),0,dist(h,tg),.5,col]); if(tg.k!=='t'&&tg.k!=='c'){ [tg.x,tg.z]=map.inB(h.x+Math.cos(a2)*1.6,h.z+Math.sin(a2)*1.6); if(tg.k==='h') tg.force++; } dmg(h,tg,pw,{skill:1}); applyCC(tg,cc); break; }
-      case 'storm': { const [px,pz]=s.self?[sx,sz]:gp; zones.push({h,x:px,z:pz,a:s.a,dps:pw*.5,t:s.dur||4,tick:0,cc:{sl:s.sl?1:0},col,follow:s.self}); break; }
+      case 'blast': { const [px,pz]=gp,dl=s.dl||(s.st||s.ku?.6:.45); emit(['ring',+px.toFixed(1),+pz.toFixed(1),s.a,col,dl+.05,1]); timers.push({t:dl,fn:()=>{ areaHit(h,px,pz,s.a,pw,cc,col); emit(['boom',+px.toFixed(1),+pz.toFixed(1),s.a,col]); }}); break; }
+      case 'shot': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,a:s.a},cc),col,s.a?2.2:1.6,i===3&&R0>12?34:28); break;
+      case 'pierce': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,pass:1,w:s.w||2.2},cc),col,Math.max(1.6,(s.w||2.2)*.8),s.ku?18:24); break;
+      case 'shield': { const v=s.v*rkM(h,i)*(1+S.heal); const L0=s.ally?heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<10):[h]; L0.forEach(a=>{ a.shield=Math.max(a.shield,v); a.shT=4; if(s.spd) a.buffs.push({spd:s.spd,t:2}); emit(['ring',+a.x.toFixed(1),+a.z.toFixed(1),1.4,'#9ad8ff',.5]); }); break; }
+      case 'heal': { const v=s.v*rkM(h,i)*(1+S.heal+S.sp*.5); const L0=s.self?[h]:heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<(s.a||8)); L0.forEach(a=>{ heal(a,v); if(s.cl){ a.stun=0; a.slow=0; a.weak=0; a.burn=null; } }); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.self?1.6:(s.a||8),'#7aff9a',.6,1]); break; }
+      case 'buff': { const L0=s.ally?heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<10):[h]; L0.forEach(a=>{ a.buffs.push({as:s.as,spd:s.spd,dmg:s.dmg,arm:s.arm,ls:s.ls,t:s.dur||4}); emit(['beam',+a.x.toFixed(1),+a.z.toFixed(1),.9,col,.6]); }); break; }
+      case 'exec': { if(s.blink){ const a2=Math.atan2(h.z-tg.z,h.x-tg.x); emit(['burst',sx,1,sz,col,8,4]); [h.x,h.z]=map.inB(tg.x+Math.cos(a2)*1.2,tg.z+Math.sin(a2)*1.2); h.force++; } dmg(h,tg,pw+(tg.max-tg.hp)*s.m,{skill:1}); if(s.kb) knock(tg,h.x,h.z,s.kb); if(s.rs&&!alive(tg)&&tg.k==='h'){ timers.push({t:.05,fn:()=>{ h.cd[i]=0; }}); if(h.me) floatMsg('擊殺！大招冷卻重置','#ffd23f',1.2); } emit(['slash',+tg.x.toFixed(1),+tg.z.toFixed(1),2.6,+ang.toFixed(2),col]); emit(['boom',+tg.x.toFixed(1),+tg.z.toFixed(1),1.6,col]); break; }
+      case 'storm': { const [px,pz]=s.self?[sx,sz]:gp; zones.push({h,x:px,z:pz,a:s.a,dps:pw*.5,t:s.dur||4,tick:0,cc:{sl:s.sl?1:0,dr:s.dr},st:s.st,hs:new Set(),col,follow:s.self,mv:s.mv?[ax*4,az*4]:null}); break; }
     }
     h.mp=Math.max(0,h.mp-skCost(h,i)); if(S.sb) h.sbT=Tm+10; if(h.bi>=0) h.revT=Tm+1.5; h.cd[i]=s.cd*(1-(i===3?.15:.05)*(Math.max(1,h.sk[i])-1))*(1-Math.min(.4,S.cdr)); h.castT=.45; h.atkT=0; if(h.me||(myHero()&&dist(h,myHero())<20)) emit(['sfx',i===3?'boost':'pop']); return true; }
   const SPELLS=M0.SPELLS,smiteDmg=h=>(600+h.lvl*60)*(stats(h).jg?1.3:1)*(petOf(h)&&jgStage(h)>=2?1.3:1);
@@ -270,7 +291,7 @@ function create(env,opts){
     if(h.tcd<=0&&!h.recall){ if(h.tk==='g'){ const b=BUSH.find(b=>Math.hypot(b.x-h.x,b.z-h.z)<7&&!wards.some(w=>w.team===h.team&&Math.hypot(w.x-b.x,w.z-b.z)<6)); if(b&&Math.random()<.5) useTrinket(h,{x:b.x,z:b.z}); }
       else if(wards.some(w=>w.team!==h.team&&Math.hypot(w.x-h.x,w.z-h.z)<10)&&Math.random()<.35) useTrinket(h); } }
   /* ---------- 英雄每一刻 ---------- */
-  function heroTick(h,dt){ h.cd=h.cd.map(v=>Math.max(0,v-dt)); h.spCd=h.spCd.map(v=>Math.max(0,v-dt)); h.atkCd-=dt; if(h.atkT>0) h.atkT-=dt; if(h.castT>0) h.castT-=dt; if(h.shT>0){ h.shT-=dt; if(h.shT<=0) h.shield=0; }
+  function heroTick(h,dt){ if(h.air>0) h.air=Math.max(0,h.air-dt); h.cd=h.cd.map(v=>Math.max(0,v-dt)); h.spCd=h.spCd.map(v=>Math.max(0,v-dt)); h.atkCd-=dt; if(h.atkT>0) h.atkT-=dt; if(h.castT>0) h.castT-=dt; if(h.shT>0){ h.shT-=dt; if(h.shT<=0) h.shield=0; }
     h.buffs=h.buffs.filter(b=>(b.t-=dt)>0); if(h.slow>0) h.slow-=dt; if(h.weak>0) h.weak-=dt;
     for(const k in h.icd) if(h.icd[k]>0) h.icd[k]=Math.max(0,h.icd[k]-dt); if(h.tcd>0) h.tcd=Math.max(0,h.tcd-dt); if(h.lens>0) h.lens=Math.max(0,h.lens-dt);
     { const sv=supOf(h); if(sv&&sv<3) h.spl=Math.min(3,(h.spl==null?3:h.spl)+dt/18); if(sv===3){ h.wc=Math.min(3,(h.wc||0)+dt/50); if(mode===0&&Math.hypot(h.x-map.fount[h.team][0],h.z-map.fount[h.team][1])<8) h.wc=3; } }
@@ -394,7 +415,9 @@ function create(env,opts){
     for(const s of towers) towerTick(s,dt); for(const s of cores) towerTick(s,dt);
     projTick(dt);
     for(let i=timers.length-1;i>=0;i--){ if((timers[i].t-=dt)<=0){ const f=timers[i].fn; timers.splice(i,1); f(); } }
-    for(let i=zones.length-1;i>=0;i--){ const z=zones[i]; if(z.follow&&alive(z.h)){ z.x=z.h.x; z.z=z.h.z; } z.t-=dt; z.tick-=dt; if(z.tick<=0){ z.tick=.5; areaHit(z.h,z.x,z.z,z.a,z.dps*.5,z.cc,z.col); emit(['ring',+z.x.toFixed(1),+z.z.toFixed(1),z.a,z.col,.55,1]); emit(['burst',+(z.x+(Math.random()-.5)*z.a).toFixed(1),1.5,+(z.z+(Math.random()-.5)*z.a).toFixed(1),z.col,5,3]); } if(z.t<=0) zones.splice(i,1); }
+    for(let i=traps.length-1;i>=0;i--){ const q=traps[i]; q.t-=dt; q.arm-=dt; q.vt-=dt; if(q.vt<=0){ q.vt=1; emit(['ring',q.x,q.z,1.2,q.col,1.05]); } let trig=false; if(q.arm<=0) for(const u of enemiesOf(q.h.team)) if((u.k==='h'||u.k==='m')&&Math.hypot(u.x-q.x,u.z-q.z)<1.3){ trig=true; break; }
+      if(trig){ areaHit(q.h,q.x,q.z,1.8,q.pw,q.cc,q.col); emit(['boom',q.x,q.z,1.8,q.col]); traps.splice(i,1); continue; } if(q.t<=0||!q.h) traps.splice(i,1); }
+    for(let i=zones.length-1;i>=0;i--){ const z=zones[i]; if(z.follow&&alive(z.h)){ z.x=z.h.x; z.z=z.h.z; } if(z.mv){ [z.x,z.z]=map.inB(z.x+z.mv[0]*dt,z.z+z.mv[1]*dt); } if(z.st) for(const u of [...enemiesOf(z.h.team)]) if(!z.hs.has(u.id)&&Math.hypot(u.x-z.x,u.z-z.z)<=z.a){ z.hs.add(u.id); applyCC(u,{st:z.st}); } z.t-=dt; z.tick-=dt; if(z.tick<=0){ z.tick=.5; areaHit(z.h,z.x,z.z,z.a,z.dps*.5,z.cc,z.col); emit(['ring',+z.x.toFixed(1),+z.z.toFixed(1),z.a,z.col,.55,1]); emit(['burst',+(z.x+(Math.random()-.5)*z.a).toFixed(1),1.5,+(z.z+(Math.random()-.5)*z.a).toFixed(1),z.col,5,3]); } if(z.t<=0) zones.splice(i,1); }
     for(let i=minions.length-1;i>=0;i--) if(minions[i].dead) minions.splice(i,1);
     // 小兵、野怪互相推開
     for(let i=0;i<minions.length;i++){ const a=minions[i]; for(let j=i+1;j<minions.length;j++){ const b=minions[j],dx=b.x-a.x,dz=b.z-a.z,d=Math.hypot(dx,dz),m=a.r+b.r; if(d<m&&d>.001){ const k=(m-d)/2/d; a.x-=dx*k; a.z-=dz*k; b.x+=dx*k; b.z+=dz*k; } } }
@@ -454,11 +477,12 @@ function create(env,opts){
   const onWheel=e=>{ if(phase!=='pick') return; const [x,y]=toL(e); if(x>=SPX0&&x<=SPX1&&y>=396&&y<=460){ e.preventDefault(); spOff=clamp(spOff+(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)*.5,0,spMax()); } }; canvas.addEventListener('wheel',onWheel,{passive:false});
   canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); addEventListener('pointercancel',onUp); canvas.addEventListener('contextmenu',noMenu); canvas.addEventListener('pointerleave',leave); canvas.style.touchAction='none';
   /* ---------- 選英雄 ---------- */
-  let pkSel=Math.floor(Math.random()*30),pkTab=0,pkDone=false,pkStep=mode===0?'role':'hero';
+  let pkSel=Math.floor(Math.random()*HEROES.length),pkTab=0,pkDone=false,pkStep=mode===0?'role':'hero';
   // 先選路線再選英雄：英雄依職業自動分到適合的路線
   const rolesOf=h=>ROLES.filter(([r])=>(ROLE_CLS[r]||[]).includes(h.cls)).map(([,n])=>n);
   const TABS=()=>(mode===0?[['fit','適合'+(ROLE_N[slots[mySlot].role]||'')],['all','全部']]:[['all','全部']]).concat(Object.entries(CLS).map(([k,v])=>[k,v.n]));
   const pkList=()=>{ const t=TABS()[pkTab]||TABS()[0],k=t[0],R0=ROLE_CLS[slots[mySlot].role]||[]; return HEROES.filter(h=>k==='all'||(k==='fit'?R0.includes(h.cls):h.cls===k)); };
+  const pkGrid=i=>pkList().length>18?{x:24+(i%9)*66,y:90+Math.floor(i/9)*66,w:62,h:62}:{x:24+(i%6)*100,y:92+Math.floor(i/6)*82,w:94,h:76};
   const fitPick=()=>{ const R0=ROLE_CLS[slots[mySlot].role]||[],L=HEROES.filter(h=>R0.includes(h.cls)&&!takenBy(myTeam,h.i,mySlot)); return L.length?L[Math.floor(Math.random()*L.length)].i:pkSel; };
   const ROLE_D={top:['上路單挑，耐打能扛','坦克、戰士','#ff9a3d'],jg:['在野區打野怪，到處支援隊友（帶重擊、買打野幼獸）','刺客、戰士','#5fd08a'],mid:['中路對線，技能爆發高','法師、刺客','#b98cff'],bot:['下路射手，後期主力輸出','射手','#86dc4f'],sup:['跟著射手保護隊友，買輔助裝備賺錢、插眼','輔助、坦克','#3ddbd9']};
   const RC=i=>({x:22+i*186,y:96,w:176,h:340});
@@ -479,7 +503,7 @@ function create(env,opts){
   const takenBy=(team,hid,except)=>slots.some((s,i)=>i!==except&&s.team===team&&s.hero===hid);
   function pickClick(x,y){ if(pkDone) return; if(pkStep==='role'){ ROLES.forEach(([id],i)=>{ const r=RC(i); if(x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h) chooseRole(id); }); return; }
     TABS().forEach((tb,i)=>{ if(x>=20+i*74&&x<20+i*74+70&&y>=52&&y<=80){ pkTab=i; sfx('click'); } });
-    pkList().forEach((h,i)=>{ const cx=24+(i%6)*100,cy=92+Math.floor(i/6)*82; if(x>=cx&&x<cx+94&&y>=cy&&y<cy+76){ pkSel=h.i; sfx('click'); } });
+    pkList().forEach((h,i)=>{ const G=pkGrid(i); if(x>=G.x&&x<G.x+G.w&&y>=G.y&&y<G.y+G.h){ pkSel=h.i; sfx('click'); } });
     if(mode===0&&x>=820&&x<=940&&y>=328&&y<=358){ pkStep='role'; sfx('click'); }
     SP_IDS.forEach((id,j)=>[0,1].forEach(row=>{ const bx=SPX0+j*45-spOff,by=398+row*32; if(x>=Math.max(bx,SPX0)&&x<Math.min(bx+42,SPX1)&&y>=by&&y<by+28){ const sp=slots[mySlot].sp; if(sp[1-row]===id) sp[1-row]=sp[row]; sp[row]=id; spTouched=true; sfx('click'); if(client) net.send({t:'pk',sp}); } }));
     if(x>=700&&x<=940&&y>=470&&y<=514) confirmPick(); }
@@ -499,14 +523,14 @@ function create(env,opts){
       net.onleave=i=>{ const s=slots.find(q=>q.human===i); if(!s) return; s.name+='（離開）'; s.human=-1; if(s.hero<0) botPicks(); const h=heroes[slots.indexOf(s)]; if(h){ h.bot=true; h.human=false; h.name=s.name; } }; } }
   function setRoleHost(si,role){ const s=slots[si]; const o=slots.find((q,i)=>i!==si&&q.team===s.team&&q.role===role&&q.human<0); if(o){ o.role=s.role; o.sp=(SP_ROLE[o.role]||SP_ROLE.mid).slice(); } s.role=role; }
   function sendSnap(){ const r1=v=>Math.round(v*10)/10;
-    const hs=heroes.map(h=>[r1(h.x),r1(h.z),r1(h.face),Math.round(h.hp),Math.round(h.max),h.lvl,Math.round(h.xp),Math.round(h.gold),h.dead?r1(h.rsp):0,Math.round(h.shield),r1(h.stun),r1(h.recall),r1(Math.max(0,h.atkT)),r1(Math.max(0,h.castT)),h.kc,h.dc,h.ac,h.items.join(','),h.cd.map(r1),h.spCd.map(r1),h.force,h.auto?1:0,h.buffs.length?1:0,h.pots||0,h.tk,r1(h.tcd),r1(h.lens),h.items.map(id=>r1(h.icd[id]||0)).join(','),r1(Math.max(0,h.potT)),r1(Math.max(0,h.stasis)),h.revT>Tm?1:0,Math.round(h.mp),Math.round(h.mpMax),h.sk.join(''),h.jst||0,Math.floor(h.sq||0),Math.floor(h.wc||0),h.cs||0]);
+    const hs=heroes.map(h=>[r1(h.x),r1(h.z),r1(h.face),Math.round(h.hp),Math.round(h.max),h.lvl,Math.round(h.xp),Math.round(h.gold),h.dead?r1(h.rsp):0,Math.round(h.shield),r1(h.stun),r1(h.recall),r1(Math.max(0,h.atkT)),r1(Math.max(0,h.castT)),h.kc,h.dc,h.ac,h.items.join(','),h.cd.map(r1),h.spCd.map(r1),h.force,h.auto?1:0,h.buffs.length?1:0,h.pots||0,h.tk,r1(h.tcd),r1(h.lens),h.items.map(id=>r1(h.icd[id]||0)).join(','),r1(Math.max(0,h.potT)),r1(Math.max(0,h.stasis)),h.revT>Tm?1:0,Math.round(h.mp),Math.round(h.mpMax),h.sk.join(''),h.jst||0,Math.floor(h.sq||0),Math.floor(h.wc||0),h.cs||0,r1(h.air||0)]);
     const ms=minions.map(m=>[m.id,['melee','ranged','cannon'].indexOf(m.mt),m.team,r1(m.x),r1(m.z),Math.round(m.hp),Math.round(m.max),r1(m.face),r1(Math.max(0,m.atkT))]);
     const jm=mons.map(m=>[m.dead?1:0,Math.round(m.hp),Math.round(m.max),r1(m.x),r1(m.z),r1(m.face),r1(Math.max(0,m.atkT||0))]);
     net.send({t:'s',T:r1(Tm),hs,ms,jm,tw:towers.map(q=>Math.round(q.hp)),ti:towers.map(q=>q.inv?1:0),co:cores.map(q=>Math.round(q.hp)),ci:cores.map(q=>q.inv?1:0),tb:teamBuff.map(q=>[r1(q.dmg),r1(q.reg)]),kl:kills,wd:wards.map(w=>[w.id,w.team,w.x,w.z,r1(w.t),w.hp,w.owner]),ev:sendEV}); sendEV=[]; }
   function applySnap(m){ Tm=m.T; kills[0]=m.kl[0]; kills[1]=m.kl[1]; m.tb.forEach((q,i)=>{ teamBuff[i].dmg=q[0]; teamBuff[i].reg=q[1]; });
     m.hs.forEach((a,i)=>{ const h=heroes[i]; if(!h) return; const mine=i===mySlot,forced=a[20]!==h.force; h.tx=a[0]; h.tz=a[1];
       if(!mine||forced||a[8]>0||a[10]>0){ if(mine&&(forced||a[8]>0)){ h.x=a[0]; h.z=a[1]; } if(!mine) h.face=a[2]; }
-      h.force=a[20]; h.hp=a[3]; h.max=a[4]; h.lvl=a[5]; h.xp=a[6]; h.gold=a[7]; h.dead=a[8]>0; h.rsp=a[8]; h.shield=a[9]; h.stun=a[10]; h.recall=a[11]; h.atkT=a[12]; h.castT=a[13]; h.kc=a[14]; h.dc=a[15]; h.ac=a[16]; h.items=a[17]?a[17].split(','):[]; h.cd=a[18]; h.spCd=a[19]; h.auto=!!a[21]; if(a.length>23){ h.pots=a[23]; h.tk=a[24]; h.tcd=a[25]; h.lens=a[26]; const ic=a[27]?String(a[27]).split(',').map(Number):[]; h.icd={}; h.items.forEach((id,k)=>{ if(ic[k]) h.icd[id]=Math.max(h.icd[id]||0,ic[k]); }); h.potT=a[28]; h.stasis=a[29]; h.revT=a[30]?Tm+.3:0; h.mp=a[31]; h.mpMax=a[32]; if(a[33]!=null) h.sk=String(a[33]).split('').map(Number); if(a.length>34){ h.jst=a[34]; h.sq=a[35]; h.wc=a[36]; h.cs=a[37]||0; } } });
+      h.force=a[20]; h.hp=a[3]; h.max=a[4]; h.lvl=a[5]; h.xp=a[6]; h.gold=a[7]; h.dead=a[8]>0; h.rsp=a[8]; h.shield=a[9]; h.stun=a[10]; h.recall=a[11]; h.atkT=a[12]; h.castT=a[13]; h.kc=a[14]; h.dc=a[15]; h.ac=a[16]; h.items=a[17]?a[17].split(','):[]; h.cd=a[18]; h.spCd=a[19]; h.auto=!!a[21]; if(a.length>23){ h.pots=a[23]; h.tk=a[24]; h.tcd=a[25]; h.lens=a[26]; const ic=a[27]?String(a[27]).split(',').map(Number):[]; h.icd={}; h.items.forEach((id,k)=>{ if(ic[k]) h.icd[id]=Math.max(h.icd[id]||0,ic[k]); }); h.potT=a[28]; h.stasis=a[29]; h.revT=a[30]?Tm+.3:0; h.mp=a[31]; h.mpMax=a[32]; if(a[33]!=null) h.sk=String(a[33]).split('').map(Number); if(a.length>34){ h.jst=a[34]; h.sq=a[35]; h.wc=a[36]; h.cs=a[37]||0; h.air=a[38]||0; } } });
     wards.length=0; (m.wd||[]).forEach(a=>wards.push({id:a[0],k:'w',team:a[1],x:a[2],z:a[3],t:a[4],hp:a[5],max:3,owner:a[6],r:.4}));
     const seen=new Set(); m.ms.forEach(a=>{ seen.add(a[0]); let u=minions.find(q=>q.id===a[0]); if(!u){ u={id:a[0],k:'m',mt:['melee','ranged','cannon'][a[1]],team:a[2],x:a[3],z:a[4],r:.6,big:a[1]===2}; u.big=u.mt==='cannon'; minions.push(u); } u.tx=a[3]; u.tz=a[4]; u.hp=a[5]; u.max=a[6]; u.face=a[7]; u.atkT=a[8]; u.dead=false; });
     for(let i=minions.length-1;i>=0;i--) if(!seen.has(minions[i].id)) minions.splice(i,1);
@@ -521,6 +545,7 @@ function create(env,opts){
       else if(k==='ann'){ anns.push({s:e[1],k:e[2],v:e[3],team:e[4],t:2.6}); if(anns.length>4) anns.splice(1,1); }
       else if(k==='sfx') sfx(e[1]);
       else if(k==='P'){ vproj.set(e[1],{x:e[2],y:e[3],z:e[4],tid:e[5],spd:e[6],col:e[7]}); G3.fx(['p',e[1],e[2],e[3],e[4],e[7],e[8]]); }
+      else if(k==='QX'){ if(vproj.has(e[1])){ G3.fx(['px',e[1]]); vproj.delete(e[1]); } }
       else if(k==='Q'){ vproj.set(e[1],{x:e[2],y:1.2,z:e[3],ang:e[4],len:e[5],spd:e[6],col:e[7],trav:0}); G3.fx(['p',e[1],e[2],1.2,e[3],e[7],e[8]]); }
       else G3.fx(e); }
     EV=[]; }
@@ -723,10 +748,10 @@ function create(env,opts){
     if(pkStep==='role'&&!pkDone){ drawRoleStep(); return; }
     c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText('選擇英雄',22,28); c.fillStyle='#cfc8ff'; c.font='700 13px '+TC; c.fillText(MODES[mode]+'　'+size+' 對 '+size+'　電腦：'+LV.n+'　剩 '+Math.max(0,Math.ceil(pickT))+' 秒',130,29);
     TABS().forEach((tb,i)=>{ const x=20+i*74,on=i===pkTab; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.08)'; rr(c,x,52,70,28,14); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 '+(tb[1].length>3?12:13)+'px '+TC; c.textAlign='center'; c.fillText(tb[1],x+35,67); });
-    pkList().forEach((h,i)=>{ const x=24+(i%6)*100,y=92+Math.floor(i/6)*82,on=h.i===pkSel,taken=takenBy(myTeam,h.i,mySlot); c.fillStyle=on?'rgba(255,210,63,.25)':'rgba(255,255,255,.06)'; rr(c,x,y,94,76,10); c.fill(); if(on){ c.strokeStyle='#ffd23f'; c.lineWidth=2.5; c.stroke(); }
-      portrait(c,x+47,y+30,46,h); c.fillStyle=taken?'#7a7690':'#fff'; c.font='900 12px '+TC; c.textAlign='center'; c.fillText(h.n,x+47,y+62); c.fillStyle=CLS[h.cls].col; c.font='700 9px '+TC; c.fillText(CLS[h.cls].n+(mode===0?'・'+rolesOf(h).join('/'):''),x+47,y+72); if(taken){ c.fillStyle='rgba(0,0,0,.5)'; rr(c,x,y,94,76,10); c.fill(); c.fillStyle='#fff'; c.fillText('隊友已選',x+47,y+38); } });
+    pkList().forEach((h,i)=>{ const G=pkGrid(i),x=G.x,y=G.y,cw=G.w,ch=G.h,cm=cw<90,on=h.i===pkSel,taken=takenBy(myTeam,h.i,mySlot); c.fillStyle=on?'rgba(255,210,63,.25)':'rgba(255,255,255,.06)'; rr(c,x,y,cw,ch,10); c.fill(); if(on){ c.strokeStyle='#ffd23f'; c.lineWidth=2.5; c.stroke(); }
+      portrait(c,x+cw/2,y+(cm?22:30),cm?32:46,h); c.fillStyle=taken?'#7a7690':'#fff'; c.font='900 '+(cm?11:12)+'px '+TC; c.textAlign='center'; c.fillText(h.n,x+cw/2,y+(cm?46:62)); if(cm){ c.fillStyle=CLS[h.cls].col; c.font='700 8px '+TC; c.fillText(CLS[h.cls].n,x+cw/2,y+56); if(taken){ c.fillStyle='rgba(0,0,0,.5)'; rr(c,x,y,cw,ch,10); c.fill(); } return; } c.fillStyle=CLS[h.cls].col; c.font='700 9px '+TC; { const rl=rolesOf(h).join('/'); c.fillText(CLS[h.cls].n+(mode===0&&rl!==CLS[h.cls].n?'・'+rl:''),x+47,y+72); } if(taken){ c.fillStyle='rgba(0,0,0,.5)'; rr(c,x,y,94,76,10); c.fill(); c.fillStyle='#fff'; c.fillText('隊友已選',x+47,y+38); } });
     const d=HEROES[pkSel],x0=632; c.fillStyle='rgba(255,255,255,.06)'; rr(c,x0,46,316,486,14); c.fill(); portrait(c,x0+52,96,80,d); c.textAlign='left'; c.fillStyle='#fff'; c.font='900 22px '+TC; c.fillText(d.n,x0+102,82); c.fillStyle=CLS[d.cls].col; c.font='900 14px '+TC; c.fillText(CLS[d.cls].n+(mode===0?'　適合：'+rolesOf(d).join('、'):''),x0+102,108);
-    d.sk.forEach((s,i)=>{ const y=156+i*42; c.fillStyle=i===3?'#c8a0ff':'#9ad8ff'; c.font='900 12px '+TC; c.fillText((TOUCH?['技能一','技能二','技能三','大招'][i]:'QWER'[i])+'：'+s.n+(i===3?'（6 等起可學，最多 3 點）':'（最多 5 點）'),x0+12,y); c.fillStyle='#cfc8ff'; c.font='700 10px '+TC; c.fillText(skDesc2(s)+'（冷卻 '+s.cd+' 秒、魔力 '+SKC[i]+'）',x0+12,y+17); });
+    d.sk.forEach((s,i)=>{ const y=152+i*46; c.fillStyle=i===3?'#c8a0ff':'#9ad8ff'; c.font='900 12px '+TC; c.fillText((TOUCH?['技能一','技能二','技能三','大招'][i]:'QWER'[i])+'：'+s.n+(i===3?'（6 等起可學，最多 3 點）':'（最多 5 點）'),x0+12,y); c.fillStyle='#cfc8ff'; c.font='700 10px '+TC; wrapText(skDesc2(s)+'（冷卻 '+s.cd+' 秒、魔力 '+SKC[i]+'）',x0+12,y+16,296,12); });
     if(mode===0){ const rl=slots[mySlot].role,ok=(ROLE_CLS[rl]||[]).includes(d.cls); c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textAlign='left'; c.fillText('路線：'+ROLE_N[rl],x0+8,343); c.font='700 10px '+TC; if(!ok){ c.fillStyle='#ffb0a0'; c.fillText('這位英雄比較適合 '+rolesOf(d).join('、'),x0+8,366); } else if(rl==='jg'){ c.fillStyle='#cfc8ff'; c.fillText('打野會帶重擊，先買打野幼獸',x0+8,366); } else if(rl==='sup'){ c.fillStyle='#cfc8ff'; c.fillText('輔助先買星界地圖，升級後可以插眼',x0+8,366); }
       c.fillStyle='rgba(255,255,255,.12)'; rr(c,820,328,120,30,12); c.fill(); c.strokeStyle='rgba(255,210,63,.7)'; c.lineWidth=1.5; c.stroke(); c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText('換路線',880,344); c.textAlign='left'; }
     { const sp=slots[mySlot].sp; [0,1].forEach(row=>{ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.fillText(TOUCH?(row?'技能 2':'技能 1'):(row?'F 鍵':'D 鍵'),x0+6,412+row*32); const by0=398+row*32; c.save(); c.beginPath(); c.rect(SPX0,by0-2,SPX1-SPX0,32); c.clip(); SP_IDS.forEach((id,j)=>{ const bx=SPX0+j*45-spOff,by=398+row*32,on=sp[row]===id,S0=M0.SPELLS[id]; c.fillStyle=on?S0.col:'rgba(255,255,255,.1)'; rr(c,bx,by,42,28,10); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText(S0.n,bx+21,by+15); }); c.restore();
@@ -737,11 +762,10 @@ function create(env,opts){
     // 隊友
     c.textAlign='left';
     const tm=slots.filter(s=>s.team===myTeam); c.fillStyle='#cfc8ff'; c.font='700 11px '+TC; c.fillText('隊友：'+tm.filter(s=>s!==slots[mySlot]).map(s=>(ROLE_N[s.role]||'')+' '+(s.human>=0?s.name:'電腦')+(s.hero>=0&&s.ok?'（'+HEROES[s.hero].n+'）':'')).join('、'),24,520,600);
-    if(!pkDone){ const K=env; if(K.hit('ArrowRight')) pkSel=(pkSel+1)%30; if(K.hit('ArrowLeft')) pkSel=(pkSel+29)%30; if(K.hit('ArrowDown')) pkSel=(pkSel+6)%30; if(K.hit('ArrowUp')) pkSel=(pkSel+24)%30; if(K.hit('Enter')||K.hit('Space')) confirmPick(); }
+    if(!pkDone){ const K=env; const NH=HEROES.length; if(K.hit('ArrowRight')) pkSel=(pkSel+1)%NH; if(K.hit('ArrowLeft')) pkSel=(pkSel+NH-1)%NH; if(K.hit('ArrowDown')) pkSel=(pkSel+6)%NH; if(K.hit('ArrowUp')) pkSel=(pkSel+NH-6)%NH; if(K.hit('Enter')||K.hit('Space')) confirmPick(); }
     drawFeed(); }
   const ROLE_N={top:'上路',jg:'打野',mid:'中路',bot:'下路',sup:'輔助'};
-  function skDesc2(s){ const SK_TXT={dash:'往敵人衝過去',blink:'瞬間移動',strike:'重擊眼前的敵人',nova:'傷害身邊的敵人',blast:'在敵人位置引爆',shot:'射出飛彈',pierce:'直線貫穿敵人',shield:'得到護盾',heal:'治療',buff:'強化自己',exec:'斬殺殘血敵人',pull:'把敵人拉過來',storm:'持續傷害一片區域'};
-    let t2=SK_TXT[s.t]; if(s.t==='heal') t2=s.self?'治療自己':'治療自己和隊友'; if(s.t==='shield'&&s.ally) t2='自己和隊友得到護盾'; if(s.t==='buff'&&s.ally) t2='強化自己和隊友'; if(s.back) t2='往後翻滾閃開'; const ex=[]; if(s.st) ex.push('暈眩'); if(s.sl) ex.push('緩速'); return t2+(ex.length?'＋'+ex.join('、'):''); }
+  function skDesc2(s){ return M0.skDesc?M0.skDesc(s):''; }
   function shadeHex(h,k){ const n=parseInt(String(h).slice(1),16); if(isNaN(n)) return h; const f=v=>clamp(Math.round(k>1?v+(255-v)*(k-1):v*k),0,255); return 'rgb('+f(n>>16)+','+f(n>>8&255)+','+f(n&255)+')'; }
   // 開始畫面左邊預覽：跳過選英雄，全部電腦直接開打
   const PV=!!(opts.preview||env.preview); if(PV){ botPicks(); startPlay(); heroes.forEach(h=>{ h.bot=true; botLv(h); }); for(let k=0;k<20*62;k++) sim(.05); EV=[]; feed.length=0; anns.length=0; const fh=heroes.find(h=>h.team===myTeam&&!h.dead&&!(h.recall>0))||heroes[mySlot]; camX=fh.x; camZ=fh.z; }
@@ -767,8 +791,8 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦強度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
   optNote:()=>'連線時真人輪流分到兩隊，不夠的位置由電腦補上。',
-  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變世界之眼，可以插眼']],
-  touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你'],['戰績','點右上角的擊殺／金幣框看雙方戰績，再點一下關掉'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使，點商店裡的裝備看說明']],
+  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['閃技能','飛彈、穿透波、鉤子會飛向你瞄準的位置，地上的預警圈過一下才爆，走位可以閃開；被擊飛時不能動'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變世界之眼，可以插眼']],
+  touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你'],['閃技能','飛彈、鉤子、穿透波和預警圈都可以走位閃開'],['戰績','點右上角的擊殺／金幣框看雙方戰績，再點一下關掉'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使，點商店裡的裝備看說明']],
   touch:{left:[],right:[]},
   best:{label:'勝場',fmt:v=>v+' 勝',lower:false},
   ready:()=>!!window.THREE,load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); },

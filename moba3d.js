@@ -286,7 +286,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       if(!M.wrap.visible) continue;
       if(M.lx==null){ M.lx=u.x; M.lz=u.z; } const vx=(u.x-M.lx)/(dt||.016),vz=(u.z-M.lz)/(dt||.016); M.lx=u.x; M.lz=u.z; const spd=Math.hypot(vx,vz),mv=spd>.6;
       let ta=u.face!=null?u.face:M.ang; let da=ta-M.ang; while(da>PI) da-=TAU; while(da<-PI) da+=TAU; M.ang+=da*Math.min(1,dt*12);
-      M.wrap.position.set(u.x,u.y||0,u.z); M.wrap.rotation.y=PI/2-M.ang;
+      M.wrap.position.set(u.x,(u.y||0)+(u.air>0?Math.sin(Math.min(1,u.air/.45)*PI/2)*1.5:0),u.z); M.wrap.rotation.y=PI/2-M.ang;
       if(M.k==='h'){ const P=heroPose(u,t,mv,spd); M.cur=M.cur?H3.mix(M.cur,P,Math.min(1,dt*14)):P; H3.pose(M.J,M.cur); M.h.root.rotation.x=dead?-Math.min(1.4,(1-M.fade)*3):0;
         M.ring.material.color.set(u.me?'#ffd23f':TEAMC[u.team]); M.ring.material.opacity=u.me?.95:.6; if(M.cape) M.cape.rotation.x=.12+(mv?.5:0)+Math.sin(t*6)*.05;
         if(M.wp.userData.orb) M.wp.userData.orb.rotation.y=t*3;
