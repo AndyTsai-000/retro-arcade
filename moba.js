@@ -118,7 +118,7 @@ function skDesc(s){ let t=SK_TXT[s.t]; if(s.t==='heal') t=s.self?'治療自己':
 const ITEMS={
   // 基本材料
   sword:{n:'長劍',c:350,atk:12,cat:'atk',col:'#c8ccd8'},dagger:{n:'短劍',c:300,as:.12,cat:'atk',col:'#9ad870'},tome:{n:'增幅典籍',c:435,sp:.12,cat:'mag',col:'#a88cff'},
-  ruby:{n:'紅水晶',c:400,hp:150,cat:'def',col:'#ff6a7a'},cloth:{n:'布甲',c:300,arm:15,cat:'def',col:'#a8b4c8'},gem:{n:'靈巧寶石',c:350,cdr:.06,cat:'mag',col:'#6ad0ff'},
+  ruby:{n:'紅水晶',c:400,hp:150,cat:'def',col:'#ff6a7a'},cloth:{n:'布甲',c:300,arm:15,cat:'def',col:'#a8b4c8'},gem:{n:'靈巧寶石',c:350,cdr:.06,mp:200,cat:'mag',col:'#6ad0ff'},
   boots:{n:'鞋子',c:300,spd:.08,cat:'misc',col:'#c8a060'},
   pot:{n:'補血藥水',c:50,cons:1,cat:'misc',col:'#ff4a5a',d:'喝下去 12 秒內回復 120 生命（最多帶 5 瓶，放在同一格）'},
   jg:{n:'打野刀',c:350,atk:10,jg:1,cat:'misc',col:'#8affc8',d:'打野怪的傷害、金幣、經驗 +30%，召喚師技能「重擊」也更痛'},
@@ -128,15 +128,15 @@ const ITEMS={
   axe:{n:'狂戰斧',c:1200,from:['sword','dagger'],atk:30,as:.2,cat:'atk',col:'#ff7a3d'},bow:{n:'速射弓',c:1150,from:['dagger','dagger'],atk:15,as:.4,cat:'atk',col:'#86dc4f'},
   blade:{n:'嗜血刀',c:1500,from:['sword','sword'],atk:45,ls:.18,cat:'atk',col:'#ff4a4a'},great:{n:'斬鐵大劍',c:2100,from:['sword','sword','sword'],atk:75,cat:'atk',col:'#e8e8f0'},
   hydra:{n:'破浪巨斧',c:2000,from:['sword','sword','ruby'],atk:40,ls:.1,hp:150,cat:'atk',col:'#ff9a3d',act:{k:'cleave',cd:10},d:'主動：橫掃身邊，周圍敵人都受傷'},
-  ghost:{n:'幽影之刃',c:1800,from:['sword','dagger','gem'],atk:40,cdr:.1,cat:'atk',col:'#7a6aa8',act:{k:'haste',cd:45},d:'主動：5 秒內跑更快、攻擊更快'},
+  ghost:{n:'幽影之刃',c:1800,from:['sword','dagger','gem'],atk:40,cdr:.1,mp:200,cat:'atk',col:'#7a6aa8',act:{k:'haste',cd:45},d:'主動：5 秒內跑更快、攻擊更快'},
   qss:{n:'淨化彎刀',c:1900,from:['sword','cloth'],atk:35,arm:20,cat:'atk',col:'#c8f0ff',act:{k:'qss',cd:60},d:'主動：解除暈眩、緩速、虛弱、點燃（暈眩時也能用）'},
   // 法術
-  staff:{n:'大法杖',c:1800,from:['tome','tome'],sp:.4,cat:'mag',col:'#c56bff'},crown:{n:'智慧之冠',c:1500,from:['tome','gem'],sp:.25,hp:150,cdr:.15,cat:'mag',col:'#ffd23f'},
+  staff:{n:'大法杖',c:1800,from:['tome','tome'],sp:.4,cat:'mag',col:'#c56bff'},crown:{n:'智慧之冠',c:1500,from:['tome','gem'],sp:.25,hp:150,cdr:.15,mp:350,cat:'mag',col:'#ffd23f'},
   hourglass:{n:'時光沙漏',c:2000,from:['tome','cloth','cloth'],sp:.3,arm:30,cat:'mag',col:'#ffcf6a',act:{k:'stasis',cd:90},d:'主動：變成金身 2.5 秒，不會受傷但也不能動'},
   gun:{n:'電漿槍刃',c:2200,from:['sword','tome'],atk:30,sp:.25,ls:.1,cat:'mag',col:'#ff6ad0',act:{k:'gun',cd:40},d:'主動：電擊附近一個敵方英雄並讓他變慢'},
   // 防禦
-  plate:{n:'守護戰甲',c:1600,from:['ruby','cloth'],arm:45,hp:400,cat:'def',col:'#7aa8ff'},amulet:{n:'聖光吊墜',c:1300,from:['ruby','gem'],hp:400,arm:15,heal:.3,cat:'def',col:'#fff0a0'},
-  locket:{n:'守護聖匣',c:1800,from:['ruby','cloth','gem'],hp:250,arm:20,cdr:.1,cat:'def',col:'#ffe0a0',act:{k:'locket',cd:60},d:'主動：身邊隊友都得到護盾'},
+  plate:{n:'守護戰甲',c:1600,from:['ruby','cloth'],arm:45,hp:400,cat:'def',col:'#7aa8ff'},amulet:{n:'聖光吊墜',c:1300,from:['ruby','gem'],hp:400,arm:15,heal:.3,mp:250,cat:'def',col:'#fff0a0'},
+  locket:{n:'守護聖匣',c:1800,from:['ruby','cloth','gem'],hp:250,arm:20,cdr:.1,mp:200,cat:'def',col:'#ffe0a0',act:{k:'locket',cd:60},d:'主動：身邊隊友都得到護盾'},
   randuin:{n:'蠻王之盾',c:2300,from:['ruby','cloth','cloth'],hp:350,arm:50,cat:'def',col:'#8a7a6a',act:{k:'slowaura',cd:60},d:'主動：身邊的敵人全部變慢'}};
 // 眼（第 7 格，免費、二選一）
 const TRINK={g:{n:'綠眼',col:'#5fff7a',cd:45,s:'插在地上 90 秒，看見暗處和草叢',d:'插在地上 90 秒，看得到周圍和草叢裡的敵人（最多 3 個）'},r:{n:'紅眼',col:'#ff5a5a',cd:60,s:'掃描身邊，找出敵人的綠眼來清掉',d:'8 秒內掃描身邊，找出敵人的綠眼，點三下就能清掉'}};
