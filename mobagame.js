@@ -55,7 +55,7 @@ function create(env,opts){
     for(const b of h.buffs){ o.as+=(b.as||0)*C.as; o.spd+=(b.spd||0)*C.spd; o.dmg+=b.dmg||0; o.arm+=b.arm||0; }
     const tb=teamBuff[h.team]; if(tb.dmg>0) o.dmg+=.2; if(tb.reg>0) o.spd*=1.1;
     if(h.slow>0) o.spd*=.6; if(h.weak>0){ o.dmg-=.4; o.as*=.8; } o.as=Math.min(2.6,o.as); return o; }
-  function mkHero(s,i){ const d=HEROES[s.hero],h={id:i+1,k:'h',slot:i,team:s.team,def:d,name:s.name,human:s.human>=0,me:i===mySlot,role:s.role,lvl:1,xp:0,gold:mode?600:500,items:[],sk:[0,0,0,0],pots:0,potT:0,icd:{},tk:s.human<0&&(s.role==='sup'||s.role==='jg')?'r':'g',tcd:0,lens:0,stasis:0,revT:0,x:map.fount[s.team][0],z:map.fount[s.team][1],face:s.team?PI*.75:-PI/4,hp:1,max:1,r:.7,dead:false,rsp:0,cd:[0,0,0,0],atkCd:0,atkT:0,atkDur:.35,castT:0,shield:0,shT:0,stun:0,slow:0,buffs:[],recall:0,sp:(s.sp||['flash','heal']).slice(),spCd:[0,0],kc:0,dc:0,ac:0,streak:0,hits:{},force:0,dash:null,auto:true,mx:0,mz:0,wantAtk:false,q:[],ai:{t:0,mode:null,tgt:null,goal:null,path:null,pg:null}};
+  function mkHero(s,i){ const d=HEROES[s.hero],h={id:i+1,k:'h',slot:i,team:s.team,def:d,name:s.name,human:s.human>=0,me:i===mySlot,role:s.role,lvl:mode?3:1,xp:0,gold:mode?600:500,items:[],sk:[0,0,0,0],pots:0,potT:0,icd:{},tk:s.human<0&&(s.role==='sup'||s.role==='jg')?'r':'g',tcd:0,lens:0,stasis:0,revT:0,x:map.fount[s.team][0],z:map.fount[s.team][1],face:s.team?PI*.75:-PI/4,hp:1,max:1,r:.7,dead:false,rsp:0,cd:[0,0,0,0],atkCd:0,atkT:0,atkDur:.35,castT:0,shield:0,shT:0,stun:0,slow:0,buffs:[],recall:0,sp:(s.sp||['flash','heal']).slice(),spCd:[0,0],kc:0,dc:0,ac:0,streak:0,hits:{},force:0,dash:null,auto:true,mx:0,mz:0,wantAtk:false,q:[],ai:{t:0,mode:null,tgt:null,goal:null,path:null,pg:null}};
     h.max=h.hp=stats(h).hp; h.mpMax=h.mp=stats(h).mp; if(s.role==='jg'&&mode===0) h.build=['jg'].concat(BUILD[d.cls].slice(0,5)); else h.build=BUILD[d.cls].slice(); return h; }
   const isEnemy=(a,b)=>b.team!==a.team;
   const alive=u=>u&&!u.dead&&u.hp>0;
@@ -102,7 +102,7 @@ function create(env,opts){
     else if(u.k==='c'){ winner=1-u.team; emit(['boom',+u.x.toFixed(1),+u.z.toFixed(1),8,'#ffffff']); emit(['sfx','boom']); } }
   const TEAMN=tm=>['藍方','紅方','野怪'][tm];
   function invUpdate(){ towers.forEach(tw=>{ if(tw.tier===1) tw.inv=towers.some(o=>o.team===tw.team&&o.lane===tw.lane&&o.tier===0&&o.hp>0); else tw.inv=false; });
-    cores.forEach(co=>{ co.inv=towers.filter(o=>o.team===co.team&&o.tier===1&&o.hp<=0).length<(mode===0?2:1); }); }
+    cores.forEach(co=>{ co.inv=towers.filter(o=>o.team===co.team&&o.tier===1&&o.hp<=0).length<1; }); }
   invUpdate();
   /* ---------- 投射物 ---------- */
   function homing(src,tgt,amt,o,col,size,spd){ const id=vpId++; projs.push({id,src,tgt,amt,o,spd:spd||24,x:src.x,y:src.k==='t'?6.8:src.k==='c'?4.6:1.3,z:src.z}); emit(['P',id,+src.x.toFixed(1),src.k==='t'?6.8:src.k==='c'?4.6:1.3,+src.z.toFixed(1),tgt.id,spd||24,col,size||1]); }
@@ -200,12 +200,12 @@ function create(env,opts){
       case 'cleanse': h.stun=0; h.slow=0; h.weak=0; emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),.9,'#ff9ec8',.6]); break; }
     h.spCd[j]=S0.cd; if(h.me) emit(['sfx','boost']); return true; }
   // 合成：身上有的材料會折抵價錢（參考英雄聯盟）
-  const canShop=h=>!!h&&(h.dead||Math.hypot(h.x-map.fount[h.team][0],h.z-map.fount[h.team][1])<12);
+  const canShop=h=>!!h&&(h.dead||mode===0&&Math.hypot(h.x-map.fount[h.team][0],h.z-map.fount[h.team][1])<12);
   function priceFor(h,id){ const it=ITEMS[id],inv=h.items.slice(),used=[]; let cost=it.c; for(const f of it.from||[]){ const k=inv.indexOf(f); if(k>=0){ inv.splice(k,1); used.push(f); cost-=ITEMS[f].c; } }
     const slots=it.cons&&h.items.includes(id)?h.items.length:h.items.length-used.length+1; return {cost,used,slotsOk:slots<=6}; }
   function planBuy(h){ const pool=h.items.filter(x=>x!=='pot'); let target=null; for(const b of h.build){ const k=pool.indexOf(b); if(k>=0) pool.splice(k,1); else { target=b; break; } } if(!target) return null;
     const P0=priceFor(h,target); if(h.gold>=P0.cost&&P0.slotsOk) return target; const have=pool.slice(); for(const f of ITEMS[target].from||[]){ const k=have.indexOf(f); if(k>=0) have.splice(k,1); else return f; } return target; }
-  function buyItem(h,id,manual){ const it=ITEMS[id]; if(!it) return false; const say=(m,c2)=>{ if(h.me&&manual) floatMsg(m,c2||'#ffb0b0'); }; if(!canShop(h)){ say('要回城（回到泉水）才能買裝備'); return false; }
+  function buyItem(h,id,manual){ const it=ITEMS[id]; if(!it) return false; const say=(m,c2)=>{ if(h.me&&manual) floatMsg(m,c2||'#ffb0b0'); }; if(!canShop(h)){ say(mode?'單路激戰要陣亡時才能買裝備':'要回城（回到泉水）才能買裝備'); return false; }
     if(id==='pot'&&(h.pots||0)>=5){ say('藥水最多帶 5 瓶'); return false; }
     const P0=priceFor(h,id); if(!P0.slotsOk){ say('裝備格滿了，先賣掉一件'); return false; } if(h.gold<P0.cost){ say('金幣不夠'); return false; }
     h.gold-=P0.cost; if(id==='pot'){ if(!h.items.includes('pot')) h.items.push('pot'); h.pots=(h.pots||0)+1; } else { P0.used.forEach(f=>h.items.splice(h.items.indexOf(f),1)); h.items.push(id); }
@@ -272,7 +272,7 @@ function create(env,opts){
       if(/^s[0-3]$/.test(k)){ const i=+k[1]; if(!cast(h,i,aim)&&h.me) floatMsg(h.cd[i]>0?'還在冷卻':h.mp<skCost(h,i)?'魔力不夠（回城回魔最快）':!unlocked(h,i)?(i===3&&h.lvl<6?'6 等才能學大招':'還沒學這招，點技能上的 ＋'):'附近沒有目標','#ffb0b0'); }
       else if(k==='d'||k==='f'){ const j=k==='d'?0:1; if(!castSpell(h,j,aim)&&h.me) floatMsg(h.spCd[j]>0?'還在冷卻':h.sp[j]==='smite'?'附近沒有野怪或小兵':h.sp[j]==='exhaust'||h.sp[j]==='ignite'?'附近沒有敵方英雄':'現在不能用','#ffb0b0'); }
       else if(k==='lv') lvSkill(h,a.i|0);
-      else if(k==='rc'&&mode===1){ if(h.me) floatMsg('單路激戰不能回城，陣亡後才會補滿生命和魔力','#ffb0b0',2); }
+      else if(k==='rc'&&mode===1){ if(h.me) floatMsg('單路激戰不能回城','#ffb0b0',2); }
       else if(k==='rc'){ if(!h.recall){ h.recall=3.5; emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),1.5,'#9ad8ff',.6]); } } else if(k==='buy') buyNext(h,true); else if(k==='auto') h.auto=!h.auto;
       else if(k==='it') useItem(h,a.i|0,aim); else if(k==='tku') useItem(h,6,aim);
       else if(k==='pot'){ const i=h.items.indexOf('pot'); if(i>=0) useItem(h,i); else if(h.me) floatMsg('沒有藥水，去商店買','#ffb0b0'); }
@@ -542,7 +542,7 @@ function create(env,opts){
     const big=a.s!=='擊殺'&&a.s!=='陣亡',fs=big?(TOUCH?24:30):(TOUCH?18:22); c.font='900 '+fs+'px '+TC; const tg=c.createLinearGradient(0,-pr/2-8-fs,0,-pr/2-8); tg.addColorStop(0,'#fff6cf'); tg.addColorStop(1,big?'#ffb83a':shadeHex(col,1.4)); c.lineWidth=5; c.strokeStyle='rgba(0,0,0,.8)'; c.strokeText(a.s,0,-pr/2-8-fs/2); c.fillStyle=tg; c.fillText(a.s,0,-pr/2-8-fs/2);
     c.restore(); }
   let shopOpen=false,shopTab=0,shopSel=null,shopSlot=-1;
-  function toggleShop(){ sfx('click'); if(shopOpen){ shopOpen=false; return; } if(!canShop(myHero())){ floatMsg('要回城（按 '+(TOUCH?'回城':'B')+'）回到泉水才能開商店','#ffb0b0',2); return; } shopOpen=true; }
+  function toggleShop(){ sfx('click'); if(shopOpen){ shopOpen=false; return; } if(!canShop(myHero())){ floatMsg(mode?'單路激戰要陣亡時才能開商店':'要回城（按 '+(TOUCH?'回城':'B')+'）回到泉水才能開商店','#ffb0b0',2); return; } shopOpen=true; }
   const SHOP_TABS=[['rec','推薦'],['atk','攻擊'],['mag','法術'],['def','防禦'],['misc','鞋子・藥水']],SP0={x:110,y:46,w:740,h:452};
   const inShop=(x,y)=>x>=SP0.x&&x<=SP0.x+SP0.w&&y>=SP0.y&&y<=SP0.y+SP0.h;
   function shopList(){ const mh=myHero(),tb=SHOP_TABS[shopTab][0]; if(tb==='rec'){ const o=[]; for(const b of mh.build){ for(const f of ITEMS[b].from||[]) if(!o.includes(f)) o.push(f); if(!o.includes(b)) o.push(b); } if(!o.includes('pot')) o.push('pot'); return o; }
@@ -610,9 +610,9 @@ function create(env,opts){
     // 買裝備（建議的下一件）＋自動
     const L=HL(),nxt=planBuy(mh),it=nxt&&ITEMS[nxt],pc=nxt?priceFor(mh,nxt).cost:0,can=it&&mh.gold>=pc&&canShop(mh),[qx,qy,qw,qh]=L.buy;
     c.fillStyle=can?'rgba(255,210,63,.95)':'rgba(10,10,24,.8)'; rr(c,qx,qy,qw,qh,10); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=1.5; c.stroke();
-    c.fillStyle=can?'#14122b':'#fff'; c.textAlign='left'; c.textBaseline='middle'; c.font='900 13px '+TC; if(TOUCH){ const away=!canShop(mh); c.fillText(it?'買 '+it.n:'裝備已滿',qx+10,qy+14); c.font='700 10px '+TC; c.fillText(it?'● '+pc+(away?'　回城才能買':''):'',qx+10,qy+31); } else c.fillText(it?'買 '+it.n+'　● '+pc:'裝備已滿',qx+10,qy+qh/2+1);
+    c.fillStyle=can?'#14122b':'#fff'; c.textAlign='left'; c.textBaseline='middle'; c.font='900 13px '+TC; if(TOUCH){ const away=!canShop(mh); c.fillText(it?'買 '+it.n:'裝備已滿',qx+10,qy+14); c.font='700 10px '+TC; c.fillText(it?'● '+pc+(away?(mode?'　陣亡才能買':'　回城才能買'):''):'',qx+10,qy+31); } else c.fillText(it?'買 '+it.n+'　● '+pc:'裝備已滿',qx+10,qy+qh/2+1);
     const [ax2,ay2,aw2,ah2]=L.auto; c.fillStyle=mh.auto?'#5fd068':'rgba(10,10,24,.8)'; rr(c,ax2,ay2,aw2,ah2,10); c.fill(); c.fillStyle=mh.auto?'#0b2a10':'#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText(TOUCH?'自動':'自動買',ax2+aw2/2,ay2+ah2/2-(TOUCH?7:0)); if(TOUCH) c.fillText(mh.auto?'開':'關',ax2+aw2/2,ay2+ah2/2+8);
-    { const [sx2,sy2,sw2,sh2]=L.shop; c.fillStyle=shopOpen?'#ffd23f':'rgba(10,10,24,.8)'; rr(c,sx2,sy2,sw2,sh2,10); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=1.5; c.stroke(); c.fillStyle=shopOpen?'#14122b':'#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText(canShop(mh)?(TOUCH?'商店（裝備・藥水・眼）':'商店 (P)'):(TOUCH?'商店（回城才能開）':'回城才能開'),sx2+sw2/2,sy2+sh2/2+1); }
+    { const [sx2,sy2,sw2,sh2]=L.shop; c.fillStyle=shopOpen?'#ffd23f':'rgba(10,10,24,.8)'; rr(c,sx2,sy2,sw2,sh2,10); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=1.5; c.stroke(); c.fillStyle=shopOpen?'#14122b':'#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText(canShop(mh)?(TOUCH?'商店（裝備・藥水・眼）':'商店 (P)'):(TOUCH?(mode?'商店（陣亡才能開）':'商店（回城才能開）'):(mode?'陣亡才能開':'回城才能開')),sx2+sw2/2,sy2+sh2/2+1); }
     if(!TOUCH){ /* ===== 電腦版：英雄聯盟式的下方技能列 ===== */
       const P=deskPanel(),x0=P.x0,y0=P.y0; c.fillStyle='rgba(12,14,26,.88)'; rr(c,x0,y0,532,86,14); c.fill(); c.strokeStyle='rgba(200,170,90,.7)'; c.lineWidth=2; c.stroke();
       portrait(c,x0+46,y0+40,64,mh.def); c.fillStyle='#14122b'; c.beginPath(); c.arc(x0+76,y0+70,11,0,TAU); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=1.5; c.stroke(); c.fillStyle='#ffd23f'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText(mh.lvl,x0+76,y0+70.5);
@@ -699,8 +699,8 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦強度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
   optNote:()=>'連線時真人輪流分到兩隊，不夠的位置由電腦補上。',
-  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','不能回城，陣亡後才會補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）']],
-  touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','不能回城，陣亡後才會補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你']],
+  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）']],
+  touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你']],
   touch:{left:[],right:[]},
   best:{label:'勝場',fmt:v=>v+' 勝',lower:false},
   ready:()=>!!window.THREE,load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); },
