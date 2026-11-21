@@ -49,7 +49,7 @@ function create(env,opts){
   const byId=id=>{ if(id>=5000) return wards.find(w=>w.id===id); if(id<100) return heroes[id-1]; if(id<200) return towers.find(q=>q.id===id); if(id<300) return cores[id-200]; if(id<1000) return mons[id-300]; return minions.find(q=>q.id===id); };
   /* ---------- 英雄數值 ---------- */
   // 魔力：放技能才會用掉，沒魔力就不能放；平常慢慢回，回到泉水回最快
-  const MPB={tank:[300,40],fighter:[280,38],assassin:[300,40],mage:[420,55],marksman:[330,42],support:[400,50]},SKC=[40,50,60,100],skCost=(h,i)=>SKC[i]+Math.max(0,h.sk[i]-1)*(i===3?20:8);
+  const MPB={tank:[300,40],fighter:[280,38],assassin:[300,40],mage:[420,55],marksman:[330,42],support:[400,50]},SKC=[40,50,60,100],skCost=(h,i)=>h.def.sk[i].t==='aura'?0:SKC[i]+Math.max(0,h.sk[i]-1)*(i===3?20:8);
   function stats(h){ const C=CLS[h.def.cls],l=h.lvl-1,o={mp:MPB[h.def.cls][0]+MPB[h.def.cls][1]*l,atk:C.atk+C.atkL*l,as:C.as+(h.def.cls==='marksman'?.02*l:.01*l),arm:C.arm+C.armL*l,hp:C.hp+C.hpL*l,spd:C.spd,sp:0,cdr:0,ls:0,heal:0,dmg:0,jg:0,rng:C.rng,mr:C.mr+C.mrL*l,crit:0,critd:0,pen:0,mpen:0,ten:0,rg:0,hin:0,gw:0,thorn:0,ga:0,ss:0,wm:0,sb:null};
     for(const id of h.items){ const it=ITEMS[id]; o.atk+=it.atk||0; o.as+=(it.as||0)*C.as; o.arm+=it.arm||0; o.hp+=it.hp||0; o.spd+=(it.spd||0)*C.spd; o.sp+=it.sp||0; o.cdr+=it.cdr||0; o.ls+=it.ls||0; o.heal+=it.heal||0; o.mp+=it.mp||0; if(it.jg) o.jg=1; o.mr+=it.mr||0; o.crit+=it.crit||0; o.critd+=it.critd||0; o.pen=Math.max(o.pen,it.pen||0); o.mpen+=it.mpen||0; o.ten+=it.ten||0; o.rg+=it.rg||0; o.hin+=it.hin||0;
       if(it.gw) o.gw=1; if(it.thorn) o.thorn=1; if(it.ga) o.ga=1; if(it.ss) o.ss=1; if(it.wm) o.wm=1; if(it.sb&&(!o.sb||it.sb.a+(it.sb.m||0)/60>o.sb.a+(o.sb.m||0)/60)) o.sb=it.sb; }
@@ -69,7 +69,7 @@ function create(env,opts){
     for(const o of map.obst){ const ddx=nx-o.x,ddz=nz-o.z,d=Math.hypot(ddx,ddz),m=o.r+u.r*.6; if(d<m&&d>0){ nx=o.x+ddx/d*m; nz=o.z+ddz/d*m; } }
     for(const s of towers.concat(cores)){ if(s.hp<=0) continue; const ddx=nx-s.x,ddz=nz-s.z,d=Math.hypot(ddx,ddz),m=s.r+u.r*.5; if(d<m&&d>0){ nx=s.x+ddx/d*m; nz=s.z+ddz/d*m; } }
     return map.inB(nx,nz); }
-  function moveUnit(u,dx,dz,spd,dt){ const l=Math.hypot(dx,dz); if(l<.01) return; const ux=dx/l,uz=dz/l,st=spd*dt; let [nx,nz]=tryMove(u,ux,uz,st);
+  function moveUnit(u,dx,dz,spd,dt){ if(u.rt>0) return; const l=Math.hypot(dx,dz); if(l<.01) return; const ux=dx/l,uz=dz/l,st=spd*dt; let [nx,nz]=tryMove(u,ux,uz,st);
     if(Math.hypot(nx-u.x,nz-u.z)<st*.35){ // 卡住了：往左或右偏一點繞過去
       for(const a of [.9,-.9,1.5,-1.5]){ const c2=Math.cos(a),s2=Math.sin(a),vx=ux*c2-uz*s2,vz=ux*s2+uz*c2,[px,pz]=tryMove(u,vx,vz,st); if(Math.hypot(px-u.x,pz-u.z)>st*.5){ nx=px; nz=pz; break; } } }
     u.x=nx; u.z=nz; u.face=Math.atan2(dz,dx); }
@@ -84,10 +84,12 @@ function create(env,opts){
       if(sv&&sv<3&&tgt.k==='h'&&Tm>=(src.supHT||0)){ src.supHT=Tm+6; src.gold+=10; supGain(src,10); }
       if(tgt.k==='h'&&!o.pet&&petOf(src)==='f'&&jgStage(src)>=3&&Tm>=(src.fireT||0)){ src.fireT=Tm+4; emit(['burst',+tgt.x.toFixed(1),1.4,+tgt.z.toFixed(1),'#ff6a1a',8,3]); dmg(src,tgt,20+src.lvl*6,{tru:1,pet:1}); if(!alive(tgt)) return 0; } }
     if(o.skill&&!o.refl&&SS&&tgt.k==='h'){ if(tgt.ssB===Tm) return 0; if(Tm>=(tgt.ssT||0)&&stats(tgt).ss){ tgt.ssT=Tm+40; tgt.ssB=Tm; tgt.icd.banshee=40; emit(['ring',+tgt.x.toFixed(1),+tgt.z.toFixed(1),1.4,'#7ab0ff',.5]); if(tgt.me) floatMsg('法術護盾擋下了技能','#9ac8ff',1.2); return 0; } }
+    if(o.skill&&tgt.curseT>Tm) amt*=1.1; if(SS&&o.skill&&tgt.k==='h'&&src.def.ps&&src.def.ps.k==='curse') tgt.curseT=Tm+3;
     if(SS){ amt*=1+SS.dmg; if(!src.human) amt*=LV.dm; if(tgt.k==='j'&&SS.jg) amt*=1.3; if(SS.gw&&tgt.k==='h'&&!o.refl) tgt.gwT=Tm+3; }
     if(!o.tru){ let res=o.skill?mrOf(tgt):armorOf(tgt); if(SS) res*=1-(o.skill?SS.mpen:SS.pen); amt*=100/(100+Math.max(0,res)); }
     if(tgt.shield>0){ const a=Math.min(tgt.shield,amt); tgt.shield-=a; amt-=a; } tgt.hp-=amt;
-    if(tgt.k==='h'){ tgt.recall=0; tgt.ldT=Tm; if(src&&src.k==='h'){ tgt.hits[src.id]=Tm; src.hitHeroT=Tm; } tgt.lastHitBy=src; if(o.basic&&src&&src.k==='h'&&!src.dead){ const T=stats(tgt); if(T.thorn){ src.gwT=Tm+3; dmg(tgt,src,10+T.arm*.12,{skill:1,refl:1}); } } }
+    if(tgt.k==='h'){ tgt.recall=0; tgt.ldT=Tm; if(tgt.def.ps&&tgt.def.ps.k==='mshield'&&tgt.hp>0&&tgt.hp<tgt.max*.2&&Tm>=(tgt.psT||0)){ tgt.psT=Tm+90; tgt.shield=Math.max(tgt.shield,tgt.mp*.3); tgt.shT=8; emit(['ring',+tgt.x.toFixed(1),+tgt.z.toFixed(1),1.5,'#ffe066',.8]); if(tgt.me) floatMsg('魔力屏障！','#ffe066',1.2); }
+      if(o.basic){ const hi=tgt.def.sk.findIndex(q=>q.hr); if(hi>=0) tgt.cd[hi]=Math.max(0,tgt.cd[hi]-.5); } if(src&&src.k==='h'){ tgt.hits[src.id]=Tm; src.hitHeroT=Tm; } tgt.lastHitBy=src; if(o.basic&&src&&src.k==='h'&&!src.dead){ const T=stats(tgt); if(T.thorn){ src.gwT=Tm+3; dmg(tgt,src,10+T.arm*.12,{skill:1,refl:1}); } } }
     if(tgt.k==='j'&&src&&!tgt.tgt) tgt.tgt=src; if(tgt.k==='j'&&src&&src.k==='h') tgt.tgt=src;
     if(src&&src.k==='h'&&o.basic){ const S=stats(src); if(S.ls>0) src.hp=Math.min(src.max,src.hp+amt*S.ls*(src.gwT>Tm?.6:1)*(1+S.hin)); }
     if(amt>=1&&(tgt.k==='h'||src&&src.k==='h')) emit(['dn',+tgt.x.toFixed(1),+tgt.z.toFixed(1),o.crit?Math.round(amt)+'!':Math.round(amt),o.crit?'#ff9a1a':o.tru?'#ffffff':o.skill?'#c8a0ff':tgt.k==='h'?'#ff6a5a':'#ffe8a0',tgt.id,src?src.id:0]);
@@ -124,22 +126,24 @@ function create(env,opts){
           if(p.trav>=p.len){ if(o.boom&&!p.back&&alive(h)){ p.back=1; p.ang=Math.atan2(h.z-p.z,h.x-p.x); p.len=Math.hypot(h.x-p.x,h.z-p.z); p.trav=0; p.hs.clear(); emit(['QX',p.id]); emit(['Q',p.id,+p.x.toFixed(1),+p.z.toFixed(1),+p.ang.toFixed(3),+p.len.toFixed(1),p.spd,o.col,p.size]); } else projs.splice(i,1); } continue; }
         let hit=null; for(const u of enemiesOf(h.team)){ if(dist(u,p)<u.r+.8){ hit=u; break; } }
         if(hit){ emit(['QX',p.id]);
+          if(o.grap&&alive(h)&&hit.k!=='t'&&hit.k!=='c'){ const a2=Math.atan2(hit.z-h.z,hit.x-h.x),[nx,nz]=map.inB(hit.x-Math.cos(a2)*1.2,hit.z-Math.sin(a2)*1.2); emit(['line',+h.x.toFixed(1),+h.z.toFixed(1),+a2.toFixed(3),0,+dist(h,hit).toFixed(1),.4,o.col]); h.dash={x:nx,z:nz}; }
           if(o.hook&&hit.k!=='t'&&hit.k!=='c'&&alive(h)){ const a2=Math.atan2(hit.z-h.z,hit.x-h.x),[nx,nz]=map.inB(h.x+Math.cos(a2)*1.6,h.z+Math.sin(a2)*1.6); emit(['line',+h.x.toFixed(1),+h.z.toFixed(1),+a2.toFixed(3),0,+dist(h,hit).toFixed(1),.5,o.col]); if(hit.k==='h'){ hit.dash={x:nx,z:nz}; hit.recall=0; } else { hit.x=nx; hit.z=nz; } }
           if(o.a){ areaHit(h,hit.x,hit.z,o.a,p.amt,o,o.col); emit(['boom',+hit.x.toFixed(1),+hit.z.toFixed(1),o.a,o.col]); }
           else { const got=dmg(h,hit,p.amt,o); if(o.dr&&got>0) heal(h,got*o.dr); ccHit(hit,o,ox,oz); emit(['hit',+hit.x.toFixed(1),+hit.z.toFixed(1),o.col]); }
           projs.splice(i,1); continue; } if(p.trav>=p.len) projs.splice(i,1); continue; }
       if(!alive(p.tgt)){ projs.splice(i,1); continue; } const dx=p.tgt.x-p.x,dz=p.tgt.z-p.z,d=Math.hypot(dx,dz),st=p.spd*dt; if(d<=st+.4){ dmg(p.src,p.tgt,p.amt,p.o); if(p.o.cc) applyCC(p.tgt,p.o.cc); projs.splice(i,1); continue; } p.x+=dx/d*st; p.z+=dz/d*st; } }
   const enemiesOf=function*(tm){ for(const h of heroes) if(h.team!==tm&&alive(h)) yield h; for(const m of minions) if(m.team!==tm&&alive(m)) yield m; for(const m of mons) if(alive(m)) yield m; };
-  function applyCC(u,o){ if(!o||!alive(u)||u.ssB===Tm||u.stasis>0) return; const t=u.k==='h'?Math.min(.6,stats(u).ten):0; if(o.st){ u.stun=Math.max(u.stun||0,o.st*(1-t)); u.recall=0; } if(o.sl) u.slow=Math.max(u.slow||0,o.sl*(1-t));
+  function applyCC(u,o){ if(!o||!alive(u)||u.ssB===Tm||u.stasis>0||u.usT>Tm) return; const t=u.k==='h'?Math.min(.6,stats(u).ten):0;
+    if(o.sil&&u.k==='h'){ u.sil=Math.max(u.sil||0,o.sil*(1-t)); emit(['dn',+u.x.toFixed(1),+u.z.toFixed(1),'沉默','#d8a8ff',u.id,0]); } if(o.rt){ u.rt=Math.max(u.rt||0,o.rt*(1-t)); emit(['ring',+u.x.toFixed(1),+u.z.toFixed(1),1,'#8ad060',o.rt*(1-t)]); if(u.k==='h') emit(['dn',+u.x.toFixed(1),+u.z.toFixed(1),'定身','#a8f080',u.id,0]); } if(o.wk) u.weak=Math.max(u.weak||0,o.wk*(1-t)); if(o.st){ u.stun=Math.max(u.stun||0,o.st*(1-t)); u.recall=0; } if(o.sl) u.slow=Math.max(u.slow||0,o.sl*(1-t));
     if(o.ku&&u.k!=='t'&&u.k!=='c'){ u.stun=Math.max(u.stun||0,o.ku); u.air=Math.max(u.air||0,o.ku); u.recall=0; if(u.k==='h') u.dash=null; } }
   // 擊退（d>0 往外推）、吸過來（d<0 拉到中心）
-  function knock(u,ox,oz,d){ if(!alive(u)||u.k==='t'||u.k==='c'||u.k==='w'||u.stasis>0||u.ssB===Tm) return; let dx=u.x-ox,dz=u.z-oz,l=Math.hypot(dx,dz); if(l<.05){ dx=1; dz=0; l=1; } const k=d>0?d:Math.max(0,l-1.2)*-1;
+  function knock(u,ox,oz,d){ if(u.usT>Tm||!alive(u)||u.k==='t'||u.k==='c'||u.k==='w'||u.stasis>0||u.ssB===Tm) return; let dx=u.x-ox,dz=u.z-oz,l=Math.hypot(dx,dz); if(l<.05){ dx=1; dz=0; l=1; } const k=d>0?d:Math.max(0,l-1.2)*-1;
     let [nx,nz]=map.inB(u.x+dx/l*k,u.z+dz/l*k); if(u.k==='h'){ u.dash={x:nx,z:nz}; u.recall=0; } else { u.x=nx; u.z=nz; } }
   function ccHit(u,cc,ox,oz){ applyCC(u,cc); if(cc&&cc.kb) knock(u,ox,oz,cc.kb); if(cc&&cc.pl) knock(u,ox,oz,-1); }
   /* ---------- 小兵 ---------- */
   function spawnWave(){ waveN++; const sc=1+Tm/60*.05; map.lanes.forEach((L,li)=>{ for(let tm=0;tm<2;tm++){ const comp=['melee','melee','melee','ranged','ranged']; if(waveN%3===0||Tm>900) comp.push('cannon'); if(Tm>600) comp.push('melee'); const lost=towers.filter(q=>q.team!==tm&&q.lane===li&&q.tier===1&&q.hp<=0).length; if(lost) comp.push('cannon'); comp.forEach((mt,k)=>{ const S=MIN[mt],s0=tm?L.len-3-k*1.6:3+k*1.6,p=along(L,s0);
         minions.push({id:minId++,k:'m',mt,big:mt==='cannon',team:tm,lane:li,x:p[0]+(k%2?.6:-.6),z:p[1]+(k%2?-.6:.6),hp:S.hp*sc,max:S.hp*sc,atk:S.atk*(1+Tm/60*.04),as:S.as,rng:S.rng,arm:S.arm,spd:S.spd,r:S.r,cd:0,tgt:null,face:0,atkT:0,s:s0,think:0}); }); } }); }
-  function minionTick(m,dt){ if(m.air>0) m.air-=dt; const L=map.lanes[m.lane]; m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt; m.think-=dt;
+  function minionTick(m,dt){ if(m.air>0) m.air-=dt; if(m.rt>0) m.rt-=dt; const L=map.lanes[m.lane]; m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt; m.think-=dt;
     if(m.think<=0){ m.think=.3; if(!(alive(m.tgt)&&dist(m,m.tgt)<9&&!(m.tgt.inv))){ m.tgt=null; let best=null,bd=8; for(const o of minions) if(o.team!==m.team&&alive(o)){ const d=dist(m,o); if(d<bd){ bd=d; best=o; } }
         if(!best) for(const s of towers.concat(cores)) if(s.team!==m.team&&s.hp>0&&!s.inv&&dist(m,s)<9){ best=s; break; }
         if(!best){ let hd=6; for(const h of heroes) if(h.team!==m.team&&alive(h)&&dist(m,h)<hd&&seen(h,m.team)){ hd=dist(m,h); best=h; } } m.tgt=best; } }
@@ -159,7 +163,7 @@ function create(env,opts){
       const hot=tg.k==='h'?Math.min(6,s.hits-1):0; homing(s,tg,a,{tru:tg.k==='m'},hot>=2?(hot>=4?'#ff3a2a':'#ff9a3d'):TEAMC[s.team],2.2+hot*.35,26); } }
   /* ---------- 野怪 ---------- */
   function spawnMon(m){ const sc=1+Tm/60*.05; m.dead=false; m.hp=m.max=(m.big?4200:900)*sc; m.atk=(m.big?75:30)*sc; m.as=m.big?.7:.8; m.rng=m.big?3.2:2; m.arm=m.big?35:15; m.spd=4; m.x=m.home[0]; m.z=m.home[1]; m.tgt=null; m.ret=false; emit(['ring',m.x,m.z,m.big?6:3,m.big?(m.kind?'#8affc8':'#c08aff'):'#ffd06a',.8]); }
-  function monTick(m,dt){ if(m.air>0) m.air-=dt; if(m.dead){ m.rsp-=dt; if(m.rsp<=0) spawnMon(m); return; } m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt;
+  function monTick(m,dt){ if(m.air>0) m.air-=dt; if(m.rt>0) m.rt-=dt; if(m.dead){ m.rsp-=dt; if(m.rsp<=0) spawnMon(m); return; } m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt;
     const hd=Math.hypot(m.x-m.home[0],m.z-m.home[1]);
     if(m.tgt&&(!alive(m.tgt)||hd>14||dist(m.tgt,{x:m.home[0],z:m.home[1]})>16)){ m.tgt=null; m.ret=true; }
     if(m.ret||!m.tgt){ if(hd>.5) moveUnit(m,m.home[0]-m.x,m.home[1]-m.z,m.spd*1.4,dt); else { m.ret=false; m.face=PI/2; } m.hp=Math.min(m.max,m.hp+m.max*(m.ret?.2:.05)*dt); return; }
@@ -173,6 +177,7 @@ function create(env,opts){
   function basicAttack(h,tg){ const S=stats(h); if(!alive(tg)) return false; const d=dist(h,tg)-(tg.r||.6); if(d>S.rng+.6) return false; h.face=Math.atan2(tg.z-h.z,tg.x-h.x); if(h.atkCd>0) return true;
     if(h.bi>=0) h.revT=Tm+1.5; h.atkCd=1/S.as; h.atkDur=Math.min(.35,.75/S.as); h.atkT=h.atkDur; h.recall=0; let a=S.atk; const bo={basic:1}; if(S.crit>0&&Math.random()<S.crit){ a*=1.75+S.critd; bo.crit=1; }
     if(S.sb&&h.sbT>Tm&&Tm>=(h.sbCd||0)&&tg.k!=='w'){ h.sbT=0; h.sbCd=Tm+1.5; const C=CLS[h.def.cls],base=C.atk+C.atkL*(h.lvl-1),b=base*S.sb.a+(S.sb.m||0)*(1+S.sp); if(S.sb.mag) dmg(h,tg,b,{skill:1}); else a+=b; emit(['ring',+tg.x.toFixed(1),+tg.z.toFixed(1),1.2,S.sb.mag?'#4ad0c0':'#a8e8ff',.35]); }
+    if(h.emp&&h.emp.t>Tm&&tg.k!=='w'){ const E=h.emp; h.emp=null; a+=E.d; emit(['ring',+tg.x.toFixed(1),+tg.z.toFixed(1),E.a||1.3,h.def.pal.fx,.4]); if(E.ku) applyCC(tg,{ku:E.ku}); if(E.a) for(const u of [...enemiesOf(h.team)]) if(u!==tg&&Math.hypot(u.x-tg.x,u.z-tg.z)<=E.a) dmg(h,u,E.d*.6,{skill:1}); }
     if(S.rng>3) homing(h,tg,a,bo,h.def.pal.fx,1.1,26); else { dmg(h,tg,a,bo); emit(['slash',+h.x.toFixed(1),+h.z.toFixed(1),1.5,+h.face.toFixed(2),h.def.pal.fx]); }
     if(h.me||tg.me) emit(['sfx','bump']); return true; }
   const ULT=[6,11,16],SKMAX=[5,5,5,3],unlocked=(h,i)=>h.sk[i]>0;
@@ -187,14 +192,18 @@ function create(env,opts){
     return best; }
   function areaHit(h,x,z,a,amt,cc,col){ let n=0,got=0; for(const u of [...enemiesOf(h.team)]) if(Math.hypot(u.x-x,u.z-z)<=a+u.r*.5){ got+=dmg(h,u,amt,{skill:1})||0; ccHit(u,cc,x,z); n++; }
     if(cc&&cc.dr&&got>0) heal(h,Math.min(got,amt*2)*cc.dr); if(cc&&(cc.ally||cc.hl)) heroes.filter(q=>q.team===h.team&&alive(q)&&Math.hypot(q.x-x,q.z-z)<=a+1).forEach(q=>{ if(cc.ally){ q.shield=Math.max(q.shield,amt*.6); q.shT=3; } if(cc.hl) heal(q,amt*.5); }); for(const s of towers.concat(cores)) if(s.team!==h.team&&s.hp>0&&!s.inv&&Math.hypot(s.x-x,s.z-z)<=a+s.r) dmg(h,s,amt*.4,{skill:1}); return n; }
-  function cast(h,i,aim){ if(h.dead||h.stun>0||h.dash||!unlocked(h,i)||h.cd[i]>0||h.mp<skCost(h,i)) return false; const s=h.def.sk[i],S=stats(h),pw=skPow(h,s,i),col=h.def.pal.fx,cc={st:s.st,sl:s.sl,ku:s.ku,kb:s.kb,pl:s.pl,dr:s.dr,ally:s.ally,hl:s.hl},R0=s.r||s.a||6;
+  function cast(h,i,aim){ if(h.dead||h.stun>0||h.dash||!unlocked(h,i)||h.cd[i]>0||h.mp<skCost(h,i)) return false; if(h.sil>0){ if(h.me) floatMsg('被沉默了，不能放技能','#d8a8ff',1); return false; } const s=h.def.sk[i],S=stats(h),pw=skPow(h,s,i),col=h.def.pal.fx,cc={st:s.st,sl:s.sl,ku:s.ku,kb:s.kb,pl:s.pl,dr:s.dr,ally:s.ally,hl:s.hl,sil:s.sil,rt:s.rt,wk:s.wk},R0=s.r||s.a||6;
+    if(h.rt>0&&['dash','charge','blink','grapple'].includes(s.t)){ if(h.me) floatMsg('被定身了，不能位移','#a8f080',1); return false; }
     const tg=skillTarget(h,s,aim); if(['strike','exec','chain'].includes(s.t)&&!tg) return false;
     let ang; if(aim&&(['shot','pierce','dash','blink','hook','boom','charge'].includes(s.t)||!tg)) ang=Math.atan2(aim.z-h.z,aim.x-h.x); else ang=tg?Math.atan2(tg.z-h.z,tg.x-h.x):h.face;
     const gp=aim?(()=>{ const dx=aim.x-h.x,dz=aim.z-h.z,d=Math.hypot(dx,dz)||1,k=Math.min(1,R0/d); return [h.x+dx*k,h.z+dz*k]; })():tg?[tg.x,tg.z]:[h.x+Math.cos(ang)*R0*.7,h.z+Math.sin(ang)*R0*.7];
     h.face=ang; h.recall=0; const sx=h.x,sz=h.z,ax=Math.cos(ang),az=Math.sin(ang);
     switch(s.t){
-      case 'dash': { const dd=aim?Math.min(R0,Math.hypot(aim.x-sx,aim.z-sz)):tg?Math.max(0,Math.min(R0,dist(h,tg)-1.2)):R0,[ex,ez]=map.inB(sx+ax*dd,sz+az*dd); if(s.ku||s.st) emit(['ring',+ex.toFixed(1),+ez.toFixed(1),s.a||2.2,col,.35,1]); h.dash={x:ex,z:ez,cb:()=>{ if(s.d) areaHit(h,h.x,h.z,s.a||2.2,pw,cc,col); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col,.45]); if(s.ku) emit(['boom',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col]); }}; break; }
+      case 'dash': { if(s.us) h.usT=Tm+(R0/28)+.15; const dd=aim?Math.min(R0,Math.hypot(aim.x-sx,aim.z-sz)):tg?Math.max(0,Math.min(R0,dist(h,tg)-1.2)):R0,[ex,ez]=map.inB(sx+ax*dd,sz+az*dd); if(s.ku||s.st) emit(['ring',+ex.toFixed(1),+ez.toFixed(1),s.a||2.2,col,.35,1]); h.dash={x:ex,z:ez,cb:()=>{ if(s.d) areaHit(h,h.x,h.z,s.a||2.2,pw,cc,col); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col,.45]); if(s.ku) emit(['boom',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col]); }}; break; }
       case 'charge': { const dd=aim?Math.min(R0,Math.max(2,Math.hypot(aim.x-sx,aim.z-sz))):R0,[ex,ez]=map.inB(sx+ax*dd,sz+az*dd),w=(s.w||2.2)/2; h.dash={x:ex,z:ez,cb:()=>{ const L=Math.hypot(h.x-sx,h.z-sz)+1; for(const u of [...enemiesOf(h.team)]){ const rx=u.x-sx,rz=u.z-sz,al=rx*ax+rz*az,sd=Math.abs(-rx*az+rz*ax); if(al>-.5&&al<L&&sd<w+u.r*.5){ dmg(h,u,pw,{skill:1}); ccHit(u,cc,sx+ax*al-az*.01,sz+az*al+ax*.01); } } emit(['line',+sx.toFixed(1),+sz.toFixed(1),+ang.toFixed(3),0,+L.toFixed(1),w*2,col]); if(s.ku) emit(['boom',+h.x.toFixed(1),+h.z.toFixed(1),2.5,col]); }}; break; }
+      case 'empower': h.emp={d:pw,ku:s.ku,a:s.a,t:Tm+6}; if(s.arm) h.buffs.push({arm:s.arm,t:6}); emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),.9,col,.5]); if(h.me) floatMsg('下一次普攻強化','#ffe066',1); break;
+      case 'grapple': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,grap:1},cc),col,1.3,30); break;
+      case 'aura': h.aura=!h.aura; h.auT=0; if(h.me) floatMsg(s.n+(h.aura?'：開啟':'：關閉'),h.aura?'#7ae8c8':'#9a94c0',1); break;
       case 'hook': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,hook:1},cc),col,1.3,30); break;
       case 'boom': skillshot(h,ang,R0,pw,Object.assign({skill:1,col,pass:1,boom:1,w:s.w||1.8},cc),col,(s.w||1.8)*.9,20); break;
       case 'trap': { const [px,pz]=gp; const mine=traps.filter(q=>q.h===h); if(mine.length>=3) traps.splice(traps.indexOf(mine[0]),1); traps.push({h,x:+px.toFixed(1),z:+pz.toFixed(1),arm:.6,t:30,pw,cc,col,vt:0}); emit(['ring',+px.toFixed(1),+pz.toFixed(1),1.3,col,.6]); break; }
@@ -205,7 +214,7 @@ function create(env,opts){
       case 'blink': { let dd,a2=ang; if(aim) dd=Math.min(R0,Math.max(1.5,Math.hypot(aim.x-sx,aim.z-sz))); else if(s.back){ a2=ang+PI; dd=R0; } else dd=tg?Math.max(0,Math.min(R0,dist(h,tg)-1)):R0;
         const [nx,nz]=map.inB(sx+Math.cos(a2)*dd,sz+Math.sin(a2)*dd); emit(['burst',sx,1,sz,col,10,4]); h.x=nx; h.z=nz; h.face=a2; h.force++; emit(['burst',+nx.toFixed(1),1,+nz.toFixed(1),col,10,4]);
         if(s.d&&!s.back){ const t2=tg&&dist(h,tg)<3.5?tg:null; if(t2){ dmg(h,t2,pw,{skill:1}); ccHit(t2,cc,h.x,h.z); } } if(s.spd) h.buffs.push({spd:s.spd,t:2}); if(s.ally) heroes.filter(q=>q.team===h.team&&alive(q)&&dist(q,h)<5).forEach(q=>{ q.shield=Math.max(q.shield,120+h.lvl*12); q.shT=3; }); if(s.back&&s.sl) for(const u of [...enemiesOf(h.team)]) if(Math.hypot(u.x-sx,u.z-sz)<3) applyCC(u,{sl:s.sl}); break; }
-      case 'strike': { const got=dmg(h,tg,pw,{skill:1}); if(s.dr&&got>0) heal(h,got*s.dr); ccHit(tg,cc,h.x,h.z); } emit(['slash',+tg.x.toFixed(1),+tg.z.toFixed(1),2.2,+ang.toFixed(2),col]); emit(['hit',+tg.x.toFixed(1),+tg.z.toFixed(1),col]); break;
+      case 'strike': { const got=dmg(h,tg,pw,{skill:1}); if(s.dr&&got>0) heal(h,got*s.dr); ccHit(tg,cc,h.x,h.z); if(s.stl) h.buffs.push({spd:.3,t:2.5}); if(dist(h,tg)>4) emit(['line',+h.x.toFixed(1),+h.z.toFixed(1),+ang.toFixed(3),0,+dist(h,tg).toFixed(1),.6,col]); } emit(['slash',+tg.x.toFixed(1),+tg.z.toFixed(1),2.2,+ang.toFixed(2),col]); emit(['hit',+tg.x.toFixed(1),+tg.z.toFixed(1),col]); break;
       case 'nova': areaHit(h,sx,sz,s.a,pw,cc,col); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.a,col,.5]); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.a,col,.35,1]); break;
       case 'blast': { const [px,pz]=gp,dl=s.dl||(s.st||s.ku?.6:.45); emit(['ring',+px.toFixed(1),+pz.toFixed(1),s.a,col,dl+.05,1]); timers.push({t:dl,fn:()=>{ areaHit(h,px,pz,s.a,pw,cc,col); emit(['boom',+px.toFixed(1),+pz.toFixed(1),s.a,col]); }}); break; }
       case 'shot': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,a:s.a},cc),col,s.a?2.2:1.6,i===3&&R0>12?34:28); break;
@@ -291,11 +300,13 @@ function create(env,opts){
     if(h.tcd<=0&&!h.recall){ if(h.tk==='g'){ const b=BUSH.find(b=>Math.hypot(b.x-h.x,b.z-h.z)<7&&!wards.some(w=>w.team===h.team&&Math.hypot(w.x-b.x,w.z-b.z)<6)); if(b&&Math.random()<.5) useTrinket(h,{x:b.x,z:b.z}); }
       else if(wards.some(w=>w.team!==h.team&&Math.hypot(w.x-h.x,w.z-h.z)<10)&&Math.random()<.35) useTrinket(h); } }
   /* ---------- 英雄每一刻 ---------- */
-  function heroTick(h,dt){ if(h.air>0) h.air=Math.max(0,h.air-dt); h.cd=h.cd.map(v=>Math.max(0,v-dt)); h.spCd=h.spCd.map(v=>Math.max(0,v-dt)); h.atkCd-=dt; if(h.atkT>0) h.atkT-=dt; if(h.castT>0) h.castT-=dt; if(h.shT>0){ h.shT-=dt; if(h.shT<=0) h.shield=0; }
+  function heroTick(h,dt){ if(h.air>0) h.air=Math.max(0,h.air-dt); if(h.sil>0) h.sil-=dt; if(h.rt>0) h.rt-=dt; h.cd=h.cd.map(v=>Math.max(0,v-dt)); h.spCd=h.spCd.map(v=>Math.max(0,v-dt)); h.atkCd-=dt; if(h.atkT>0) h.atkT-=dt; if(h.castT>0) h.castT-=dt; if(h.shT>0){ h.shT-=dt; if(h.shT<=0) h.shield=0; }
     h.buffs=h.buffs.filter(b=>(b.t-=dt)>0); if(h.slow>0) h.slow-=dt; if(h.weak>0) h.weak-=dt;
     for(const k in h.icd) if(h.icd[k]>0) h.icd[k]=Math.max(0,h.icd[k]-dt); if(h.tcd>0) h.tcd=Math.max(0,h.tcd-dt); if(h.lens>0) h.lens=Math.max(0,h.lens-dt);
     { const sv=supOf(h); if(sv&&sv<3) h.spl=Math.min(3,(h.spl==null?3:h.spl)+dt/18); if(sv===3){ h.wc=Math.min(3,(h.wc||0)+dt/50); if(mode===0&&Math.hypot(h.x-map.fount[h.team][0],h.z-map.fount[h.team][1])<8) h.wc=3; } }
     if(!h.dead&&petOf(h)==='m'&&jgStage(h)>=3&&Tm-(h.ldT==null?-99:h.ldT)>6&&Tm-(h.hitHeroT==null?-99:h.hitHeroT)>6){ const v=120+h.lvl*15; if(h.shield<v){ h.shield=v; } h.shT=Math.max(h.shT,2); }
+    if(h.aura){ const ai2=h.def.sk.findIndex(q=>q.t==='aura'); if(h.dead||ai2<0||h.mp<4){ h.aura=false; } else { h.mp-=(9+h.lvl*.7)*dt; h.auT-=dt; if(h.auT<=0){ h.auT=.5; const s2=h.def.sk[ai2],pw2=skPow(h,s2,ai2); for(const u of [...enemiesOf(h.team)]) if(dist(u,h)<=s2.a+u.r*.5) dmg(h,u,pw2*.5+(u.k==='h'?u.max*.005:0),{skill:1}); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),s2.a,h.def.pal.fx,.5]); } } }
+    if(!h.dead&&h.def.ps&&h.def.ps.k==='granite'&&Tm-(h.ldT==null?-99:h.ldT)>10){ const v=h.max*.1; if(h.shield<v) h.shield=v; h.shT=Math.max(h.shT,2); }
     if(h.potT>0){ h.potT-=dt; if(!h.dead) h.hp=Math.min(h.max,h.hp+10*dt*(h.burn?.5:h.gwT>Tm?.6:1)); }
     if(h.bot&&!h.potB&&!h.dead){ h.potB=1; buyItem(h,'pot'); }
     if(h.burn){ const b=h.burn; b.t-=dt; b.tick-=dt; if(b.tick<=0){ b.tick=.5; if(!h.dead) dmg(b.src,h,b.dps*.5,{tru:1,burn:1}); if(!h.dead) emit(['burst',+h.x.toFixed(1),1.6,+h.z.toFixed(1),'#ff7a2a',5,2]); } if(b.t<=0||h.dead) h.burn=null; }
@@ -390,13 +401,14 @@ function create(env,opts){
   function towardHome(h,d){ const F=map.fount[h.team],dx=F[0]-h.x,dz=F[1]-h.z,l=Math.hypot(dx,dz)||1; return [h.x+dx/l*d,h.z+dz/l*d]; }
   function botAct(h,dt){ const ai=h.ai; ai.t-=dt; if(ai.t<=0){ ai.t=LV.re*(.8+Math.random()*.4); botThink(h); ai.skT=(ai.skT||0)-1; }
     if(h.recall>0) return; const S=stats(h); botSpells(h); botItems(h);
+    { const ai2=h.def.sk.findIndex(q=>q.t==='aura'); if(ai2>=0&&unlocked(h,ai2)&&h.cd[ai2]<=0){ const want=h.mp>h.mpMax*.15&&[...enemiesOf(h.team)].some(u=>u.k!=='t'&&u.k!=='c'&&dist(u,h)<4); if(want!==!!h.aura) cast(h,ai2); } }
     if(h.lens>0&&ai.mode!=='fight'){ const w=wards.find(q=>q.team!==h.team&&VIS[h.team].has(q.id)&&Math.hypot(q.x-h.x,q.z-h.z)<9); if(w){ if(dist(h,w)>S.rng+.8) chase(h,w.x,w.z,S.spd,dt); else basicAttack(h,w); return; } }
     const tg=ai.tgt; if(tg&&alive(tg)&&!seen(tg,h.team)&&tg.k==='h') ai.tgt=null;
     if(tg&&tg.k==='h'&&alive(tg)&&tg.hp>pwEst(h)*1.1){ const tw2=towers.concat(cores).find(s=>s.team!==h.team&&s.hp>0&&dist(s,tg)<(s.k==='c'?CORE_R:TW_R)); if(tw2&&(tw2.tgt===h||!minions.some(m=>m.team===h.team&&alive(m)&&dist(m,tw2)<TW_R))){ ai.tgt=null; ai.mode=null; ai.goal=towardHome(h,8); } } if(tg&&alive(tg)&&seen(tg,h.team)){ const reach=S.rng+.6+(tg.r||.6),d=dist(h,tg);
       if(tg.k==='h'||tg.k==='j'||Math.random()<.04){ // 技能
         for(let i=3;i>=0;i--){ if(h.cd[i]>0||!unlocked(h,i)||h.mp<skCost(h,i)) continue; const s=h.def.sk[i]; if(Math.random()>LV.sk*dt*6) continue;
           if(s.t==='heal'||s.t==='shield'){ if(h.hp/h.max<.6||heroes.some(a=>a.team===h.team&&alive(a)&&a.hp/a.max<.5&&dist(a,h)<8)) cast(h,i); continue; }
-          if(s.t==='buff'){ if(d<reach+2) cast(h,i); continue; } if(s.back){ if(h.hp/h.max<.45) cast(h,i); continue; }
+          if(s.t==='aura') continue; if(s.t==='buff'||s.t==='empower'){ if(d<reach+2) cast(h,i); continue; } if(s.back){ if(h.hp/h.max<.45) cast(h,i); continue; }
           if(tg.k!=='h'&&i===3) continue; if(d<=(s.r||s.a||6)+.5) cast(h,i); } }
       if(h.sp.includes('smite')&&tg.k==='j'&&tg.hp<smiteDmg(h)&&dist(h,tg)<6) castSpell(h,h.sp.indexOf('smite'));
       if(d>reach){ chase(h,tg.x,tg.z,S.spd,dt); } else basicAttack(h,tg); return; }
@@ -479,14 +491,14 @@ function create(env,opts){
   /* ---------- 選英雄 ---------- */
   let pkSel=Math.floor(Math.random()*HEROES.length),pkTab=0,pkDone=false,pkStep=mode===0?'role':'hero';
   // 先選路線再選英雄：英雄依職業自動分到適合的路線
-  const rolesOf=h=>ROLES.filter(([r])=>(ROLE_CLS[r]||[]).includes(h.cls)).map(([,n])=>n);
+  const fitsRole=(h,r)=>h.roles?h.roles.includes(r):(ROLE_CLS[r]||[]).includes(h.cls),rolesOf=h=>ROLES.filter(([r])=>fitsRole(h,r)).map(([,n])=>n);
   const TABS=()=>(mode===0?[['fit','適合'+(ROLE_N[slots[mySlot].role]||'')],['all','全部']]:[['all','全部']]).concat(Object.entries(CLS).map(([k,v])=>[k,v.n]));
-  const pkList=()=>{ const t=TABS()[pkTab]||TABS()[0],k=t[0],R0=ROLE_CLS[slots[mySlot].role]||[]; return HEROES.filter(h=>k==='all'||(k==='fit'?R0.includes(h.cls):h.cls===k)); };
+  const pkList=()=>{ const t=TABS()[pkTab]||TABS()[0],k=t[0],rl=slots[mySlot].role; return HEROES.filter(h=>k==='all'||(k==='fit'?fitsRole(h,rl):h.cls===k)); };
   const pkGrid=i=>pkList().length>18?{x:24+(i%9)*66,y:90+Math.floor(i/9)*66,w:62,h:62}:{x:24+(i%6)*100,y:92+Math.floor(i/6)*82,w:94,h:76};
-  const fitPick=()=>{ const R0=ROLE_CLS[slots[mySlot].role]||[],L=HEROES.filter(h=>R0.includes(h.cls)&&!takenBy(myTeam,h.i,mySlot)); return L.length?L[Math.floor(Math.random()*L.length)].i:pkSel; };
+  const fitPick=()=>{ const rl=slots[mySlot].role,L=HEROES.filter(h=>fitsRole(h,rl)&&!takenBy(myTeam,h.i,mySlot)); return L.length?L[Math.floor(Math.random()*L.length)].i:pkSel; };
   const ROLE_D={top:['上路單挑，耐打能扛','坦克、戰士','#ff9a3d'],jg:['在野區打野怪，到處支援隊友（帶重擊、買打野幼獸）','刺客、戰士','#5fd08a'],mid:['中路對線，技能爆發高','法師、刺客','#b98cff'],bot:['下路射手，後期主力輸出','射手','#86dc4f'],sup:['跟著射手保護隊友，買輔助裝備賺錢、插眼','輔助、坦克','#3ddbd9']};
   const RC=i=>({x:22+i*186,y:96,w:176,h:340});
-  function chooseRole(id){ setRole(mySlot,id); pkStep='hero'; pkTab=0; const R0=ROLE_CLS[id]||[]; if(!R0.includes(HEROES[pkSel].cls)||takenBy(myTeam,pkSel,mySlot)) pkSel=fitPick(); sfx('click'); }
+  function chooseRole(id){ setRole(mySlot,id); pkStep='hero'; pkTab=0; if(!fitsRole(HEROES[pkSel],id)||takenBy(myTeam,pkSel,mySlot)) pkSel=fitPick(); sfx('click'); }
   function drawRoleStep(){ c.textAlign='left'; c.textBaseline='middle'; c.fillStyle='#ffd23f'; c.font='900 22px '+TC; c.fillText('選擇路線',22,28); c.fillStyle='#cfc8ff'; c.font='700 13px '+TC; c.fillText(MODES[mode]+'　'+size+' 對 '+size+'　電腦：'+LV.n+'　剩 '+Math.max(0,Math.ceil(pickT))+' 秒',130,29);
     c.fillStyle='#fff'; c.font='700 14px '+TC; c.fillText('先選你要打哪一路，下一步會列出適合這一路的英雄',22,66);
     ROLES.forEach(([id,n],i)=>{ const {x,y,w,h}=RC(i),D0=ROLE_D[id],hv=hoverPk&&hoverPk[0]>=x&&hoverPk[0]<x+w&&hoverPk[1]>=y&&hoverPk[1]<y+h,mine=slots[mySlot].role===id;
@@ -494,7 +506,7 @@ function create(env,opts){
       c.fillStyle=D0[2]; c.beginPath(); c.arc(x+w/2,y+46,30,0,TAU); c.fill(); c.fillStyle='#14122b'; c.font='900 24px '+TC; c.textAlign='center'; c.fillText(n.slice(0,1),x+w/2,y+47);
       c.fillStyle='#fff'; c.font='900 20px '+TC; c.fillText(n,x+w/2,y+100); c.fillStyle='#ffd23f'; c.font='700 11px '+TC; c.fillText((TOUCH?'':(i+1)+'　')+'適合：'+D0[1],x+w/2,y+124);
       c.fillStyle='#cfc8ff'; c.font='700 11px '+TC; c.textAlign='left'; wrapText(D0[0],x+12,y+150,w-24,16);
-      const ex=HEROES.filter(hh=>(ROLE_CLS[id]||[]).includes(hh.cls)).slice(0,6); ex.forEach((hh,k)=>portrait(c,x+30+(k%3)*58,y+222+Math.floor(k/3)*50,40,hh));
+      const ex=HEROES.filter(hh=>fitsRole(hh,id)).slice(0,6); ex.forEach((hh,k)=>portrait(c,x+30+(k%3)*58,y+222+Math.floor(k/3)*50,40,hh));
       const mates=slots.filter((q,k)=>k!==mySlot&&q.team===myTeam&&q.human>=0&&q.role===id); c.textAlign='center'; c.font='700 11px '+TC;
       if(mates.length){ c.fillStyle='#ff9a9a'; c.fillText('隊友 '+mates.map(q=>q.name).join('、')+' 選了',x+w/2,y+h-18); } else if(mine){ c.fillStyle='#ffd23f'; c.fillText('目前的路線',x+w/2,y+h-18); } });
     c.textAlign='center'; c.fillStyle='#9a94c0'; c.font='700 12px '+TC; c.fillText(TOUCH?'點一個路線，下一步選英雄':'點一個路線（或按 1～5），下一步選英雄',W/2,470);
@@ -510,7 +522,7 @@ function create(env,opts){
   const SP_IDS=Object.keys(M0.SPELLS),SPX0=676,SPX1=942,spMax=()=>Math.max(0,SP_IDS.length*45-3-(SPX1-SPX0)); let spTouched=false,spOff=0,spDrag=null;
   function setRole(si,role){ const s=slots[si]; if(s.role===role) return; const o=slots.find((q,i)=>i!==si&&q.team===s.team&&q.role===role&&q.human<0); if(o){ o.role=s.role; o.sp=(SP_ROLE[o.role]||SP_ROLE.mid).slice(); } s.role=role; if(si===mySlot&&!spTouched) s.sp=(SP_ROLE[role]||SP_ROLE.mid).slice(); if(client) net.send({t:'pk',role,sp:s.sp}); }
   function confirmPick(){ if(pkStep==='role'){ pkStep='hero'; pkSel=fitPick(); } if(takenBy(myTeam,pkSel,mySlot)){ floatMsg('隊友已經選了這位英雄','#ffb0b0'); return; } slots[mySlot].hero=pkSel; slots[mySlot].ok=true; pkDone=true; sfx('go'); if(client) net.send({t:'pk',h:pkSel,role:slots[mySlot].role,sp:slots[mySlot].sp,ok:1}); }
-  function botPicks(){ slots.forEach((s,i)=>{ if(s.hero>=0) return; const want=ROLE_CLS[s.role]||CLS_IDS(); let pool=HEROES.filter(h=>want.includes(h.cls)&&!takenBy(s.team,h.i,i)); if(!pool.length) pool=HEROES.filter(h=>!takenBy(s.team,h.i,i)); s.hero=pool[Math.floor(Math.random()*pool.length)].i; s.ok=true; }); }
+  function botPicks(){ slots.forEach((s,i)=>{ if(s.hero>=0) return; let pool=HEROES.filter(h=>(ROLE_CLS[s.role]?fitsRole(h,s.role):true)&&!takenBy(s.team,h.i,i)); if(!pool.length) pool=HEROES.filter(h=>!takenBy(s.team,h.i,i)); s.hero=pool[Math.floor(Math.random()*pool.length)].i; s.ok=true; }); }
   const CLS_IDS=()=>Object.keys(CLS);
   function startPlay(){ phase='play'; slots.forEach((s,i)=>{ const h=mkHero(s,i); h.bot=s.human<0; if(h.bot) botLv(h); heroes.push(h); }); emit(['sfx','go']); floatMsg('全軍出擊！','#ffd23f',2.5); updVis(); }
   /* ---------- 連線 ---------- */
@@ -750,9 +762,9 @@ function create(env,opts){
     TABS().forEach((tb,i)=>{ const x=20+i*74,on=i===pkTab; c.fillStyle=on?'#ffd23f':'rgba(255,255,255,.08)'; rr(c,x,52,70,28,14); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 '+(tb[1].length>3?12:13)+'px '+TC; c.textAlign='center'; c.fillText(tb[1],x+35,67); });
     pkList().forEach((h,i)=>{ const G=pkGrid(i),x=G.x,y=G.y,cw=G.w,ch=G.h,cm=cw<90,on=h.i===pkSel,taken=takenBy(myTeam,h.i,mySlot); c.fillStyle=on?'rgba(255,210,63,.25)':'rgba(255,255,255,.06)'; rr(c,x,y,cw,ch,10); c.fill(); if(on){ c.strokeStyle='#ffd23f'; c.lineWidth=2.5; c.stroke(); }
       portrait(c,x+cw/2,y+(cm?22:30),cm?32:46,h); c.fillStyle=taken?'#7a7690':'#fff'; c.font='900 '+(cm?11:12)+'px '+TC; c.textAlign='center'; c.fillText(h.n,x+cw/2,y+(cm?46:62)); if(cm){ c.fillStyle=CLS[h.cls].col; c.font='700 8px '+TC; c.fillText(CLS[h.cls].n,x+cw/2,y+56); if(taken){ c.fillStyle='rgba(0,0,0,.5)'; rr(c,x,y,cw,ch,10); c.fill(); } return; } c.fillStyle=CLS[h.cls].col; c.font='700 9px '+TC; { const rl=rolesOf(h).join('/'); c.fillText(CLS[h.cls].n+(mode===0&&rl!==CLS[h.cls].n?'・'+rl:''),x+47,y+72); } if(taken){ c.fillStyle='rgba(0,0,0,.5)'; rr(c,x,y,94,76,10); c.fill(); c.fillStyle='#fff'; c.fillText('隊友已選',x+47,y+38); } });
-    const d=HEROES[pkSel],x0=632; c.fillStyle='rgba(255,255,255,.06)'; rr(c,x0,46,316,486,14); c.fill(); portrait(c,x0+52,96,80,d); c.textAlign='left'; c.fillStyle='#fff'; c.font='900 22px '+TC; c.fillText(d.n,x0+102,82); c.fillStyle=CLS[d.cls].col; c.font='900 14px '+TC; c.fillText(CLS[d.cls].n+(mode===0?'　適合：'+rolesOf(d).join('、'):''),x0+102,108);
+    const d=HEROES[pkSel],x0=632; c.fillStyle='rgba(255,255,255,.06)'; rr(c,x0,46,316,486,14); c.fill(); portrait(c,x0+52,96,80,d); c.textAlign='left'; c.fillStyle='#fff'; c.font='900 22px '+TC; c.fillText(d.n,x0+102,82); c.fillStyle=CLS[d.cls].col; c.font='900 14px '+TC; c.fillText(CLS[d.cls].n+(mode===0?'　適合：'+rolesOf(d).join('、'):''),x0+102,108); if(d.ps){ c.fillStyle='#ffd23f'; c.font='700 10px '+TC; wrapText('被動「'+d.ps.n+'」'+d.ps.d,x0+102,126,206,12); }
     d.sk.forEach((s,i)=>{ const y=152+i*46; c.fillStyle=i===3?'#c8a0ff':'#9ad8ff'; c.font='900 12px '+TC; c.fillText((TOUCH?['技能一','技能二','技能三','大招'][i]:'QWER'[i])+'：'+s.n+(i===3?'（6 等起可學，最多 3 點）':'（最多 5 點）'),x0+12,y); c.fillStyle='#cfc8ff'; c.font='700 10px '+TC; wrapText(skDesc2(s)+'（冷卻 '+s.cd+' 秒、魔力 '+SKC[i]+'）',x0+12,y+16,296,12); });
-    if(mode===0){ const rl=slots[mySlot].role,ok=(ROLE_CLS[rl]||[]).includes(d.cls); c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textAlign='left'; c.fillText('路線：'+ROLE_N[rl],x0+8,343); c.font='700 10px '+TC; if(!ok){ c.fillStyle='#ffb0a0'; c.fillText('這位英雄比較適合 '+rolesOf(d).join('、'),x0+8,366); } else if(rl==='jg'){ c.fillStyle='#cfc8ff'; c.fillText('打野會帶重擊，先買打野幼獸',x0+8,366); } else if(rl==='sup'){ c.fillStyle='#cfc8ff'; c.fillText('輔助先買星界地圖，升級後可以插眼',x0+8,366); }
+    if(mode===0){ const rl=slots[mySlot].role,ok=fitsRole(d,rl); c.fillStyle='#ffd23f'; c.font='900 15px '+TC; c.textAlign='left'; c.fillText('路線：'+ROLE_N[rl],x0+8,343); c.font='700 10px '+TC; if(!ok){ c.fillStyle='#ffb0a0'; c.fillText('這位英雄比較適合 '+rolesOf(d).join('、'),x0+8,366); } else if(rl==='jg'){ c.fillStyle='#cfc8ff'; c.fillText('打野會帶重擊，先買打野幼獸',x0+8,366); } else if(rl==='sup'){ c.fillStyle='#cfc8ff'; c.fillText('輔助先買星界地圖，升級後可以插眼',x0+8,366); }
       c.fillStyle='rgba(255,255,255,.12)'; rr(c,820,328,120,30,12); c.fill(); c.strokeStyle='rgba(255,210,63,.7)'; c.lineWidth=1.5; c.stroke(); c.fillStyle='#ffd23f'; c.font='900 13px '+TC; c.textAlign='center'; c.fillText('換路線',880,344); c.textAlign='left'; }
     { const sp=slots[mySlot].sp; [0,1].forEach(row=>{ c.fillStyle='#ffd23f'; c.font='900 12px '+TC; c.textAlign='left'; c.fillText(TOUCH?(row?'技能 2':'技能 1'):(row?'F 鍵':'D 鍵'),x0+6,412+row*32); const by0=398+row*32; c.save(); c.beginPath(); c.rect(SPX0,by0-2,SPX1-SPX0,32); c.clip(); SP_IDS.forEach((id,j)=>{ const bx=SPX0+j*45-spOff,by=398+row*32,on=sp[row]===id,S0=M0.SPELLS[id]; c.fillStyle=on?S0.col:'rgba(255,255,255,.1)'; rr(c,bx,by,42,28,10); c.fill(); c.fillStyle=on?'#14122b':'#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText(S0.n,bx+21,by+15); }); c.restore();
         // 左右還有技能時，邊緣顯示箭頭（可左右滑動）
@@ -791,7 +803,7 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦強度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
   optNote:()=>'連線時真人輪流分到兩隊，不夠的位置由電腦補上。',
-  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['閃技能','飛彈、穿透波、鉤子會飛向你瞄準的位置，地上的預警圈過一下才爆，走位可以閃開；被擊飛時不能動'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變世界之眼，可以插眼']],
+  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['閃技能','飛彈、穿透波、鉤子會飛向你瞄準的位置，地上的預警圈過一下才爆，走位可以閃開'],['控制效果','暈眩、擊飛：不能動；定身：不能走但能打；沉默：不能放技能；緩速：變慢'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變世界之眼，可以插眼']],
   touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你'],['閃技能','飛彈、鉤子、穿透波和預警圈都可以走位閃開'],['戰績','點右上角的擊殺／金幣框看雙方戰績，再點一下關掉'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使，點商店裡的裝備看說明']],
   touch:{left:[],right:[]},
   best:{label:'勝場',fmt:v=>v+' 勝',lower:false},

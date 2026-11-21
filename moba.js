@@ -73,6 +73,8 @@ const HEROES=[
   HD('玄武','tank',{skin:'#c8a070',c1:'#2a5a4a',c2:'#6ab890',hair:'#1a2a20',fx:'#6ae0b0'},[S('甲殼衝撞','charge',9,{r:7,w:2,d:90,sl:1.5}),S('玄甲反震','buff',14,{arm:70,dur:3}),S('潮汐漩渦','storm',12,{r:8,a:3.5,d:50,dur:3}),S('玄武鎮海','dash',42,{r:9,a:3.5,d:230,ku:1.3})],{helm:1,cape:1}),
   HD('熊霸','tank',{skin:'#b07850',c1:'#6a3a1a',c2:'#c89060',hair:'#3a2010',fx:'#ffb070'},[S('熊掌拍擊','strike',7,{r:3,d:130,ku:0.6}),S('狂熊之怒','buff',13,{as:0.4,dmg:0.15,dur:4}),S('震懾咆哮','nova',11,{a:4,d:60,kb:3}),S('巨熊撲擊','dash',40,{r:8,a:3,d:280,st:1.5})],{horns:1}),
   HD('鐵壁','tank',{skin:'#d8b090',c1:'#3a4a6a',c2:'#c0c8d8',hair:'#2a2a3a',fx:'#a8c8ff'},[S('盾擊','shot',8,{r:8,d:100,st:0.8}),S('守護誓約','shield',12,{v:260,ally:1,spd:0.25}),S('盾牌衝刺','charge',10,{r:7,w:2,d:100,kb:2.5}),S('神盾震爆','nova',42,{a:6,d:220,kb:5,st:0.5})],{helm:1}),
+  HD('淚魂','tank',{skin:'#9ad0b8',c1:'#c8c0a8',c2:'#e8e0c8',hair:'#3a5a4a',fx:'#7ae8c8'},[S('繃帶飛索','grapple',12,{r:10,d:80,st:1}),S('絕望光環','aura',1,{a:3,d:20}),S('暴怒','nova',9,{a:3.5,d:110,hr:1}),S('哀傷詛咒','nova',42,{a:5.5,d:200,rt:2})],{}),
+  HD('花崗','tank',{skin:'#9a8a7a',c1:'#5a4a3a',c2:'#b8a890',hair:'#3a3028',fx:'#ffb070'},[S('地震碎片','strike',8,{r:8,d:110,sl:2,stl:1}),S('雷霆拍擊','empower',9,{d:50,a:3,arm:30}),S('大地猛擊','nova',8,{a:3.5,d:120,wk:2}),S('勢不可擋','dash',42,{r:10,a:3.5,d:260,ku:1.4,us:1})],{horns:1}),
   // 戰士
   HD('烈刃','fighter',{skin:'#e8b890',c1:'#a83a2a',c2:'#e8c060',hair:'#1a1410',fx:'#ff9a3d'},[S('突進斬','dash',7,{r:6,a:2.2,d:110}),S('迴旋斬','nova',8,{a:3.3,d:120}),S('破空斬','pierce',8,{r:7,d:130}),S('斷罪一擊','exec',35,{r:4,d:220,m:0.4,kb:4})],{cape:1}),
   HD('狂瀾','fighter',{skin:'#d8a880',c1:'#2a5a8a',c2:'#8ad8ff',hair:'#3a2a1a',fx:'#5ab8ff'},[S('怒濤劈','pierce',7,{r:6.5,d:120,sl:1,w:3}),S('戰意沸騰','buff',14,{as:0.5,dur:4}),S('潮湧','dash',9,{r:7,a:2.5,d:110,sl:1.2}),S('巨浪狂瀾','pierce',40,{r:10,d:260,w:4,ku:1})],{f:1}),
@@ -119,14 +121,21 @@ const HEROES=[
   HD('守望','support',{skin:'#c8946a',c1:'#6a5a3a',c2:'#e8d8a0',hair:'#2a2418',fx:'#e8d8a0'},[S('光之箭','shot',7,{r:9,d:100,sl:2}),S('守護之光','heal',12,{a:8,v:170}),S('守望之盾','shield',12,{v:220,ally:1}),S('聖域','nova',40,{a:6,d:200,st:1.5})],{helm:1,cape:1}),
   HD('靈蝶','support',{skin:'#f8e8e0',c1:'#a07ad8',c2:'#ffe0f8',hair:'#e0c0ff',fx:'#e0b0ff'},[S('蝶粉','chain',8,{r:8,d:80,sl:1}),S('蝶翼庇護','shield',11,{v:180,ally:1,spd:0.4}),S('靈光一閃','blink',12,{r:6,d:60,ally:1}),S('幻蝶之夢','storm',40,{r:9,a:4.5,d:40,dur:3,st:1})],{f:1}),
   HD('鼓手','support',{skin:'#c88a5a',c1:'#c8402a',c2:'#ffd060',hair:'#2a1a10',fx:'#ffc040'},[S('戰鼓震波','nova',9,{a:4,d:80,kb:2.5}),S('進擊鼓點','buff',12,{spd:0.3,as:0.3,dur:4,ally:1}),S('鼓舞','heal',13,{a:8,v:140,cl:1}),S('萬鼓齊鳴','nova',40,{a:6,d:180,ku:1.2,ally:1})],{}),
-  HD('星護','support',{skin:'#f0d8c0',c1:'#2a3a7a',c2:'#ffe080',hair:'#f0e0a0',fx:'#ffe080'},[S('星光鎖鏈','chain',10,{r:8,d:60,st:0.6,n:3}),S('星盾','shield',12,{v:240,ally:1}),S('星落','blast',10,{r:9,a:3,d:110,kb:2.5,dl:0.6}),S('星界守護','dash',40,{r:9,a:4,d:180,ku:1.1,ally:1})],{f:1,cape:1})];
+  HD('星護','support',{skin:'#f0d8c0',c1:'#2a3a7a',c2:'#ffe080',hair:'#f0e0a0',fx:'#ffe080'},[S('星光鎖鏈','chain',10,{r:8,d:60,st:0.6,n:3}),S('星盾','shield',12,{v:240,ally:1}),S('星落','blast',10,{r:9,a:3,d:110,kb:2.5,dl:0.6}),S('星界守護','dash',40,{r:9,a:4,d:180,ku:1.1,ally:1})],{f:1,cape:1}),
+  HD('機甲','support',{skin:'#c8c8d0',c1:'#b88a2a',c2:'#ffd860',hair:'#3a3a44',fx:'#ffe066'},[S('火箭鉤爪','hook',13,{r:11,d:90,st:0.65}),S('全速驅動','buff',14,{spd:0.6,as:0.4,dur:4}),S('上勾重拳','empower',8,{d:60,ku:1}),S('靜電力場','nova',40,{a:5.5,d:250,sil:1.5})],{helm:1})];
+
+// 被動技能、特殊路線
+{ const F=n=>HEROES.find(h=>h.n===n);
+  F('機甲').ps={k:'mshield',n:'魔力屏障',d:'血量低於 20% 時，得到等於 30% 魔力的護盾（90 秒一次）'};
+  F('淚魂').ps={k:'curse',n:'詛咒之觸',d:'技能打中的敵方英雄，3 秒內受到的技能傷害 +10%'}; F('淚魂').roles=['jg','sup'];
+  F('花崗').ps={k:'granite',n:'花崗岩盾',d:'10 秒沒受傷時，得到最大生命 10% 的護盾'}; }
 // 召喚師技能（D、F）
 const SPELLS={flash:{n:'閃現',cd:60,col:'#ffe066',d:'往滑鼠方向瞬間移動一小段，可以穿過牆和草叢'},heal:{n:'治癒',cd:60,col:'#7aff9a',d:'幫自己和附近隊友補血'},smite:{n:'重擊',cd:25,col:'#ffb040',d:'對附近的野怪或小兵造成大量傷害（打野用）'},
   ghost:{n:'鬼步',cd:50,col:'#9ad8ff',d:'走路速度大幅提升 6 秒'},exhaust:{n:'虛弱',cd:60,col:'#c08aff',d:'讓附近一個敵方英雄變慢、傷害降低 40%，持續 3 秒'},ignite:{n:'點燃',cd:60,col:'#ff6a2a',d:'點燃附近一個敵方英雄，5 秒內持續造成真實傷害，被點燃時補血效果減半'},cleanse:{n:'淨化',cd:60,col:'#ff9ec8',d:'解除暈眩和緩速'}};
 HEROES.forEach((h,i)=>{ h.i=i; if(!h.pal.c3) h.pal.c3=['#3a3a48','#4a3a2a','#2a2a38','#3a4a3a'][i%4]; });
-const SK_TXT={dash:'衝到指定位置',blink:'瞬間移動',strike:'重擊眼前的敵人',nova:'對身邊的敵人造成傷害',blast:'在指定位置引爆（地上先出現預警圈，可以閃開）',shot:'射出飛彈，打中第一個敵人（可以閃開）',pierce:'射出一道穿透波，路上的敵人都會中（可以閃開）',shield:'得到護盾',heal:'治療',buff:'強化自己',exec:'對殘血敵人造成大量傷害',hook:'甩出鉤子，鉤中第一個敵人並拉過來（可以閃開）',storm:'持續傷害一片區域',charge:'往前衝鋒，撞到的敵人都會中',boom:'丟出迴旋飛刃，去程和回程都會打中',trap:'在地上放陷阱，敵人踩到才觸發（最多 3 個）',chain:'打中目標後彈到附近的敵人'};
+const SK_TXT={dash:'衝到指定位置',blink:'瞬間移動',strike:'重擊眼前的敵人',nova:'對身邊的敵人造成傷害',blast:'在指定位置引爆（地上先出現預警圈，可以閃開）',shot:'射出飛彈，打中第一個敵人（可以閃開）',pierce:'射出一道穿透波，路上的敵人都會中（可以閃開）',shield:'得到護盾',heal:'治療',buff:'強化自己',exec:'對殘血敵人造成大量傷害',hook:'甩出鉤子，鉤中第一個敵人並拉過來（可以閃開）',storm:'持續傷害一片區域',charge:'往前衝鋒，撞到的敵人都會中',boom:'丟出迴旋飛刃，去程和回程都會打中',trap:'在地上放陷阱，敵人踩到才觸發（最多 3 個）',chain:'打中目標後彈到附近的敵人',empower:'強化下一次普攻',grapple:'甩出繃帶，打中後把自己拉到敵人身邊（可以閃開）',aura:'開關光環：開啟時持續傷害身邊的敵人，會一直消耗魔力'};
 function skDesc(s){ let t=SK_TXT[s.t]; if(s.t==='heal') t=s.self?'治療自己':'治療自己和附近隊友'; if(s.t==='shield') t=s.ally?'給自己和附近隊友護盾':'給自己護盾'; if(s.t==='buff'&&s.ally) t='強化自己和附近隊友'; if(s.back) t='往後翻滾閃開'; if(s.t==='chain'&&s.blink) t='在敵人之間來回穿梭斬擊（期間不會被打中）';
-  const ex=[]; if(s.ku) ex.push('擊飛'); if(s.kb) ex.push('擊退'); if(s.pl) ex.push('把敵人吸過來'); if(s.st) ex.push('暈眩 '+s.st+' 秒'); if(s.sl) ex.push('緩速'); if(s.dr) ex.push('吸血'); if(s.cl) ex.push('解除控制'); if(s.hl) ex.push('治療範圍內隊友'); if(s.ally&&!['shield','heal','buff'].includes(s.t)) ex.push('隊友得到護盾'); if(s.rs) ex.push('擊殺重置冷卻'); if(s.ls) ex.push('吸血'); if(s.spd&&['shield','blink'].includes(s.t)) ex.push('加速'); return t+(ex.length?'，'+ex.join('、'):''); }
+  const ex=[]; if(s.ku) ex.push('擊飛'); if(s.kb) ex.push('擊退'); if(s.pl) ex.push('把敵人吸過來'); if(s.sil) ex.push('沉默 '+s.sil+' 秒（不能放技能）'); if(s.rt) ex.push('定身 '+s.rt+' 秒（不能移動）'); if(s.st) ex.push('暈眩 '+s.st+' 秒'); if(s.wk) ex.push('降低敵人攻擊'); if(s.us) ex.push('衝刺時不受控制'); if(s.hr) ex.push('被普攻時冷卻縮短'); if(s.stl) ex.push('偷取移動速度'); if(s.t==='empower'&&s.a) ex.push('波及周圍敵人'); if(s.t==='empower'&&s.arm) ex.push('並增加護甲'); if(s.sl) ex.push('緩速'); if(s.dr) ex.push('吸血'); if(s.cl) ex.push('解除控制'); if(s.hl) ex.push('治療範圍內隊友'); if(s.ally&&!['shield','heal','buff'].includes(s.t)) ex.push('隊友得到護盾'); if(s.rs) ex.push('擊殺重置冷卻'); if(s.ls) ex.push('吸血'); if(s.spd&&['shield','blink'].includes(s.t)) ex.push('加速'); return t+(ex.length?'，'+ex.join('、'):''); }
 // 裝備（參考英雄聯盟）：基本材料 → 合成成品（材料會折抵價錢）；act＝主動技能（數字鍵 1～6）
 const ITEMS={
   // 基本材料
