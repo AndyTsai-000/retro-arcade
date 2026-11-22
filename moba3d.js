@@ -447,6 +447,22 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
   /* ===== 鏡頭 ===== */
   const cam=new T.PerspectiveCamera(40,W/H,.5,400),tmp=new V();
   let lastT=0;
+  // 狀態特效：暈眩（金星）、定身（綠色藤圈）、緩速（藍圈）、沉默（紫圈）、恐懼／魅惑／嘲諷、擊飛，頭上加一個字
+  const STX={},stTex=(ch,cl)=>{ const k=ch+cl; if(STX[k]) return STX[k]; const m=new T.SpriteMaterial({map:canv(64,64,(c2)=>{ c2.fillStyle='rgba(10,10,24,.85)'; c2.beginPath(); c2.arc(32,32,29,0,TAU); c2.fill(); c2.lineWidth=5; c2.strokeStyle=cl; c2.stroke(); c2.fillStyle=cl; c2.font='900 34px "Noto Sans TC","Microsoft JhengHei",sans-serif'; c2.textAlign='center'; c2.textBaseline='middle'; c2.fillText(ch,32,34); }),transparent:true,depthTest:false}); STX[k]=m; return m; };
+  const ringM={}; const ringOf=(cl,thick)=>{ const k=cl+thick; if(!ringM[k]) ringM[k]=new T.MeshBasicMaterial({color:col(cl),transparent:true,opacity:.85,depthWrite:false,side:T.DoubleSide}); return ringM[k]; };
+  const ringG=new T.RingGeometry(.62,.8,28),ringG2=new T.RingGeometry(.7,1,28);
+  function statusFx(M,u,t){ const s=u.sts!=null?u.sts:((u.stun>0?1:0)|(u.rt>0?2:0)|(u.slow>0?4:0)|(u.sil>0?8:0)|(u.cc2?({fr:16,ch:32,tn:64}[u.cc2.k]||0):0)|(u.air>0?128:0)); if(!s&&!M.sf) return;
+    if(!M.sf){ const g=new T.Group(); M.wrap.add(g); const inv=1/(M.wrap.scale.x||1); g.scale.setScalar(inv); const hh=(u.k==='h'?2.75:u.k==='m'?1.9*(M.wrap.scale.x||1):2.2*(M.wrap.scale.x||1));
+      const st=new T.Group(); for(let k=0;k<3;k++){ const sp=glowS('#ffe066',.42); sp.position.set(Math.cos(k/3*TAU)*.42,0,Math.sin(k/3*TAU)*.42); st.add(sp); } st.position.y=hh-.25; g.add(st);
+      const rr=u.k==='h'?1:u.k==='m'?.8*(M.wrap.scale.x||1):1.2*(M.wrap.scale.x||1); const rt=new T.Mesh(ringG2,ringOf('#7ad04a',1)); rt.rotation.x=-PI/2; rt.position.y=.06; rt.scale.setScalar(rr); g.add(rt); const vines=[]; for(let k=0;k<5;k++){ const v=new T.Mesh(new T.ConeGeometry(.07,.55,5),ph('#4a8a2a',8)); v.position.set(Math.cos(k/5*TAU)*.8*rr,.25,Math.sin(k/5*TAU)*.8*rr); v.rotation.z=Math.cos(k/5*TAU)*.4; v.rotation.x=-Math.sin(k/5*TAU)*.4; g.add(v); vines.push(v); }
+      const sl=new T.Mesh(ringG,ringOf('#7ab8ff',0)); sl.rotation.x=-PI/2; sl.position.y=.05; sl.scale.setScalar(rr); g.add(sl);
+      const si=new T.Mesh(ringG,ringOf('#c88aff',0)); si.rotation.x=-PI/2; si.position.y=hh-.55; si.scale.setScalar(.6); g.add(si);
+      const bd=new T.Sprite(stTex('暈','#ffe066')); bd.scale.set(.62,.62,1); bd.position.set(.55,hh,0); bd.renderOrder=5; g.add(bd);
+      M.sf={g,st,rt,vines,sl,si,bd,cur:''}; }
+    const F=M.sf; F.g.visible=!!s; if(!s) return;
+    F.st.visible=!!(s&1); F.st.rotation.y=t*6; F.rt.visible=!!(s&2); F.vines.forEach(v=>v.visible=!!(s&2)); F.sl.visible=!!(s&4)&&!(s&2); F.sl.rotation.z=t*2; F.si.visible=!!(s&8); F.si.rotation.z=-t*3;
+    const B=s&1?['暈','#ffe066']:s&128?['飛','#ffb040']:s&16?['懼','#b08aff']:s&32?['魅','#ff8ab8']:s&64?['諷','#ff9a3d']:s&2?['定','#7ad04a']:s&8?['默','#c88aff']:s&4?['慢','#7ab8ff']:null;
+    if(B){ const k=B[0]+B[1]; if(F.cur!==k){ F.bd.material=stTex(B[0],B[1]); F.cur=k; } F.bd.visible=true; F.bd.position.y+=0; } else F.bd.visible=false; }
   function sync(G,t){ const dt=Math.min(.1,Math.max(0,t-lastT)); lastT=t; uT.value=t;
     const seen=new Set();
     for(const u of G.units()){ if(u.k==='t'||u.k==='c') continue; seen.add(u.id); let M=U.get(u.id);
@@ -459,12 +475,12 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       if(!M.wrap.visible) continue;
       if(M.lx==null){ M.lx=u.x; M.lz=u.z; } const vx=(u.x-M.lx)/(dt||.016),vz=(u.z-M.lz)/(dt||.016); M.lx=u.x; M.lz=u.z; const spd=Math.hypot(vx,vz),mv=spd>.6;
       let ta=u.face!=null?u.face:M.ang; let da=ta-M.ang; while(da>PI) da-=TAU; while(da<-PI) da+=TAU; M.ang+=da*Math.min(1,dt*12);
-      M.wrap.position.set(u.x,(u.y||0)+(u.air>0?Math.sin(Math.min(1,u.air/.45)*PI/2)*1.5:0),u.z); M.wrap.rotation.y=PI/2-M.ang;
+      M.wrap.position.set(u.x,(u.y||0)+(u.air>0?Math.sin(Math.min(1,u.air/.45)*PI/2)*1.5:0),u.z); M.wrap.rotation.y=PI/2-M.ang; statusFx(M,u,t);
       if(M.k==='h'){ const P=heroPose(u,t,mv,spd); M.cur=M.cur?H3.mix(M.cur,P,Math.min(1,dt*14)):P; H3.pose(M.J,M.cur); M.h.root.rotation.x=dead?-Math.min(1.4,(1-M.fade)*3):0;
         M.ring.material.color.set(u.me?'#ffd23f':TEAMC[u.team]); M.ring.material.opacity=u.me?.95:.6; if(M.cape) M.cape.rotation.x=.12+(mv?.5:0)+Math.sin(t*6)*.05;
         if(M.wp.userData.orb) M.wp.userData.orb.rotation.y=t*3;
         if(u.shield>0||u.stasis>0){ if(!M.bub){ M.bub=add(new T.SphereGeometry(1.3,16,12),new T.MeshPhongMaterial({color:0x9ad8ff,transparent:true,opacity:.22,shininess:120,depthWrite:false,emissive:0x2a4a6a}),0,1.2,0,M.wrap,false); } M.bub.visible=true; M.bub.material.color.set(u.stasis>0?0xffd23f:0x9ad8ff); M.bub.material.opacity=u.stasis>0?.45:.22; M.bub.scale.setScalar(1+Math.sin(t*6)*.03); } else if(M.bub) M.bub.visible=false;
-        if(u.stun>0){ if(!M.st){ M.st=new T.Group(); for(let k=0;k<3;k++){ const s=glow('#ffe066',.45); s.position.set(Math.cos(k/3*TAU)*.45,0,Math.sin(k/3*TAU)*.45); M.st.add(s); } M.st.position.y=2.6; M.wrap.add(M.st); } M.st.visible=true; M.st.rotation.y=t*6; } else if(M.st) M.st.visible=false;
+        if(false&&u.stun>0){ if(!M.st){ M.st=new T.Group(); for(let k=0;k<3;k++){ const s=glow('#ffe066',.45); s.position.set(Math.cos(k/3*TAU)*.45,0,Math.sin(k/3*TAU)*.45); M.st.add(s); } M.st.position.y=2.6; M.wrap.add(M.st); } M.st.visible=true; M.st.rotation.y=t*6; } else if(M.st) M.st.visible=false;
         if(u.recall>0){ if(!M.rc){ M.rc=add(new T.CylinderGeometry(1,1,3,20,1,true),new T.MeshBasicMaterial({color:0x9ad8ff,transparent:true,opacity:.3,side:T.DoubleSide,depthWrite:false,blending:T.AdditiveBlending}),0,1.5,0,M.wrap,false); } M.rc.visible=true; M.rc.scale.y=.6+Math.sin(t*8)*.1; } else if(M.rc) M.rc.visible=false; }
       else { const L=M.wrap.userData.legs; if(L){ const s=mv?Math.sin(t*10+u.id)*.55:0; L.forEach((l,i)=>l.rotation.x=(i%2?s:-s)); } const A=M.wrap.userData.arm; if(A) A.rotation.x=(M.k==='m'?-.15+(mv?Math.sin(t*10+u.id)*.35:0):.6)-(u.atkT>0?Math.sin(u.atkT/.3*PI)*1.5:0); const WH=M.wrap.userData.wheels; if(WH&&mv) WH.forEach(w=>w.rotation.x+=.15); const FL=M.wrap.userData.flag; if(FL) FL.rotation.y=Math.sin(t*4+u.id)*.3; if(M.k==='j'&&u.atkT>0&&M.wrap.userData.head) M.wrap.userData.head.position.z=(M.wrap.userData.hz||.85)+Math.sin(u.atkT/.4*PI)*.3; } }
     for(const [id,M] of U) if(!seen.has(id)){ scene.remove(M.wrap); U.delete(id); }
