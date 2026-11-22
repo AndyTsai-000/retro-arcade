@@ -103,13 +103,13 @@ function create(env,opts){
   function heal(h,amt){ if(!alive(h)) return; const S=stats(h); if(h.burn) amt*=.5; else if(h.gwT>Tm) amt*=.6; amt*=1+S.hin; h.hp=Math.min(h.max,h.hp+amt); emit(['dn',+h.x.toFixed(1),+h.z.toFixed(1),'+'+Math.round(amt),'#5fff7a',h.id,0]); }
   // 史詩級野怪獎勵（參考英雄聯盟）
   function epicReward(k,u){ const tb=teamBuff[k.team],T0=TEAMN(k.team); emit(['beam',+u.x.toFixed(1),+u.z.toFixed(1),3,u.ep==='dragon'?ELC[u.el]:'#c08aff',1.2]);
-    if(u.ep==='dragon'){ tb[u.el]=(tb[u.el]||0)+1; heroes.filter(a=>a.team===k.team).forEach(a=>a.gold+=50); emit(['feed',T0+' 擊敗了 元素飛龍（'+ELN[u.el]+'）：'+{fire:'全隊傷害永久 +5%',earth:'全隊護甲、魔抗永久 +6',wind:'全隊移動速度永久 +4%',water:'全隊回血永久提升'}[u.el],k.team]); }
-    else if(u.ep==='baron'){ tb.bar=Tm+180; heroes.filter(a=>a.team===k.team).forEach(a=>a.gold+=300); emit(['feed',T0+' 擊敗了 巴龍納什：全隊得到巴龍之手（3 分鐘：攻擊、技能更強，回城更快，附近小兵變強）',k.team]); }
-    else { spawnHerald(k); emit(['feed',T0+' 擊敗了 峽谷先鋒：先鋒衝向最近的敵方防禦塔',k.team]); } }
+    if(u.ep==='dragon'){ tb[u.el]=(tb[u.el]||0)+1; heroes.filter(a=>a.team===k.team).forEach(a=>a.gold+=50); emit(['feed',T0+' 擊敗了 四象天龍（'+ELN[u.el]+'）：'+{fire:'全隊傷害永久 +5%',earth:'全隊護甲、魔抗永久 +6',wind:'全隊移動速度永久 +4%',water:'全隊回血永久提升'}[u.el],k.team]); }
+    else if(u.ep==='baron'){ tb.bar=Tm+180; heroes.filter(a=>a.team===k.team).forEach(a=>a.gold+=300); emit(['feed',T0+' 擊敗了 深淵魔蛇：全隊得到魔蛇之力（3 分鐘：攻擊、技能更強，回城更快，附近小兵變強）',k.team]); }
+    else { spawnHerald(k); emit(['feed',T0+' 擊敗了 獨眼魔蟲：魔蟲衝向最近的敵方防禦塔',k.team]); } }
   function spawnHerald(k){ let li=0,bd=1e9; map.lanes.forEach((L,i)=>{ const p=project(L,k.x,k.z); const q=along(L,p[0]),d=Math.hypot(q[0]-k.x,q[1]-k.z); if(d<bd){ bd=d; li=i; } }); const L=map.lanes[li],s0=project(L,k.x,k.z)[0],p=along(L,s0),sc=1+Tm/60*.03;
     minions.push({id:minId++,k:'m',mt:'cannon',big:true,herald:1,team:k.team,lane:li,x:p[0],z:p[1],hp:4200*sc,max:4200*sc,atk:70*sc,as:.6,rng:3,arm:45,spd:3.4,r:1.3,cd:0,tgt:null,face:0,atkT:0,s:s0,think:0}); }
   // 河蟹獎勵：在史詩級野怪池前方留下打不掉的眼（90 秒），和加速區
-  function crabReward(k,u){ const top=u.home[0]<0,px=top?-16:16,pz=top?-16:16; wards.push({id:wardId++,k:'w',team:k.team,owner:k.id,x:px,z:pz,t:90,hp:999,max:3,r:.4,perm:1,vr:14}); shrines.push({team:k.team,x:u.x,z:u.z,t:90}); emit(['ring',px,pz,3,'#7ae8ff',.8]); emit(['feed',TEAMN(k.team)+' 擊敗了 河蟹：'+(top?'巴龍池':'小龍池')+'前方得到視野，河道出現加速區',k.team]); updVis(); }
+  function crabReward(k,u){ const top=u.home[0]<0,px=top?-16:16,pz=top?-16:16; wards.push({id:wardId++,k:'w',team:k.team,owner:k.id,x:px,z:pz,t:90,hp:999,max:3,r:.4,perm:1,vr:14}); shrines.push({team:k.team,x:u.x,z:u.z,t:90}); emit(['ring',px,pz,3,'#7ae8ff',.8]); emit(['feed',TEAMN(k.team)+' 擊敗了 河蟹：'+(top?'魔蛇池':'天龍池')+'前方得到視野，河道出現加速區',k.team]); updVis(); }
   function giveBuff(h,k,d){ if(k==='blue') h.bufB=Math.max(h.bufB||0,Tm+d); else h.bufR=Math.max(h.bufR||0,Tm+d); emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),1.2,k==='blue'?'#5aa8ff':'#ff6a4a',.8]); emit(['feed',TEAMN(h.team)+' '+h.def.n+' 拿到了'+(k==='blue'?'藍 Buff（冷卻縮短、回魔）':'紅 Buff（普攻灼燒緩速、回血）'),h.team]); }
   function gainXp(h,n){ if(h.lvl>=MAXL) return; h.xp+=n; while(h.lvl<MAXL&&h.xp>=XPN(h.lvl)){ h.xp-=XPN(h.lvl); h.lvl++; if(h.bot) botLv(h); else if(h.me) floatMsg('升到 '+h.lvl+' 等！可以點技能 ＋','#ffe066',1.4); const r0=h.hp/h.max; h.max=stats(h).hp; h.hp=h.max*r0+80; { const m0=h.mp/h.mpMax; h.mpMax=stats(h).mp; h.mp=Math.min(h.mpMax,h.mpMax*m0+60); } h.hp=Math.min(h.hp,h.max); emit(['beam',+h.x.toFixed(1),+h.z.toFixed(1),.9,'#ffe066',.7]); if(h.me) emit(['sfx','heal']); } }
   function die(u,src){ if(u.k==='h'&&!u.dead&&!(u.icd.ga>0)&&u.items.includes('ga')){ u.hp=1; u.stasis=3; u.gaPend=1; u.icd.ga=240; u.dash=null; u.recall=0; u.burn=null; emit(['beam',+u.x.toFixed(1),+u.z.toFixed(1),1.2,'#fff2b0',3]); emit(['feed',TEAMN(u.team)+' '+u.def.n+' 天使之誓發動！',u.team]); if(u.me) floatMsg('天使之誓：3 秒後復活','#fff2b0',2); return; }
@@ -194,9 +194,9 @@ function create(env,opts){
   const ELN={fire:'火',earth:'土',wind:'風',water:'水'},ELC={fire:'#ff6a2a',earth:'#c8a060',wind:'#a8e8ff',water:'#3aa8ff'};
   function spawnMon(m){ const sc=1+Tm/60*.05; m.dead=false; if(m.big){ m.ep=m.kind===1?'dragon':Tm>=1195?'baron':'herald'; if(m.ep==='dragon') m.el=['fire','earth','wind','water'][Math.random()*4|0]; else m.el=''; } m.csh=!!m.crab;
     const EP={dragon:[3600,70,30,3.2],herald:[5200,85,40,3.2],baron:[7000,125,60,4.2]}[m.ep]; m.hp=m.max=(EP?EP[0]:m.buff?2300:m.crab?1300:900)*sc; m.atk=(EP?EP[1]:m.buff?48:30)*sc; m.as=m.big?.7:.8; m.rng=EP?EP[3]:m.buff?2.4:2; m.arm=EP?EP[2]:m.buff?25:m.crab?20:15;
-    if(m.big) emit(['feed',(m.ep==='dragon'?'元素飛龍（'+ELN[m.el]+'）':m.ep==='baron'?'巴龍納什':'峽谷先鋒')+' 出現了！',2]); if(m.crab) emit(['feed','河蟹出現在'+(m.home[0]<0?'上':'下')+'河道',2]); m.spd=4; m.x=m.home[0]; m.z=m.home[1]; m.tgt=null; m.ret=false; emit(['ring',m.x,m.z,m.big?6:3,m.big?(m.ep==='dragon'?ELC[m.el]:'#c08aff'):m.crab?'#7ae8ff':'#ffd06a',.8]); }
+    if(m.big) emit(['feed',(m.ep==='dragon'?'四象天龍（'+ELN[m.el]+'）':m.ep==='baron'?'深淵魔蛇':'獨眼魔蟲')+' 出現了！',2]); if(m.crab) emit(['feed','河蟹出現在'+(m.home[0]<0?'上':'下')+'河道',2]); m.spd=4; m.x=m.home[0]; m.z=m.home[1]; m.tgt=null; m.ret=false; emit(['ring',m.x,m.z,m.big?6:3,m.big?(m.ep==='dragon'?ELC[m.el]:'#c08aff'):m.crab?'#7ae8ff':'#ffd06a',.8]); }
   function monTick(m,dt){ if(m.air>0) m.air-=dt; if(m.rt>0) m.rt-=dt; if(m.dead){ m.rsp-=dt; if(m.rsp<=0) spawnMon(m); return; }
-    if(m.ep==='herald'&&Tm>=1185&&!m.tgt){ m.dead=true; m.rsp=Math.max(1,1200-Tm); emit(['feed','峽谷先鋒離開了，巴龍納什即將出現',2]); return; }
+    if(m.ep==='herald'&&Tm>=1185&&!m.tgt){ m.dead=true; m.rsp=Math.max(1,1200-Tm); emit(['feed','獨眼魔蟲離開了，深淵魔蛇即將出現',2]); return; }
     if(m.crab){ m.cd-=dt; if(m.stun>0){ m.stun-=dt; return; } const hz=Math.hypot(m.x-m.home[0],m.z-m.home[1]); // 河蟹：被打就沿著河道逃，不反擊
       const thr=m.tgt&&alive(m.tgt)&&dist(m,m.tgt)<12?m.tgt:null; if(!thr) m.tgt=null; let dir=m.cdir||1; if(thr){ const along=(m.x-thr.x)+(m.z-thr.z); dir=along>=0?1:-1; } if(hz>11&&Math.sign((m.x-m.home[0])+(m.z-m.home[1]))===dir) dir=-dir; m.cdir=dir;
       if(thr||Math.random()<.003) m.cwT=Tm+3; if(thr||m.cwT>Tm) moveUnit(m,dir,dir,m.spd*(thr?(m.slow>0?.6:1):.4),dt); if(!thr) m.hp=Math.min(m.max,m.hp+m.max*.02*dt); m.face=Math.atan2(dir,dir); return; }
@@ -839,7 +839,7 @@ function create(env,opts){
     // 比分、時間（上方中間）；戰績、金幣
     c.fillStyle='rgba(10,10,24,.75)'; rr(c,W/2-110,6,220,40,12); c.fill(); c.textAlign='center'; c.textBaseline='middle'; c.font='900 22px '+TC; c.fillStyle=TEAMC[myTeam]; c.fillText(kills[myTeam],W/2-58,26); c.fillStyle=TEAMC[1-myTeam]; c.fillText(kills[1-myTeam],W/2+58,26); c.fillStyle='#fff'; c.font='900 15px '+TC; c.fillText(fmtT(Tm),W/2,26);
     c.fillStyle='rgba(10,10,24,.75)'; rr(c,W-232,6,224,40,12); c.fill(); c.textAlign='left'; c.font='900 14px '+TC; c.fillStyle='#fff'; c.fillText(mh.kc+' / '+mh.dc+' / '+mh.ac,W-220,26); c.fillStyle='#ffd23f'; c.fillText('● '+Math.floor(mh.gold),W-136,26); c.fillStyle='#9a94c0'; c.font='700 10px '+TC; c.textAlign='right'; c.fillText(TOUCH?'戰績':'Tab 戰績',W-14,26); c.textAlign='left';
-    let bx=W/2+120; const tbm=teamBuff[myTeam]; for(const [k,lab,colr] of [['bar','巴龍之手','#c08aff'],['fire','火龍','#ff6a2a'],['earth','土龍','#c8a060'],['wind','風龍','#a8e8ff'],['water','水龍','#3aa8ff']]){ const v=k==='bar'?Math.max(0,tbm.bar-Tm):tbm[k]; if(v>0){ c.fillStyle='rgba(10,10,24,.75)'; rr(c,bx,10,96,30,10); c.fill(); c.fillStyle=colr; c.font='900 11px '+TC; c.textAlign='left'; c.fillText(lab+(k==='bar'?' '+Math.ceil(v)+' 秒':' ×'+v),bx+8,26); bx+=100; } }
+    let bx=W/2+120; const tbm=teamBuff[myTeam]; for(const [k,lab,colr] of [['bar','魔蛇之力','#c08aff'],['fire','炎龍','#ff6a2a'],['earth','岩龍','#c8a060'],['wind','風龍','#a8e8ff'],['water','潮龍','#3aa8ff']]){ const v=k==='bar'?Math.max(0,tbm.bar-Tm):tbm[k]; if(v>0){ c.fillStyle='rgba(10,10,24,.75)'; rr(c,bx,10,96,30,10); c.fill(); c.fillStyle=colr; c.font='900 11px '+TC; c.textAlign='left'; c.fillText(lab+(k==='bar'?' '+Math.ceil(v)+' 秒':' ×'+v),bx+8,26); bx+=100; } }
     // 買裝備（建議的下一件）＋自動
     const L=HL(),nxt=planBuy(mh),it=nxt&&ITEMS[nxt],pc=nxt?priceFor(mh,nxt).cost:0,can=it&&mh.gold>=pc&&canShop(mh),[qx,qy,qw,qh]=L.buy;
     c.fillStyle=can?'rgba(255,210,63,.95)':'rgba(10,10,24,.8)'; rr(c,qx,qy,qw,qh,10); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=1.5; c.stroke();
@@ -929,7 +929,7 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   desc:'5 對 5 推塔對戰！30 位原創英雄（坦克、戰士、刺客、法師、射手、輔助），每位 Q W E R 四招，再挑兩個召喚師技能（閃現、治癒、重擊、鬼步…）。上中下三路、兩塊野區、打野幼獸和輔助裝備，也有一條路的單路激戰。電腦版滑鼠點擊操作，手機版搖桿加技能鍵。連線最多 10 人，不夠的位置由電腦補。',
   goal:'跟著小兵推掉對方的防禦塔，最後打掉對方主堡就贏。打小兵、野怪、敵人拿金幣買裝備；每升一等可以點一個技能，大招 6 等才能學。',
   ownP:true,ownTab:true,stages:MODES,stageLabel:'選擇模式',previewWarm:.3,stageShow:(ctx,w,h,si,t)=>art(ctx,w,h,si,t),
-  stageGoal:si=>si?'單路激戰：只有一條路，沒有野區，雙方各兩座塔和主堡，一路打到底。':'三路峽谷：上中下三條路各有兩座塔，兩邊野區有紅 Buff、藍 Buff 和小野怪，河道有河蟹，河道兩端的池子會出現史詩級野怪（元素飛龍 5:00、峽谷先鋒 6:00、巴龍納什 20:00）。選「打野」路線要帶召喚師技能「重擊」，先買打野幼獸（火狐、風鷹、岩龜三選一）；選「輔助」先買星界地圖，賺錢升級後可以插眼。',
+  stageGoal:si=>si?'單路激戰：只有一條路，沒有野區，雙方各兩座塔和主堡，一路打到底。':'三路峽谷：上中下三條路各有兩座塔，兩邊野區有紅 Buff、藍 Buff 和小野怪，河道有河蟹，河道兩端的池子會出現史詩級野怪（四象天龍 5:00、獨眼魔蟲 6:00、深淵魔蛇 20:00）。選「打野」路線要帶召喚師技能「重擊」，先買打野幼獸（火狐、風鷹、岩龜三選一）；選「輔助」先買星界地圖，賺錢升級後可以插眼。',
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦難度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
   optNote:()=>'連線時真人輪流分到兩隊，不夠的位置由電腦補上。',

@@ -358,7 +358,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       b.m.push(P_(Sp(.55,14,8,0,TAU,0,PI/2),sh,0,.6,0,0,0,0,1.25,.55,1)); b.m.push(P_(Cy(.62,.55,.18,14),sl,0,.6,0,0,0,0,1.15,1,.95)); for(let k=0;k<5;k++) b.b.push(P_(Sp(.05,6,4),cl,(k-2)*.22,.88,-.1+Math.abs(k-2)*.06));
       for(const sx of [-1,1]){ b.m.push(P_(Cy(.05,.05,.5,6),sh,sx*.55,.65,.35,0,0,sx*1.1)); b.m.push(P_(Sp(.16,8,6),sl,sx*.85,.75,.5,0,0,0,1.3,.8,1)); b.m.push(P_(Co(.06,.25,5),sl,sx*.95,.78,.7,-1.2)); for(let q=0;q<3;q++) b.m.push(P_(Cy(.03,.02,.6,5),sh,sx*.6,.4,-.3+q*.25,0,0,sx*1.0)); }
       h.m.push(P_(Sp(.12,8,6),sl,0,0,0)); for(const sx of [-1,1]){ h.m.push(P_(Cy(.02,.02,.25,4),sh,sx*.12,.12,0)); h.b.push(P_(Sp(.05,6,4),'#ffffff',sx*.12,.26,0)); } }
-    else if(ty==='dragon'){ const E={fire:['#a8301a','#e0602a','#ffb040'],earth:['#6a4a2a','#a07a4a','#ffd080'],wind:['#6a9ab8','#b8e0f0','#e8ffff'],water:['#1a5a8a','#3a9ad0','#a8e8ff']}[u.el]||['#a8301a','#e0602a','#ffb040'],bd=E[0],bl=E[1],gw=E[2]; T0.hz=1.35; T0.hy=1.7; // 元素飛龍：長脖子、雙翼、尾巴，顏色看元素
+    else if(ty==='dragon'){ const E={fire:['#a8301a','#e0602a','#ffb040'],earth:['#6a4a2a','#a07a4a','#ffd080'],wind:['#6a9ab8','#b8e0f0','#e8ffff'],water:['#1a5a8a','#3a9ad0','#a8e8ff']}[u.el]||['#a8301a','#e0602a','#ffb040'],bd=E[0],bl=E[1],gw=E[2]; T0.hz=1.35; T0.hy=1.7; // 四象天龍：長脖子、雙翼、尾巴，顏色看元素
       b.f.push(P_(rockGeo([.7,.6,1.1],sd,1),bd,0,1.05,0)); b.m.push(P_(Sp(.45,10,8),bl,0,.85,.15,0,0,0,1.1,.6,1.6));
       for(let k=0;k<4;k++) b.f.push(P_(Cy(.24-k*.04,.28-k*.04,.4,7),bd,0,1.3+k*.12,.7+k*.18,-.9)); for(let k=0;k<6;k++) b.f.push(P_(Co(.08,.3,5),bl,0,1.5-k*.06,.2-k*.3,-.4));
       for(let k=0;k<5;k++) b.f.push(P_(Cy(.2-k*.035,.24-k*.035,.45,6),bd,0,1.0-k*.05,-.9-k*.4,PI/2+.15)); b.f.push(P_(Co(.12,.4,4),gw,0,.75,-3.0,-PI/2));
@@ -366,12 +366,12 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       for(let k=0;k<5;k++) b.b.push(P_(Bx(.04,.25,.02),gw,-.35+k*.18,.95+(k%2)*.12,.95,0,0,(k%2?.5:-.5)));
       h.f.push(P_(rockGeo([.4,.32,.55],sd+4,1),bl,0,0,0)); h.f.push(P_(Bx(.3,.14,.45),bd,0,-.12,.4)); for(const sx of [-1,1]){ h.s.push(P_(Co(.06,.45,6),'#f0e6d0',sx*.18,.3,-.3,-.9,0,-sx*.3)); h.b.push(P_(Sp(.06,6,4),gw,sx*.18,.1,.35)); } h.b.push(P_(Sp(.1,6,4),gw,0,-.15,.62,0,0,0,1.4,.6,.6));
       lg.f.push(P_(Cy(.15,.19,.72,7),bd,0,-.36,0)); for(const q of [-.08,0,.08]) lg.s.push(P_(Co(.035,.18,4),'#f0e6d0',q,-.72,.22,PI/2)); }
-    else if(ty==='herald'){ const sh='#4a2a6a',sl='#7a4aa8',ey='#d8a8ff'; T0.hz=1.0; T0.hy=1.25; // 峽谷先鋒：紫色甲殼、背上一隻大眼睛
+    else if(ty==='herald'){ const sh='#4a2a6a',sl='#7a4aa8',ey='#d8a8ff'; T0.hz=1.0; T0.hy=1.25; // 獨眼魔蟲：紫色甲殼、背上一隻大眼睛
       b.f.push(P_(rockGeo([1.0,.75,1.15],sd,1),sh,0,1.0,0)); for(let k=0;k<7;k++) b.f.push(P_(Co(.12,.45,5),sl,(k-3)*.26,1.6-Math.abs(k-3)*.05,-.45,-.6)); b.m.push(P_(Sp(.42,12,10),'#f4ecff',0,1.55,.15)); b.b.push(P_(Sp(.22,10,8),ey,0,1.6,.48)); b.b.push(P_(Sp(.1,8,6),'#2a0a3a',0,1.62,.66));
       for(const sx of [-1,1]) b.f.push(P_(Co(.22,.9,6),sl,sx*.8,1.3,.6,.9,0,-sx*.4));
       h.f.push(P_(rockGeo([.5,.4,.55],sd+6,1),sl,0,0,0)); for(const sx of [-1,1]){ h.s.push(P_(Co(.08,.5,6),'#e8dcc0',sx*.3,.3,.1,.5,0,-sx*.6)); h.b.push(P_(Sp(.06,6,4),ey,sx*.18,.08,.48)); }
       lg.f.push(P_(Cy(.17,.21,.72,7),sh,0,-.36,0)); lg.f.push(P_(Sp(.24,7,5),sl,0,-.72,.05,0,0,0,1,.55,1.3)); }
-    else if(ty==='baron'){ const sk='#3a1a4a',sl='#6a2a8a',bel='#8a5aa0',gw='#d070ff'; T0.hz=1.25; T0.hy=2.1; // 巴龍納什：巨大紫色蛇怪，弓起的身體、背刺、角
+    else if(ty==='baron'){ const sk='#3a1a4a',sl='#6a2a8a',bel='#8a5aa0',gw='#d070ff'; T0.hz=1.25; T0.hy=2.1; // 深淵魔蛇：巨大紫色蛇怪，弓起的身體、背刺、角
       for(let k=0;k<6;k++){ const a=k/5*PI,z=-1.6+k*.55; b.f.push(P_(Sp(.6-Math.abs(k-2.5)*.05,10,8),k%2?sk:sl,0,.55+Math.sin(a)*1.1,z,0,0,0,1,1,1.15)); b.f.push(P_(Co(.12,.5,5),'#e8d8f0',0,1.15+Math.sin(a)*1.1,z-.05,-.4)); b.b.push(P_(Sp(.07,6,4),gw,(k%2?.45:-.45),.6+Math.sin(a)*1.1,z)); }
       b.m.push(P_(Sp(.75,12,8),bel,0,.6,.9,0,0,0,1,.8,1)); b.f.push(P_(Cy(.5,.62,1.4,8),sk,0,1.2,1.1,.3));
       h.f.push(P_(rockGeo([.7,.55,.8],sd+8,1),sl,0,0,0)); h.m.push(P_(Bx(.75,.08,.5),'#1a0a1a',0,-.25,.45)); for(const sx of [-1,1]){ h.s.push(P_(Co(.12,1.0,6),'#e8d8f0',sx*.45,.5,-.4,-.7,0,-sx*.5)); h.s.push(P_(Co(.06,.35,5),'#f8f0ff',sx*.25,-.35,.65,PI)); h.b.push(P_(Sp(.09,6,4),gw,sx*.28,.15,.65)); } }
