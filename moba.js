@@ -19,6 +19,10 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
     M.river={pts:[[-66,-66],[66,66]],w:8,len:Math.hypot(132,132),cx:0,cz:0,ang:-PI/4,at:t=>[lerp(-66,66,t),lerp(-66,66,t)]}; M.riverW=8; M.riverDist=(x,z)=>segD(x,z,-66,-66,66,66);
     const big=[[-22,-22,0],[22,22,1]],small=[[-47,-20],[-40,-32],[20,47],[32,40],[-20,-47],[-32,-40],[47,20],[40,32]]; /* 前 4 個藍方、後 4 個紅方，沿河道（x、z 對調）完全對稱 */
     M.camps=[{x:big[0][0],z:big[0][1],big:1,kind:0,col:'#c08aff',side:0},{x:big[1][0],z:big[1][1],big:1,kind:1,col:'#8affc8',side:1}].concat(small.map((p,i)=>({x:p[0],z:p[1],big:0,kind:i,side:i<4?0:1})));
+    // 紅藍 Buff：藍方的藍 Buff 在上半野區、紅 Buff 在下半野區；紅方對稱（藍在下半、紅在上半）
+    M.camps.push({x:-36,z:-8,big:0,buff:'blue',kind:0,col:'#5aa8ff',side:0},{x:8,z:36,big:0,buff:'red',kind:0,col:'#ff6a4a',side:0},{x:36,z:8,big:0,buff:'blue',kind:0,col:'#5aa8ff',side:1},{x:-8,z:-36,big:0,buff:'red',kind:0,col:'#ff6a4a',side:1});
+    // 河蟹：上、下河道各一隻（不屬於任何一方）
+    M.camps.push({x:-40,z:-40,big:0,crab:1,kind:0,col:'#7ae8ff',side:2},{x:40,z:40,big:0,crab:1,kind:0,col:'#7ae8ff',side:2});
     M.inB=(x,z)=>[clamp(x,-M.B,M.B),clamp(z,-M.B,M.B)]; M.edge=a=>M.B/Math.max(Math.abs(Math.cos(a)),Math.abs(Math.sin(a)));
   } else { M.B=66; M.cliff=11.5; M.base=[[-56,0],[56,0]]; M.fount=[[-64,0],[64,0]]; M.lanes=[polyl([[-56,0],[56,0]])]; M.laneName=['主路']; M.camps=[]; M.riverW=0;
     M.inB=(x,z)=>[clamp(x,-M.B,M.B),clamp(z,-M.cliff+.8,M.cliff-.8)]; M.edge=a=>Math.min(70/Math.max(.001,Math.abs(Math.cos(a))),(M.cliff+4)/Math.max(.001,Math.abs(Math.sin(a)))); }

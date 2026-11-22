@@ -283,14 +283,14 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       const lg=KIT(); lg.m.push(P_(Cy(.075,.065,.26,8),'#6a6e78',0,-.13,0)); lg.s.push(P_(Sp(.07,8,6),steel,0,-.26,.03)); lg.s.push(P_(Cy(.07,.06,.22,8),steel,0,-.38,0)); lg.m.push(P_(Bx(.12,.1,.2),dark,0,-.48,.04)); T0.leg=bake(lg); }
     TPL.set(key,T0); return T0; }
   function minionModel(u){ const g=new T.Group(),tp=minionTpl(u.mt,u.team);
-    if(u.mt==='cannon'){ inst(tp.body,g); const wh=[]; for(const sx of [-1,1]) for(const zz of [-.48,.48]) wh.push(inst(tp.wheel,g,sx*.66,.38,zz));
-      const fl=new T.Mesh(tp.flag,tp.flagM); fl.position.set(-.45,2.0,-.66); g.add(fl); g.userData.flag=fl; g.userData.wheels=wh; g.scale.setScalar(1.25); scene.add(g); return {wrap:g}; }
+    if(u.mt==='cannon'){ if(u.herald){ const hg=new T.Group(); g.add(hg); } inst(tp.body,g); const wh=[]; for(const sx of [-1,1]) for(const zz of [-.48,.48]) wh.push(inst(tp.wheel,g,sx*.66,.38,zz));
+      const fl=new T.Mesh(tp.flag,tp.flagM); fl.position.set(-.45,2.0,-.66); g.add(fl); g.userData.flag=fl; g.userData.wheels=wh; g.scale.setScalar(u.herald?2.2:1.25); if(u.herald){ const gl=glowS('#c08aff',1.4,.6); gl.position.set(0,1.6,0); g.add(gl); } scene.add(g); return {wrap:g}; }
     const caster=u.mt==='ranged'; inst(tp.body,g); const lg=[-1,1].map(sx=>inst(tp.leg,g,sx*.12,.62,0));
     const ar=inst(tp.armR,g,caster?.24:.3,caster?1.24:1.18,0); const al=inst(tp.armL,g,caster?-.24:-.3,caster?1.24:1.18,0);
     if(caster){ ar.rotation.z=.2; al.rotation.z=-.25; al.rotation.x=-.6; const gl=glowS(TEAMC[u.team],.5); gl.position.set(0,.52,.04); ar.add(gl); } else al.rotation.x=-.5;
     g.userData.arm=ar; g.userData.legs=lg; g.scale.setScalar(1.05); scene.add(g); return {wrap:g}; }
   // 野怪：小野怪四種（石狼、晶甲蟲、蘑菇蛙、小石魔），大野怪兩種（紫晶巨魔、翠森古獸）
-  function monsterTpl(u){ const big=u.big,ty=big?(u.kind===1?'moss':'crystal'):['wolf','beetle','toad','golem'][(u.kind|0)%4],key='j'+ty+(u.id%2); if(TPL.has(key)) return TPL.get(key); const sd=u.id|0,T0={hz:.85,hy:1.35},b=KIT(),h=KIT(),lg=KIT(),eyeY='#ffd24a',horn='#ece0c4';
+  function monsterTpl(u){ const big=u.big,ty=u.crab?'crab':u.ep?u.ep:u.buff?u.buff+'buff':big?(u.kind===1?'moss':'crystal'):['wolf','beetle','toad','golem'][(u.kind|0)%4],key='j'+ty+(u.el||'')+(u.id%2); if(TPL.has(key)) return TPL.get(key); const sd=u.id|0,T0={hz:.85,hy:1.35},b=KIT(),h=KIT(),lg=KIT(),eyeY='#ffd24a',horn='#ece0c4';
     const legStd=(c1,c2,r)=>{ lg.f.push(P_(Cy(r*.8,r,.7,7),c1,0,-.35,0)); lg.f.push(P_(Sp(r*1.15,7,5),c2,0,-.7,.04,0,0,0,1,.6,1.3)); };
     if(ty==='wolf'){ const fur='#6a625a',fl='#8a8278',dk='#3a342e'; T0.hz=.95; T0.hy=1.2;
       b.f.push(P_(rockGeo([.5,.45,.85],sd,1),fur,0,1,0)); for(let k=0;k<5;k++) b.f.push(P_(Co(.09,.4-k*.04,5),fl,0,1.38-k*.03,.45-k*.22,-.5)); for(let k=0;k<6;k++){ const a=k/6*TAU; b.f.push(P_(Co(.1,.35,5),dk,Math.cos(a)*.3,1.15+Math.sin(a)*.15,.65,1.2,0,Math.cos(a)*.6)); }
@@ -312,6 +312,37 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       b.f.push(P_(rockGeo([.85,.75,1.0],sd,1),rk,0,1,0)); for(let k=0;k<4;k++) b.f.push(P_(rockGeo([.3,.15,.3],sd+k,0),ms,(R()-.5)*.8,1.62,(R()-.5)*.8)); for(let k=0;k<3;k++) b.b.push(P_(Bx(.04,.35,.02),gw,-.3+k*.3,1.05+(k%2)*.1,.92,0,0,.4*(k-1)));
       h.f.push(P_(rockGeo([.42,.38,.45],sd+3,1),rl,0,0,0)); h.b.push(P_(Bx(.32,.05,.03),gw,0,.05,.4)); for(const sx of [-1,1]) h.s.push(P_(Co(.09,.45,6),horn,sx*.3,.35,-.05,.4,0,-sx*.5));
       legStd(rk,rl,.16); }
+    else if(ty==='crab'){ const sh='#3a8a9a',sl='#7ad8e8',cl='#e8f8ff'; T0.hz=.55; T0.hy=.75; // 河蟹：圓殼、兩隻大鉗、細長腳
+      b.m.push(P_(Sp(.55,14,8,0,TAU,0,PI/2),sh,0,.6,0,0,0,0,1.25,.55,1)); b.m.push(P_(Cy(.62,.55,.18,14),sl,0,.6,0,0,0,0,1.15,1,.95)); for(let k=0;k<5;k++) b.b.push(P_(Sp(.05,6,4),cl,(k-2)*.22,.88,-.1+Math.abs(k-2)*.06));
+      for(const sx of [-1,1]){ b.m.push(P_(Cy(.05,.05,.5,6),sh,sx*.55,.65,.35,0,0,sx*1.1)); b.m.push(P_(Sp(.16,8,6),sl,sx*.85,.75,.5,0,0,0,1.3,.8,1)); b.m.push(P_(Co(.06,.25,5),sl,sx*.95,.78,.7,-1.2)); for(let q=0;q<3;q++) b.m.push(P_(Cy(.03,.02,.6,5),sh,sx*.6,.4,-.3+q*.25,0,0,sx*1.0)); }
+      h.m.push(P_(Sp(.12,8,6),sl,0,0,0)); for(const sx of [-1,1]){ h.m.push(P_(Cy(.02,.02,.25,4),sh,sx*.12,.12,0)); h.b.push(P_(Sp(.05,6,4),'#ffffff',sx*.12,.26,0)); } }
+    else if(ty==='dragon'){ const E={fire:['#a8301a','#e0602a','#ffb040'],earth:['#6a4a2a','#a07a4a','#ffd080'],wind:['#6a9ab8','#b8e0f0','#e8ffff'],water:['#1a5a8a','#3a9ad0','#a8e8ff']}[u.el]||['#a8301a','#e0602a','#ffb040'],bd=E[0],bl=E[1],gw=E[2]; T0.hz=1.35; T0.hy=1.7; // 元素飛龍：長脖子、雙翼、尾巴，顏色看元素
+      b.f.push(P_(rockGeo([.7,.6,1.1],sd,1),bd,0,1.05,0)); b.m.push(P_(Sp(.45,10,8),bl,0,.85,.15,0,0,0,1.1,.6,1.6));
+      for(let k=0;k<4;k++) b.f.push(P_(Cy(.24-k*.04,.28-k*.04,.4,7),bd,0,1.3+k*.12,.7+k*.18,-.9)); for(let k=0;k<6;k++) b.f.push(P_(Co(.08,.3,5),bl,0,1.5-k*.06,.2-k*.3,-.4));
+      for(let k=0;k<5;k++) b.f.push(P_(Cy(.2-k*.035,.24-k*.035,.45,6),bd,0,1.0-k*.05,-.9-k*.4,PI/2+.15)); b.f.push(P_(Co(.12,.4,4),gw,0,.75,-3.0,-PI/2));
+      for(const sx of [-1,1]){ b.m.push(P_(Bx(1.9,.04,1.1),bl,sx*1.25,1.75,-.15,0,0,sx*.35)); b.f.push(P_(Cy(.05,.04,1.9,5),bd,sx*1.2,1.95,.35,0,0,sx*(PI/2-.35))); for(let q=0;q<3;q++) b.f.push(P_(Cy(.025,.02,1.1,4),bd,sx*(.75+q*.5),1.6+q*.15,-.1,PI/2,0,sx*.35)); }
+      for(let k=0;k<5;k++) b.b.push(P_(Bx(.04,.25,.02),gw,-.35+k*.18,.95+(k%2)*.12,.95,0,0,(k%2?.5:-.5)));
+      h.f.push(P_(rockGeo([.4,.32,.55],sd+4,1),bl,0,0,0)); h.f.push(P_(Bx(.3,.14,.45),bd,0,-.12,.4)); for(const sx of [-1,1]){ h.s.push(P_(Co(.06,.45,6),'#f0e6d0',sx*.18,.3,-.3,-.9,0,-sx*.3)); h.b.push(P_(Sp(.06,6,4),gw,sx*.18,.1,.35)); } h.b.push(P_(Sp(.1,6,4),gw,0,-.15,.62,0,0,0,1.4,.6,.6));
+      lg.f.push(P_(Cy(.15,.19,.72,7),bd,0,-.36,0)); for(const q of [-.08,0,.08]) lg.s.push(P_(Co(.035,.18,4),'#f0e6d0',q,-.72,.22,PI/2)); }
+    else if(ty==='herald'){ const sh='#4a2a6a',sl='#7a4aa8',ey='#d8a8ff'; T0.hz=1.0; T0.hy=1.25; // 峽谷先鋒：紫色甲殼、背上一隻大眼睛
+      b.f.push(P_(rockGeo([1.0,.75,1.15],sd,1),sh,0,1.0,0)); for(let k=0;k<7;k++) b.f.push(P_(Co(.12,.45,5),sl,(k-3)*.26,1.6-Math.abs(k-3)*.05,-.45,-.6)); b.m.push(P_(Sp(.42,12,10),'#f4ecff',0,1.55,.15)); b.b.push(P_(Sp(.22,10,8),ey,0,1.6,.48)); b.b.push(P_(Sp(.1,8,6),'#2a0a3a',0,1.62,.66));
+      for(const sx of [-1,1]) b.f.push(P_(Co(.22,.9,6),sl,sx*.8,1.3,.6,.9,0,-sx*.4));
+      h.f.push(P_(rockGeo([.5,.4,.55],sd+6,1),sl,0,0,0)); for(const sx of [-1,1]){ h.s.push(P_(Co(.08,.5,6),'#e8dcc0',sx*.3,.3,.1,.5,0,-sx*.6)); h.b.push(P_(Sp(.06,6,4),ey,sx*.18,.08,.48)); }
+      lg.f.push(P_(Cy(.17,.21,.72,7),sh,0,-.36,0)); lg.f.push(P_(Sp(.24,7,5),sl,0,-.72,.05,0,0,0,1,.55,1.3)); }
+    else if(ty==='baron'){ const sk='#3a1a4a',sl='#6a2a8a',bel='#8a5aa0',gw='#d070ff'; T0.hz=1.25; T0.hy=2.1; // 巴龍納什：巨大紫色蛇怪，弓起的身體、背刺、角
+      for(let k=0;k<6;k++){ const a=k/5*PI,z=-1.6+k*.55; b.f.push(P_(Sp(.6-Math.abs(k-2.5)*.05,10,8),k%2?sk:sl,0,.55+Math.sin(a)*1.1,z,0,0,0,1,1,1.15)); b.f.push(P_(Co(.12,.5,5),'#e8d8f0',0,1.15+Math.sin(a)*1.1,z-.05,-.4)); b.b.push(P_(Sp(.07,6,4),gw,(k%2?.45:-.45),.6+Math.sin(a)*1.1,z)); }
+      b.m.push(P_(Sp(.75,12,8),bel,0,.6,.9,0,0,0,1,.8,1)); b.f.push(P_(Cy(.5,.62,1.4,8),sk,0,1.2,1.1,.3));
+      h.f.push(P_(rockGeo([.7,.55,.8],sd+8,1),sl,0,0,0)); h.m.push(P_(Bx(.75,.08,.5),'#1a0a1a',0,-.25,.45)); for(const sx of [-1,1]){ h.s.push(P_(Co(.12,1.0,6),'#e8d8f0',sx*.45,.5,-.4,-.7,0,-sx*.5)); h.s.push(P_(Co(.06,.35,5),'#f8f0ff',sx*.25,-.35,.65,PI)); h.b.push(P_(Sp(.09,6,4),gw,sx*.28,.15,.65)); } }
+    else if(ty==='bluebuff'){ const st='#3a4a6a',sl='#5a6a8a',cr='#5ab8ff',cl='#c8ecff'; T0.hz=1.0; T0.hy=1.5; // 藍色守衛：石甲巨像，背上藍水晶、全身藍色符文
+      b.f.push(P_(rockGeo([.95,.9,1.05],sd,1),st,0,1.05,0)); for(const sx of [-1,1]){ b.f.push(P_(rockGeo([.42,.38,.45],sd+sx+3,1),sl,sx*.85,1.55,.1)); b.s.push(P_(Oc(.16),cr,sx*.9,1.95,.05,0,0,sx*.4,1,2.2,1)); }
+      for(let k=0;k<5;k++) b.s.push(P_(Oc(.14+(k%2)*.06),cr,(k-2)*.28,1.85+(2-Math.abs(k-2))*.12,-.35,(k-2)*.15,k,0,1,2.6,1)); for(let k=0;k<6;k++) b.b.push(P_(Bx(.04,.28,.02),cl,-.55+k*.22,.95+(k%2)*.18,1.0,0,0,(k%2?.5:-.5))); b.b.push(P_(To(.5,.03,4,24),cr,0,1.05,0,PI/2));
+      h.f.push(P_(rockGeo([.5,.45,.52],sd+7,1),sl,0,0,0)); h.b.push(P_(Bx(.36,.06,.04),cl,0,.05,.48)); h.s.push(P_(Oc(.12),cr,0,.45,0,0,0,0,1,2,1)); for(const sx of [-1,1]) h.s.push(P_(Co(.08,.45,6),'#d8e8ff',sx*.32,.38,-.05,.3,0,-sx*.6));
+      lg.f.push(P_(Cy(.17,.21,.72,7),st,0,-.36,0)); lg.s.push(P_(Oc(.09),cr,0,-.28,.17,0,0,0,1,1.6,1)); lg.f.push(P_(Sp(.24,7,5),sl,0,-.72,.05,0,0,0,1,.55,1.3)); }
+    else if(ty==='redbuff'){ const bd='#6a2a1e',bl='#8a3a24',th='#2a1a14',lv='#ff7a2a',lc='#ffd080'; T0.hz=1.05; T0.hy=1.3; // 紅色荊棘獸：深紅身體、背上黑刺、熔岩裂縫
+      b.f.push(P_(rockGeo([.95,.8,1.15],sd,1),bd,0,1.0,0)); for(let k=0;k<11;k++){ const a=k/11*PI-PI/2,rr=.55; b.f.push(P_(Co(.11,.6-Math.abs(k-5)*.04,5),th,Math.sin(a)*rr*.9,1.6+Math.cos(a)*.15,-.2+Math.cos(a)*.35-k%2*.15,-.5,0,Math.sin(a)*.8)); }
+      for(let k=0;k<7;k++) b.b.push(P_(Bx(.035,.32,.02),lv,-.6+k*.2,.85+(k%3)*.12,1.08,0,0,(k%2?.6:-.6))); b.b.push(P_(Sp(.22,8,6),lc,0,1.0,1.0,0,0,0,1,.7,.4));
+      h.f.push(P_(rockGeo([.55,.48,.62],sd+5,1),bl,0,0,0)); for(const sx of [-1,1]){ h.s.push(P_(To(.3,.06,6,10,PI*.75),'#e8dcc0',sx*.32,-.18,.35,0,PI/2,sx>0?-.3:PI+.3)); h.b.push(P_(Sp(.07,6,4),lc,sx*.2,.12,.52)); } h.b.push(P_(Bx(.3,.05,.04),lv,0,-.1,.58));
+      lg.f.push(P_(Cy(.17,.22,.7,7),bd,0,-.35,0)); lg.b.push(P_(Bx(.03,.3,.02),lv,0,-.3,.2)); lg.f.push(P_(Sp(.24,7,5),th,0,-.7,.06,0,0,0,1,.5,1.35)); }
     else if(ty==='crystal'){ const st='#4a3a5a',sl='#6a5a7a',cr='#c08aff',cl='#e8c8ff'; T0.hz=1.0; T0.hy=1.4;
       b.f.push(P_(rockGeo([1,.85,1.2],sd,1),st,0,1,0)); for(let k=0;k<9;k++){ const a=k/9*TAU+R()*.3,rr=.35+R()*.3; b.s.push(P_(Oc(.13+R()*.1),cr,Math.cos(a)*rr,1.65+R()*.2,Math.sin(a)*rr*1.1-.1,(R()-.5)*.6,R()*3,(R()-.5)*.6,1,2.4,1)); }
       for(let k=0;k<4;k++) b.b.push(P_(Oc(.08),cl,(k-1.5)*.25,1.95,-.1,0,k,0,1,2.6,1)); for(let k=0;k<5;k++) b.b.push(P_(Bx(.03,.2,.02),cr,-.5+k*.25,.95+(k%2)*.15,1.08,0,0,(k%2?.5:-.5)));
@@ -325,9 +356,9 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       h.f.push(P_(rockGeo([.55,.45,.6],sd+3,1),mo,0,0,0)); h.f.push(P_(rockGeo([.3,.12,.3],sd+9,0),ml,0,.38,0)); for(const sx of [-1,1]){ h.s.push(P_(To(.32,.06,6,10,PI*.7),horn,sx*.3,-.2,.35,0,PI/2,sx>0?-.3:PI+.3)); h.b.push(P_(Sp(.07,6,4),gw,sx*.2,.1,.52)); }
       lg.f.push(P_(Cy(.16,.2,.7,7),bk,0,-.35,0)); lg.f.push(P_(rockGeo([.2,.08,.2],sd+11,0),ml,0,-.15,.12)); lg.f.push(P_(Sp(.22,7,5),mo,0,-.7,.05,0,0,0,1,.55,1.3)); }
     T0.body=bake(b); T0.head=bake(h); T0.leg=bake(lg); TPL.set(key,T0); return T0; }
-  function monsterModel(u){ const g=new T.Group(),big=u.big,tp=monsterTpl(u),glowC=big?(u.kind===1?'#8affc8':'#c08aff'):'#ffd06a',s=big?2.2:1;
+  function monsterModel(u){ const g=new T.Group(),big=u.big,tp=monsterTpl(u),glowC=u.crab?'#7ae8ff':u.buff?(u.buff==='blue'?'#5ab8ff':'#ff7a2a'):u.ep==='dragon'?({fire:'#ff6a2a',earth:'#ffd080',wind:'#c8f0ff',water:'#5ab8ff'}[u.el]||'#ffb040'):big?(u.kind===1?'#8affc8':'#c08aff'):'#ffd06a',s=u.ep==='baron'?2.5:u.ep==='herald'?1.9:big?2.1:u.buff?1.55:u.crab?1.15:1;
     inst(tp.body,g); const head=inst(tp.head,g,0,tp.hy,tp.hz); const legs=[]; for(const [lx,lz] of [[-.5,.45],[.5,.45],[-.5,-.45],[.5,-.45]]) legs.push(inst(tp.leg,g,lx,.7,lz));
-    if(big){ const gl=glowS(glowC,1.6,.5); gl.position.set(0,2.3,-.1); g.add(gl); }
+    if(big||u.buff){ const gl=glowS(glowC,big?1.6:1.2,.5); gl.position.set(0,2.3,-.1); g.add(gl); }
     g.scale.setScalar(s); g.userData.legs=legs; g.userData.head=head; g.userData.hz=tp.hz; scene.add(g); return {wrap:g}; }
   /* ===== 特效 ===== */
   const FX=[];
@@ -377,7 +408,9 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
   function sync(G,t){ const dt=Math.min(.1,Math.max(0,t-lastT)); lastT=t; uT.value=t;
     const seen=new Set();
     for(const u of G.units()){ if(u.k==='t'||u.k==='c') continue; seen.add(u.id); let M=U.get(u.id);
-      if(!M){ M=u.k==='h'?heroModel(u):u.k==='m'?minionModel(u):monsterModel(u); M.k=u.k; if(M.ang==null) M.ang=u.face||0; U.set(u.id,M); }
+      if(M&&u.k==='j'&&M.vk!==(u.ep||'')+(u.el||'')){ scene.remove(M.wrap); U.delete(u.id); M=null; }
+      if(!M){ M=u.k==='h'?heroModel(u):u.k==='m'?minionModel(u):monsterModel(u); M.k=u.k; M.vk=(u.ep||'')+(u.el||''); if(M.ang==null) M.ang=u.face||0; U.set(u.id,M); }
+      if(u.crab){ if(!M.sh){ M.sh=add(new T.SphereGeometry(1.05,16,12),new T.MeshPhongMaterial({color:0xffffff,transparent:true,opacity:.28,shininess:120,depthWrite:false,emissive:0x5a6a7a}),0,.6,0,M.wrap,false); } M.sh.visible=!!u.csh; }
       if(u.vh){ M.wrap.visible=false; M.lx=null; continue; }
       const dead=u.dead; if(M.k==='h'){ M.fade+=((dead?0:1)-M.fade)*Math.min(1,dt*4); M.wrap.visible=M.fade>.05; }
       else M.wrap.visible=!dead;
