@@ -207,21 +207,63 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
     else if(cls==='marksman'){ const bw=add(new T.TorusGeometry(.55,.025,6,20,PI*1.1),wood,0,-.1,0,g); bw.rotation.z=PI/2-PI*.55; bw.rotation.y=PI/2; }
     else { add(new T.CylinderGeometry(.025,.03,1,8),metal('#e8d080'),0,-.1,0,g); const o=add(new T.TorusGeometry(.12,.025,6,16),gem,0,.45,0,g); const gl=glow(c2,.7); gl.position.y=.45; g.add(gl); }
     return g; }
+  /* 英雄外觀：依職業加上盔甲、長袍、披風、兜帽等；部分英雄有專屬武器 */
+  const WK={'杜克薩':'axe','托倫':'hammer','羅蘭德':'lance','布雷茲':'fist','布洛克':'gun','蕾琪娜':'pistols','弗特':'xbow','薩洛':'xbow','斯克爾':'claw','雷奧':'claw','卡斯帕':'scythe','亞瑟蘭':'bigsword','辛格':'katana','風間':'katana','卡洛斯':'bigsword','娜蒂雅':'trident','德雷克':'scythe'};
+  function lathe(pts,seg){ return new T.LatheGeometry(pts.slice().sort((a,b)=>a[1]-b[1]).map(q=>new T.Vector2(Math.max(.001,q[0]),q[1])),seg||16); }
+  function weapon2(kind,c1,c2,fx){ const g=new T.Group(),steel=metal('#e2e6f0'),dk=metal('#5a5e6a'),gold=metal('#d8b860'),wood=ph('#5a3a22',10),gem=new T.MeshPhongMaterial({color:col(fx),emissive:col(shade(fx,.6)),shininess:100}),glowAt=(y,s)=>{ const gl=glowS(fx,s||.8,.8); gl.position.y=y; g.add(gl); };
+    const blade=(len,w,y0)=>{ add(new T.BoxGeometry(w,len,.018),steel,0,y0-len/2,0,g); add(new T.ConeGeometry(w*.72,w*1.6,4),steel,0,y0-len-w*.7,0,g).rotation.x=PI; add(new T.BoxGeometry(w*.22,len*.85,.022),dk,0,y0-len/2,0,g); };
+    if(kind==='sword'||kind==='bigsword'||kind==='katana'){ const L0=kind==='bigsword'?1.35:kind==='katana'?1.05:1.1,W0=kind==='bigsword'?.15:kind==='katana'?.06:.1; if(kind==='katana'){ add(new T.BoxGeometry(W0,L0,.016),steel,0,-.12-L0/2,0,g).rotation.z=.04; add(new T.CylinderGeometry(.07,.07,.02,12),gold,0,-.12,0,g); add(new T.CylinderGeometry(.025,.025,.3,8),ph('#1a1a2a',10),0,.04,0,g); }
+      else { blade(L0,W0,-.16); const gd=add(new T.BoxGeometry(kind==='bigsword'?.42:.32,.05,.07),gold,0,-.14,0,g); add(new T.SphereGeometry(.035,8,6),gem,0,-.14,.04,g,false); add(new T.CylinderGeometry(.026,.026,.22,8),wood,0,-.02,0,g); add(new T.SphereGeometry(.04,8,6),gold,0,.1,0,g); } }
+    else if(kind==='axe'){ add(new T.CylinderGeometry(.03,.035,1.25,8),wood,0,-.45,0,g); for(const s of [-1,1]){ const hd=add(new T.CylinderGeometry(.28,.28,.03,16,1,false,s>0?0:PI,PI),steel,s*.02,-.98,0,g); hd.rotation.z=PI/2; hd.rotation.x=PI/2; } add(new T.CylinderGeometry(.05,.05,.14,8),dk,0,-.98,0,g); add(new T.ConeGeometry(.04,.16,6),steel,0,-1.14,0,g).rotation.x=PI; }
+    else if(kind==='hammer'){ add(new T.CylinderGeometry(.03,.035,1.1,8),wood,0,-.4,0,g); add(new T.BoxGeometry(.42,.22,.22),dk,0,-.98,0,g); for(const s of [-1,1]) add(new T.BoxGeometry(.06,.26,.26),gold,s*.22,-.98,0,g); add(new T.OctahedronGeometry(.07,0),gem,0,-.98,.12,g,false); glowAt(-.98,.6); }
+    else if(kind==='lance'||kind==='trident'){ add(new T.CylinderGeometry(.025,.03,1.9,8),wood,0,-.55,0,g); if(kind==='lance'){ add(new T.ConeGeometry(.06,.45,8),steel,0,-1.7,0,g).rotation.x=PI; add(new T.CylinderGeometry(.08,.05,.08,10),gold,0,-1.45,0,g); } else { for(const x of [-.09,0,.09]) add(new T.ConeGeometry(.025,x?.22:.3,6),steel,x,-1.62-(x?0:.04),0,g).rotation.x=PI; add(new T.BoxGeometry(.22,.03,.03),gold,0,-1.5,0,g); add(new T.OctahedronGeometry(.05,0),gem,0,-1.5,.03,g,false); } }
+    else if(kind==='scythe'){ add(new T.CylinderGeometry(.025,.03,1.5,8),ph('#2a2a34',20),0,-.4,0,g); const bl=add(new T.TorusGeometry(.32,.03,5,16,PI*.9),steel,.3,-1.12,0,g); bl.rotation.z=PI*.55; add(new T.SphereGeometry(.045,8,6),gem,0,-1.15,0,g,false); }
+    else if(kind==='claw'){ for(const x of [-.035,0,.035]) add(new T.ConeGeometry(.012,.22,4),steel,x,-.2,.04,g).rotation.x=PI-.3; add(new T.BoxGeometry(.11,.06,.08),dk,0,-.06,0,g); }
+    else if(kind==='fist'){ add(new T.SphereGeometry(.075,10,8),metal(c2),0,-.05,0,g); for(const x of [-.04,-.013,.013,.04]) add(new T.BoxGeometry(.02,.03,.02),gold,x,-.1,.05,g); glowAt(-.06,.7); }
+    else if(kind==='gun'||kind==='pistols'){ const L0=kind==='gun'?.75:.36; add(new T.CylinderGeometry(.035,.04,L0,10),dk,0,-.12-L0/2,.05,g).rotation.x=0; add(new T.BoxGeometry(.06,.14,.12),wood,0,-.04,0,g); add(new T.CylinderGeometry(.05,.05,.06,10),gold,0,-.14,.05,g); add(new T.TorusGeometry(.045,.008,5,10),gold,0,-.12-L0,.05,g).rotation.x=PI/2; }
+    else if(kind==='xbow'){ add(new T.BoxGeometry(.05,.5,.06),wood,0,-.3,0,g); const bw=add(new T.TorusGeometry(.26,.02,5,16,PI*.9),dk,0,-.5,0,g); bw.rotation.x=PI/2; bw.rotation.z=PI*.05+PI; add(new T.CylinderGeometry(.004,.004,.5,4),ph('#f0f0f0',10),0,-.47,.0,g).rotation.z=PI/2; add(new T.ConeGeometry(.02,.08,5),steel,0,-.58,0,g).rotation.x=PI; }
+    return g; }
+  function dress(u,h,J){ const d=u.def,pal=d.pal,cls=d.cls,c1=pal.c1,c2=pal.c2||pal.c1,c3=pal.c3||shade(c1,.5),fx=pal.fx||c2,M1=ph(c1,20),M2=metal(c2),Md=ph(shade(c1,.6),12),gold=metal('#d8b860'),trim=ph(c2,30),gem=new T.MeshPhongMaterial({color:col(fx),emissive:col(shade(fx,.6)),shininess:100});
+    const on=(par,geo,mat,x,y,z,rx,ry,rz,sx,sy,sz)=>{ const m=add(geo,mat,x||0,y||0,z||0,par); if(rx||ry||rz) m.rotation.set(rx||0,ry||0,rz||0); if(sx) m.scale.set(sx,sy==null?sx:sy,sz==null?sx:sz); return m; };
+    const plate=(mat,s)=>{ on(J.chest,lathe([[.05,.37],[.14,.355],[.225*s,.3],[.24*s,.2],[.215*s,.1],[.18*s,-.01]]),mat,0,0,0,0,0,0,1,1,.8); };
+    if(cls==='tank'){ plate(M2,1.05); on(J.chest,new T.BoxGeometry(.05,.3,.04),gold,0,.17,.19); on(J.chest,new T.OctahedronGeometry(.045,0),gem,0,.24,.205,0,0,0,1,1.2,.5);
+      for(const s of ['L','R']){ on(J['sh'+s],new T.SphereGeometry(.13,12,8,0,TAU,0,PI/2),M2,0,.04,0,0,0,0,1.25,.8,1.15); on(J['sh'+s],new T.SphereGeometry(.11,12,8,0,TAU,0,PI/2),M1,0,-.02,0,0,0,0,1.35,.6,1.2); on(J['sh'+s],new T.TorusGeometry(.14,.016,5,18),gold,0,.03,0,PI/2,0,0,1.15,1,1.05); on(J['el'+s],new T.CylinderGeometry(.062,.056,.2,10),M2,0,-.13,0); on(J['kn'+s],new T.CylinderGeometry(.07,.058,.3,10),M2,0,-.2,.01); on(J['kn'+s],new T.SphereGeometry(.07,10,8),M2,0,0,.03); }
+      on(J.pelvis,new T.CylinderGeometry(.2,.26,.26,14,1,true),ph(shade(c2,.7),40,{side:T.DoubleSide}),0,-.1,0,0,0,0,1,1,.8); on(J.pelvis,new T.CylinderGeometry(.19,.19,.05,14),ph('#4a3a2a',20),0,.06,0,0,0,0,1,1,.8);
+      if(!d.f){ on(J.head,new T.SphereGeometry(.128,16,10,0,TAU,0,PI*.55),M2,0,.13,-.01,0,0,0,1,1,1.08); on(J.head,new T.BoxGeometry(.2,.02,.03),gold,0,.12,.12); on(J.head,new T.ConeGeometry(.035,.16,6),trim,0,.28,-.02); } else on(J.head,new T.TorusGeometry(.11,.012,6,20),gold,0,.17,0,PI/2.3); }
+    else if(cls==='fighter'){ plate(ph(shade(c1,.85),35),1); on(J.chest,new T.BoxGeometry(.3,.04,.05),M2,0,.22,.17); on(J.chest,new T.BoxGeometry(.3,.04,.05),M2,0,.1,.165);
+      on(J.shR,new T.SphereGeometry(.13,12,8,0,TAU,0,PI/2),M2,0,.03,0,0,0,0,1.3,.85,1.2); on(J.shR,new T.TorusGeometry(.14,.015,5,18),gold,0,.03,0,PI/2,0,0,1.2,1,1.1); on(J.shL,new T.SphereGeometry(.09,10,8,0,TAU,0,PI/2),ph(shade(c1,.6),20),0,.03,0,0,0,0,1.2,.7,1.1);
+      for(const s of ['L','R']){ on(J['el'+s],new T.CylinderGeometry(.056,.05,.16,10),ph('#5a3a22',15),0,-.14,0); on(J['kn'+s],new T.CylinderGeometry(.064,.054,.22,10),M2,0,-.18,.01); }
+      for(const [x,z] of [[-.1,.12],[.1,.12],[0,-.14]]) on(J.pelvis,new T.BoxGeometry(.13,.24,.03),ph(c3,15),x,-.13,z,z>0?.12:-.12); on(J.pelvis,new T.CylinderGeometry(.17,.17,.06,14),ph('#4a3020',20),0,.07,0,0,0,0,1,1,.8); on(J.pelvis,new T.BoxGeometry(.08,.07,.03),gold,0,.07,.14); }
+    else if(cls==='assassin'){ on(J.chest,lathe([[.05,.36],[.12,.345],[.19,.29],[.205,.2],[.185,.1],[.15,.0]]),ph(shade(c1,.7),20),0,0,0,0,0,0,1,1,.76); for(const s of [-1,1]) on(J.chest,new T.BoxGeometry(.04,.42,.02),ph('#2a1e18',15),s*.04,.18,.16,0,0,s*.55);
+      on(J.neck,new T.TorusGeometry(.07,.03,6,14),ph(c2,10),0,0,0,PI/2); const sc=on(J.neck,new T.BoxGeometry(.06,.36,.015),ph(c2,10,{side:T.DoubleSide}),.04,-.12,-.08,.5,0,.2); u.scarf=sc;
+      if(!d.hood) on(J.head,new T.SphereGeometry(.13,14,10,PI/2+.8,TAU-1.6,0,PI*.66),ph(shade(c1,.45),8,{side:T.DoubleSide}),0,.1,-.01,0,0,0,1.05,1.12,1.15);
+      for(const s of ['L','R']){ on(J['el'+s],new T.CylinderGeometry(.048,.044,.18,8),ph('#2a1e18',15),0,-.14,0); on(J['kn'+s],new T.CylinderGeometry(.058,.05,.3,8),ph(shade(c3,.7),12),0,-.2,0); } }
+    else if(cls==='mage'||cls==='support'){ const long=cls==='mage',robe=ph(c1,18,{side:T.DoubleSide}),inner=ph(shade(c1,.55),10,{side:T.DoubleSide});
+      on(J.pelvis,lathe(long?[[.17,.08],[.2,-.2],[.27,-.55],[.33,-.86]]:[[.17,.08],[.2,-.12],[.25,-.36],[.28,-.5]],18),robe,0,0,0,0,0,0,1,1,.85); on(J.pelvis,new T.TorusGeometry(long?.33:.28,.016,5,24),gold,0,long?-.86:-.5,0,PI/2,0,0,1,.85,1);
+      on(J.pelvis,new T.BoxGeometry(.1,long?.8:.46,.02),trim,0,long?-.42:-.24,.17,-.12); on(J.pelvis,new T.CylinderGeometry(.17,.17,.06,16),trim,0,.07,0,0,0,0,1,1,.8);
+      on(J.chest,lathe([[.115,.335],[.17,.325],[.215,.29],[.235,.22]],16),ph(c2,20,{side:T.DoubleSide}),0,0,0,0,0,0,1,1,.82); on(J.chest,new T.TorusGeometry(.115,.014,5,16),gold,0,.335,0,PI/2,0,0,1,.82,1); on(J.chest,new T.OctahedronGeometry(.035,0),gem,0,.28,.16,0,0,0,1,1.3,.5);
+      for(const s of ['L','R']) on(J['el'+s],new T.CylinderGeometry(.05,long?.1:.08,.2,12,1,true),robe,0,-.15,0);
+      if(!d.hood&&!d.horns) on(J.head,new T.TorusGeometry(.105,.01,6,20),gold,0,.17,0,PI/2.25); if(!d.hood&&!d.horns&&long) on(J.head,new T.OctahedronGeometry(.025,0),gem,0,.2,.1,0,0,0,1,1.3,.6); }
+    else if(cls==='marksman'){ on(J.chest,lathe([[.05,.37],[.13,.355],[.2,.3],[.215,.2],[.19,.1],[.155,-.01]]),ph(c1,22),0,0,0,0,0,0,1,1,.78); on(J.chest,new T.BoxGeometry(.03,.33,.03),gold,.06,.16,.16);
+      for(const s of [-1,1]) on(J.pelvis,new T.BoxGeometry(.13,.52,.02),ph(shade(c1,.8),18,{side:T.DoubleSide}),s*.08,-.2,-.13,-.18,0,s*.08); on(J.pelvis,new T.CylinderGeometry(.17,.17,.05,14),ph('#4a3020',20),0,.07,0,0,0,0,1,1,.8); on(J.pelvis,new T.BoxGeometry(.06,.07,.05),ph('#6a4a2a',15),.13,.03,.1);
+      on(J.elL,new T.CylinderGeometry(.052,.046,.16,10),ph('#5a3a22',15),0,-.15,0); on(J.shR,new T.SphereGeometry(.09,10,8,0,TAU,0,PI/2),M2,0,.03,0,0,0,0,1.2,.7,1.1); for(const s of ['L','R']) on(J['kn'+s],new T.CylinderGeometry(.062,.052,.26,10),ph('#4a3020',15),0,-.2,0); } }
+
   function heroModel(u){ const d=u.def,pal=d.pal,h=H3.build(T,{skin:pal.skin,shirt:pal.c1,pants:pal.c3||shade(pal.c1,.5),shoes:'#3a2a20',hair:pal.hair,female:!!d.f,longHair:!!d.f&&d.cls!=='tank',longSleeve:true,gloves:d.cls==='tank'||d.cls==='fighter'?shade(pal.c2,.6):null,belt:pal.c2,helmet:d.helm?pal.c2:null,brow:0});
     const wrap=new T.Group(),J=h.J; wrap.add(h.root); h.root.scale.setScalar(1.4); scene.add(wrap);
     // 肩甲
-    if(d.cls==='tank'||d.cls==='fighter'){ for(const s of ['L','R']){ const sp=add(new T.SphereGeometry(.1,10,8,0,TAU,0,PI/2),metal(pal.c2),0,.03,0,J['sh'+s]); sp.scale.set(1.25,.75,1.15); } }
+    dress(u,h,J);
     // 披風
     if(d.cape){ const cp=add(new T.CylinderGeometry(.2,.34,.95,12,4,true,PI*.62,PI*.76).translate(0,-.475,0),new T.MeshLambertMaterial({color:col(pal.cape||pal.c2),side:T.DoubleSide}),0,.1,-.02,J.chest); cp.rotation.x=.12; u.cape=cp; }
     // 刺客面罩、法師兜帽、輔助光環
     if(d.cls==='assassin'){ add(new T.CylinderGeometry(.115,.12,.09,12),ph('#1a1820',10),0,.02,.01,J.head); }
-    if(d.hood){ const hd=add(new T.SphereGeometry(.15,12,10,0,TAU,0,PI*.62),ph(pal.c2,8,{side:T.DoubleSide}),0,.08,-.02,J.head); hd.scale.set(1.08,1.1,1.15); }
+    if(d.hood){ const hd=add(new T.SphereGeometry(.15,12,10,PI/2+.8,TAU-1.6,0,PI*.66),ph(pal.c2,8,{side:T.DoubleSide}),0,.08,-.02,J.head); hd.scale.set(1.08,1.1,1.15); }
     if(d.cls==='support'){ const hl=add(new T.TorusGeometry(.16,.015,6,24),new T.MeshBasicMaterial({color:0xfff2a0}),0,.33,0,J.head); hl.rotation.x=PI/2; }
     if(d.horns){ for(const s of [-1,1]){ const hn=add(new T.ConeGeometry(.035,.2,6),ph('#f0e6d0',30),s*.09,.17,0,J.head); hn.rotation.z=-s*.5; } }
     // 武器
-    const wp=weapon(d.cls,pal.c1,pal.c2||pal.c1); wp.rotation.x=d.cls==='mage'||d.cls==='support'?PI-.25:-1.1; J.hdR.add(wp);
-    if(d.cls==='tank'){ const sh=add(new T.CylinderGeometry(.27,.27,.05,16),metal(pal.c2),-.05,-.12,.04,J.hdL); sh.rotation.z=PI/2; add(new T.CylinderGeometry(.12,.12,.06,12),metal('#d8b860'),-.07,-.12,.04,J.hdL).rotation.z=PI/2; }
-    if(d.cls==='assassin'){ const w2=weapon('assassin'); w2.rotation.x=-1.1; J.hdL.add(w2); }
+    const wk=WK[d.n]||(d.cls==='fighter'?'sword':null),wp=wk?weapon2(wk,pal.c1,pal.c2||pal.c1,pal.fx||pal.c2):weapon(d.cls,pal.c1,pal.c2||pal.c1); wp.rotation.x=wk?(wk==='gun'||wk==='pistols'||wk==='xbow'?-1.4:-1.1):d.cls==='mage'||d.cls==='support'?PI-.25:-1.1; J.hdR.add(wp);
+    if(wk==='pistols'||wk==='claw'||wk==='fist'){ const w2=weapon2(wk,pal.c1,pal.c2||pal.c1,pal.fx||pal.c2); w2.rotation.x=-1.1; J.hdL.add(w2); }
+    if(d.cls==='tank'){ const sh=add(new T.CylinderGeometry(.3,.3,.05,20),metal(pal.c2),-.05,-.12,.04,J.hdL); sh.rotation.z=PI/2; add(new T.TorusGeometry(.3,.025,6,24),metal('#d8b860'),-.075,-.12,.04,J.hdL).rotation.y=PI/2; add(new T.CylinderGeometry(.1,.12,.07,12),metal('#d8b860'),-.08,-.12,.04,J.hdL).rotation.z=PI/2; add(new T.OctahedronGeometry(.05,0),new T.MeshPhongMaterial({color:col(pal.fx||pal.c2),emissive:col(shade(pal.fx||pal.c2,.6))}),-.12,-.12,.04,J.hdL,false); }
+    if(d.cls==='assassin'&&!wk){ const w2=weapon('assassin'); w2.rotation.x=-1.1; J.hdL.add(w2); }
     if(d.cls==='marksman'){ const q=add(new T.CylinderGeometry(.08,.07,.5,8),ph('#6a4a2a',10),.1,-.15,-.17,J.chest); q.rotation.z=.4; }
     const ring=add(new T.RingGeometry(.9,1.05,32),new T.MeshBasicMaterial({color:col(TEAMC[u.team]),transparent:true,opacity:.75,depthWrite:false}),0,.03,0,wrap,false); ring.rotation.x=-PI/2;
     return {wrap,h,J,ring,wp,cur:null,ang:0,fade:1}; }
