@@ -106,7 +106,7 @@ function create(env,opts){
       asst.forEach(a=>{ a.ac++; a.gold+=110; }); const xpw=[killer].concat(asst).filter(Boolean); xpw.forEach(a=>gainXp(a,(140+u.lvl*28)/Math.max(1,xpw.length)*1.3));
       u.hits={}; emit(['feed',(killer?TEAMN(killer.team)+' '+killer.def.n:'')+(killer?' 擊殺了 ':'')+TEAMN(u.team)+' '+u.def.n+(killer?'':' 陣亡'),killer?killer.team:2]); emit(['boom',+u.x.toFixed(1),+u.z.toFixed(1),2.5,TEAMC[u.team]]); emit(['sfx','die']);
       if(killer&&killer.streak>=3) emit(['feed',killer.def.n+' '+['三連殺！','四連殺！','五連殺！','勢不可擋！'][Math.min(3,killer.streak-3)],killer.team]); }
-    else if(u.k==='m'){ u.dead=true; const S=MIN[u.mt]; if(src&&src.k==='h'){ src.gold+=S.gold+Math.round(Tm/60); src.cs=(src.cs||0)+1; } const near=heroes.filter(hh=>alive(hh)&&hh.team!==u.team&&dist(hh,u)<13); near.forEach(hh=>gainXp(hh,S.xp*1.25/Math.max(1,near.length)));
+    else if(u.k==='m'){ u.dead=true; const S=MIN[u.mt]; if(src&&src.k==='h'){ const g=S.gold+Math.round(Tm/60)*(u.mt==='cannon'?2:1); src.gold+=g; src.cs=(src.cs||0)+1; emit(['gd',+u.x.toFixed(1),+u.z.toFixed(1),g,src.id]); } // 只有英雄尾刀才有錢 const near=heroes.filter(hh=>alive(hh)&&hh.team!==u.team&&dist(hh,u)<13); near.forEach(hh=>gainXp(hh,S.xp*1.25/Math.max(1,near.length)));
       emit(['burst',+u.x.toFixed(1),1,+u.z.toFixed(1),TEAMC[u.team],6,3]); }
     else if(u.k==='j'){ u.dead=true; u.rsp=u.big?120:60; u.tgt=null; const killer=src&&src.k==='h'?src:null; if(killer){ const S=stats(killer),m=S.jg?1.3:1; killer.cs=(killer.cs||0)+(u.big?4:1); if(petOf(killer)){ const st0=jgStage(killer); killer.jst=(killer.jst||0)+(u.big?3:1); heal(killer,u.big?150:60); const st1=jgStage(killer); if(st1>st0){ emit(['beam',+killer.x.toFixed(1),+killer.z.toFixed(1),1.2,'#8affc8',1]); emit(['feed',TEAMN(killer.team)+' '+killer.def.n+(st1===3?' 的打野幼獸覺醒了！':' 的重擊升級了（可以打英雄）'),killer.team]); if(killer.me) floatMsg(st1===3?'幼獸覺醒！':'重擊升級：可以對敵方英雄使用','#8affc8',2); } } killer.gold+=Math.round((u.big?220:55)*m); gainXp(killer,(u.big?320:80)*m); heroes.filter(hh=>hh!==killer&&hh.team===killer.team&&alive(hh)&&dist(hh,u)<12).forEach(hh=>gainXp(hh,u.big?160:30));
         if(u.big){ const tb=teamBuff[killer.team]; if(u.kind===0) tb.dmg=90; else tb.reg=90; emit(['feed',TEAMN(killer.team)+' 擊敗了 '+(u.kind===0?'紫晶岩魔（全隊傷害提升）':'翠鱗巨獸（全隊回血、加速）'),killer.team]); emit(['beam',+u.x.toFixed(1),+u.z.toFixed(1),3,u.kind?'#8affc8':'#c08aff',1.2]); } }
@@ -145,9 +145,12 @@ function create(env,opts){
   function spawnWave(){ waveN++; const sc=1+Tm/60*.05; map.lanes.forEach((L,li)=>{ for(let tm=0;tm<2;tm++){ const comp=['melee','melee','melee','ranged','ranged']; if(waveN%3===0||Tm>900) comp.push('cannon'); if(Tm>600) comp.push('melee'); const lost=towers.filter(q=>q.team!==tm&&q.lane===li&&q.tier===1&&q.hp<=0).length; if(lost) comp.push('cannon'); comp.forEach((mt,k)=>{ const S=MIN[mt],s0=tm?L.len-3-k*1.6:3+k*1.6,p=along(L,s0);
         minions.push({id:minId++,k:'m',mt,big:mt==='cannon',team:tm,lane:li,x:p[0]+(k%2?.6:-.6),z:p[1]+(k%2?-.6:.6),hp:S.hp*sc,max:S.hp*sc,atk:S.atk*(1+Tm/60*.04),as:S.as,rng:S.rng,arm:S.arm,spd:S.spd,r:S.r,cd:0,tgt:null,face:0,atkT:0,s:s0,think:0}); }); } }); }
   function minionTick(m,dt){ if(m.air>0) m.air-=dt; if(m.rt>0) m.rt-=dt; const L=map.lanes[m.lane]; m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt; if(m.cc2){ const q=m.cc2; q.t-=dt; if(q.t<=0) m.cc2=null; else if(q.k==='tn'){ m.tgt=q.src; } else { const sx=alive(q.src)?q.src.x:q.x,sz=alive(q.src)?q.src.z:q.z; moveUnit(m,q.k==='fr'?m.x-sx:sx-m.x,q.k==='fr'?m.z-sz:sz-m.z,m.spd*.55,dt); return; } } m.think-=dt;
-    if(m.think<=0){ m.think=.3; if(!(alive(m.tgt)&&dist(m,m.tgt)<9&&!(m.tgt.inv))){ m.tgt=null; let best=null,bd=8; for(const o of minions) if(o.team!==m.team&&alive(o)){ const d=dist(m,o); if(d<bd){ bd=d; best=o; } }
-        if(!best) for(const s of towers.concat(cores)) if(s.team!==m.team&&s.hp>0&&!s.inv&&dist(m,s)<9){ best=s; break; }
-        if(!best){ let hd=6; for(const h of heroes) if(h.team!==m.team&&alive(h)&&dist(m,h)<hd&&seen(h,m.team)){ hd=dist(m,h); best=h; } } m.tgt=best; } }
+    if(m.think<=0&&!(m.cc2&&m.cc2.k==='tn')){ m.think=.3; // 目標順序：附近有敵方小兵先打小兵 → 看到英雄就打英雄 → 再打塔
+      const ok=t=>alive(t)&&dist(m,t)<9&&!t.inv&&(t.k!=='h'||seen(t,m.team)); let bm=null,bd=8; for(const o of minions) if(o.team!==m.team&&alive(o)){ const d=dist(m,o); if(d<bd){ bd=d; bm=o; } }
+      let best=null; if(bm) best=ok(m.tgt)&&m.tgt.k==='m'?m.tgt:bm;
+      else { if(ok(m.tgt)&&m.tgt.k==='h'&&dist(m,m.tgt)<7) best=m.tgt; else { let hd=6; for(const h of heroes) if(h.team!==m.team&&alive(h)&&dist(m,h)<hd&&seen(h,m.team)){ hd=dist(m,h); best=h; } }
+        if(!best) for(const s of towers.concat(cores)) if(s.team!==m.team&&s.hp>0&&!s.inv&&dist(m,s)<9){ best=s; break; } }
+      m.tgt=best; }
     const spd=m.spd*(m.slow>0?.6:1);
     if(m.tgt){ const d=dist(m,m.tgt),reach=m.rng+m.r+(m.tgt.r||.6); if(d>reach){ moveUnit(m,m.tgt.x-m.x,m.tgt.z-m.z,spd,dt); } else { m.face=Math.atan2(m.tgt.z-m.z,m.tgt.x-m.x); if(m.cd<=0){ m.cd=1/m.as; m.atkT=.3; const a=m.tgt.k==='h'?m.atk:m.atk*(m.tgt.k==='t'||m.tgt.k==='c'?1.15:1); if(m.mt==='melee') dmg(m,m.tgt,a,{basic:1}); else homing(m,m.tgt,a,{basic:1},TEAMC[m.team],m.mt==='cannon'?1.4:.8,20); } } }
     else { // 沿著路往敵方基地走
@@ -156,7 +159,7 @@ function create(env,opts){
   function towerTick(s,dt){ if(s.hp<=0) return; s.cd-=dt; const R0=s.k==='c'?CORE_R:TW_R; let tg=s.tgt;
     if(!alive(tg)||dist(s,tg)>R0+.5||tg.team===s.team) tg=null;
     const diver=heroes.find(h=>h.team!==s.team&&alive(h)&&dist(h,s)<=R0&&h.hitHeroT!=null&&Tm-h.hitHeroT<2&&heroes.some(a=>a.team===s.team&&alive(a)&&dist(a,s)<=R0+2&&a.hits[h.id]!=null&&Tm-a.hits[h.id]<2));
-    if(diver) tg=diver;
+    if(diver) tg=diver; else if(tg&&tg.k==='h'&&minions.some(m=>m.team!==s.team&&alive(m)&&dist(m,s)<=R0)) tg=null; // 塔先打小兵，除非英雄在塔下打我方英雄
     if(!tg){ let bd=1e9; for(const m of minions) if(m.team!==s.team&&alive(m)){ const d=dist(m,s); if(d<=R0&&d<bd){ bd=d; tg=m; } } }
     if(!tg){ let bd=1e9; for(const h of heroes) if(h.team!==s.team&&alive(h)&&seen(h,s.team)){ const d=dist(h,s); if(d<=R0&&d<bd){ bd=d; tg=h; } } }
     if(tg!==s.tgt) s.hits=0; s.tgt=tg;
@@ -556,6 +559,7 @@ function create(env,opts){
   function floatMsg(s,col,dur){ feed.push({s,col:col||'#fff',t:dur||1.6,big:1}); }
   function runEvents(){ const mh=myHero(); for(const e of EV){ const k=e[0];
       if(k==='dn'){ const tu=byId(e[5]); if(tu&&tu.vh) continue; if(!mh||e[5]===mh.id||e[6]===mh.id||Math.hypot(e[1]-camX,e[2]-camZ)<16) floats.push({x:e[1],z:e[2],txt:String(e[3]),col:e[4],t:0,mine:mh&&(e[5]===mh.id),dx:(Math.random()-.5)*.8}); }
+      else if(k==='gd'){ if(mh&&e[4]===mh.id){ floats.push({x:e[1],z:e[2],txt:'+'+e[3]+' 金',col:'#ffd23f',t:0,mine:true,dx:0}); sfx('item'); } }
       else if(k==='feed'){ feed.push({s:e[1],col:e[2]===2?'#ffffff':TEAMC[e[2]],t:4}); const sm=feed.filter(f=>!f.big); if(sm.length>5) feed.splice(feed.indexOf(sm[0]),1); }
       else if(k==='ann'){ anns.push({s:e[1],k:e[2],v:e[3],team:e[4],t:2.6}); if(anns.length>4) anns.splice(1,1); }
       else if(k==='sfx') sfx(e[1]);
@@ -622,9 +626,12 @@ function create(env,opts){
     c.restore(); }
   function bar(x,y,w,h,k,col,bg){ c.fillStyle=bg||'rgba(10,10,20,.75)'; rr(c,x-1,y-1,w+2,h+2,2); c.fill(); c.fillStyle=col; c.fillRect(x,y,w*clamp(k,0,1),h); }
   function drawBars(){ const mh=myHero();
-    for(const s of towers.concat(cores)){ if(s.hp<=0) continue; const p=G3.toScreen(s.x,s.k==='c'?8.5:7.4,s.z); if(!p[2]||p[0]<-50||p[0]>W+50||p[1]<-20||p[1]>H+20) continue; const w=s.k==='c'?80:64; bar(p[0]-w/2,p[1],w,6,s.hp/s.max,s.team===myTeam?'#3d8bff':'#ff4a4a'); if(s.inv){ c.fillStyle='#ffd23f'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText('🛡',p[0],p[1]-8); }
+    for(const s of towers.concat(cores)){ if(s.hp<=0) continue; const p=G3.toScreen(s.x,s.k==='c'?8.5:8.3,s.z); if(!p[2]||p[0]<-50||p[0]>W+50||p[1]<-20||p[1]>H+20) continue; const w=s.k==='c'?80:64; bar(p[0]-w/2,p[1],w,6,s.hp/s.max,s.team===myTeam?'#3d8bff':'#ff4a4a'); if(s.inv){ c.fillStyle='#ffd23f'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText('🛡',p[0],p[1]-8); }
       if(mh&&!mh.dead&&s.team!==myTeam&&dist(mh,s)<(s.k==='c'?CORE_R:TW_R)+3){ /* 塔的攻擊範圍提示 */ } }
-    for(const m of minions){ if(m.dead||m.vh) continue; const p=G3.toScreen(m.x,m.big?2.4:2,m.z); if(!p[2]||p[0]<-20||p[0]>W+20||p[1]<-10||p[1]>H+10) continue; bar(p[0]-14,p[1],28,3,m.hp/m.max,m.team===myTeam?'#5aa8ff':'#ff5a5a'); }
+    { const mh=myHero(),la=mh&&!mh.dead?stats(mh).atk:0; // 一下普攻就能打死的敵方小兵：血條加白框，提醒尾刀
+    for(const m of minions){ if(m.dead||m.vh) continue; const p=G3.toScreen(m.x,m.big?2.6:2,m.z); if(!p[2]||p[0]<-20||p[0]>W+20||p[1]<-10||p[1]>H+10) continue; const bw=m.big?40:28,en=m.team!==myTeam;
+      if(en&&la&&m.hp<=la*100/(100+MIN[m.mt].arm)&&mh&&dist(mh,m)<14){ c.fillStyle='#ffffff'; c.fillRect(p[0]-bw/2-2,p[1]-2,bw+4,(m.big?4:3)+4); }
+      bar(p[0]-bw/2,p[1],bw,m.big?4:3,m.hp/m.max,en?'#ff5a5a':'#5aa8ff'); } }
     for(const m of mons){ if(m.dead||m.vh) continue; const p=G3.toScreen(m.x,m.big?5:2.6,m.z); if(!p[2]) continue; bar(p[0]-(m.big?40:22),p[1],m.big?80:44,m.big?6:4,m.hp/m.max,'#ffb040'); }
     for(const h of heroes){ if(h.dead||h.vh) continue; const p=G3.toScreen(h.x,3.25,h.z); if(!p[2]||p[0]<-60||p[0]>W+60||p[1]<-30||p[1]>H+30) continue; if(h.stl>0){ c.fillStyle='#c8a8ff'; c.font='900 11px '+TC; c.textAlign='center'; c.fillText('隱身中 '+Math.ceil(h.stl),p[0],p[1]-24); } const col=h.me?'#5fd068':h.team===myTeam?'#3d8bff':'#ff4a4a',w=66;
       bar(p[0]-w/2+8,p[1],w-8,7,h.hp/h.max,col); if(h.team===myTeam&&h.mpMax) bar(p[0]-w/2+8,p[1]+9,w-8,2,h.mp/h.mpMax,'#6aa8ff'); if(h.shield>0){ c.fillStyle='rgba(235,240,255,.9)'; c.fillRect(p[0]-w/2+8,p[1]+7,(w-8)*clamp(h.shield/h.max,0,1),2); }
@@ -806,7 +813,7 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦強度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
   optNote:()=>'連線時真人輪流分到兩隊，不夠的位置由電腦補上。',
-  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['閃技能','飛彈、穿透波、鉤子會飛向你瞄準的位置，地上的預警圈過一下才爆，走位可以閃開'],['控制效果','暈眩、擊飛：不能動；定身：不能走但能打；沉默：不能放技能；嘲諷：強制去打對方；恐懼：亂跑；魅惑：被吸過去；緩速：變慢'],['隱身','隱身時敵人看不到你，靠很近或被紅眼掃到才現形；普攻或放技能就現身（偷襲那一下比較痛）'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變世界之眼，可以插眼']],
+  help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['閃技能','飛彈、穿透波、鉤子會飛向你瞄準的位置，地上的預警圈過一下才爆，走位可以閃開'],['吃兵（尾刀）','小兵要由你打最後一下才有錢；大隻的砲車兵錢最多；敵方小兵血條出現白框，代表普攻一下就能打死'],['控制效果','暈眩、擊飛：不能動；定身：不能走但能打；沉默：不能放技能；嘲諷：強制去打對方；恐懼：亂跑；魅惑：被吸過去；緩速：變慢'],['隱身','隱身時敵人看不到你，靠很近或被紅眼掃到才現形；普攻或放技能就現身（偷襲那一下比較痛）'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變世界之眼，可以插眼']],
   touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你'],['閃技能','飛彈、鉤子、穿透波和預警圈都可以走位閃開'],['戰績','點右上角的擊殺／金幣框看雙方戰績，再點一下關掉'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使，點商店裡的裝備看說明']],
   touch:{left:[],right:[]},
   best:{label:'勝場',fmt:v=>v+' 勝',lower:false},

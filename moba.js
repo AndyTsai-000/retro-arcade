@@ -50,9 +50,11 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
   M.bush=[]; const okB=(x,z,r)=>{ if(M.laneDist(x,z)<M.laneW/2+r*.7) return false; if(M.river&&M.riverDist(x,z)<M.river.w/2+r*.5) return false; if(M.base.concat(M.fount).some(b=>Math.hypot(x-b[0],z-b[1])<20)) return false;
     if((M.obst||[]).some(o=>Math.hypot(o.x-x,o.z-z)<o.r+r+.8)) return false; if(M.camps.some(c=>Math.hypot(x-c.x,z-c.z)<(c.big?7:5)+r)) return false; if(M.bush.some(b=>Math.hypot(b.x-x,b.z-z)<b.r+r+2)) return false;
     if(mode===1&&Math.abs(z)>M.cliff-r-.3) return false; return Math.abs(x)<M.B-2&&Math.abs(z)<M.B-2; };
-  if(mode===0){ M.lanes.forEach((L,li)=>{ [.24,.37,.5,.63,.76].forEach((f,k)=>{ const p=along(L,L.len*f); for(const sd of k===2?[-1,1]:[(li+k)%2?1:-1]){ const r=2.3,off=M.laneW/2+r+.4,x=p[0]-p[3]*off*sd,z=p[1]+p[2]*off*sd; if(okB(x,z,r)) M.bush.push({x,z,r}); } }); });
-    for(const t of [.3,.42,.58,.7]){ const p=M.river.at(t); for(const sd of [-1,1]){ const r=2.2,o=M.river.w/2+r+.3,x=p[0]-.707*o*sd,z=p[1]+.707*o*sd; if(okB(x,z,r)) M.bush.push({x,z,r}); } }
-    M.camps.forEach(c=>{ for(let k=0;k<8;k++){ const a=R()*TAU,d=(c.big?9.5:7)+R()*3,r=2+R()*.6,x=c.x+Math.cos(a)*d,z=c.z+Math.sin(a)*d; if(okB(x,z,r)){ M.bush.push({x,z,r}); break; } } });
+  if(mode===0){ // 參考英雄聯盟：路邊草叢（靠河道那側多一些）、河道兩岸、野區入口、野怪營地旁都有草
+    M.lanes.forEach((L,li)=>{ [.2,.29,.38,.47,.53,.62,.71,.8].forEach((f,k)=>{ const p=along(L,L.len*f); for(const sd of [1,-1]){ const r=2.1+(k%3)*.3,off=M.laneW/2+r+.4,x=p[0]-p[3]*off*sd,z=p[1]+p[2]*off*sd; if(okB(x,z,r)) M.bush.push({x,z,r}); } }); });
+    for(const t of [.16,.25,.33,.41,.47,.53,.59,.67,.75,.84]){ const p=M.river.at(t); for(const sd of [-1,1]){ const r=2.2,o=M.river.w/2+r+.3,x=p[0]-.707*o*sd,z=p[1]+.707*o*sd; if(okB(x,z,r)) M.bush.push({x,z,r}); } }
+    M.camps.forEach(c=>{ let n=0; for(let k=0;k<14&&n<2;k++){ const a=R()*TAU,d=(c.big?9.5:7)+R()*3,r=2+R()*.6,x=c.x+Math.cos(a)*d,z=c.z+Math.sin(a)*d; if(okB(x,z,r)){ M.bush.push({x,z,r}); n++; } } });
+    for(let k=0,n=0;k<1200&&n<14;k++){ const x=(R()-.5)*120,z=(R()-.5)*120,r=2.2+R()*.7; if(z-x<r+4||M.laneDist(x,z)<M.laneW/2+r+3||M.riverDist(x,z)<M.river.w/2+r+3) continue; if(M.bush.some(b=>Math.hypot(b.x-x,b.z-z)<b.r+r+4)) continue; if(okB(x,z,r)){ M.bush.push({x,z,r}); n++; } }
     M.bush=M.bush.filter(b=>b.z-b.x>b.r*.9); M.bush=M.bush.concat(M.bush.map(b=>({x:b.z,z:b.x,r:b.r}))); }
   else { const L=M.lanes[0]; for(const f of [.27,.4,.6,.73]) for(const sd of [-1,1]){ const p=along(L,L.len*f),r=2.1,z=sd*(M.laneW/2+r+.2),x=p[0]+(sd>0?2:-2); if(okB(x,z,r)) M.bush.push({x,z,r}); } }
   M.nearestNode=(x,z)=>nearest(x,z);
@@ -208,7 +210,7 @@ const ITEMS={
 const TRINK={g:{n:'綠眼',col:'#5fff7a',cd:45,s:'插在地上 90 秒，看見暗處和草叢',d:'插在地上 90 秒，看得到周圍和草叢裡的敵人（最多 3 個）'},r:{n:'紅眼',col:'#ff5a5a',cd:60,s:'掃描身邊，找出敵人的綠眼來清掉',d:'8 秒內掃描身邊，找出敵人的綠眼，點三下就能清掉'}};
 const BUILD={tank:['dshield','merc','locket','thorn','visage','randuin','warmog'],fighter:['dblade','steel','tri','ldr','visage','ga','thorn'],assassin:['dblade','lucid','ghost','hydra','ldr','ga','qss'],
   mage:['dring','sorc','lich','cap','void','banshee','hourglass'],marksman:['dblade','bers','ie','pd','ldr','blade','ga'],support:['sup1','lucid','locket','amulet','banshee','visage','randuin']};
-const MIN={melee:{hp:450,atk:22,as:.9,rng:1.8,arm:10,spd:3.7,r:.55,gold:25,xp:50},ranged:{hp:320,atk:30,as:.8,rng:6.5,arm:5,spd:3.7,r:.5,gold:20,xp:40},cannon:{hp:900,atk:48,as:.7,rng:6.5,arm:22,spd:3.4,r:.9,gold:55,xp:90}};
+const MIN={melee:{hp:450,atk:22,as:.9,rng:1.8,arm:10,spd:3.7,r:.55,gold:25,xp:50},ranged:{hp:320,atk:30,as:.8,rng:6.5,arm:5,spd:3.7,r:.5,gold:20,xp:40},cannon:{hp:900,atk:48,as:.7,rng:6.5,arm:22,spd:3.4,r:.9,gold:80,xp:90}};
 const BOTN=['阿凱','小雨','大熊','米可','老王','阿哲','小魚','肉丸','阿樂','皮蛋','花生','豆豆','阿光','小綠','黑皮','飯糰','可樂','阿寶','小虎','布丁'];
 const ROLES=[['top','上路'],['jg','打野'],['mid','中路'],['bot','下路'],['sup','輔助']];
 const ROLE_N=Object.fromEntries(ROLES);
