@@ -61,7 +61,7 @@ function create(env,opts){
     const tb=teamBuff[h.team]; o.dmg+=.05*tb.fire; o.arm+=6*tb.earth; o.mr+=6*tb.earth; o.spd*=1+.04*tb.wind; if(tb.bar>Tm){ o.atk+=40; o.sp+=.25; }
     if(petOf(h)==='w'&&jgStage(h)>=3&&Tm-(h.ldT==null?-99:h.ldT)>3&&Tm-(h.hitHeroT==null?-99:h.hitHeroT)>3) o.spd*=1.25;
     if(h.slow>0) o.spd*=.6; if(h.weak>0){ o.dmg-=.4; o.as*=.8; } o.as=Math.min(2.6,o.as); return o; }
-  function mkHero(s,i){ const d=HEROES[s.hero],h={id:i+1,k:'h',slot:i,team:s.team,def:d,name:s.name,human:s.human>=0,me:i===mySlot,role:s.role,lvl:mode?3:1,xp:0,gold:mode?1400:500,items:[],sk:[0,0,0,0],pots:0,potT:0,icd:{},tk:s.human<0&&(s.role==='sup'||s.role==='jg')?'r':'g',tcd:0,lens:0,stasis:0,revT:0,x:map.fount[s.team][0],z:map.fount[s.team][1],face:s.team?PI*.75:-PI/4,hp:1,max:1,r:.7,dead:false,rsp:0,cd:[0,0,0,0],atkCd:0,atkT:0,atkDur:.35,castT:0,shield:0,shT:0,stun:0,slow:0,buffs:[],recall:0,sp:(s.sp||['flash','heal']).slice(),spCd:[0,0],kc:0,dc:0,ac:0,streak:0,hits:{},force:0,dash:null,auto:false,mx:0,mz:0,wantAtk:false,q:[],ai:{t:0,mode:null,tgt:null,goal:null,path:null,pg:null}};
+  function mkHero(s,i){ const d=HEROES[s.hero],h={id:i+1,k:'h',slot:i,team:s.team,def:d,name:s.name,human:s.human>=0,me:i===mySlot,role:s.role,lvl:mode?3:1,xp:0,gold:mode?1400:500,items:[],sk:[0,0,0,0],pots:0,potT:0,icd:{},tk:s.human<0?((s.role==='sup'||s.role==='jg')?'r':'g'):null,tcd:0,lens:0,stasis:0,revT:0,x:map.fount[s.team][0],z:map.fount[s.team][1],face:s.team?PI*.75:-PI/4,hp:1,max:1,r:.7,dead:false,rsp:0,cd:[0,0,0,0],atkCd:0,atkT:0,atkDur:.35,castT:0,shield:0,shT:0,stun:0,slow:0,buffs:[],recall:0,sp:(s.sp||['flash','heal']).slice(),spCd:[0,0],kc:0,dc:0,ac:0,streak:0,hits:{},force:0,dash:null,auto:false,mx:0,mz:0,wantAtk:false,q:[],ai:{t:0,mode:null,tgt:null,goal:null,path:null,pg:null}};
     h.max=h.hp=stats(h).hp; h.mpMax=h.mp=stats(h).mp; if(s.role==='jg'&&mode===0) h.build=[{assassin:'jgf',fighter:'jgm',tank:'jgm'}[d.cls]||'jgw'].concat(BUILD[d.cls].filter(b=>!ITEMS[b].st).slice(0,5)); else if(s.role==='sup'&&mode===0) h.build=['sup1'].concat(BUILD[d.cls].filter(b=>!ITEMS[b].st).slice(0,6)); else h.build=BUILD[d.cls].map(b=>ITEMS[b].sup?'dring':b); return h; }
   const isEnemy=(a,b)=>b.team!==a.team;
   const petOf=h=>{ const id=h.items.find(x=>ITEMS[x]&&ITEMS[x].jgt); return id?ITEMS[id].jgt:null; },jgStage=h=>(h.jst||0)>=25?3:(h.jst||0)>=12?2:1,supOf=h=>{ const id=h.items.find(x=>ITEMS[x]&&ITEMS[x].sup); return id?ITEMS[id].sup:0; };
@@ -313,7 +313,7 @@ function create(env,opts){
   function sellItem(h,i){ const id=h.items[i]; if(!id||!canShop(h)) return false; const it=ITEMS[id]; let back=Math.floor(it.c*.7); if(id==='pot'){ back=20*(h.pots||0); h.pots=0; } h.items.splice(i,1); h.gold+=back;
     const r0=h.hp/h.max; h.max=stats(h).hp; h.hp=Math.max(1,Math.min(h.max,h.max*r0)); if(h.me){ emit(['sfx','item']); floatMsg('賣掉 '+it.n+'　+'+back,'#ffd23f'); } return true; }
   function killWard(w,src){ const k=wards.indexOf(w); if(k>=0) wards.splice(k,1); emit(['burst',+w.x.toFixed(1),1,+w.z.toFixed(1),'#5fff7a',10,4]); if(src&&src.k==='h'){ src.gold+=30; if(src.me) floatMsg('清掉一個眼　+30','#ffd23f'); } emit(['sfx','pop']); }
-  function useTrinket(h,aim){ const TK=TRINK[h.tk]; if(h.tcd>0){ if(h.me) floatMsg(TK.n+' 還要 '+Math.ceil(h.tcd)+' 秒','#ffb0b0'); return false; }
+  function useTrinket(h,aim){ if(!h.tk){ if(h.me) floatMsg('還沒有眼：到商店買綠眼或紅眼（75 金）','#ffb0b0'); return false; } const TK=TRINK[h.tk]; if(h.tcd>0){ if(h.me) floatMsg(TK.n+' 還要 '+Math.ceil(h.tcd)+' 秒','#ffb0b0'); return false; }
     if(h.tk==='r'){ h.lens=8; h.tcd=TK.cd; emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),9,'#ff5a5a',.8]); if(h.me) floatMsg('紅眼掃描中：敵人的眼會現形，點三下清掉','#ff9a9a',2.2); return true; }
     placeWard(h,aim); h.tcd=TK.cd; return true; }
   function placeWard(h,aim){ let tx,tz; if(aim){ const dx=aim.x-h.x,dz=aim.z-h.z,d=Math.hypot(dx,dz)||1,k=Math.min(1,6.5/d); tx=h.x+dx*k; tz=h.z+dz*k; } else { tx=h.x+Math.cos(h.face)*3; tz=h.z+Math.sin(h.face)*3; } [tx,tz]=map.inB(tx,tz);
@@ -398,7 +398,7 @@ function create(env,opts){
       else if(k==='pot'){ const i=h.items.indexOf('pot'); if(i>=0) useItem(h,i); else if(h.me) floatMsg('沒有藥水，去商店買','#ffb0b0'); }
       else if(k==='act'){ const i=h.items.findIndex(id=>ITEMS[id]&&ITEMS[id].act); if(i>=0) useItem(h,i,aim); }
       else if(k==='bi') buyItem(h,a.id,true); else if(k==='si') sellItem(h,a.i|0);
-      else if(k==='tc'){ if((a.v==='g'||a.v==='r')&&h.tk!==a.v){ h.tk=a.v; h.tcd=Math.max(h.tcd,3); } }
+      else if(k==='tc'){ if((a.v==='g'||a.v==='r')&&h.tk!==a.v){ const pc=TRINK[a.v].c||0; if(!canShop(h)){ if(h.me) floatMsg('要在溫泉（商店）才能買眼','#ffb0b0'); } else if(h.gold<pc){ if(h.me) floatMsg('金幣不夠（'+TRINK[a.v].n+' 要 '+pc+' 金）','#ffb0b0'); } else { h.gold-=pc; h.tk=a.v; h.tcd=Math.max(h.tcd,3); if(h.me) floatMsg('買了'+TRINK[a.v].n,'#5fff7a'); } } }
       else if(k==='hw'){ const w=wards.find(q=>q.id===a.id); if(w&&w.team!==h.team&&VIS[h.team].has(w.id)&&Math.hypot(w.x-h.x,w.z-h.z)<stats(h).rng+2&&!(h.hwT>Tm)){ h.hwT=Tm+.15; h.face=Math.atan2(w.z-h.z,w.x-h.x); h.atkT=.25; dmg(h,w,1,{}); } } }
     I.acts=[];
     const aid=remote?I.atkId:(I.ord&&I.ord.k==='atk'?I.ord.id:null);
@@ -547,7 +547,7 @@ function create(env,opts){
   const HL=()=>TOUCH?{buy:[12,H/2-30,150,42],auto:[-999,-999,0,0],shop:[12,H/2+16,202,34]}:{buy:[W/2-250,H-140,178,30],auto:[-999,-999,0,0],shop:[W/2,H-140,100,30]};
   function deskPanel(){ const x0=W/2-250,y0=H-92,boxes=[]; SKK.forEach((k,i)=>boxes.push({k,x:x0+96+i*54,y:y0+6,w:48,h:48,key:'QWER'[i]})); ['d','f'].forEach((k,i)=>boxes.push({k,x:x0+316+i*42,y:y0+12,w:36,h:36,key:'DF'[i]})); if(mode===0) boxes.push({k:'rc',x:x0+402,y:y0+62,w:90,h:20,key:'B'}); { const mh0=myHero(); if(mh0) SKK.forEach((k,i)=>{ if(canLv(mh0,i)) boxes.push({k:'lv'+i,x:x0+96+i*54+12,y:y0-15,w:24,h:19}); }); } for(let i=0;i<6;i++) boxes.push({k:'it'+i,x:x0+402+(i%3)*30,y:y0+4+Math.floor(i/3)*29,w:27,h:26}); boxes.push({k:'it6',x:x0+496,y:y0+4,w:28,h:26}); return {x0,y0,boxes}; }
   function hudClick(x,y){ const L=HL(),inR=r=>x>=r[0]&&x<=r[0]+r[2]&&y>=r[1]&&y<=r[1]+r[3];
-    if(camFree&&inR(camBack())){ camFree=false; sfx('click'); return true; } { const w=mmWorld(x,y); if(w){ camFree=true; camX=w[0]; camZ=w[1]; mmDrag=true; return true; } } if(inR(L.buy)){ acts.push({a:'buy'}); sfx('click'); return true; } if(inR(L.auto)){ acts.push({a:'auto'}); sfx('click'); return true; } if(inR(L.shop)){ toggleShop(); return true; }
+{ const w=mmWorld(x,y); if(w){ camFree=true; camX=w[0]; camZ=w[1]; mmDrag=true; return true; } } if(inR(L.buy)){ acts.push({a:'buy'}); sfx('click'); return true; } if(inR(L.auto)){ acts.push({a:'auto'}); sfx('click'); return true; } if(inR(L.shop)){ toggleShop(); return true; }
     if(TOUCH&&y>=204&&y<=232&&x>=10&&x<10+7*34){ acts.push({a:'it',i:Math.floor((x-10)/34)}); sfx('click'); return true; }
     if(!TOUCH){ const P=deskPanel(); for(const b of P.boxes) if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ acts.push(b.k.slice(0,2)==='it'?{a:'it',i:+b.k.slice(2)}:b.k.slice(0,2)==='lv'?{a:'lv',i:+b.k[2]}:{a:b.k}); sfx('click'); return true; } if(x>=P.x0&&x<=P.x0+532&&y>=P.y0) return true;
       if(x>=W-162&&y>=H-162&&mode===0) return true; }
@@ -567,7 +567,7 @@ function create(env,opts){
   function onMove(e){ const [x,y]=toL(e); if(mmDrag&&phase==='play'){ const w=mmWorld(x,y); if(w){ camX=w[0]; camZ=w[1]; } } if(spDrag&&spDrag.id===e.pointerId){ const dx=x-spDrag.x0; if(Math.abs(dx)>6) spDrag.mv=true; if(spDrag.mv) spOff=clamp(spDrag.o0-dx,0,spMax()); } if(!TOUCH){ mouse.x=x; mouse.y=y; mouse.in=true; } const k=ptr.get(e.pointerId);
     if(k==='joy'){ const dx=x-J.cx,dy=y-J.cy,l=Math.hypot(dx,dy),R0=56; J.x=dx/Math.max(R0,l); J.y=dy/Math.max(R0,l); if(l>R0*1.4){ J.cx=x-dx/l*R0*1.4; J.cy=y-dy/l*R0*1.4; } }
     else if(k==='aim'&&aimSk){ aimSk.dx=x-aimSk.x0; aimSk.dy=y-aimSk.y0; } }
-  function onUp(e){ mmDrag=false; if(spDrag&&spDrag.id===e.pointerId){ const d=spDrag; spDrag=null; if(!d.mv&&phase==='pick') pickClick(d.x,d.y); } const k=ptr.get(e.pointerId); if(k==='atk'){ hold=false; holdKind=null; } if(k==='joy'){ J.on=false; J.x=J.y=0; } if(k==='aim'&&aimSk){ acts.push(aimAct(aimSk)); aimSk=null; } if(!TOUCH) mouse.btn=false; ptr.delete(e.pointerId); }
+  function onUp(e){ if(mmDrag){ mmDrag=false; camFree=false; const mh0=myHero(); if(mh0){ camX=mh0.x; camZ=mh0.z; } } /* 放開小地圖：鏡頭馬上跳回英雄 */ if(spDrag&&spDrag.id===e.pointerId){ const d=spDrag; spDrag=null; if(!d.mv&&phase==='pick') pickClick(d.x,d.y); } const k=ptr.get(e.pointerId); if(k==='atk'){ hold=false; holdKind=null; } if(k==='joy'){ J.on=false; J.x=J.y=0; } if(k==='aim'&&aimSk){ acts.push(aimAct(aimSk)); aimSk=null; } if(!TOUCH) mouse.btn=false; ptr.delete(e.pointerId); }
   const noMenu=e=>e.preventDefault(),leave=()=>{ mouse.in=false; mouse.btn=false; };
   const onWheel=e=>{ if(phase!=='pick') return; const [x,y]=toL(e); if(x>=SPX0&&x<=SPX1&&y>=396&&y<=460){ e.preventDefault(); spOff=clamp(spOff+(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)*.5,0,spMax()); } }; canvas.addEventListener('wheel',onWheel,{passive:false});
   canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); addEventListener('pointerup',onUp); addEventListener('pointercancel',onUp); canvas.addEventListener('contextmenu',noMenu); canvas.addEventListener('pointerleave',leave); canvas.style.touchAction='none';
@@ -676,7 +676,7 @@ function create(env,opts){
     runEvents(); vprojTick(dt);
     for(const f of floats) f.t+=dt; for(let i=floats.length-1;i>=0;i--) if(floats[i].t>1) floats.splice(i,1);
     let fh=mh; if(opts.preview&&(!mh||mh.dead||mh.recall>0)) fh=heroes.find(h=>h.team===myTeam&&!h.dead&&!(h.recall>0))||mh;
-    if(env.hit('KeyY')) camFree=false; if(fh&&!camFree){ const tx=fh.x,tz=fh.z; camX+=(tx-camX)*Math.min(1,dt*6); camZ+=(tz-camZ)*Math.min(1,dt*6); }
+    if(fh&&!camFree){ const tx=fh.x,tz=fh.z; camX+=(tx-camX)*Math.min(1,dt*6); camZ+=(tz-camZ)*Math.min(1,dt*6); }
   }
   /* ---------- 畫面 ---------- */
   let lt=0,tS=0,tN=0,lvl=0,frame3=0;
@@ -787,7 +787,8 @@ function create(env,opts){
     if(dim){ c.fillStyle='rgba(0,0,0,.45)'; rr(c,x,y,w,h,Math.min(6,w*.2)); c.fill(); } c.restore(); }
   function cdCover(x,y,w,h,v,m){ if(!(v>0)) return; c.save(); rr(c,x,y,w,h,5); c.clip(); c.fillStyle='rgba(0,0,0,.6)'; c.beginPath(); c.moveTo(x+w/2,y+h/2); c.arc(x+w/2,y+h/2,Math.max(w,h),-PI/2,-PI/2+TAU*clamp(v/m,0,1)); c.closePath(); c.fill(); c.restore(); c.fillStyle='#fff'; c.font='900 11px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(Math.ceil(v),x+w/2,y+h/2+1); }
   function slotIcon(mh,i,x,y,w,h,key){ c.fillStyle='rgba(255,255,255,.07)'; rr(c,x,y,w,h,5); c.fill();
-    if(i===6){ const TK=TRINK[mh.tk]; c.fillStyle=shadeHex(TK.col,.5); c.beginPath(); c.arc(x+w/2,y+h/2,Math.min(w,h)/2-1,0,TAU); c.fill(); c.strokeStyle=TK.col; c.lineWidth=1.5; c.stroke(); c.fillStyle='#fff'; c.font='900 10px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(TK.n.slice(0,1)+'眼',x+w/2,y+h/2+1); cdCover(x,y,w,h,mh.tcd,TK.cd); }
+    if(i===6&&!mh.tk){ c.strokeStyle='rgba(255,255,255,.3)'; c.lineWidth=1.2; c.beginPath(); c.arc(x+w/2,y+h/2,Math.min(w,h)/2-2,0,TAU); c.stroke(); c.fillStyle='#8a86a8'; c.font='900 9px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('沒眼',x+w/2,y+h/2+1); }
+    else if(i===6){ const TK=TRINK[mh.tk]; c.fillStyle=shadeHex(TK.col,.5); c.beginPath(); c.arc(x+w/2,y+h/2,Math.min(w,h)/2-1,0,TAU); c.fill(); c.strokeStyle=TK.col; c.lineWidth=1.5; c.stroke(); c.fillStyle='#fff'; c.font='900 10px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(TK.n.slice(0,1)+'眼',x+w/2,y+h/2+1); cdCover(x,y,w,h,mh.tcd,TK.cd); }
     else { const id=mh.items[i]; if(id){ itemIcon(x+1,y+1,w-2,h-2,id); if(id==='pot'){ c.fillStyle='#fff'; c.font='900 10px '+TC; c.textAlign='right'; c.fillText(mh.pots,x+w-3,y+h-6); cdCover(x,y,w,h,mh.potT,12); } else if(ITEMS[id].act) cdCover(x,y,w,h,mh.icd[id]||0,ITEMS[id].act.cd); else if(ITEMS[id].pcd) cdCover(x,y,w,h,mh.icd[id]||0,ITEMS[id].pcd);
       const IT=ITEMS[id]; let pr=null; if(IT.jgt){ const st=jgStage(mh); pr=st>=3?'覺醒':(mh.jst||0)+'/'+(st===1?12:25); } else if(IT.sup===1) pr=Math.floor(mh.sq||0)+'/400'; else if(IT.sup===2) pr=Math.floor(mh.sq||0)+'/1k'; else if(IT.sup===3) pr='眼'+Math.floor(mh.wc||0);
       if(pr){ c.fillStyle='rgba(0,0,0,.7)'; rr(c,x+1,y,w-2,10,3); c.fill(); c.fillStyle='#ffe066'; c.font='900 8px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(pr,x+w/2,y+5); } } }
@@ -800,9 +801,9 @@ function create(env,opts){
     c.fillStyle='#9a94c0'; c.font='700 11px '+TC; c.fillText(TOUCH?'點一下看說明，再按「購買」；點空白處關閉':'P 開關商店；再點一次同一件就直接買；1～6 用裝備、7 用眼',X+170,Y+23);
     shopBtn(X+Wd-40,Y+8,30,28,'✕');
     // 眼：二選一、免費
-    c.textAlign='left'; c.fillStyle='#fff'; c.font='900 13px '+TC; c.fillText('眼（免費・第 7 格）',X+16,Y+64);
+    c.textAlign='left'; c.fillStyle='#fff'; c.font='900 13px '+TC; c.fillText('眼（第 7 格・75 金）',X+16,Y+64);
     [['g',X+170],['r',X+450]].forEach(([k,bx])=>{ const TK=TRINK[k],on=mh.tk===k; c.fillStyle=on?shadeHex(TK.col,.45):'rgba(255,255,255,.07)'; rr(c,bx,Y+46,270,38,10); c.fill(); c.strokeStyle=on?TK.col:'rgba(255,255,255,.2)'; c.lineWidth=on?2.5:1; c.stroke();
-      c.fillStyle=TK.col; c.beginPath(); c.arc(bx+20,Y+65,9,0,TAU); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.fillText(TK.n+(on?'（使用中）':''),bx+36,Y+58); c.fillStyle='#cfc8ff'; c.font='700 9.5px '+TC; c.fillText(TK.s,bx+36,Y+74); });
+      c.fillStyle=TK.col; c.beginPath(); c.arc(bx+20,Y+65,9,0,TAU); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.fillText(TK.n+(on?'（使用中）':'　● '+TK.c),bx+36,Y+58); c.fillStyle='#cfc8ff'; c.font='700 9.5px '+TC; c.fillText(TK.s,bx+36,Y+74); });
     SHOP_TABS.forEach((tb,i)=>shopBtn(X+14+i*100,Y+96,94,28,tb[1],i===shopTab));
     const L=shopList(),gx=X+14,gy=Y+134;
     L.forEach((id,i)=>{ const it=ITEMS[id],x=gx+(i%6)*74,y=gy+Math.floor(i/6)*68,on=shopSel===id,pc=priceFor(mh,id).cost; c.fillStyle=on?'rgba(255,210,63,.22)':'rgba(255,255,255,.05)'; rr(c,x,y,70,64,8); c.fill(); if(on){ c.strokeStyle='#ffd23f'; c.lineWidth=2; c.stroke(); }
@@ -866,7 +867,7 @@ function create(env,opts){
         if(b.k==='atk'){ lab='攻擊'; col='#c8342a'; } else if(b.k==='min'){ lab='兵'; col='#5a6a3a'; } else if(b.k==='tw'){ lab='塔'; col='#6a5a3a'; } else if(b.k==='rc'){ lab='回城'; col='#2a6a8a'; }
         else if(b.k==='d'||b.k==='f'){ const j=b.k==='d'?0:1,sp=SPL[mh.sp[j]]; lab=sp.n; col=shadeHex(sp.col,.55); cdv=mh.spCd[j]; cdm=sp.cd; }
         else if(b.k==='pot'){ lab='藥水'+(mh.pots?mh.pots:''); col=mh.pots?'#a8323a':'#3a3a4a'; cdv=mh.potT>0?mh.potT:0; cdm=12; }
-        else if(b.k==='tku'){ const TK=TRINK[mh.tk]; lab=TK.n; col=shadeHex(TK.col,.42); cdv=mh.tcd; cdm=TK.cd; }
+        else if(b.k==='tku'){ if(!mh.tk){ lab='沒眼'; col='rgba(60,60,80,.8)'; cdv=0; cdm=1; } else { const TK=TRINK[mh.tk]; lab=TK.n; col=shadeHex(TK.col,.42); cdv=mh.tcd; cdm=TK.cd; } }
         else if(b.k==='act'){ const id=mh.items.find(q=>ITEMS[q]&&ITEMS[q].act),it=ITEMS[id]; lab=(it.ic||it.n.slice(0,2)); col=shadeHex(it.col,.5); cdv=mh.icd[id]||0; cdm=it.act.cd; }
         else { const i=+b.k[1],sk=mh.def.sk[i]; lab=sk.n; col=i===3?'#5a2a8a':'#2a4a7a'; cdv=mh.cd[i]; cdm=sk.cd; dis=!unlocked(mh,i)?(i===3&&mh.lvl<6?'6等':'未學'):mh.mp<skCost(mh,i)?'沒魔':false; }
         c.globalAlpha=mh.dead?.4:1; skIcon(b.x,b.y,b.r,b.r,lab,col,cdv,cdm,dis,null,true); c.globalAlpha=1; }
@@ -893,7 +894,7 @@ function create(env,opts){
     for(const h of heroes){ if(h.dead||h.vh) continue; const q=P(h.x,h.z); c.fillStyle=h.me?'#ffe066':h.team===myTeam?'#3d8bff':'#ff4a4a'; c.beginPath(); c.arc(q[0],q[1],h.me?4.5:3.5,0,TAU); c.fill(); c.strokeStyle='#fff'; c.lineWidth=1; c.stroke(); }
     { const q=P(camX,camZ); c.strokeStyle=camFree?'#ffe066':'rgba(255,255,255,.55)'; c.lineWidth=1.2; c.strokeRect(q[0]-13*sx,q[1]-9*sz,26*sx,15*sz); } // 鏡頭看的範圍
     c.restore();
-    if(camFree){ const [bx,by,bw,bh]=camBack(); c.fillStyle='rgba(255,210,63,.92)'; rr(c,bx,by,bw,bh,9); c.fill(); c.fillStyle='#14122b'; c.font='900 12px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText(TOUCH?'回到英雄':'回到英雄（Y）',bx+bw/2,by+bh/2+1); c.textBaseline='alphabetic'; } }
+ }
   let hoverPk=null;
   function drawPick(){ if(!TOUCH&&mouse.in) hoverPk=[mouse.x,mouse.y]; const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,'#1a1440'); g.addColorStop(1,'#0a0a1c'); c.fillStyle=g; c.fillRect(0,0,W,H);
     if(pkStep==='role'&&!pkDone){ drawRoleStep(); return; }
@@ -942,8 +943,8 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦難度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
   optNote:()=>'連線時真人輪流分到兩隊，不夠的位置由電腦補上。',
-  help:[['點小地圖','鏡頭馬上移到那裡（按住拖曳可以一路看隊友），按 Y 或「回到英雄」回來'],['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['閃技能','飛彈、穿透波、鉤子會飛向你瞄準的位置，地上的預警圈過一下才爆，走位可以閃開'],['吃兵（尾刀）','小兵要由你打最後一下才有錢；大隻的砲車兵錢最多'],['控制效果','暈眩、擊飛：不能動；定身：不能走但能打；沉默：不能放技能；嘲諷：強制去打對方；恐懼：亂跑；魅惑：被吸過去；緩速：變慢'],['隱身','隱身時敵人看不到你，靠很近或被紅眼掃到才現形；普攻或放技能就現身（偷襲那一下比較痛）'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、天使之誓、狂怒秘藥，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變先知之眼，可以插眼']],
-  touchHelp:[['左邊搖桿','移動'],['點小地圖','鏡頭移到那裡看，按「回到英雄」回來'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你'],['閃技能','飛彈、鉤子、穿透波和預警圈都可以走位閃開'],['戰績','點右上角的擊殺／金幣框看雙方戰績，再點一下關掉'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、天使之誓，點商店裡的裝備看說明']],
+  help:[['按住小地圖','畫面移到按住的地方（拖曳可以一路看隊友），放開就跳回自己的英雄'],['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['閃技能','飛彈、穿透波、鉤子會飛向你瞄準的位置，地上的預警圈過一下才爆，走位可以閃開'],['吃兵（尾刀）','小兵要由你打最後一下才有錢；大隻的砲車兵錢最多'],['控制效果','暈眩、擊飛：不能動；定身：不能走但能打；沉默：不能放技能；嘲諷：強制去打對方；恐懼：亂跑；魅惑：被吸過去；緩速：變慢'],['隱身','隱身時敵人看不到你，靠很近或被紅眼掃到才現形；普攻或放技能就現身（偷襲那一下比較痛）'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、天使之誓、狂怒秘藥，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變先知之眼，可以插眼']],
+  touchHelp:[['左邊搖桿','移動'],['按住小地圖','畫面移到那裡，放開就跳回英雄'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你'],['閃技能','飛彈、鉤子、穿透波和預警圈都可以走位閃開'],['戰績','點右上角的擊殺／金幣框看雙方戰績，再點一下關掉'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、天使之誓，點商店裡的裝備看說明']],
   touch:{left:[],right:[]},
   best:{label:'勝場',fmt:v=>v+' 勝',lower:false},
   ready:()=>!!window.THREE,load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); },
