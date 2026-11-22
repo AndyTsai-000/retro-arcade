@@ -44,10 +44,19 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
   for(const q of N) for(const t of M.towers){ const dx=q[0]-t.x,dz=q[1]-t.z,d=Math.hypot(dx,dz); if(d<3.2){ const a=d>.05?Math.atan2(dz,dx):Math.atan2(t.x,-t.z); q[0]=t.x+Math.cos(a)*3.2; q[1]=t.z+Math.sin(a)*3.2; } }
   M.N=N; M.E=E; M.adj=N.map(()=>[]); E.forEach(([a,b])=>{ const d=Math.hypot(N[a][0]-N[b][0],N[a][1]-N[b][1]); M.adj[a].push([b,d]); M.adj[b].push([a,d]); });
   // 障礙物：樹叢、大石頭（不擋路、不擋河、不擋營地和路網）
-  M.obst=[]; if(mode===0){ for(let k=0;k<2600&&M.obst.length<70;k++){ const x=(R()-.5)*124,z=(R()-.5)*124,r=2.4+R()*3;
+  M.obst=[]; if(mode===0){
+    // 野區石牆（參考英雄聯盟）：沿著路邊、河岸、基地外圍立起一道道石牆；電腦走的路網經過的地方自動留出入口
+    { const WR=2.1,okW=(x,z)=>{ if(Math.abs(x)>M.B-1.5||Math.abs(z)>M.B-1.5) return false; if(M.laneDist(x,z)<M.laneW/2+2.6) return false; if(M.riverDist(x,z)<M.river.w/2+2) return false;
+        if(M.fount.some(b=>Math.hypot(x-b[0],z-b[1])<14)) return false; if(M.camps.some(c=>Math.hypot(x-c.x,z-c.z)<(c.big?11:c.buff?8.5:7.5))) return false;
+        if(E.some(([a,b])=>segD(x,z,N[a][0],N[a][1],N[b][0],N[b][1])<WR+1.5)) return false; return true; };
+      const put=(x,z)=>{ if(okW(x,z)) M.obst.push({x,z,r:WR,k:'wall'}); };
+      M.lanes.forEach(L=>{ for(let s0=10;s0<L.len-10;s0+=2.4){ if(s0%26<6) continue; const p=along(L,s0); for(const sd of [1,-1]) for(const off of [M.laneW/2+4.4,M.laneW/2+6.6]) put(p[0]-p[3]*off*sd,p[1]+p[2]*off*sd); } });
+      for(let t=.06;t<.94;t+=2.4/M.river.len){ if((t*M.river.len)%24<6) continue; const p=M.river.at(t); for(const sd of [-1,1]) for(const o of [M.river.w/2+3.8,M.river.w/2+6]) put(p[0]-.707*o*sd,p[1]+.707*o*sd); }
+      for(const b of M.base) for(let a=0;a<TAU;a+=2.2/23){ put(b[0]+Math.cos(a)*23,b[1]+Math.sin(a)*23); } }
+    for(let k=0,nT=0;k<2600&&nT<40;k++){ const x=(R()-.5)*124,z=(R()-.5)*124,r=2.4+R()*3;
       if(M.laneDist(x,z)<M.laneW/2+r+1.5) continue; if(M.riverDist(x,z)<M.river.w/2+r+1.5) continue; if(M.base.concat(M.fount).some(b=>Math.hypot(x-b[0],z-b[1])<18+r)) continue;
       if(M.camps.some(c=>Math.hypot(x-c.x,z-c.z)<(c.big?10:7)+r)) continue; if(E.some(([a,b])=>segD(x,z,N[a][0],N[a][1],N[b][0],N[b][1])<r+3.2)) continue; if(M.obst.some(o=>Math.hypot(o.x-x,o.z-z)<o.r+r+3.5)) continue;
-      M.obst.push({x,z,r,k:R()<.28?'rock':'tree'}); }
+      M.obst.push({x,z,r,k:R()<.28?'rock':'tree'}); nT++; }
     // 左右對稱：只留藍方那一半，再鏡射到紅方（x、z 對調），兩隊地形一模一樣
     M.obst=M.obst.filter(o=>o.z-o.x>o.r*1.5); M.obst=M.obst.concat(M.obst.map(o=>Object.assign({},o,{x:o.z,z:o.x}))); }
   // 草叢：英雄躲進去，外面的人看不到（除非有眼或也在同一叢草裡）

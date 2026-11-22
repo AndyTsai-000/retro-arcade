@@ -114,7 +114,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
   // 散落的小石頭
   const NP=low?160:420,pebbles=new T.InstancedMesh(ROCKV[1],natRockM,NP); pebbles.castShadow=true; pebbles.receiveShadow=true; { const m=new T.Matrix4(),cc=new T.Color(); for(let n=0;n<NP;n++){ let x,z; do{ x=(R()-.5)*(GS-10); z=(R()-.5)*(GS-10); }while(map.laneDist(x,z)<map.laneW/2+.3||riverD(x,z)<map.riverW/2); const k=.12+R()*.4; m.makeRotationY(R()*TAU); m.scale(new V(k,k*(.6+R()*.5),k)); m.setPosition(x,k*.12,z); pebbles.setMatrixAt(n,m); cc.setHSL(.08,.05+R()*.08,.75+R()*.35); pebbles.setColorAt(n,cc); } } scene.add(pebbles);
   /* ===== 樹（障礙物、地圖外圍的森林） ===== */
-  const trees=[]; for(const ob of map.obst){ if(ob.k==='rock') continue; const n=Math.max(1,Math.round(ob.r*ob.r/5)); for(let i=0;i<n;i++){ const a=R()*TAU,d=Math.sqrt(R())*ob.r*.8; trees.push([ob.x+Math.cos(a)*d,ob.z+Math.sin(a)*d,.85+R()*.6]); } }
+  const trees=[]; for(const ob of map.obst){ if(ob.k==='rock'||ob.k==='wall'&&R()>.22) continue; const n=Math.max(1,Math.round(ob.r*ob.r/5)); for(let i=0;i<n;i++){ const a=R()*TAU,d=Math.sqrt(R())*ob.r*.8; trees.push([ob.x+Math.cos(a)*d,ob.z+Math.sin(a)*d,.85+R()*.6]); } }
   for(let i=0;i<(low?220:380);i++){ const a=R()*TAU,edge=map.edge(a),d=edge+3+R()*14,x=Math.cos(a)*d,z=Math.sin(a)*d; if(Math.abs(x)>GS/2-4||Math.abs(z)>GS/2-4) continue; if(map.fount.some(f=>Math.hypot(x-f[0],z-f[1])<13)) continue; trees.push([x,z,.75+R()*.45]); }
   const NT=trees.length,trunk=new T.InstancedMesh(new T.CylinderGeometry(.18,.32,2.6,6).translate(0,1.3,0),lam('#5a3e26'),NT); trunk.castShadow=false; trunk.receiveShadow=true;
   const leafG=new T.IcosahedronGeometry(1,low?0:1); { const p=leafG.attributes.position; for(let i=0;i<p.count;i++){ const k=.85+Math.random()*.3; p.setXYZ(i,p.getX(i)*k,p.getY(i)*k*.85,p.getZ(i)*k); } leafG.computeVertexNormals(); }
@@ -126,7 +126,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
   const bushes=[]; for(const ob of map.obst) for(let i=0;i<Math.max(2,ob.r*1.4|0);i++){ const a=R()*TAU,d=ob.r*(.7+R()*.45); bushes.push([ob.x+Math.cos(a)*d,ob.z+Math.sin(a)*d,.5+R()*.6]); }
   const bush=new T.InstancedMesh(leafG,new T.MeshPhongMaterial({flatShading:true,shininess:4,specular:0x111111}),bushes.length); bush.castShadow=true; bush.receiveShadow=true; { const m=new T.Matrix4(),cc=new T.Color(); bushes.forEach(([x,z,s],i)=>{ m.makeRotationY(R()*TAU); m.scale(new V(s*1.3,s,s*1.3)); m.setPosition(x,s*.55,z); bush.setMatrixAt(i,m); cc.setHSL(.26+R()*.06,.45,.22+R()*.1); bush.setColorAt(i,cc); }); } bush.frustumCulled=false; scene.add(bush);
   // 土丘牆：側面是一層層的泥土、頂上長草，旁邊散著石頭
-  function moundGeo(r,hgt,seed){ const g=new T.CylinderGeometry(r*.78,r*1.08,hgt,28,6,false),p=g.attributes.position,cl=[],sd=seed%91*.31;
+  function moundGeo(r,hgt,seed,rs,hs){ const g=new T.CylinderGeometry(r*.78,r*1.08,hgt,rs||28,hs||6,false),p=g.attributes.position,cl=[],sd=seed%91*.31;
     for(let i=0;i<p.count;i++){ let x=p.getX(i),y=p.getY(i),z=p.getZ(i); const a=Math.atan2(z,x),u=(y+hgt/2)/hgt,rr=Math.hypot(x,z),wob=1+.16*Math.sin(a*3+sd)+.08*Math.sin(a*7+sd*2)+.05*nz3(x,y,z,sd);
       let ny=y; if(u>.99&&rr<r*.8){ ny=hgt/2+(1-rr/(r*.8))*.6+.12*nz3(x*1.5,0,z*1.5,sd); } x*=wob; z*=wob; p.setXYZ(i,x,ny+hgt/2-.05,z);
       const top=u>.92,strata=.06*Math.sin(y*7+sd),k=.9+.12*nz3(x*2,y*3,z*2,sd); if(top){ const pn=nz3(x*1.3,0,z*1.3,sd+5); if(pn>.35) cl.push(.36*k,.29*k,.18*k); else cl.push((.2+pn*.05)*k,(.33+pn*.06)*k,(.13+pn*.02)*k); } else { const dk=(.62+u*.38)*(u<.12?.75:1); cl.push((.42+strata)*k*dk,(.31+strata*.8)*k*dk,(.2+strata*.5)*k*dk); } }
@@ -136,7 +136,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
       for(let i=0;i<4;i++){ const a=R()*TAU; natRock(ob.x+Math.cos(a)*ob.r*.95,ob.z+Math.sin(a)*ob.r*.95,.5+R()*.7,i+ob.r*3|0); }
       for(let i=0;i<Math.round(ob.r*ob.r*.9);i++){ const a=R()*TAU,d=Math.sqrt(R())*ob.r*.62; mTuft.push([ob.x+Math.cos(a)*d,hh+.25*(1-d/(ob.r*.75)),ob.z+Math.sin(a)*d]); }
       for(let i=0;i<3;i++){ const a=R()*TAU,d=R()*ob.r*.4; natRock(ob.x+Math.cos(a)*d,ob.z+Math.sin(a)*d,.4+R()*.4,i).position.y+=hh; } }
-    else if(R()<.5){ const a=R()*TAU; natRock(ob.x+Math.cos(a)*ob.r*.7,ob.z+Math.sin(a)*ob.r*.7,.7+R()*.8,(ob.x|0)+3); } }
+    else if(ob.k==='tree'&&R()<.5){ const a=R()*TAU; natRock(ob.x+Math.cos(a)*ob.r*.7,ob.z+Math.sin(a)*ob.r*.7,.7+R()*.8,(ob.x|0)+3); } }
   if(mTuft.length){ const tg=new T.InstancedMesh(tuftG,grassM,mTuft.length),m=new T.Matrix4(),cc=new T.Color(); mTuft.forEach(([x,y,z],n)=>{ const k=.7+R()*.8; m.makeRotationY(R()*TAU); m.scale(new V(k,k*(.6+R()*.6),k)); m.setPosition(x,y,z); tg.setMatrixAt(n,m); cc.setHSL(.2+R()*.1,.4+R()*.2,.55+R()*.2); tg.setColorAt(n,cc); }); tg.frustumCulled=false; scene.add(tg); }
   /* ===== 防禦塔、主堡、泉水 ===== */
   const glowT=canv(64,64,(c,w)=>{ const g=c.createRadialGradient(32,32,0,32,32,32); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.3,'rgba(255,255,255,.55)'); g.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle=g; c.fillRect(0,0,64,64); });
@@ -402,6 +402,10 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
     inst(tp.body,g); const head=inst(tp.head,g,0,tp.hy,tp.hz); const legs=[]; for(const [lx,lz] of [[-.5,.45],[.5,.45],[-.5,-.45],[.5,-.45]]) legs.push(inst(tp.leg,g,lx,.7,lz));
     if(big||u.buff){ const gl=glowS(glowC,big?1.6:1.2,.5); gl.position.set(0,2.3,-.1); g.add(gl); }
     g.scale.setScalar(s); g.userData.legs=legs; g.userData.head=head; g.userData.hz=tp.hz; scene.add(g); return {wrap:g}; }
+  /* ===== 野區石牆：一段段岩壁合成一個網格（參考英雄聯盟峽谷的牆） ===== */
+  { const P=[],N=[],C=[],m4=new T.Matrix4(); for(const ob of map.obst){ if(ob.k!=='wall') continue; const hh=2.6+R()*1.1,g0=moundGeo(ob.r*1.32,hh,(ob.x*13+ob.z*7)|0,11,3),g=g0.toNonIndexed(); g0.dispose(); m4.makeRotationY(R()*TAU); m4.setPosition(ob.x,0,ob.z); g.applyMatrix4(m4);
+      const pa=g.attributes.position.array,na=g.attributes.normal.array,ca=g.attributes.color.array; for(let i=0;i<pa.length;i++){ P.push(pa[i]); N.push(na[i]); C.push(ca[i]); } g.dispose(); }
+    if(P.length){ const G0=new T.BufferGeometry(); G0.setAttribute('position',new T.Float32BufferAttribute(P,3)); G0.setAttribute('normal',new T.Float32BufferAttribute(N,3)); G0.setAttribute('color',new T.Float32BufferAttribute(C,3)); G0.computeBoundingSphere(); const wm=new T.Mesh(G0,moundM); wm.castShadow=true; wm.receiveShadow=true; scene.add(wm); } }
   /* ===== 特效 ===== */
   const FX=[];
   const ringFx=(x,z,rad,c2,life,fill)=>{ const m=add(new T.RingGeometry(fill?0:rad*.85,rad,40),new T.MeshBasicMaterial({color:col(c2),transparent:true,opacity:fill?.35:.85,depthWrite:false,side:T.DoubleSide,blending:T.AdditiveBlending}),x,.08,z,null,false); m.rotation.x=-PI/2; FX.push({m,t:0,life,k:'ring',rad}); };
@@ -509,10 +513,10 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
     shadows(on){ r.shadowMap.enabled=on; scene.traverse(m=>{ if(m.material) m.material.needsUpdate=true; }); },
     fx,
     render(G,cx,cz,flip,t,zoom){ sync(G,t); const z=zoom||1,dz=flip?-1:1;
-      for(const M of S.tow.values()){ const b=(M.z-cz)*dz,want=b>-1&&b<10&&Math.abs(M.x-cx)<4.5?.3:1; if(Math.abs(want-M.fade)>.01){ M.fade+=(want-M.fade)*.2; M.mats.forEach(m=>{ m.transparent=true; m.opacity=M.fade; m.depthWrite=M.fade>.9; }); } }
+      for(const M of S.tow.values()){ const b=(M.z-cz)*dz,want=b>-1&&b<10&&Math.abs(M.x-cx)<4.5?.45:1; if(Math.abs(want-M.fade)>.01){ M.fade+=(want-M.fade)*.2; M.mats.forEach(m=>{ m.transparent=true; m.opacity=M.fade; m.depthWrite=M.fade>.9; }); } }
       cam.position.set(cx,15.5*z,cz+10.5*z*dz); cam.lookAt(cx,0,cz+1.2*dz); cam.updateMatrixWorld(true);
       sun.position.set(cx-18,42,cz+16); sun.target.position.set(cx,0,cz); r.render(scene,cam); },
-    fog:fogDraw, info:()=>({calls:r.info.render.calls,tri:r.info.render.triangles,geo:r.info.memory.geometries,tex:r.info.memory.textures,objs:scene.children.length}),
+    fog:fogDraw, twDbg:()=>[...S.tow.values()].map(M=>[Math.round(M.x),Math.round(M.z),+M.fade.toFixed(2),M.parts[0].visible,M.mats.length]), info:()=>({calls:r.info.render.calls,tri:r.info.render.triangles,geo:r.info.memory.geometries,tex:r.info.memory.textures,objs:scene.children.length}),
     bushIn(i){ if(i===bushCur) return; if(bushCur>=0&&bushMs[bushCur]) bushMs[bushCur].material.opacity=1; bushCur=i; if(i>=0&&bushMs[i]) bushMs[i].material.opacity=.4; },
     towerRange(x,z,rad,danger){ if(x==null){ twRing.visible=false; return; } twRing.visible=true; twRing.position.set(x,.1,z); twRing.scale.set(rad,rad,1); twRing.material.color.set(danger?0xff3030:0xff9a7a); twRing.material.opacity=danger?.75+.2*Math.sin(lastT*10):.4; },
     toScreen(x,y,z){ tmp.set(x,y,z).project(cam); return [(tmp.x+1)/2*W,(1-tmp.y)/2*H,tmp.z<1]; },
