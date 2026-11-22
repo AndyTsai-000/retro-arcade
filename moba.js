@@ -80,145 +80,147 @@ const PSD={grit:v=>'血量低於 40% 時，護甲和魔抗 +'+v,shieldhit:v=>'�
   curse:()=>'技能打中的敵方英雄，3 秒內受到的技能傷害 +10%',mshield:()=>'血量低於 20% 時，得到等於 30% 魔力的護盾（90 秒一次）',granite:()=>'10 秒沒受傷時，得到最大生命 10% 的護盾'};
 const HEROES=[
   // 坦克
-  HD('岩崗','tank',{skin:'#c8946a',c1:'#6a6a7a',c2:'#b8862a',hair:'#2a1a10',fx:'#ffb040'},[S('猛牛衝撞','dash',9,{r:7,a:2.5,d:80,kb:2.5}),S('岩石護甲','shield',12,{v:240}),S('地裂','pierce',9,{r:8,d:110,sl:1.5,w:2.6}),S('大地震擊','nova',40,{a:6,d:210,ku:1.2})],{helm:1,cape:1}),
-  HD('鋼牙','tank',{skin:'#e0b090',c1:'#4a5a6a',c2:'#9aa8b8',hair:'#3a2a1a',fx:'#9ad8ff'},[S('鐵鍊勾拉','hook',11,{r:9,d:70,st:0.6}),S('震地踏步','nova',8,{a:3.6,d:90,sl:1.5}),S('鋼鐵之軀','buff',14,{arm:50,dur:4}),S('鋼鐵壁壘','shield',45,{v:420,ally:1})],{helm:1,horns:1}),
-  HD('霜盾','tank',{skin:'#f0d0b8',c1:'#5a7aa8',c2:'#cfe8ff',hair:'#e8e8f0',fx:'#9ad8ff'},[S('寒冰飛刃','shot',8,{r:9,d:95,sl:2}),S('冰晶護盾','shield',12,{v:230,spd:0.3}),S('冰霜陷阱','trap',10,{r:7,d:90,st:1}),S('冰封領域','blast',40,{r:9,a:5,d:220,st:1.2,sl:2,dl:0.8})],{helm:1,cape:1,f:1}),
-  HD('赤甲','tank',{skin:'#b8805a',c1:'#8a2a2a',c2:'#d8a040',hair:'#1a1410',fx:'#ff7a3d'},[S('烈焰踏地','nova',7,{a:3.2,d:95}),S('不動如山','buff',14,{spd:0.3,arm:40,dur:4}),S('熔岩噴發','blast',10,{r:8,a:3,d:100,ku:0.75,dl:0.7}),S('赤焰突襲','charge',38,{r:11,w:2.6,d:240,ku:1.2})],{helm:1,horns:1}),
-  HD('山嶽','tank',{skin:'#a87a5a',c1:'#5a6a3a',c2:'#8a7a5a',hair:'#2a2418',fx:'#c8e870'},[S('重拳擊暈','strike',7,{r:3,d:120,st:0.8}),S('大地之息','heal',16,{v:240,self:1}),S('落石','shot',9,{r:9,d:110,kb:3}),S('山崩','storm',45,{a:6,d:70,dur:5,sl:1,self:1})],{cape:1}),
-  HD('玄武','tank',{skin:'#c8a070',c1:'#2a5a4a',c2:'#6ab890',hair:'#1a2a20',fx:'#6ae0b0'},[S('甲殼衝撞','charge',9,{r:7,w:2,d:90,sl:1.5}),S('玄甲反震','buff',14,{arm:70,dur:3}),S('潮汐漩渦','storm',12,{r:8,a:3.5,d:50,dur:3}),S('玄武鎮海','dash',42,{r:9,a:3.5,d:230,ku:1.3})],{helm:1,cape:1}),
-  HD('熊霸','tank',{skin:'#b07850',c1:'#6a3a1a',c2:'#c89060',hair:'#3a2010',fx:'#ffb070'},[S('熊掌拍擊','strike',7,{r:3,d:130,ku:0.6}),S('狂熊之怒','buff',13,{as:0.4,dmg:0.15,dur:4}),S('震懾咆哮','nova',11,{a:4,d:60,kb:3}),S('巨熊撲擊','dash',40,{r:8,a:3,d:280,st:1.5})],{horns:1}),
-  HD('鐵壁','tank',{skin:'#d8b090',c1:'#3a4a6a',c2:'#c0c8d8',hair:'#2a2a3a',fx:'#a8c8ff'},[S('盾擊','shot',8,{r:8,d:100,st:0.8}),S('守護誓約','shield',12,{v:260,ally:1,spd:0.25}),S('盾牌衝刺','charge',10,{r:7,w:2,d:100,kb:2.5}),S('神盾震爆','nova',42,{a:6,d:220,kb:5,st:0.5})],{helm:1}),
-  HD('淚魂','tank',{skin:'#9ad0b8',c1:'#c8c0a8',c2:'#e8e0c8',hair:'#3a5a4a',fx:'#7ae8c8'},[S('繃帶飛索','grapple',12,{r:10,d:80,st:1}),S('絕望光環','aura',1,{a:3,d:20}),S('暴怒','nova',9,{a:3.5,d:110,hr:1}),S('哀傷詛咒','nova',42,{a:5.5,d:200,rt:2})],{}),
-  HD('花崗','tank',{skin:'#9a8a7a',c1:'#5a4a3a',c2:'#b8a890',hair:'#3a3028',fx:'#ffb070'},[S('地震碎片','strike',8,{r:8,d:110,sl:2,stl:1}),S('雷霆拍擊','empower',9,{d:50,a:3,arm:30}),S('大地猛擊','nova',8,{a:3.5,d:120,wk:2}),S('勢不可擋','dash',42,{r:10,a:3.5,d:260,ku:1.4,us:1})],{horns:1}),
-  HD('鐵吼','tank',{skin:'#c89070',c1:'#4a4a52',c2:'#d0a040',hair:'#2a1a10',fx:'#ffc040'},[S('鐵壁衝鋒','charge',10,{r:7,w:2,d:90,tn:1}),S('鋼刺皮甲','buff',14,{arm:45,dur:4}),S('盾擊震盪','shot',9,{r:8,d:100,kb:2}),S('萬夫莫敵','nova',42,{a:5.5,d:200,tn:2})],{helm:1,horns:1}),
+  HD('葛隆','tank',{skin:'#c8946a',c1:'#6a6a7a',c2:'#b8862a',hair:'#2a1a10',fx:'#ffb040'},[S('猛牛衝撞','dash',9,{r:7,a:2.5,d:80,kb:2.5}),S('岩石護甲','shield',12,{v:240}),S('地裂','pierce',9,{r:8,d:110,sl:1.5,w:2.6}),S('大地震擊','nova',40,{a:6,d:210,ku:1.2})],{helm:1,cape:1}),
+  HD('巴勒格','tank',{skin:'#e0b090',c1:'#4a5a6a',c2:'#9aa8b8',hair:'#3a2a1a',fx:'#9ad8ff'},[S('鐵鍊勾拉','hook',11,{r:9,d:70,st:0.6}),S('震地踏步','nova',8,{a:3.6,d:90,sl:1.5}),S('鋼鐵之軀','buff',14,{arm:50,dur:4}),S('鋼鐵壁壘','shield',45,{v:420,ally:1})],{helm:1,horns:1}),
+  HD('雪菈','tank',{skin:'#f0d0b8',c1:'#5a7aa8',c2:'#cfe8ff',hair:'#e8e8f0',fx:'#9ad8ff'},[S('寒冰飛刃','shot',8,{r:9,d:95,sl:2}),S('冰晶護盾','shield',12,{v:230,spd:0.3}),S('冰霜陷阱','trap',10,{r:7,d:90,st:1}),S('冰封領域','blast',40,{r:9,a:5,d:220,st:1.2,sl:2,dl:0.8})],{helm:1,cape:1,f:1}),
+  HD('伊格納','tank',{skin:'#b8805a',c1:'#8a2a2a',c2:'#d8a040',hair:'#1a1410',fx:'#ff7a3d'},[S('烈焰踏地','nova',7,{a:3.2,d:95}),S('不動如山','buff',14,{spd:0.3,arm:40,dur:4}),S('熔岩噴發','blast',10,{r:8,a:3,d:100,ku:0.75,dl:0.7}),S('赤焰突襲','charge',38,{r:11,w:2.6,d:240,ku:1.2})],{helm:1,horns:1}),
+  HD('莫頓','tank',{skin:'#a87a5a',c1:'#5a6a3a',c2:'#8a7a5a',hair:'#2a2418',fx:'#c8e870'},[S('重拳擊暈','strike',7,{r:3,d:120,st:0.8}),S('大地之息','heal',16,{v:240,self:1}),S('落石','shot',9,{r:9,d:110,kb:3}),S('山崩','storm',45,{a:6,d:70,dur:5,sl:1,self:1})],{cape:1}),
+  HD('塔洛克','tank',{skin:'#c8a070',c1:'#2a5a4a',c2:'#6ab890',hair:'#1a2a20',fx:'#6ae0b0'},[S('甲殼衝撞','charge',9,{r:7,w:2,d:90,sl:1.5}),S('玄甲反震','buff',14,{arm:70,dur:3}),S('潮汐漩渦','storm',12,{r:8,a:3.5,d:50,dur:3}),S('玄武鎮海','dash',42,{r:9,a:3.5,d:230,ku:1.3})],{helm:1,cape:1}),
+  HD('博魯','tank',{skin:'#b07850',c1:'#6a3a1a',c2:'#c89060',hair:'#3a2010',fx:'#ffb070'},[S('熊掌拍擊','strike',7,{r:3,d:130,ku:0.6}),S('狂熊之怒','buff',13,{as:0.4,dmg:0.15,dur:4}),S('震懾咆哮','nova',11,{a:4,d:60,kb:3}),S('巨熊撲擊','dash',40,{r:8,a:3,d:280,st:1.5})],{horns:1}),
+  HD('雷納德','tank',{skin:'#d8b090',c1:'#3a4a6a',c2:'#c0c8d8',hair:'#2a2a3a',fx:'#a8c8ff'},[S('盾擊','shot',8,{r:8,d:100,st:0.8}),S('守護誓約','shield',12,{v:260,ally:1,spd:0.25}),S('盾牌衝刺','charge',10,{r:7,w:2,d:100,kb:2.5}),S('神盾震爆','nova',42,{a:6,d:220,kb:5,st:0.5})],{helm:1}),
+  HD('塔姆利','tank',{skin:'#9ad0b8',c1:'#c8c0a8',c2:'#e8e0c8',hair:'#3a5a4a',fx:'#7ae8c8'},[S('繃帶飛索','grapple',12,{r:10,d:80,st:1}),S('絕望光環','aura',1,{a:3,d:20}),S('暴怒','nova',9,{a:3.5,d:110,hr:1}),S('哀傷詛咒','nova',42,{a:5.5,d:200,rt:2})],{}),
+  HD('格蘭托','tank',{skin:'#9a8a7a',c1:'#5a4a3a',c2:'#b8a890',hair:'#3a3028',fx:'#ffb070'},[S('地震碎片','strike',8,{r:8,d:110,sl:2,stl:1}),S('雷霆拍擊','empower',9,{d:50,a:3,arm:30}),S('大地猛擊','nova',8,{a:3.5,d:120,wk:2}),S('勢不可擋','dash',42,{r:10,a:3.5,d:260,ku:1.4,us:1})],{horns:1}),
+  HD('洛克斯','tank',{skin:'#c89070',c1:'#4a4a52',c2:'#d0a040',hair:'#2a1a10',fx:'#ffc040'},[S('鐵壁衝鋒','charge',10,{r:7,w:2,d:90,tn:1}),S('鋼刺皮甲','buff',14,{arm:45,dur:4}),S('盾擊震盪','shot',9,{r:8,d:100,kb:2}),S('萬夫莫敵','nova',42,{a:5.5,d:200,tn:2})],{helm:1,horns:1}),
   // 戰士
-  HD('烈刃','fighter',{skin:'#e8b890',c1:'#a83a2a',c2:'#e8c060',hair:'#1a1410',fx:'#ff9a3d'},[S('突進斬','dash',7,{r:6,a:2.2,d:110}),S('迴旋斬','nova',8,{a:3.3,d:120}),S('破空斬','pierce',8,{r:7,d:130}),S('斷罪一擊','exec',35,{r:4,d:220,m:0.4,kb:4})],{cape:1}),
-  HD('狂瀾','fighter',{skin:'#d8a880',c1:'#2a5a8a',c2:'#8ad8ff',hair:'#3a2a1a',fx:'#5ab8ff'},[S('怒濤劈','pierce',7,{r:6.5,d:120,sl:1,w:3}),S('戰意沸騰','buff',14,{as:0.5,dur:4}),S('潮湧','dash',9,{r:7,a:2.5,d:110,sl:1.2}),S('巨浪狂瀾','pierce',40,{r:10,d:260,w:4,ku:1})],{f:1}),
-  HD('斬鋒','fighter',{skin:'#f0c8a0',c1:'#4a4a5a',c2:'#d8d8e8',hair:'#c8c8d0',fx:'#ffffff'},[S('破甲重擊','strike',6,{r:3,d:150}),S('劍意','buff',12,{dmg:0.25,ls:0.2,dur:4}),S('鋼鐵意志','shield',13,{v:260}),S('千刃風暴','storm',38,{a:4,d:150,dur:3,self:1})],{helm:1}),
-  HD('蒼狼','fighter',{skin:'#c8946a',c1:'#5a5a6a',c2:'#a8b0c0',hair:'#8a8a9a',fx:'#c8d8ff'},[S('狼撲','dash',8,{r:7,d:100,sl:1}),S('野性回復','heal',14,{v:200,self:1}),S('撕裂','strike',7,{r:3,d:140,dr:0.5}),S('狼王咆哮','buff',40,{dmg:0.4,spd:0.3,dur:6})],{horns:1,cape:1}),
-  HD('炎拳','fighter',{skin:'#b87a50',c1:'#c85a1a',c2:'#ffd23f',hair:'#2a1a10',fx:'#ff7a1a'},[S('烈焰拳風','shot',7,{r:7,d:120,kb:2.5}),S('燃燒之拳','buff',12,{dmg:0.25,as:0.2,dur:4}),S('烈焰步','dash',9,{r:7,d:110}),S('爆裂神拳','strike',35,{r:3.2,d:420,kb:5,st:0.6})],{}),
-  HD('鐵騎','fighter',{skin:'#d8a880',c1:'#5a4a3a',c2:'#c8b070',hair:'#2a1a10',fx:'#ffd890'},[S('長槍突刺','pierce',7,{r:8,d:120,w:1.6}),S('戰馬嘶鳴','buff',12,{spd:0.5,dur:3}),S('橫掃','nova',9,{a:3.8,d:110,sl:1}),S('鐵騎衝鋒','charge',40,{r:12,w:2.6,d:260,kb:4})],{helm:1,cape:1}),
-  HD('刀鋒','fighter',{skin:'#e8c0a0',c1:'#6a1a2a',c2:'#e04a5a',hair:'#1a1010',fx:'#ff4a6a'},[S('吸血斬','strike',6,{r:3,d:120,dr:0.6}),S('反擊架式','shield',12,{v:220,spd:0.2}),S('迴旋刃','boom',8,{r:8,d:100}),S('血之狂宴','nova',38,{a:4,d:280,dr:0.5})],{}),
-  HD('雷錘','fighter',{skin:'#d8a880',c1:'#3a3a6a',c2:'#ffd860',hair:'#e8e0c0',fx:'#ffe066'},[S('雷錘擲','shot',9,{r:9,d:120,st:0.6}),S('雷霆護體','buff',13,{arm:30,as:0.3,dur:4}),S('震地錘','blast',10,{r:6,a:3,d:120,ku:0.8,dl:0.6}),S('雷神降臨','dash',40,{r:9,a:4,d:300,st:0.6,ku:0.8})],{helm:1,cape:1}),
-  HD('狂獅','fighter',{skin:'#d8a070',c1:'#a87a2a',c2:'#ffd060',hair:'#c87a20',fx:'#ffb040'},[S('獅爪撕裂','strike',6,{r:3,d:130,dr:0.3}),S('獅吼','nova',11,{a:4,d:80,fr:1}),S('撲擊','dash',9,{r:7,a:2.5,d:110,tn:0.8}),S('百獸之王','buff',40,{dmg:0.3,ls:0.25,arm:30,dur:6})],{cape:1}),
+  HD('卡洛斯','fighter',{skin:'#e8b890',c1:'#a83a2a',c2:'#e8c060',hair:'#1a1410',fx:'#ff9a3d'},[S('突進斬','dash',7,{r:6,a:2.2,d:110}),S('迴旋斬','nova',8,{a:3.3,d:120}),S('破空斬','pierce',8,{r:7,d:130}),S('斷罪一擊','exec',35,{r:4,d:220,m:0.4,kb:4})],{cape:1}),
+  HD('娜蒂雅','fighter',{skin:'#d8a880',c1:'#2a5a8a',c2:'#8ad8ff',hair:'#3a2a1a',fx:'#5ab8ff'},[S('怒濤劈','pierce',7,{r:6.5,d:120,sl:1,w:3}),S('戰意沸騰','buff',14,{as:0.5,dur:4}),S('潮湧','dash',9,{r:7,a:2.5,d:110,sl:1.2}),S('巨浪狂瀾','pierce',40,{r:10,d:260,w:4,ku:1})],{f:1}),
+  HD('辛格','fighter',{skin:'#f0c8a0',c1:'#4a4a5a',c2:'#d8d8e8',hair:'#c8c8d0',fx:'#ffffff'},[S('破甲重擊','strike',6,{r:3,d:150}),S('劍意','buff',12,{dmg:0.25,ls:0.2,dur:4}),S('鋼鐵意志','shield',13,{v:260}),S('千刃風暴','storm',38,{a:4,d:150,dur:3,self:1})],{helm:1}),
+  HD('瓦格','fighter',{skin:'#c8946a',c1:'#5a5a6a',c2:'#a8b0c0',hair:'#8a8a9a',fx:'#c8d8ff'},[S('狼撲','dash',8,{r:7,d:100,sl:1}),S('野性回復','heal',14,{v:200,self:1}),S('撕裂','strike',7,{r:3,d:140,dr:0.5}),S('狼王咆哮','buff',40,{dmg:0.4,spd:0.3,dur:6})],{horns:1,cape:1}),
+  HD('布雷茲','fighter',{skin:'#b87a50',c1:'#c85a1a',c2:'#ffd23f',hair:'#2a1a10',fx:'#ff7a1a'},[S('烈焰拳風','shot',7,{r:7,d:120,kb:2.5}),S('燃燒之拳','buff',12,{dmg:0.25,as:0.2,dur:4}),S('烈焰步','dash',9,{r:7,d:110}),S('爆裂神拳','strike',35,{r:3.2,d:420,kb:5,st:0.6})],{}),
+  HD('羅蘭德','fighter',{skin:'#d8a880',c1:'#5a4a3a',c2:'#c8b070',hair:'#2a1a10',fx:'#ffd890'},[S('長槍突刺','pierce',7,{r:8,d:120,w:1.6}),S('戰馬嘶鳴','buff',12,{spd:0.5,dur:3}),S('橫掃','nova',9,{a:3.8,d:110,sl:1}),S('鐵騎衝鋒','charge',40,{r:12,w:2.6,d:260,kb:4})],{helm:1,cape:1}),
+  HD('德雷克','fighter',{skin:'#e8c0a0',c1:'#6a1a2a',c2:'#e04a5a',hair:'#1a1010',fx:'#ff4a6a'},[S('吸血斬','strike',6,{r:3,d:120,dr:0.6}),S('反擊架式','shield',12,{v:220,spd:0.2}),S('迴旋刃','boom',8,{r:8,d:100}),S('血之狂宴','nova',38,{a:4,d:280,dr:0.5})],{}),
+  HD('托倫','fighter',{skin:'#d8a880',c1:'#3a3a6a',c2:'#ffd860',hair:'#e8e0c0',fx:'#ffe066'},[S('雷錘擲','shot',9,{r:9,d:120,st:0.6}),S('雷霆護體','buff',13,{arm:30,as:0.3,dur:4}),S('震地錘','blast',10,{r:6,a:3,d:120,ku:0.8,dl:0.6}),S('雷神降臨','dash',40,{r:9,a:4,d:300,st:0.6,ku:0.8})],{helm:1,cape:1}),
+  HD('雷奧','fighter',{skin:'#d8a070',c1:'#a87a2a',c2:'#ffd060',hair:'#c87a20',fx:'#ffb040'},[S('獅爪撕裂','strike',6,{r:3,d:130,dr:0.3}),S('獅吼','nova',11,{a:4,d:80,fr:1}),S('撲擊','dash',9,{r:7,a:2.5,d:110,tn:0.8}),S('百獸之王','buff',40,{dmg:0.3,ls:0.25,arm:30,dur:6})],{cape:1}),
   // 刺客
-  HD('夜鴉','assassin',{skin:'#e8c8a8',c1:'#2a2238',c2:'#6a4a9a',hair:'#14101a',fx:'#b98cff'},[S('鴉影瞬身','blink',8,{r:8,d:130}),S('暗刃','strike',6,{r:2.8,d:140}),S('鴉群','nova',8,{a:3.5,d:120}),S('夜幕處決','exec',30,{r:6,d:260,m:0.6,blink:1})],{hood:1,cape:1}),
-  HD('影蛇','assassin',{skin:'#d8b090',c1:'#2a4a3a',c2:'#5ac88a',hair:'#1a2a1a',fx:'#5ac88a'},[S('毒牙飛鏢','shot',6,{r:9,d:140,sl:1.2}),S('蛇行','blink',10,{r:7,d:0,spd:0.5}),S('毒霧','storm',12,{r:8,a:3.5,d:60,dur:3,sl:1}),S('萬蛇噬咬','storm',35,{r:7,a:3.5,d:180,dur:3,dr:0.5})],{hood:1,f:1}),
-  HD('霧刃','assassin',{skin:'#f0d0b0',c1:'#4a5a6a',c2:'#c8d8e8',hair:'#e0e0e8',fx:'#d8e8ff'},[S('霧中突襲','dash',6,{r:7,d:120}),S('隱霧','buff',12,{spd:0.5,dmg:0.2,dur:3}),S('霧刃連擊','strike',6,{r:2.8,d:150,sl:1}),S('千霧斬','chain',30,{r:7,d:240})],{hood:1}),
-  HD('緋蝶','assassin',{skin:'#f8d8c0',c1:'#a8204a',c2:'#ff9ec8',hair:'#3a1020',fx:'#ff7eb6'},[S('蝶刃穿梭','boom',7,{r:8,d:120}),S('蝶舞','blink',9,{r:8,d:60}),S('蝶影','buff',12,{spd:0.5,as:0.3,dur:3}),S('緋紅花雨','nova',35,{a:4.5,d:360,sl:1.5})],{f:1,cape:1}),
-  HD('疾風','assassin',{skin:'#e0b890',c1:'#3a6a5a',c2:'#b8f0d8',hair:'#2a1a10',fx:'#b8f0d8'},[S('疾風步','dash',5,{r:6,d:100}),S('裂空斬','strike',7,{r:2.8,d:130,kb:2}),S('旋風','pierce',9,{r:8,d:100,ku:0.6,w:2}),S('天風斬','chain',32,{r:8,d:260,blink:1})],{}),
-  HD('幽刃','assassin',{skin:'#d8c0b0',c1:'#1a1a2a',c2:'#5a5a8a',hair:'#0a0a14',fx:'#8a8aff'},[S('幽影飛刃','shot',6,{r:9,d:130}),S('毒刺陷阱','trap',10,{r:7,d:120,sl:2}),S('致命毒刃','buff',12,{dmg:0.3,dur:3}),S('幽冥斬首','exec',30,{r:5,d:240,m:0.7,rs:1})],{hood:1}),
-  HD('紅蠍','assassin',{skin:'#d8a070',c1:'#8a2a1a',c2:'#ff7a4a',hair:'#2a1010',fx:'#ff6a3a'},[S('蠍尾刺','hook',9,{r:7,d:110,st:0.4}),S('甲殼','shield',12,{v:200}),S('毒針連射','chain',9,{r:7,d:90,sl:1}),S('蠍王突襲','dash',35,{r:8,a:2.5,d:300,dr:0.5})],{horns:1}),
-  HD('月影','assassin',{skin:'#f0e0d8',c1:'#2a2a5a',c2:'#c8c8ff',hair:'#c8c8e8',fx:'#c8c8ff'},[S('新月斬','pierce',7,{r:7,d:140,w:2.5}),S('月隱','buff',12,{spd:0.5,dmg:0.15,dur:3}),S('影襲','blink',9,{r:7,d:120,sl:1}),S('月之審判','boom',32,{r:10,d:320,w:3,st:0.8})],{f:1,hood:1}),
-  HD('影貓','assassin',{skin:'#e8d0c0',c1:'#2a2a3a',c2:'#8a7ab8',hair:'#1a1a24',fx:'#a890ff'},[S('貓爪','strike',6,{r:2.8,d:140,sl:1}),S('潛影','buff',14,{inv:1,spd:0.4,dur:3}),S('影步','blink',9,{r:7,d:0}),S('暗影突襲','blink',35,{r:9,d:300,inv:1})],{hood:1}),
-  HD('幻夜','assassin',{skin:'#c8b8c8',c1:'#1a1a2a',c2:'#a03a5a',hair:'#0a0a10',fx:'#ff4a8a'},[S('惡夢鐮刀','boom',8,{r:8,d:120,fr:0.6}),S('吸魂','shot',9,{r:9,d:110,dr:0.4}),S('驚嚇','strike',10,{r:4,d:80,fr:1.5}),S('恐懼降臨','storm',40,{r:9,a:4.5,d:100,dur:3,fr:1})],{hood:1,cape:1}),
+  HD('卡斯帕','assassin',{skin:'#e8c8a8',c1:'#2a2238',c2:'#6a4a9a',hair:'#14101a',fx:'#b98cff'},[S('鴉影瞬身','blink',8,{r:8,d:130}),S('暗刃','strike',6,{r:2.8,d:140}),S('鴉群','nova',8,{a:3.5,d:120}),S('夜幕處決','exec',30,{r:6,d:260,m:0.6,blink:1})],{hood:1,cape:1}),
+  HD('席拉','assassin',{skin:'#d8b090',c1:'#2a4a3a',c2:'#5ac88a',hair:'#1a2a1a',fx:'#5ac88a'},[S('毒牙飛鏢','shot',6,{r:9,d:140,sl:1.2}),S('蛇行','blink',10,{r:7,d:0,spd:0.5}),S('毒霧','storm',12,{r:8,a:3.5,d:60,dur:3,sl:1}),S('萬蛇噬咬','storm',35,{r:7,a:3.5,d:180,dur:3,dr:0.5})],{hood:1,f:1}),
+  HD('蘭澤','assassin',{skin:'#f0d0b0',c1:'#4a5a6a',c2:'#c8d8e8',hair:'#e0e0e8',fx:'#d8e8ff'},[S('霧中突襲','dash',6,{r:7,d:120}),S('隱霧','buff',12,{spd:0.5,dmg:0.2,dur:3}),S('霧刃連擊','strike',6,{r:2.8,d:150,sl:1}),S('千霧斬','chain',30,{r:7,d:240})],{hood:1}),
+  HD('艾蝶菈','assassin',{skin:'#f8d8c0',c1:'#a8204a',c2:'#ff9ec8',hair:'#3a1020',fx:'#ff7eb6'},[S('蝶刃穿梭','boom',7,{r:8,d:120}),S('蝶舞','blink',9,{r:8,d:60}),S('蝶影','buff',12,{spd:0.5,as:0.3,dur:3}),S('緋紅花雨','nova',35,{a:4.5,d:360,sl:1.5})],{f:1,cape:1}),
+  HD('風間','assassin',{skin:'#e0b890',c1:'#3a6a5a',c2:'#b8f0d8',hair:'#2a1a10',fx:'#b8f0d8'},[S('疾風步','dash',5,{r:6,d:100}),S('裂空斬','strike',7,{r:2.8,d:130,kb:2}),S('旋風','pierce',9,{r:8,d:100,ku:0.6,w:2}),S('天風斬','chain',32,{r:8,d:260,blink:1})],{}),
+  HD('莫里斯','assassin',{skin:'#d8c0b0',c1:'#1a1a2a',c2:'#5a5a8a',hair:'#0a0a14',fx:'#8a8aff'},[S('幽影飛刃','shot',6,{r:9,d:130}),S('毒刺陷阱','trap',10,{r:7,d:120,sl:2}),S('致命毒刃','buff',12,{dmg:0.3,dur:3}),S('幽冥斬首','exec',30,{r:5,d:240,m:0.7,rs:1})],{hood:1}),
+  HD('斯克爾','assassin',{skin:'#d8a070',c1:'#8a2a1a',c2:'#ff7a4a',hair:'#2a1010',fx:'#ff6a3a'},[S('蠍尾刺','hook',9,{r:7,d:110,st:0.4}),S('甲殼','shield',12,{v:200}),S('毒針連射','chain',9,{r:7,d:90,sl:1}),S('蠍王突襲','dash',35,{r:8,a:2.5,d:300,dr:0.5})],{horns:1}),
+  HD('瑟蕾娜','assassin',{skin:'#f0e0d8',c1:'#2a2a5a',c2:'#c8c8ff',hair:'#c8c8e8',fx:'#c8c8ff'},[S('新月斬','pierce',7,{r:7,d:140,w:2.5}),S('月隱','buff',12,{spd:0.5,dmg:0.15,dur:3}),S('影襲','blink',9,{r:7,d:120,sl:1}),S('月之審判','boom',32,{r:10,d:320,w:3,st:0.8})],{f:1,hood:1}),
+  HD('奇洛','assassin',{skin:'#e8d0c0',c1:'#2a2a3a',c2:'#8a7ab8',hair:'#1a1a24',fx:'#a890ff'},[S('貓爪','strike',6,{r:2.8,d:140,sl:1}),S('潛影','buff',14,{inv:1,spd:0.4,dur:3}),S('影步','blink',9,{r:7,d:0}),S('暗影突襲','blink',35,{r:9,d:300,inv:1})],{hood:1}),
+  HD('諾克斯','assassin',{skin:'#c8b8c8',c1:'#1a1a2a',c2:'#a03a5a',hair:'#0a0a10',fx:'#ff4a8a'},[S('惡夢鐮刀','boom',8,{r:8,d:120,fr:0.6}),S('吸魂','shot',9,{r:9,d:110,dr:0.4}),S('驚嚇','strike',10,{r:4,d:80,fr:1.5}),S('恐懼降臨','storm',40,{r:9,a:4.5,d:100,dur:3,fr:1})],{hood:1,cape:1}),
   // 法師
-  HD('星詠','mage',{skin:'#f8e0c8',c1:'#3a3a8a',c2:'#ffd23f',hair:'#f0e080',fx:'#ffe066'},[S('星芒彈','shot',5,{r:10,d:150}),S('星塵爆','blast',8,{r:9,a:3,d:130,sl:1.5,dl:0.5}),S('星光護盾','shield',13,{v:200}),S('流星雨','blast',40,{r:11,a:5.5,d:420,dl:1})],{f:1,hood:1}),
-  HD('炎靈','mage',{skin:'#e8b890',c1:'#8a1a1a',c2:'#ff7a1a',hair:'#ff5a2a',fx:'#ff6a1a'},[S('火球','shot',6,{r:9,d:160}),S('烈焰射線','pierce',8,{r:9,d:150}),S('爆炎','nova',9,{a:3.5,d:140,kb:2}),S('焚天烈焰','storm',45,{r:9,a:5,d:110,dur:4})],{}),
-  HD('霜語','mage',{skin:'#f8e8e0',c1:'#4a7ab8',c2:'#cfefff',hair:'#d8f0ff',fx:'#9ad8ff'},[S('冰錐','chain',6,{r:9,d:110,sl:1.5}),S('霜凍新星','blast',10,{r:9,a:3.5,d:100,st:1.2,dl:0.6}),S('冰牆','pierce',10,{r:9,d:100,st:0.8,w:3}),S('暴風雪','storm',45,{r:9,a:6,d:80,dur:5,sl:1})],{f:1,cape:1}),
-  HD('雷鳴','mage',{skin:'#d8a880',c1:'#2a2a4a',c2:'#8ad8ff',hair:'#e8e8f0',fx:'#8ad8ff'},[S('雷光束','pierce',5,{r:10,d:140}),S('雷環','nova',9,{a:4,d:140,st:0.8}),S('雷霆疾步','blink',11,{r:7,d:80,st:0.6}),S('連鎖閃電','chain',40,{r:9,d:320,st:0.5})],{hood:1}),
-  HD('幻月','mage',{skin:'#f0d8c8',c1:'#5a3a7a',c2:'#d8c8ff',hair:'#1a1430',fx:'#d8c8ff'},[S('月影彈','shot',5,{r:10,d:140,dr:0.3}),S('月光護盾','shield',12,{v:220}),S('月影縛','trap',10,{r:8,d:100,st:1.2}),S('月蝕光輪','boom',35,{r:12,d:300,w:3})],{f:1}),
-  HD('紫煙','mage',{skin:'#e0c8d8',c1:'#4a2a5a',c2:'#b06ad8',hair:'#2a1a3a',fx:'#c07aff'},[S('毒霧彈','storm',7,{r:9,a:3,d:70,dur:3}),S('腐蝕彈','shot',8,{r:9,d:110,dr:0.4}),S('瘴氣爆發','nova',10,{a:3.5,d:120,sl:1.5}),S('毒龍吐息','pierce',40,{r:10,d:320,w:4,sl:2})],{hood:1,f:1}),
-  HD('晶靈','mage',{skin:'#f0e8f8',c1:'#3a6a9a',c2:'#a8f0ff',hair:'#d0f0ff',fx:'#a8f0ff'},[S('水晶碎片','chain',6,{r:8,d:110}),S('晶體護盾','shield',13,{v:180,ally:1}),S('晶簇陷阱','trap',11,{r:8,d:90,ku:1}),S('星晶隕落','blast',40,{r:10,a:5,d:380,st:1,dl:1})],{f:1}),
-  HD('咒骨','mage',{skin:'#d8d0c0',c1:'#2a2a2a',c2:'#a0e070',hair:'#e8e8e0',fx:'#a0ff70'},[S('咒骨彈','shot',7,{r:9,d:120,a:2.5}),S('亡靈護甲','shield',13,{v:230}),S('冥界之手','hook',12,{r:8,d:100,sl:2}),S('亡者之握','nova',38,{a:5.5,d:260,pl:1,sl:1.5})],{hood:1,horns:1}),
-  HD('魅狐','mage',{skin:'#f8e0d0',c1:'#c83a5a',c2:'#ffb0c8',hair:'#f0f0f8',fx:'#ff8ab8'},[S('狐火球','boom',6,{r:9,d:130}),S('狐火','chain',8,{r:7,d:90,cn:3}),S('魅惑之吻','shot',11,{r:9,d:80,ch:1.4}),S('傾心之舞','nova',40,{a:5,d:220,ch:1.5})],{f:1}),
+  HD('艾絲特','mage',{skin:'#f8e0c8',c1:'#3a3a8a',c2:'#ffd23f',hair:'#f0e080',fx:'#ffe066'},[S('星芒彈','shot',5,{r:10,d:150}),S('星塵爆','blast',8,{r:9,a:3,d:130,sl:1.5,dl:0.5}),S('星光護盾','shield',13,{v:200}),S('流星雨','blast',40,{r:11,a:5.5,d:420,dl:1})],{f:1,hood:1}),
+  HD('伊弗瑞','mage',{skin:'#e8b890',c1:'#8a1a1a',c2:'#ff7a1a',hair:'#ff5a2a',fx:'#ff6a1a'},[S('火球','shot',6,{r:9,d:160}),S('烈焰射線','pierce',8,{r:9,d:150}),S('爆炎','nova',9,{a:3.5,d:140,kb:2}),S('焚天烈焰','storm',45,{r:9,a:5,d:110,dur:4})],{}),
+  HD('希爾薇','mage',{skin:'#f8e8e0',c1:'#4a7ab8',c2:'#cfefff',hair:'#d8f0ff',fx:'#9ad8ff'},[S('冰錐','chain',6,{r:9,d:110,sl:1.5}),S('霜凍新星','blast',10,{r:9,a:3.5,d:100,st:1.2,dl:0.6}),S('冰牆','pierce',10,{r:9,d:100,st:0.8,w:3}),S('暴風雪','storm',45,{r:9,a:6,d:80,dur:5,sl:1})],{f:1,cape:1}),
+  HD('瑟斯','mage',{skin:'#d8a880',c1:'#2a2a4a',c2:'#8ad8ff',hair:'#e8e8f0',fx:'#8ad8ff'},[S('雷光束','pierce',5,{r:10,d:140}),S('雷環','nova',9,{a:4,d:140,st:0.8}),S('雷霆疾步','blink',11,{r:7,d:80,st:0.6}),S('連鎖閃電','chain',40,{r:9,d:320,st:0.5})],{hood:1}),
+  HD('瑪妮','mage',{skin:'#f0d8c8',c1:'#5a3a7a',c2:'#d8c8ff',hair:'#1a1430',fx:'#d8c8ff'},[S('月影彈','shot',5,{r:10,d:140,dr:0.3}),S('月光護盾','shield',12,{v:220}),S('月影縛','trap',10,{r:8,d:100,st:1.2}),S('月蝕光輪','boom',35,{r:12,d:300,w:3})],{f:1}),
+  HD('薇諾','mage',{skin:'#e0c8d8',c1:'#4a2a5a',c2:'#b06ad8',hair:'#2a1a3a',fx:'#c07aff'},[S('毒霧彈','storm',7,{r:9,a:3,d:70,dur:3}),S('腐蝕彈','shot',8,{r:9,d:110,dr:0.4}),S('瘴氣爆發','nova',10,{a:3.5,d:120,sl:1.5}),S('毒龍吐息','pierce',40,{r:10,d:320,w:4,sl:2})],{hood:1,f:1}),
+  HD('克莉絲','mage',{skin:'#f0e8f8',c1:'#3a6a9a',c2:'#a8f0ff',hair:'#d0f0ff',fx:'#a8f0ff'},[S('水晶碎片','chain',6,{r:8,d:110}),S('晶體護盾','shield',13,{v:180,ally:1}),S('晶簇陷阱','trap',11,{r:8,d:90,ku:1}),S('星晶隕落','blast',40,{r:10,a:5,d:380,st:1,dl:1})],{f:1}),
+  HD('莫爾頓','mage',{skin:'#d8d0c0',c1:'#2a2a2a',c2:'#a0e070',hair:'#e8e8e0',fx:'#a0ff70'},[S('咒骨彈','shot',7,{r:9,d:120,a:2.5}),S('亡靈護甲','shield',13,{v:230}),S('冥界之手','hook',12,{r:8,d:100,sl:2}),S('亡者之握','nova',38,{a:5.5,d:260,pl:1,sl:1.5})],{hood:1,horns:1}),
+  HD('珂蘿','mage',{skin:'#f8e0d0',c1:'#c83a5a',c2:'#ffb0c8',hair:'#f0f0f8',fx:'#ff8ab8'},[S('狐火球','boom',6,{r:9,d:130}),S('狐火','chain',8,{r:7,d:90,cn:3}),S('魅惑之吻','shot',11,{r:9,d:80,ch:1.4}),S('傾心之舞','nova',40,{a:5,d:220,ch:1.5})],{f:1}),
   // 射手
-  HD('鷹眼','marksman',{skin:'#e0b890',c1:'#4a6a3a',c2:'#c8a060',hair:'#3a2a1a',fx:'#ffe066'},[S('專注射擊','buff',10,{as:0.6,dur:4}),S('穿甲箭','shot',8,{r:10,d:140,sl:1.5}),S('鷹之翱翔','blink',11,{r:6,d:0,back:1}),S('鷹擊長空','pierce',35,{r:16,d:420,w:2})],{hood:1}),
-  HD('流星','marksman',{skin:'#f8d8c0',c1:'#c8a020',c2:'#fff0b0',hair:'#f0c040',fx:'#ffd23f'},[S('流星箭','pierce',6,{r:10,d:130}),S('翻滾','blink',8,{r:5,d:0}),S('星光連射','buff',12,{as:0.4,ls:0.2,dur:4}),S('流星箭雨','chain',40,{r:10,d:260,sl:1.5,cn:5})],{f:1}),
-  HD('赤羽','marksman',{skin:'#d8a880',c1:'#a82a2a',c2:'#ffb04a',hair:'#2a1410',fx:'#ff7a3d'},[S('火羽箭','shot',6,{r:10,d:150}),S('疾奔','buff',12,{spd:0.4,dur:3}),S('焚羽','boom',8,{r:9,d:110}),S('鳳凰之箭','shot',40,{r:16,d:360,st:1.5})],{cape:1}),
-  HD('疾矢','marksman',{skin:'#e8c0a0',c1:'#2a4a6a',c2:'#8ac8ff',hair:'#1a1a2a',fx:'#8ac8ff'},[S('連珠箭','buff',10,{as:0.5,dmg:0.15,dur:5}),S('爆裂箭','blast',8,{r:9,a:3,d:120,sl:1.5,dl:0.4}),S('捕網','shot',10,{r:8,d:60,sl:3}),S('致命狙擊','exec',35,{r:12,d:260,m:0.5})],{}),
-  HD('銀弦','marksman',{skin:'#f8e0d0',c1:'#6a6a7a',c2:'#e0e0f0',hair:'#e8e8f0',fx:'#e0e8ff'},[S('分裂箭','chain',7,{r:9,d:110}),S('定身箭','shot',10,{r:10,d:100,st:1}),S('銀色疾風','buff',12,{spd:0.4,as:0.3,dur:4}),S('銀月衝擊','pierce',40,{r:12,d:340,w:3,kb:3})],{f:1,cape:1}),
-  HD('火銃','marksman',{skin:'#d8a070',c1:'#5a3a2a',c2:'#ff9a3d',hair:'#1a1010',fx:'#ffa040'},[S('火藥彈','shot',8,{r:9,d:130,kb:2}),S('戰術翻滾','blink',9,{r:5,d:50}),S('燃燒彈','storm',11,{r:8,a:2.5,d:60,dur:3,sl:1}),S('加農砲','blast',40,{r:14,a:4,d:380,ku:0.8,dl:1.2})],{helm:1}),
-  HD('風羽','marksman',{skin:'#f0d8b8',c1:'#3a8a6a',c2:'#c8ffe0',hair:'#2a3a2a',fx:'#a0ffd0'},[S('風刃箭','pierce',7,{r:10,d:120,sl:1,w:2.5}),S('順風','buff',12,{spd:0.4,as:0.3,dur:3}),S('旋風箭','shot',10,{r:9,d:80,ku:0.7}),S('龍捲風','storm',40,{r:10,a:4.5,d:100,dur:3,sl:1,mv:1})],{f:1,cape:1}),
-  HD('冰弓','marksman',{skin:'#f8e8e8',c1:'#5a8ab8',c2:'#e0f4ff',hair:'#f0f0ff',fx:'#b0e0ff'},[S('寒冰連射','chain',7,{r:9,d:100,sl:1.5}),S('冰晶甲','shield',12,{v:180,spd:0.3}),S('冰霜射擊','buff',12,{as:0.4,dmg:0.1,dur:4}),S('冰封之箭','shot',40,{r:14,d:280,st:1.2,a:3.5})],{f:1,hood:1}),
-  HD('雷弩','marksman',{skin:'#d8b090',c1:'#3a3a5a',c2:'#9ad8ff',hair:'#2a2a3a',fx:'#7ac8ff'},[S('雷弩齊射','pierce',7,{r:9,d:120,w:3}),S('電磁陷阱','trap',12,{r:7,d:70,st:1}),S('超載','buff',12,{as:0.6,spd:0.2,dur:3}),S('雷霆炮','blast',40,{r:12,a:4.5,d:360,sl:2,dl:0.8})],{helm:1}),
-  HD('星羽','marksman',{skin:'#f8e0c8',c1:'#6a4ab8',c2:'#ffe0ff',hair:'#f0d0ff',fx:'#ffb0ff'},[S('星光箭','shot',6,{r:10,d:140,dr:0.3}),S('星躍','blink',10,{r:6,d:0,back:1,sl:1.5}),S('星辰護佑','heal',14,{v:160,self:1,cl:1}),S('星河奔流','boom',40,{r:12,d:320,w:3,sl:1.5})],{f:1,cape:1}),
-  HD('暗弩','marksman',{skin:'#c8b090',c1:'#3a4a2a',c2:'#8ab060',hair:'#1a2010',fx:'#a0e060'},[S('潛伏','buff',14,{inv:1,as:0.5,dur:3}),S('毒雲瓶','blast',9,{r:9,a:3,d:90,sl:1.5,dl:0.4}),S('翻滾隱沒','blink',11,{r:5,d:0,back:1,inv:1}),S('狙殺模式','buff',40,{as:0.4,dmg:0.3,ls:0.15,dur:6})],{hood:1}),
+  HD('霍克','marksman',{skin:'#e0b890',c1:'#4a6a3a',c2:'#c8a060',hair:'#3a2a1a',fx:'#ffe066'},[S('專注射擊','buff',10,{as:0.6,dur:4}),S('穿甲箭','shot',8,{r:10,d:140,sl:1.5}),S('鷹之翱翔','blink',11,{r:6,d:0,back:1}),S('鷹擊長空','pierce',35,{r:16,d:420,w:2})],{hood:1}),
+  HD('米蒂亞','marksman',{skin:'#f8d8c0',c1:'#c8a020',c2:'#fff0b0',hair:'#f0c040',fx:'#ffd23f'},[S('流星箭','pierce',6,{r:10,d:130}),S('翻滾','blink',8,{r:5,d:0}),S('星光連射','buff',12,{as:0.4,ls:0.2,dur:4}),S('流星箭雨','chain',40,{r:10,d:260,sl:1.5,cn:5})],{f:1}),
+  HD('菲尼克','marksman',{skin:'#d8a880',c1:'#a82a2a',c2:'#ffb04a',hair:'#2a1410',fx:'#ff7a3d'},[S('火羽箭','shot',6,{r:10,d:150}),S('疾奔','buff',12,{spd:0.4,dur:3}),S('焚羽','boom',8,{r:9,d:110}),S('鳳凰之箭','shot',40,{r:16,d:360,st:1.5})],{cape:1}),
+  HD('艾倫','marksman',{skin:'#e8c0a0',c1:'#2a4a6a',c2:'#8ac8ff',hair:'#1a1a2a',fx:'#8ac8ff'},[S('連珠箭','buff',10,{as:0.5,dmg:0.15,dur:5}),S('爆裂箭','blast',8,{r:9,a:3,d:120,sl:1.5,dl:0.4}),S('捕網','shot',10,{r:8,d:60,sl:3}),S('致命狙擊','exec',35,{r:12,d:260,m:0.5})],{}),
+  HD('希爾娃','marksman',{skin:'#f8e0d0',c1:'#6a6a7a',c2:'#e0e0f0',hair:'#e8e8f0',fx:'#e0e8ff'},[S('分裂箭','chain',7,{r:9,d:110}),S('定身箭','shot',10,{r:10,d:100,st:1}),S('銀色疾風','buff',12,{spd:0.4,as:0.3,dur:4}),S('銀月衝擊','pierce',40,{r:12,d:340,w:3,kb:3})],{f:1,cape:1}),
+  HD('布洛克','marksman',{skin:'#d8a070',c1:'#5a3a2a',c2:'#ff9a3d',hair:'#1a1010',fx:'#ffa040'},[S('火藥彈','shot',8,{r:9,d:130,kb:2}),S('戰術翻滾','blink',9,{r:5,d:50}),S('燃燒彈','storm',11,{r:8,a:2.5,d:60,dur:3,sl:1}),S('加農砲','blast',40,{r:14,a:4,d:380,ku:0.8,dl:1.2})],{helm:1}),
+  HD('席菲兒','marksman',{skin:'#f0d8b8',c1:'#3a8a6a',c2:'#c8ffe0',hair:'#2a3a2a',fx:'#a0ffd0'},[S('風刃箭','pierce',7,{r:10,d:120,sl:1,w:2.5}),S('順風','buff',12,{spd:0.4,as:0.3,dur:3}),S('旋風箭','shot',10,{r:9,d:80,ku:0.7}),S('龍捲風','storm',40,{r:10,a:4.5,d:100,dur:3,sl:1,mv:1})],{f:1,cape:1}),
+  HD('艾莉絲','marksman',{skin:'#f8e8e8',c1:'#5a8ab8',c2:'#e0f4ff',hair:'#f0f0ff',fx:'#b0e0ff'},[S('寒冰連射','chain',7,{r:9,d:100,sl:1.5}),S('冰晶甲','shield',12,{v:180,spd:0.3}),S('冰霜射擊','buff',12,{as:0.4,dmg:0.1,dur:4}),S('冰封之箭','shot',40,{r:14,d:280,st:1.2,a:3.5})],{f:1,hood:1}),
+  HD('弗特','marksman',{skin:'#d8b090',c1:'#3a3a5a',c2:'#9ad8ff',hair:'#2a2a3a',fx:'#7ac8ff'},[S('雷弩齊射','pierce',7,{r:9,d:120,w:3}),S('電磁陷阱','trap',12,{r:7,d:70,st:1}),S('超載','buff',12,{as:0.6,spd:0.2,dur:3}),S('雷霆炮','blast',40,{r:12,a:4.5,d:360,sl:2,dl:0.8})],{helm:1}),
+  HD('諾娃','marksman',{skin:'#f8e0c8',c1:'#6a4ab8',c2:'#ffe0ff',hair:'#f0d0ff',fx:'#ffb0ff'},[S('星光箭','shot',6,{r:10,d:140,dr:0.3}),S('星躍','blink',10,{r:6,d:0,back:1,sl:1.5}),S('星辰護佑','heal',14,{v:160,self:1,cl:1}),S('星河奔流','boom',40,{r:12,d:320,w:3,sl:1.5})],{f:1,cape:1}),
+  HD('薩洛','marksman',{skin:'#c8b090',c1:'#3a4a2a',c2:'#8ab060',hair:'#1a2010',fx:'#a0e060'},[S('潛伏','buff',14,{inv:1,as:0.5,dur:3}),S('毒雲瓶','blast',9,{r:9,a:3,d:90,sl:1.5,dl:0.4}),S('翻滾隱沒','blink',11,{r:5,d:0,back:1,inv:1}),S('狙殺模式','buff',40,{as:0.4,dmg:0.3,ls:0.15,dur:6})],{hood:1}),
   // 輔助
-  HD('晨曦','support',{skin:'#f8e0c8',c1:'#f0e0a0',c2:'#ffd23f',hair:'#f0d080',fx:'#fff0a0'},[S('晨光治癒','heal',10,{a:8,v:170}),S('聖光彈','shot',8,{r:9,d:90,st:1}),S('日光衝擊','nova',9,{a:3.5,d:90,sl:1.5}),S('黎明審判','blast',40,{r:10,a:5,d:200,ku:1,hl:1,dl:0.8})],{f:1,cape:1}),
-  HD('聖鈴','support',{skin:'#f0d0b8',c1:'#e8e8f0',c2:'#8ad8ff',hair:'#c8a060',fx:'#c8f0ff'},[S('鈴之守護','shield',10,{v:200,ally:1}),S('清音震波','pierce',9,{r:9,d:90,sl:1.5,w:3}),S('鈴音束縛','trap',11,{r:7,d:70,st:1.2}),S('天籟','heal',40,{a:10,v:450,cl:1})],{f:1}),
-  HD('花語','support',{skin:'#f8d8c0',c1:'#5aa85a',c2:'#ff9ec8',hair:'#8a4a2a',fx:'#ff9ec8'},[S('藤蔓纏繞','blast',8,{r:9,a:3,d:100,st:1,dl:0.6}),S('花之癒','heal',12,{a:8,v:150}),S('花瓣護盾','shield',12,{v:200,ally:1,spd:0.2}),S('百花盛開','buff',40,{spd:0.3,dmg:0.2,dur:6,ally:1})],{f:1}),
-  HD('潮汐','support',{skin:'#d8a880',c1:'#2a6a8a',c2:'#7ae8e8',hair:'#1a2a3a',fx:'#7ae8e8'},[S('浪潮之鉤','hook',11,{r:10,d:80,st:0.8}),S('水流加速','buff',12,{spd:0.4,dur:3,ally:1}),S('水泡','shot',10,{r:9,d:80,ku:1}),S('漩渦','nova',40,{a:6,d:200,ku:1,pl:1})],{}),
-  HD('守望','support',{skin:'#c8946a',c1:'#6a5a3a',c2:'#e8d8a0',hair:'#2a2418',fx:'#e8d8a0'},[S('光之箭','shot',7,{r:9,d:100,sl:2}),S('守護之光','heal',12,{a:8,v:170}),S('守望之盾','shield',12,{v:220,ally:1}),S('聖域','nova',40,{a:6,d:200,st:1.5})],{helm:1,cape:1}),
-  HD('靈蝶','support',{skin:'#f8e8e0',c1:'#a07ad8',c2:'#ffe0f8',hair:'#e0c0ff',fx:'#e0b0ff'},[S('蝶粉','chain',8,{r:8,d:80,sl:1}),S('蝶翼庇護','shield',11,{v:180,ally:1,spd:0.4}),S('靈光一閃','blink',12,{r:6,d:60,ally:1}),S('幻蝶之夢','storm',40,{r:9,a:4.5,d:40,dur:3,st:1})],{f:1}),
-  HD('鼓手','support',{skin:'#c88a5a',c1:'#c8402a',c2:'#ffd060',hair:'#2a1a10',fx:'#ffc040'},[S('戰鼓震波','nova',9,{a:4,d:80,kb:2.5}),S('進擊鼓點','buff',12,{spd:0.3,as:0.3,dur:4,ally:1}),S('鼓舞','heal',13,{a:8,v:140,cl:1}),S('萬鼓齊鳴','nova',40,{a:6,d:180,ku:1.2,ally:1})],{}),
-  HD('星護','support',{skin:'#f0d8c0',c1:'#2a3a7a',c2:'#ffe080',hair:'#f0e0a0',fx:'#ffe080'},[S('星光鎖鏈','chain',10,{r:8,d:60,st:0.6,cn:3}),S('星盾','shield',12,{v:240,ally:1}),S('星落','blast',10,{r:9,a:3,d:110,kb:2.5,dl:0.6}),S('星界守護','dash',40,{r:9,a:4,d:180,ku:1.1,ally:1})],{f:1,cape:1}),
-  HD('機甲','support',{skin:'#c8c8d0',c1:'#b88a2a',c2:'#ffd860',hair:'#3a3a44',fx:'#ffe066'},[S('火箭鉤爪','hook',13,{r:11,d:90,st:0.65}),S('全速驅動','buff',14,{spd:0.6,as:0.4,dur:4}),S('上勾重拳','empower',8,{d:60,ku:1}),S('靜電力場','nova',40,{a:5.5,d:250,sil:1.5})],{helm:1}),
-  HD('幽鈴','support',{skin:'#f0e0e8',c1:'#5a3a6a',c2:'#c8a8e8',hair:'#1a1020',fx:'#d0a8ff'},[S('迷魂鈴','nova',9,{a:4,d:70,fr:1}),S('安魂曲','heal',13,{a:8,v:150,cl:1}),S('魂之引','hook',13,{r:9,d:60,ch:1}),S('鎮魂結界','blast',40,{r:9,a:5,d:180,fr:1.5,dl:0.7})],{f:1,hood:1}),
-  HD('星語','support',{skin:'#f6e6dc',c1:'#ecebff',c2:'#8a9aff',hair:'#b8d4ff',fx:'#b8f0ff'},[S('星墜','blast',7,{r:9,a:2.6,d:100,sl:1,sh:1,dl:0.55}),S('星輝灌注','infuse',8,{r:9,v:220}),S('星域禁言','blast',14,{r:9,a:3.2,d:60,sil:1.5,rt:1,dl:0.3}),S('星願','wish',75,{v:300})],{f:1,horns:1}),
-  HD('彈姬','marksman',{skin:'#f6dcc8',c1:'#8a1e2a',c2:'#f0c060',hair:'#c8302a',fx:'#ffb040'},[S('跳彈射擊','chain',6,{r:8,d:120,cn:2}),S('戰意高昂','buff',13,{as:0.4,dmg:0.15,dur:4}),S('槍林彈雨','storm',11,{r:9,a:3.5,d:60,dur:2,sl:1}),S('彈幕掃射','barrage',45,{r:11,d:650,dur:3})],{f:1,cape:1}),
-  HD('聖劍','fighter',{skin:'#e8c8a8',c1:'#3a5aa8',c2:'#e8c860',hair:'#5a3a20',fx:'#ffe68a'},[S('正義之擊','empower',8,{d:90,sil:1.5,spd:0.35}),S('堅毅','buff',16,{arm:40,dur:3}),S('審判旋風','storm',10,{a:3,d:110,dur:3,self:1}),S('聖裁之劍','exec',45,{r:5,d:150,m:0.35,tru:1})],{cape:1}),
-  HD('血斧','fighter',{skin:'#c8946a',c1:'#5a1a1a',c2:'#8a8a96',hair:'#1a1414',fx:'#ff4a3a'},[S('血斧迴旋','nova',8,{a:4,d:130,rim:1}),S('斷筋斧','empower',6,{d:70,sl:1.5}),S('鐵鉤擒拿','pierce',13,{r:5.5,d:40,pl:1,w:3}),S('血斧斷頭','exec',40,{r:4,d:200,m:0.3,rs:1,tru:1})],{}),
-  HD('璃光','mage',{skin:'#f8e0c8',c1:'#f0f0ff',c2:'#5a8aff',hair:'#ffe08a',fx:'#fff6a0'},[S('光之束縛','shot',10,{r:10,d:100,rt:1.8}),S('稜光護盾','shield',13,{v:180,ally:1}),S('光明奇點','blast',9,{r:9,a:3.5,d:130,sl:1.5,dl:1.0}),S('終極閃耀','laser',38,{r:22,d:380,w:2.4,dl:0.6})],{f:1})];
+  HD('奧蘿拉','support',{skin:'#f8e0c8',c1:'#f0e0a0',c2:'#ffd23f',hair:'#f0d080',fx:'#fff0a0'},[S('晨光治癒','heal',10,{a:8,v:170}),S('聖光彈','shot',8,{r:9,d:90,st:1}),S('日光衝擊','nova',9,{a:3.5,d:90,sl:1.5}),S('黎明審判','blast',40,{r:10,a:5,d:200,ku:1,hl:1,dl:0.8})],{f:1,cape:1}),
+  HD('貝兒','support',{skin:'#f0d0b8',c1:'#e8e8f0',c2:'#8ad8ff',hair:'#c8a060',fx:'#c8f0ff'},[S('鈴之守護','shield',10,{v:200,ally:1}),S('清音震波','pierce',9,{r:9,d:90,sl:1.5,w:3}),S('鈴音束縛','trap',11,{r:7,d:70,st:1.2}),S('天籟','heal',40,{a:10,v:450,cl:1})],{f:1}),
+  HD('芙蘿拉','support',{skin:'#f8d8c0',c1:'#5aa85a',c2:'#ff9ec8',hair:'#8a4a2a',fx:'#ff9ec8'},[S('藤蔓纏繞','blast',8,{r:9,a:3,d:100,st:1,dl:0.6}),S('花之癒','heal',12,{a:8,v:150}),S('花瓣護盾','shield',12,{v:200,ally:1,spd:0.2}),S('百花盛開','buff',40,{spd:0.3,dmg:0.2,dur:6,ally:1})],{f:1}),
+  HD('納洛','support',{skin:'#d8a880',c1:'#2a6a8a',c2:'#7ae8e8',hair:'#1a2a3a',fx:'#7ae8e8'},[S('浪潮之鉤','hook',11,{r:10,d:80,st:0.8}),S('水流加速','buff',12,{spd:0.4,dur:3,ally:1}),S('水泡','shot',10,{r:9,d:80,ku:1}),S('漩渦','nova',40,{a:6,d:200,ku:1,pl:1})],{}),
+  HD('嘉利恩','support',{skin:'#c8946a',c1:'#6a5a3a',c2:'#e8d8a0',hair:'#2a2418',fx:'#e8d8a0'},[S('光之箭','shot',7,{r:9,d:100,sl:2}),S('守護之光','heal',12,{a:8,v:170}),S('守望之盾','shield',12,{v:220,ally:1}),S('聖域','nova',40,{a:6,d:200,st:1.5})],{helm:1,cape:1}),
+  HD('蜜兒','support',{skin:'#f8e8e0',c1:'#a07ad8',c2:'#ffe0f8',hair:'#e0c0ff',fx:'#e0b0ff'},[S('蝶粉','chain',8,{r:8,d:80,sl:1}),S('蝶翼庇護','shield',11,{v:180,ally:1,spd:0.4}),S('靈光一閃','blink',12,{r:6,d:60,ally:1}),S('幻蝶之夢','storm',40,{r:9,a:4.5,d:40,dur:3,st:1})],{f:1}),
+  HD('邦戈','support',{skin:'#c88a5a',c1:'#c8402a',c2:'#ffd060',hair:'#2a1a10',fx:'#ffc040'},[S('戰鼓震波','nova',9,{a:4,d:80,kb:2.5}),S('進擊鼓點','buff',12,{spd:0.3,as:0.3,dur:4,ally:1}),S('鼓舞','heal',13,{a:8,v:140,cl:1}),S('萬鼓齊鳴','nova',40,{a:6,d:180,ku:1.2,ally:1})],{}),
+  HD('塔莉雅','support',{skin:'#f0d8c0',c1:'#2a3a7a',c2:'#ffe080',hair:'#f0e0a0',fx:'#ffe080'},[S('星光鎖鏈','chain',10,{r:8,d:60,st:0.6,cn:3}),S('星盾','shield',12,{v:240,ally:1}),S('星落','blast',10,{r:9,a:3,d:110,kb:2.5,dl:0.6}),S('星界守護','dash',40,{r:9,a:4,d:180,ku:1.1,ally:1})],{f:1,cape:1}),
+  HD('鐵卡','support',{skin:'#c8c8d0',c1:'#b88a2a',c2:'#ffd860',hair:'#3a3a44',fx:'#ffe066'},[S('火箭鉤爪','hook',13,{r:11,d:90,st:0.65}),S('全速驅動','buff',14,{spd:0.6,as:0.4,dur:4}),S('上勾重拳','empower',8,{d:60,ku:1}),S('靜電力場','nova',40,{a:5.5,d:250,sil:1.5})],{helm:1}),
+  HD('茵妮','support',{skin:'#f0e0e8',c1:'#5a3a6a',c2:'#c8a8e8',hair:'#1a1020',fx:'#d0a8ff'},[S('迷魂鈴','nova',9,{a:4,d:70,fr:1}),S('安魂曲','heal',13,{a:8,v:150,cl:1}),S('魂之引','hook',13,{r:9,d:60,ch:1}),S('鎮魂結界','blast',40,{r:9,a:5,d:180,fr:1.5,dl:0.7})],{f:1,hood:1}),
+  HD('希蕾雅','support',{skin:'#f6e6dc',c1:'#ecebff',c2:'#8a9aff',hair:'#b8d4ff',fx:'#b8f0ff'},[S('星墜','blast',7,{r:9,a:2.6,d:100,sl:1,sh:1,dl:0.55}),S('星輝灌注','infuse',8,{r:9,v:220}),S('星域禁言','blast',14,{r:9,a:3.2,d:60,sil:1.5,rt:1,dl:0.3}),S('星願','wish',75,{v:300})],{f:1,horns:1}),
+  HD('蕾琪娜','marksman',{skin:'#f6dcc8',c1:'#8a1e2a',c2:'#f0c060',hair:'#c8302a',fx:'#ffb040'},[S('跳彈射擊','chain',6,{r:8,d:120,cn:2}),S('戰意高昂','buff',13,{as:0.4,dmg:0.15,dur:4}),S('槍林彈雨','storm',11,{r:9,a:3.5,d:60,dur:2,sl:1}),S('彈幕掃射','barrage',45,{r:11,d:650,dur:3})],{f:1,cape:1}),
+  HD('亞瑟蘭','fighter',{skin:'#e8c8a8',c1:'#3a5aa8',c2:'#e8c860',hair:'#5a3a20',fx:'#ffe68a'},[S('正義之擊','empower',8,{d:90,sil:1.5,spd:0.35}),S('堅毅','buff',16,{arm:40,dur:3}),S('審判旋風','storm',10,{a:3,d:110,dur:3,self:1}),S('聖裁之劍','exec',45,{r:5,d:150,m:0.35,tru:1})],{cape:1}),
+  HD('杜克薩','fighter',{skin:'#c8946a',c1:'#5a1a1a',c2:'#8a8a96',hair:'#1a1414',fx:'#ff4a3a'},[S('血斧迴旋','nova',8,{a:4,d:130,rim:1}),S('斷筋斧','empower',6,{d:70,sl:1.5}),S('鐵鉤擒拿','pierce',13,{r:5.5,d:40,pl:1,w:3}),S('血斧斷頭','exec',40,{r:4,d:200,m:0.3,rs:1,tru:1})],{}),
+  HD('露米娜','mage',{skin:'#f8e0c8',c1:'#f0f0ff',c2:'#5a8aff',hair:'#ffe08a',fx:'#fff6a0'},[S('光之束縛','shot',10,{r:10,d:100,rt:1.8}),S('稜光護盾','shield',13,{v:180,ally:1}),S('光明奇點','blast',9,{r:9,a:3.5,d:130,sl:1.5,dl:1.0}),S('終極閃耀','laser',38,{r:22,d:380,w:2.4,dl:0.6})],{f:1})];
 
 // 被動技能、特殊路線
 { const F=n=>HEROES.find(h=>h.n===n);
-  if(F('岩崗')) F('岩崗').ps={k:'grit',n:'岩石之心',v:30};
-  if(F('鋼牙')) F('鋼牙').ps={k:'shieldhit',n:'鋼骨',v:120};
-  if(F('霜盾')) F('霜盾').ps={k:'thornp',n:'寒霜甲',v:25};
-  if(F('赤甲')) F('赤甲').ps={k:'giant',n:'赤焰之軀',v:0.1};
-  if(F('山嶽')) F('山嶽').ps={k:'regen',n:'山之恆',v:0};
-  if(F('玄武')) F('玄武').ps={k:'ten',n:'玄甲',v:0.3};
-  if(F('熊霸')) F('熊霸').ps={k:'rage',n:'熊之怒',v:0.5};
-  if(F('鐵壁')) F('鐵壁').ps={k:'shieldhit',n:'不屈鐵壁',v:150};
-  if(F('鐵吼')) F('鐵吼').ps={k:'grit',n:'鋼鐵咆哮',v:25};
-  if(F('烈刃')) F('烈刃').ps={k:'cdhit',n:'刃之律動',v:0.5};
-  if(F('狂瀾')) F('狂瀾').ps={k:'rage',n:'怒潮',v:0.6};
-  if(F('斬鋒')) F('斬鋒').ps={k:'stack',n:'劍魂',v:0};
-  if(F('蒼狼')) F('蒼狼').ps={k:'regen',n:'狼之血',v:0};
-  if(F('炎拳')) F('炎拳').ps={k:'third',n:'三連烈拳',v:0.06};
-  if(F('鐵騎')) F('鐵騎').ps={k:'momentum',n:'戰馬奔騰',v:0};
-  if(F('刀鋒')) F('刀鋒').ps={k:'bleed',n:'血刃',v:0};
-  if(F('雷錘')) F('雷錘').ps={k:'third',n:'雷霆之擊',v:0.05};
-  if(F('狂獅')) F('狂獅').ps={k:'stack',n:'王者之氣',v:0};
-  if(F('聖劍')) F('聖劍').ps={k:'regen',n:'堅毅不屈',v:0};
-  if(F('血斧')) F('血斧').ps={k:'bleed',n:'出血',v:0};
-  if(F('夜鴉')) F('夜鴉').ps={k:'execute',n:'鴉之獵殺',v:0.2};
-  if(F('影蛇')) F('影蛇').ps={k:'ambush',n:'蛇之伏擊',v:0.25};
-  if(F('霧刃')) F('霧刃').ps={k:'swift',n:'霧行',v:0.1};
-  if(F('緋蝶')) F('緋蝶').ps={k:'spdcast',n:'蝶之輕盈',v:0.3};
-  if(F('疾風')) F('疾風').ps={k:'cdhit',n:'疾風之刃',v:0.4};
-  if(F('幽刃')) F('幽刃').ps={k:'execute',n:'幽冥印記',v:0.25};
-  if(F('紅蠍')) F('紅蠍').ps={k:'bleed',n:'蠍毒',v:0};
-  if(F('月影')) F('月影').ps={k:'ambush',n:'月下伏擊',v:0.3};
-  if(F('影貓')) F('影貓').ps={k:'swift',n:'貓步',v:0.12};
-  if(F('幻夜')) F('幻夜').ps={k:'stack',n:'噬魂',v:0};
-  if(F('星詠')) F('星詠').ps={k:'spellweave',n:'星光印記',v:0};
-  if(F('炎靈')) F('炎靈').ps={k:'sorc',n:'燃燒之心',v:0};
-  if(F('霜語')) F('霜語').ps={k:'haste',n:'冰心',v:0.1};
-  if(F('雷鳴')) F('雷鳴').ps={k:'spdcast',n:'電光',v:0.25};
-  if(F('幻月')) F('幻月').ps={k:'sorc',n:'月之魔力',v:0};
-  if(F('紫煙')) F('紫煙').ps={k:'curse',n:'腐蝕詛咒',v:0};
-  if(F('晶靈')) F('晶靈').ps={k:'haste',n:'晶核',v:0.12};
-  if(F('咒骨')) F('咒骨').ps={k:'stack',n:'靈魂收割',v:0};
-  if(F('魅狐')) F('魅狐').ps={k:'spdcast',n:'狐之靈動',v:0.3};
-  if(F('璃光')) F('璃光').ps={k:'spellweave',n:'光之印記',v:0};
-  if(F('鷹眼')) F('鷹眼').ps={k:'range',n:'鷹眼',v:1};
-  if(F('流星')) F('流星').ps={k:'third',n:'流星三連',v:0.06};
-  if(F('赤羽')) F('赤羽').ps={k:'momentum',n:'鳳凰之翼',v:0};
-  if(F('疾矢')) F('疾矢').ps={k:'range',n:'遠見',v:1};
-  if(F('銀弦')) F('銀弦').ps={k:'third',n:'銀弦三響',v:0.07};
-  if(F('火銃')) F('火銃').ps={k:'execute',n:'火力壓制',v:0.15};
-  if(F('風羽')) F('風羽').ps={k:'swift',n:'順風而行',v:0.1};
-  if(F('冰弓')) F('冰弓').ps={k:'rage',n:'冰之專注',v:0.5};
-  if(F('雷弩')) F('雷弩').ps={k:'cdhit',n:'超頻',v:0.4};
-  if(F('星羽')) F('星羽').ps={k:'stack',n:'星辰收集',v:0};
-  if(F('暗弩')) F('暗弩').ps={k:'ambush',n:'暗殺者',v:0.3};
-  if(F('彈姬')) F('彈姬').ps={k:'ambush',n:'致命一槍',v:0.2};
-  if(F('晨曦')) F('晨曦').ps={k:'healer',n:'晨光恩典',v:0.25};
-  if(F('聖鈴')) F('聖鈴').ps={k:'aura',n:'清音',v:0.08};
-  if(F('花語')) F('花語').ps={k:'healer',n:'花之祝福',v:0.2};
-  if(F('潮汐')) F('潮汐').ps={k:'allyshield',n:'潮汐之護',v:120};
-  if(F('守望')) F('守望').ps={k:'lifeline',n:'守望者',v:300};
-  if(F('靈蝶')) F('靈蝶').ps={k:'aura',n:'蝶翼',v:0.08};
-  if(F('鼓手')) F('鼓手').ps={k:'aura',n:'戰鼓節奏',v:0.08};
-  if(F('星護')) F('星護').ps={k:'allyshield',n:'星之守護',v:140};
-  if(F('幽鈴')) F('幽鈴').ps={k:'lifeline',n:'安魂',v:260};
-  if(F('星語')) F('星語').ps={k:'healer',n:'星之慈悲',v:0.3};
-  F('機甲').ps={k:'mshield',n:'魔力屏障',d:'血量低於 20% 時，得到等於 30% 魔力的護盾（90 秒一次）'};
-  F('淚魂').ps={k:'curse',n:'詛咒之觸',d:'技能打中的敵方英雄，3 秒內受到的技能傷害 +10%'}; F('淚魂').roles=['jg','sup'];
-  F('花崗').ps={k:'granite',n:'花崗岩盾',d:'10 秒沒受傷時，得到最大生命 10% 的護盾'};
-  HEROES.forEach(h=>{ if(h.ps&&PSD[h.ps.k]) h.ps.d=PSD[h.ps.k](h.ps.v); }); }
+  if(F('葛隆')) F('葛隆').ps={k:'grit',n:'岩石之心',v:30};
+  if(F('巴勒格')) F('巴勒格').ps={k:'shieldhit',n:'鋼骨',v:120};
+  if(F('雪菈')) F('雪菈').ps={k:'thornp',n:'寒霜甲',v:25};
+  if(F('伊格納')) F('伊格納').ps={k:'giant',n:'赤焰之軀',v:0.1};
+  if(F('莫頓')) F('莫頓').ps={k:'regen',n:'山之恆',v:0};
+  if(F('塔洛克')) F('塔洛克').ps={k:'ten',n:'玄甲',v:0.3};
+  if(F('博魯')) F('博魯').ps={k:'rage',n:'熊之怒',v:0.5};
+  if(F('雷納德')) F('雷納德').ps={k:'shieldhit',n:'不屈鐵壁',v:150};
+  if(F('洛克斯')) F('洛克斯').ps={k:'grit',n:'鋼鐵咆哮',v:25};
+  if(F('卡洛斯')) F('卡洛斯').ps={k:'cdhit',n:'刃之律動',v:0.5};
+  if(F('娜蒂雅')) F('娜蒂雅').ps={k:'rage',n:'怒潮',v:0.6};
+  if(F('辛格')) F('辛格').ps={k:'stack',n:'劍魂',v:0};
+  if(F('瓦格')) F('瓦格').ps={k:'regen',n:'狼之血',v:0};
+  if(F('布雷茲')) F('布雷茲').ps={k:'third',n:'三連烈拳',v:0.06};
+  if(F('羅蘭德')) F('羅蘭德').ps={k:'momentum',n:'戰馬奔騰',v:0};
+  if(F('德雷克')) F('德雷克').ps={k:'bleed',n:'血刃',v:0};
+  if(F('托倫')) F('托倫').ps={k:'third',n:'雷霆之擊',v:0.05};
+  if(F('雷奧')) F('雷奧').ps={k:'stack',n:'王者之氣',v:0};
+  if(F('亞瑟蘭')) F('亞瑟蘭').ps={k:'regen',n:'堅毅不屈',v:0};
+  if(F('杜克薩')) F('杜克薩').ps={k:'bleed',n:'出血',v:0};
+  if(F('卡斯帕')) F('卡斯帕').ps={k:'execute',n:'鴉之獵殺',v:0.2};
+  if(F('席拉')) F('席拉').ps={k:'ambush',n:'蛇之伏擊',v:0.25};
+  if(F('蘭澤')) F('蘭澤').ps={k:'swift',n:'霧行',v:0.1};
+  if(F('艾蝶菈')) F('艾蝶菈').ps={k:'spdcast',n:'蝶之輕盈',v:0.3};
+  if(F('風間')) F('風間').ps={k:'cdhit',n:'疾風之刃',v:0.4};
+  if(F('莫里斯')) F('莫里斯').ps={k:'execute',n:'幽冥印記',v:0.25};
+  if(F('斯克爾')) F('斯克爾').ps={k:'bleed',n:'蠍毒',v:0};
+  if(F('瑟蕾娜')) F('瑟蕾娜').ps={k:'ambush',n:'月下伏擊',v:0.3};
+  if(F('奇洛')) F('奇洛').ps={k:'swift',n:'貓步',v:0.12};
+  if(F('諾克斯')) F('諾克斯').ps={k:'stack',n:'噬魂',v:0};
+  if(F('艾絲特')) F('艾絲特').ps={k:'spellweave',n:'星光印記',v:0};
+  if(F('伊弗瑞')) F('伊弗瑞').ps={k:'sorc',n:'燃燒之心',v:0};
+  if(F('希爾薇')) F('希爾薇').ps={k:'haste',n:'冰心',v:0.1};
+  if(F('瑟斯')) F('瑟斯').ps={k:'spdcast',n:'電光',v:0.25};
+  if(F('瑪妮')) F('瑪妮').ps={k:'sorc',n:'月之魔力',v:0};
+  if(F('薇諾')) F('薇諾').ps={k:'curse',n:'腐蝕詛咒',v:0};
+  if(F('克莉絲')) F('克莉絲').ps={k:'haste',n:'晶核',v:0.12};
+  if(F('莫爾頓')) F('莫爾頓').ps={k:'stack',n:'靈魂收割',v:0};
+  if(F('珂蘿')) F('珂蘿').ps={k:'spdcast',n:'狐之靈動',v:0.3};
+  if(F('露米娜')) F('露米娜').ps={k:'spellweave',n:'光之印記',v:0};
+  if(F('霍克')) F('霍克').ps={k:'range',n:'鷹眼',v:1};
+  if(F('米蒂亞')) F('米蒂亞').ps={k:'third',n:'流星三連',v:0.06};
+  if(F('菲尼克')) F('菲尼克').ps={k:'momentum',n:'鳳凰之翼',v:0};
+  if(F('艾倫')) F('艾倫').ps={k:'range',n:'遠見',v:1};
+  if(F('希爾娃')) F('希爾娃').ps={k:'third',n:'銀弦三響',v:0.07};
+  if(F('布洛克')) F('布洛克').ps={k:'execute',n:'火力壓制',v:0.15};
+  if(F('席菲兒')) F('席菲兒').ps={k:'swift',n:'順風而行',v:0.1};
+  if(F('艾莉絲')) F('艾莉絲').ps={k:'rage',n:'冰之專注',v:0.5};
+  if(F('弗特')) F('弗特').ps={k:'cdhit',n:'超頻',v:0.4};
+  if(F('諾娃')) F('諾娃').ps={k:'stack',n:'星辰收集',v:0};
+  if(F('薩洛')) F('薩洛').ps={k:'ambush',n:'暗殺者',v:0.3};
+  if(F('蕾琪娜')) F('蕾琪娜').ps={k:'ambush',n:'致命一槍',v:0.2};
+  if(F('奧蘿拉')) F('奧蘿拉').ps={k:'healer',n:'晨光恩典',v:0.25};
+  if(F('貝兒')) F('貝兒').ps={k:'aura',n:'清音',v:0.08};
+  if(F('芙蘿拉')) F('芙蘿拉').ps={k:'healer',n:'花之祝福',v:0.2};
+  if(F('納洛')) F('納洛').ps={k:'allyshield',n:'潮汐之護',v:120};
+  if(F('嘉利恩')) F('嘉利恩').ps={k:'lifeline',n:'守望者',v:300};
+  if(F('蜜兒')) F('蜜兒').ps={k:'aura',n:'蝶翼',v:0.08};
+  if(F('邦戈')) F('邦戈').ps={k:'aura',n:'戰鼓節奏',v:0.08};
+  if(F('塔莉雅')) F('塔莉雅').ps={k:'allyshield',n:'星之守護',v:140};
+  if(F('茵妮')) F('茵妮').ps={k:'lifeline',n:'安魂',v:260};
+  if(F('希蕾雅')) F('希蕾雅').ps={k:'healer',n:'星之慈悲',v:0.3};
+  F('鐵卡').ps={k:'mshield',n:'魔力屏障',d:'血量低於 20% 時，得到等於 30% 魔力的護盾（90 秒一次）'};
+  F('塔姆利').ps={k:'curse',n:'詛咒之觸',d:'技能打中的敵方英雄，3 秒內受到的技能傷害 +10%'}; F('塔姆利').roles=['jg','sup'];
+  F('格蘭托').ps={k:'granite',n:'花崗岩盾',d:'10 秒沒受傷時，得到最大生命 10% 的護盾'};
+  HEROES.forEach(h=>{ if(h.ps&&PSD[h.ps.k]) h.ps.d=PSD[h.ps.k](h.ps.v); });
+  // 稱號（名字下面的小字）
+  const TITLE={'葛隆':'不動山岩','巴勒格':'鋼牙獵手','雪菈':'霜盾守衛','伊格納':'赤焰重甲','莫頓':'山嶽巨人','塔洛克':'玄甲神龜','博魯':'狂熊霸主','雷納德':'鐵壁守護者','塔姆利':'哀傷之魂','格蘭托':'花崗巨像','洛克斯':'鐵血咆哮','卡洛斯':'烈刃劍豪','娜蒂雅':'怒濤女武神','辛格':'千刃劍聖','瓦格':'蒼原狼王','布雷茲':'烈焰拳鬥士','羅蘭德':'鐵騎槍兵','德雷克':'血刃狂徒','托倫':'雷錘戰神','雷奧':'獅心之王','亞瑟蘭':'白銀聖騎','杜克薩':'斷頭戰神','卡斯帕':'夜鴉獵手','席拉':'毒蛇魅影','蘭澤':'霧中之刃','艾蝶菈':'緋紅之蝶','風間':'疾風浪人','莫里斯':'幽冥刃客','斯克爾':'赤蠍殺手','瑟蕾娜':'月影刺客','奇洛':'暗影之貓','諾克斯':'夢魘之主','艾絲特':'星辰詠者','伊弗瑞':'烈焰之靈','希爾薇':'霜語女巫','瑟斯':'雷鳴法師','瑪妮':'幻月術士','薇諾':'紫煙毒師','克莉絲':'水晶之靈','莫爾頓':'亡骨咒師','珂蘿':'九尾魅狐','露米娜':'光之少女','霍克':'鷹眼神射','米蒂亞':'流星射手','菲尼克':'赤羽鳳凰','艾倫':'疾矢遊俠','希爾娃':'銀月弓手','布洛克':'火銃傭兵','席菲兒':'風之羽','艾莉絲':'寒冰弓手','弗特':'雷霆弩手','諾娃':'星羽射手','薩洛':'暗影弩手','蕾琪娜':'賞金槍后','奧蘿拉':'晨曦聖女','貝兒':'聖鈴天使','芙蘿拉':'花語精靈','納洛':'潮汐使者','嘉利恩':'永恆守望','蜜兒':'靈蝶仙子','邦戈':'戰鼓祭司','塔莉雅':'星界守護','鐵卡':'蒸汽機甲','茵妮':'幽冥鈴師','希蕾雅':'星辰之願'}; HEROES.forEach(h=>{ h.title=TITLE[h.n]||''; }); }
 // 召喚師技能（D、F）
 const SPELLS={flash:{n:'閃現',cd:60,col:'#ffe066',d:'往滑鼠方向瞬間移動一小段，可以穿過牆和草叢'},heal:{n:'治癒',cd:60,col:'#7aff9a',d:'幫自己和附近隊友補血'},smite:{n:'重擊',cd:25,col:'#ffb040',d:'對附近的野怪或小兵造成大量傷害（打野用）'},
   ghost:{n:'鬼步',cd:50,col:'#9ad8ff',d:'走路速度大幅提升 6 秒'},exhaust:{n:'虛弱',cd:60,col:'#c08aff',d:'讓附近一個敵方英雄變慢、傷害降低 40%，持續 3 秒'},ignite:{n:'點燃',cd:60,col:'#ff6a2a',d:'點燃附近一個敵方英雄，5 秒內持續造成真實傷害，被點燃時補血效果減半'},cleanse:{n:'淨化',cd:60,col:'#ff9ec8',d:'解除暈眩和緩速'}};
