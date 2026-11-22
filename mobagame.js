@@ -199,6 +199,8 @@ function create(env,opts){
   function cast(h,i,aim){ if(h.dead||h.stun>0||h.dash||!unlocked(h,i)||h.cd[i]>0||h.mp<skCost(h,i)) return false; if(h.sil>0){ if(h.me) floatMsg('被沉默了，不能放技能','#d8a8ff',1); return false; } if(h.cc2){ if(h.me) floatMsg({tn:'被嘲諷了',fr:'被恐懼了',ch:'被魅惑了'}[h.cc2.k]+'，不能放技能','#ffb0b0',1); return false; } const s=h.def.sk[i],S=stats(h),pw=skPow(h,s,i),col=h.def.pal.fx,cc={st:s.st,sl:s.sl,ku:s.ku,kb:s.kb,pl:s.pl,dr:s.dr,ally:s.ally,hl:s.hl,sil:s.sil,rt:s.rt,wk:s.wk,tn:s.tn,fr:s.fr,ch:s.ch,src:h},R0=s.r||s.a||6;
     if(h.rt>0&&['dash','charge','blink','grapple'].includes(s.t)){ if(h.me) floatMsg('被定身了，不能位移','#a8f080',1); return false; }
     const tg=skillTarget(h,s,aim); if(['strike','exec','chain'].includes(s.t)&&!tg) return false;
+    let infT=null; if(s.t==='infuse'){ const L1=heroes.filter(a=>a!==h&&a.team===h.team&&alive(a)&&dist(a,h)<=R0+1); if(aim) infT=L1.filter(a=>Math.hypot(a.x-aim.x,a.z-aim.z)<4).sort((a,b)=>Math.hypot(a.x-aim.x,a.z-aim.z)-Math.hypot(b.x-aim.x,b.z-aim.z))[0]; if(!infT) infT=L1.sort((a,b)=>a.hp/a.max-b.hp/b.max)[0];
+      if(!infT){ if(h.me) floatMsg('附近沒有隊友可以補','#9ad8ff',1); return false; } if(h.hp<h.max*.12){ if(h.me) floatMsg('自己的血太少，不能灌注','#ff9a9a',1); return false; } }
     let ang; if(aim&&(['shot','pierce','dash','blink','hook','boom','charge'].includes(s.t)||!tg)) ang=Math.atan2(aim.z-h.z,aim.x-h.x); else ang=tg?Math.atan2(tg.z-h.z,tg.x-h.x):h.face;
     const gp=aim?(()=>{ const dx=aim.x-h.x,dz=aim.z-h.z,d=Math.hypot(dx,dz)||1,k=Math.min(1,R0/d); return [h.x+dx*k,h.z+dz*k]; })():tg?[tg.x,tg.z]:[h.x+Math.cos(ang)*R0*.7,h.z+Math.sin(ang)*R0*.7];
     h.face=ang; h.recall=0; const sx=h.x,sz=h.z,ax=Math.cos(ang),az=Math.sin(ang);
@@ -220,9 +222,11 @@ function create(env,opts){
         if(s.d&&!s.back){ const t2=tg&&dist(h,tg)<3.5?tg:null; if(t2){ dmg(h,t2,pw,{skill:1}); ccHit(t2,cc,h.x,h.z); } } if(s.spd) h.buffs.push({spd:s.spd,t:2}); if(s.inv){ h.stealthT=Tm+2; emit(['burst',+h.x.toFixed(1),1,+h.z.toFixed(1),'#6a5a8a',12,4]); } if(s.ally) heroes.filter(q=>q.team===h.team&&alive(q)&&dist(q,h)<5).forEach(q=>{ q.shield=Math.max(q.shield,120+h.lvl*12); q.shT=3; }); if(s.back&&s.sl) for(const u of [...enemiesOf(h.team)]) if(Math.hypot(u.x-sx,u.z-sz)<3) applyCC(u,{sl:s.sl}); break; }
       case 'strike': { const got=dmg(h,tg,pw,{skill:1}); if(s.dr&&got>0) heal(h,got*s.dr); ccHit(tg,cc,h.x,h.z); if(s.stl) h.buffs.push({spd:.3,t:2.5}); if(dist(h,tg)>4) emit(['line',+h.x.toFixed(1),+h.z.toFixed(1),+ang.toFixed(3),0,+dist(h,tg).toFixed(1),.6,col]); } emit(['slash',+tg.x.toFixed(1),+tg.z.toFixed(1),2.2,+ang.toFixed(2),col]); emit(['hit',+tg.x.toFixed(1),+tg.z.toFixed(1),col]); break;
       case 'nova': areaHit(h,sx,sz,s.a,pw,cc,col); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.a,col,.5]); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.a,col,.35,1]); break;
-      case 'blast': { const [px,pz]=gp,dl=s.dl||(s.st||s.ku?.6:.45); emit(['ring',+px.toFixed(1),+pz.toFixed(1),s.a,col,dl+.05,1]); timers.push({t:dl,fn:()=>{ areaHit(h,px,pz,s.a,pw,cc,col); emit(['boom',+px.toFixed(1),+pz.toFixed(1),s.a,col]); }}); break; }
+      case 'blast': { const [px,pz]=gp,dl=s.dl||(s.st||s.ku?.6:.45); emit(['ring',+px.toFixed(1),+pz.toFixed(1),s.a,col,dl+.05,1]); timers.push({t:dl,fn:()=>{ const nh=areaHit(h,px,pz,s.a,pw,cc,col); if(s.sh&&nh>0&&alive(h)) heal(h,(35+h.lvl*8)*(1+S.heal)); emit(['boom',+px.toFixed(1),+pz.toFixed(1),s.a,col]); }}); break; }
       case 'shot': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,a:s.a},cc),col,s.a?2.2:1.6,i===3&&R0>12?34:28); break;
       case 'pierce': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,pass:1,w:s.w||2.2},cc),col,Math.max(1.6,(s.w||2.2)*.8),s.ku?18:24); break;
+      case 'infuse': { const v=s.v*rkM(h,i)*(1+S.heal+S.sp*.5); h.hp=Math.max(1,h.hp-h.max*.08); heal(infT,v); infT.buffs.push({spd:.2,t:1.5}); emit(['beam',+infT.x.toFixed(1),+infT.z.toFixed(1),1.2,'#9affc8',.6]); emit(['ring',+infT.x.toFixed(1),+infT.z.toFixed(1),1.6,'#9affc8',.5]); break; }
+      case 'wish': { const v=s.v*rkM(h,i)*(1+S.heal+S.sp*.5); heroes.filter(a=>a.team===h.team&&alive(a)).forEach(a=>{ heal(a,a.hp/a.max<.4?v*1.5:v); emit(['beam',+a.x.toFixed(1),+a.z.toFixed(1),1.4,'#fff0a0',.8]); }); emit(['feed',TEAMN(h.team)+' '+h.def.n+' 發動星願：全隊補血！',h.team]); break; }
       case 'shield': { const v=s.v*rkM(h,i)*(1+S.heal); const L0=s.ally?heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<10):[h]; L0.forEach(a=>{ a.shield=Math.max(a.shield,v); a.shT=4; if(s.spd) a.buffs.push({spd:s.spd,t:2}); emit(['ring',+a.x.toFixed(1),+a.z.toFixed(1),1.4,'#9ad8ff',.5]); }); break; }
       case 'heal': { const v=s.v*rkM(h,i)*(1+S.heal+S.sp*.5); const L0=s.self?[h]:heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<(s.a||8)); L0.forEach(a=>{ heal(a,v); if(s.cl){ a.stun=0; a.slow=0; a.weak=0; a.burn=null; } }); emit(['ring',+sx.toFixed(1),+sz.toFixed(1),s.self?1.6:(s.a||8),'#7aff9a',.6,1]); break; }
       case 'buff': { const L0=s.ally?heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<10):[h]; if(s.inv){ h.stealthT=Tm+(s.dur||3); emit(['burst',+h.x.toFixed(1),1,+h.z.toFixed(1),'#6a5a8a',12,4]); if(h.me) floatMsg('隱身！敵人看不到你','#c8a8ff',1.2); } L0.forEach(a=>{ a.buffs.push({as:s.as,spd:s.spd,dmg:s.dmg,arm:s.arm,ls:s.ls,t:s.dur||4}); emit(['beam',+a.x.toFixed(1),+a.z.toFixed(1),.9,col,.6]); }); break; }
@@ -424,6 +428,8 @@ function create(env,opts){
   function towardHome(h,d){ const F=map.fount[h.team],dx=F[0]-h.x,dz=F[1]-h.z,l=Math.hypot(dx,dz)||1; return [h.x+dx/l*d,h.z+dz/l*d]; }
   function botAct(h,dt){ const ai=h.ai; ai.t-=dt; if(ai.t<=0){ ai.t=LV.re*(.8+Math.random()*.4); botThink(h); ai.skT=(ai.skT||0)-1; }
     if(h.recall>0) return; const S=stats(h); botSpells(h); botItems(h);
+    { const ii=h.def.sk.findIndex(q=>q.t==='infuse'); if(ii>=0&&h.cd[ii]<=0&&unlocked(h,ii)&&h.hp/h.max>.35&&Math.random()<LV.sk*dt*4){ const a=heroes.find(q=>q!==h&&q.team===h.team&&alive(q)&&q.hp/q.max<.55&&dist(q,h)<=9.5); if(a) cast(h,ii,{x:a.x,z:a.z}); } // 星語：補殘血隊友、全圖補血
+      const wi=h.def.sk.findIndex(q=>q.t==='wish'); if(wi>=0&&h.cd[wi]<=0&&unlocked(h,wi)&&Math.random()<LV.sk*dt*3&&heroes.some(q=>q.team===h.team&&alive(q)&&q.hp/q.max<(LV.t>=2?.3:.25))) cast(h,wi); }
     { const ai2=h.def.sk.findIndex(q=>q.t==='aura'); if(ai2>=0&&unlocked(h,ai2)&&h.cd[ai2]<=0){ const want=h.mp>h.mpMax*.15&&[...enemiesOf(h.team)].some(u=>u.k!=='t'&&u.k!=='c'&&dist(u,h)<4); if(want!==!!h.aura) cast(h,ai2); } }
     if(h.lens>0&&ai.mode!=='fight'){ const w=wards.find(q=>q.team!==h.team&&VIS[h.team].has(q.id)&&Math.hypot(q.x-h.x,q.z-h.z)<9); if(w){ if(dist(h,w)>S.rng+.8) chase(h,w.x,w.z,S.spd,dt); else basicAttack(h,w); return; } }
     const tg=ai.tgt; if(tg&&alive(tg)&&!seen(tg,h.team)&&tg.k==='h') ai.tgt=null;
@@ -431,7 +437,7 @@ function create(env,opts){
       const waveK=tg.k==='m'&&LV.t>=1&&h.mp>h.mpMax*(LV.t>=2?.35:.55)&&minions.filter(m=>m.team!==h.team&&alive(m)&&dist(m,tg)<4.5).length>=(LV.t>=2?3:4)&&Math.random()<(LV.t>=2?.5:.2); // 中等、困難：用範圍技能清兵，兵線才推得動
       if(tg.k==='h'||tg.k==='j'||waveK||Math.random()<.04){ // 技能
         for(let i=3;i>=0;i--){ if(h.cd[i]>0||!unlocked(h,i)||h.mp<skCost(h,i)) continue; const s=h.def.sk[i]; if(Math.random()>LV.sk*dt*6) continue;
-          if(s.t==='heal'||s.t==='shield'){ if(h.hp/h.max<.6||heroes.some(a=>a.team===h.team&&alive(a)&&a.hp/a.max<.5&&dist(a,h)<8)) cast(h,i); continue; }
+          if(s.t==='infuse'||s.t==='wish') continue; if(s.t==='heal'||s.t==='shield'){ if(h.hp/h.max<.6||heroes.some(a=>a.team===h.team&&alive(a)&&a.hp/a.max<.5&&dist(a,h)<8)) cast(h,i); continue; }
           if(s.t==='aura') continue; if(s.t==='buff'||s.t==='empower'){ if(d<reach+2) cast(h,i); continue; } if(s.back){ if(h.hp/h.max<.45) cast(h,i); continue; }
           if(tg.k!=='h'&&i===3) continue; if(d<=(s.r||s.a||6)+.5) cast(h,i); } }
       if(h.sp.includes('smite')&&tg.k==='j'&&tg.hp<smiteDmg(h)&&dist(h,tg)<6) castSpell(h,h.sp.indexOf('smite'));
