@@ -72,6 +72,12 @@ const CLS={tank:{n:'坦克',col:'#7aa8ff',hp:1050,hpL:125,atk:52,atkL:4,as:.8,rn
 const CLS_IDS=Object.keys(CLS);
 const S=(n,t,cd,o)=>Object.assign({n,t,cd},o);
 const HD=(n,cls,pal,sk,fl)=>Object.assign({n,cls,pal,sk},fl||{});
+// 被動技能說明
+const PSD={grit:v=>'血量低於 40% 時，護甲和魔抗 +'+v,shieldhit:v=>'被暈眩、擊飛、定身、沉默時，得到 '+v+' 點護盾（10 秒一次，隨等級變強）',thornp:v=>'被普攻時，反彈 '+v+' 點（加 10% 護甲）的傷害',giant:v=>'最大生命 +'+Math.round(v*100)+'%',regen:()=>'6 秒沒受傷，每秒回復 3% 最大生命',ten:v=>'被控制的時間縮短 '+Math.round(v*100)+'%',rage:v=>'血越少攻速越快（最多 +'+Math.round(v*100)+'%）',
+  cdhit:v=>'每次普攻，Q、W、E 冷卻少 '+v+' 秒',stack:()=>'參與擊殺英雄得到 1 層靈魂（最多 20 層），每層攻擊 +2、技能威力 +1%',third:v=>'每第 3 次普攻，額外造成目標最大生命 '+Math.round(v*100)+'% 的真實傷害',momentum:()=>'參與擊殺英雄後 3 秒內移動速度 +40%',bleed:()=>'普攻讓敵方英雄流血 4 秒，最多疊 5 層',
+  execute:v=>'對血量低於 40% 的敵人傷害 +'+Math.round(v*100)+'%',ambush:v=>'對 8 秒內沒打過的敵方英雄，第一下傷害 +'+Math.round(v*100)+'%',swift:v=>'移動速度 +'+Math.round(v*100)+'%',spdcast:v=>'放技能後 1.5 秒內移動速度 +'+Math.round(v*100)+'%',spellweave:()=>'放技能後 5 秒內的下一次普攻，額外造成魔法傷害',
+  sorc:()=>'技能打中英雄後技能威力 +4%，最多疊 5 層（5 秒）',haste:v=>'技能冷卻縮短 '+Math.round(v*100)+'%',range:v=>'普攻射程 +'+v,healer:v=>'治療和護盾效果 +'+Math.round(v*100)+'%',aura:v=>'附近隊友移動速度 +'+Math.round(v*100)+'%',allyshield:v=>'放技能時，給附近血最少的隊友 '+v+' 點護盾（8 秒一次，隨等級變強）',lifeline:v=>'附近隊友血量低於 25% 時，自動幫他補 '+v+' 血（60 秒一次，隨等級變強）',
+  curse:()=>'技能打中的敵方英雄，3 秒內受到的技能傷害 +10%',mshield:()=>'血量低於 20% 時，得到等於 30% 魔力的護盾（90 秒一次）',granite:()=>'10 秒沒受傷時，得到最大生命 10% 的護盾'};
 const HEROES=[
   // 坦克
   HD('岩崗','tank',{skin:'#c8946a',c1:'#6a6a7a',c2:'#b8862a',hair:'#2a1a10',fx:'#ffb040'},[S('猛牛衝撞','dash',9,{r:7,a:2.5,d:80,kb:2.5}),S('岩石護甲','shield',12,{v:240}),S('地裂','pierce',9,{r:8,d:110,sl:1.5,w:2.6}),S('大地震擊','nova',40,{a:6,d:210,ku:1.2})],{helm:1,cape:1}),
@@ -147,9 +153,72 @@ const HEROES=[
 
 // 被動技能、特殊路線
 { const F=n=>HEROES.find(h=>h.n===n);
+  if(F('岩崗')) F('岩崗').ps={k:'grit',n:'岩石之心',v:30};
+  if(F('鋼牙')) F('鋼牙').ps={k:'shieldhit',n:'鋼骨',v:120};
+  if(F('霜盾')) F('霜盾').ps={k:'thornp',n:'寒霜甲',v:25};
+  if(F('赤甲')) F('赤甲').ps={k:'giant',n:'赤焰之軀',v:0.1};
+  if(F('山嶽')) F('山嶽').ps={k:'regen',n:'山之恆',v:0};
+  if(F('玄武')) F('玄武').ps={k:'ten',n:'玄甲',v:0.3};
+  if(F('熊霸')) F('熊霸').ps={k:'rage',n:'熊之怒',v:0.5};
+  if(F('鐵壁')) F('鐵壁').ps={k:'shieldhit',n:'不屈鐵壁',v:150};
+  if(F('鐵吼')) F('鐵吼').ps={k:'grit',n:'鋼鐵咆哮',v:25};
+  if(F('烈刃')) F('烈刃').ps={k:'cdhit',n:'刃之律動',v:0.5};
+  if(F('狂瀾')) F('狂瀾').ps={k:'rage',n:'怒潮',v:0.6};
+  if(F('斬鋒')) F('斬鋒').ps={k:'stack',n:'劍魂',v:0};
+  if(F('蒼狼')) F('蒼狼').ps={k:'regen',n:'狼之血',v:0};
+  if(F('炎拳')) F('炎拳').ps={k:'third',n:'三連烈拳',v:0.06};
+  if(F('鐵騎')) F('鐵騎').ps={k:'momentum',n:'戰馬奔騰',v:0};
+  if(F('刀鋒')) F('刀鋒').ps={k:'bleed',n:'血刃',v:0};
+  if(F('雷錘')) F('雷錘').ps={k:'third',n:'雷霆之擊',v:0.05};
+  if(F('狂獅')) F('狂獅').ps={k:'stack',n:'王者之氣',v:0};
+  if(F('聖劍')) F('聖劍').ps={k:'regen',n:'堅毅不屈',v:0};
+  if(F('血斧')) F('血斧').ps={k:'bleed',n:'出血',v:0};
+  if(F('夜鴉')) F('夜鴉').ps={k:'execute',n:'鴉之獵殺',v:0.2};
+  if(F('影蛇')) F('影蛇').ps={k:'ambush',n:'蛇之伏擊',v:0.25};
+  if(F('霧刃')) F('霧刃').ps={k:'swift',n:'霧行',v:0.1};
+  if(F('緋蝶')) F('緋蝶').ps={k:'spdcast',n:'蝶之輕盈',v:0.3};
+  if(F('疾風')) F('疾風').ps={k:'cdhit',n:'疾風之刃',v:0.4};
+  if(F('幽刃')) F('幽刃').ps={k:'execute',n:'幽冥印記',v:0.25};
+  if(F('紅蠍')) F('紅蠍').ps={k:'bleed',n:'蠍毒',v:0};
+  if(F('月影')) F('月影').ps={k:'ambush',n:'月下伏擊',v:0.3};
+  if(F('影貓')) F('影貓').ps={k:'swift',n:'貓步',v:0.12};
+  if(F('幻夜')) F('幻夜').ps={k:'stack',n:'噬魂',v:0};
+  if(F('星詠')) F('星詠').ps={k:'spellweave',n:'星光印記',v:0};
+  if(F('炎靈')) F('炎靈').ps={k:'sorc',n:'燃燒之心',v:0};
+  if(F('霜語')) F('霜語').ps={k:'haste',n:'冰心',v:0.1};
+  if(F('雷鳴')) F('雷鳴').ps={k:'spdcast',n:'電光',v:0.25};
+  if(F('幻月')) F('幻月').ps={k:'sorc',n:'月之魔力',v:0};
+  if(F('紫煙')) F('紫煙').ps={k:'curse',n:'腐蝕詛咒',v:0};
+  if(F('晶靈')) F('晶靈').ps={k:'haste',n:'晶核',v:0.12};
+  if(F('咒骨')) F('咒骨').ps={k:'stack',n:'靈魂收割',v:0};
+  if(F('魅狐')) F('魅狐').ps={k:'spdcast',n:'狐之靈動',v:0.3};
+  if(F('璃光')) F('璃光').ps={k:'spellweave',n:'光之印記',v:0};
+  if(F('鷹眼')) F('鷹眼').ps={k:'range',n:'鷹眼',v:1};
+  if(F('流星')) F('流星').ps={k:'third',n:'流星三連',v:0.06};
+  if(F('赤羽')) F('赤羽').ps={k:'momentum',n:'鳳凰之翼',v:0};
+  if(F('疾矢')) F('疾矢').ps={k:'range',n:'遠見',v:1};
+  if(F('銀弦')) F('銀弦').ps={k:'third',n:'銀弦三響',v:0.07};
+  if(F('火銃')) F('火銃').ps={k:'execute',n:'火力壓制',v:0.15};
+  if(F('風羽')) F('風羽').ps={k:'swift',n:'順風而行',v:0.1};
+  if(F('冰弓')) F('冰弓').ps={k:'rage',n:'冰之專注',v:0.5};
+  if(F('雷弩')) F('雷弩').ps={k:'cdhit',n:'超頻',v:0.4};
+  if(F('星羽')) F('星羽').ps={k:'stack',n:'星辰收集',v:0};
+  if(F('暗弩')) F('暗弩').ps={k:'ambush',n:'暗殺者',v:0.3};
+  if(F('彈姬')) F('彈姬').ps={k:'ambush',n:'致命一槍',v:0.2};
+  if(F('晨曦')) F('晨曦').ps={k:'healer',n:'晨光恩典',v:0.25};
+  if(F('聖鈴')) F('聖鈴').ps={k:'aura',n:'清音',v:0.08};
+  if(F('花語')) F('花語').ps={k:'healer',n:'花之祝福',v:0.2};
+  if(F('潮汐')) F('潮汐').ps={k:'allyshield',n:'潮汐之護',v:120};
+  if(F('守望')) F('守望').ps={k:'lifeline',n:'守望者',v:300};
+  if(F('靈蝶')) F('靈蝶').ps={k:'aura',n:'蝶翼',v:0.08};
+  if(F('鼓手')) F('鼓手').ps={k:'aura',n:'戰鼓節奏',v:0.08};
+  if(F('星護')) F('星護').ps={k:'allyshield',n:'星之守護',v:140};
+  if(F('幽鈴')) F('幽鈴').ps={k:'lifeline',n:'安魂',v:260};
+  if(F('星語')) F('星語').ps={k:'healer',n:'星之慈悲',v:0.3};
   F('機甲').ps={k:'mshield',n:'魔力屏障',d:'血量低於 20% 時，得到等於 30% 魔力的護盾（90 秒一次）'};
   F('淚魂').ps={k:'curse',n:'詛咒之觸',d:'技能打中的敵方英雄，3 秒內受到的技能傷害 +10%'}; F('淚魂').roles=['jg','sup'];
-  F('花崗').ps={k:'granite',n:'花崗岩盾',d:'10 秒沒受傷時，得到最大生命 10% 的護盾'}; }
+  F('花崗').ps={k:'granite',n:'花崗岩盾',d:'10 秒沒受傷時，得到最大生命 10% 的護盾'};
+  HEROES.forEach(h=>{ if(h.ps&&PSD[h.ps.k]) h.ps.d=PSD[h.ps.k](h.ps.v); }); }
 // 召喚師技能（D、F）
 const SPELLS={flash:{n:'閃現',cd:60,col:'#ffe066',d:'往滑鼠方向瞬間移動一小段，可以穿過牆和草叢'},heal:{n:'治癒',cd:60,col:'#7aff9a',d:'幫自己和附近隊友補血'},smite:{n:'重擊',cd:25,col:'#ffb040',d:'對附近的野怪或小兵造成大量傷害（打野用）'},
   ghost:{n:'鬼步',cd:50,col:'#9ad8ff',d:'走路速度大幅提升 6 秒'},exhaust:{n:'虛弱',cd:60,col:'#c08aff',d:'讓附近一個敵方英雄變慢、傷害降低 40%，持續 3 秒'},ignite:{n:'點燃',cd:60,col:'#ff6a2a',d:'點燃附近一個敵方英雄，5 秒內持續造成真實傷害，被點燃時補血效果減半'},cleanse:{n:'淨化',cd:60,col:'#ff9ec8',d:'解除暈眩和緩速'}};
