@@ -203,7 +203,7 @@ function create(env,opts){
       if(!infT){ if(h.me) floatMsg('附近沒有隊友可以補','#9ad8ff',1); return false; } if(h.hp<h.max*.12){ if(h.me) floatMsg('自己的血太少，不能灌注','#ff9a9a',1); return false; } }
     let ang; if(aim&&(['shot','pierce','dash','blink','hook','boom','charge'].includes(s.t)||!tg)) ang=Math.atan2(aim.z-h.z,aim.x-h.x); else ang=tg?Math.atan2(tg.z-h.z,tg.x-h.x):h.face;
     const gp=aim?(()=>{ const dx=aim.x-h.x,dz=aim.z-h.z,d=Math.hypot(dx,dz)||1,k=Math.min(1,R0/d); return [h.x+dx*k,h.z+dz*k]; })():tg?[tg.x,tg.z]:[h.x+Math.cos(ang)*R0*.7,h.z+Math.sin(ang)*R0*.7];
-    h.face=ang; h.recall=0; const sx=h.x,sz=h.z,ax=Math.cos(ang),az=Math.sin(ang);
+    if(h.chan) h.chan=null; h.face=ang; h.recall=0; const sx=h.x,sz=h.z,ax=Math.cos(ang),az=Math.sin(ang);
     switch(s.t){
       case 'dash': { if(s.us) h.usT=Tm+(R0/28)+.15; const dd=aim?Math.min(R0,Math.hypot(aim.x-sx,aim.z-sz)):tg?Math.max(0,Math.min(R0,dist(h,tg)-1.2)):R0,[ex,ez]=map.inB(sx+ax*dd,sz+az*dd); if(s.ku||s.st) emit(['ring',+ex.toFixed(1),+ez.toFixed(1),s.a||2.2,col,.35,1]); h.dash={x:ex,z:ez,cb:()=>{ if(s.d) areaHit(h,h.x,h.z,s.a||2.2,pw,cc,col); emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col,.45]); if(s.ku) emit(['boom',+h.x.toFixed(1),+h.z.toFixed(1),s.a||2.2,col]); }}; break; }
       case 'charge': { const dd=aim?Math.min(R0,Math.max(2,Math.hypot(aim.x-sx,aim.z-sz))):R0,[ex,ez]=map.inB(sx+ax*dd,sz+az*dd),w=(s.w||2.2)/2; h.dash={x:ex,z:ez,cb:()=>{ const L=Math.hypot(h.x-sx,h.z-sz)+1; for(const u of [...enemiesOf(h.team)]){ const rx=u.x-sx,rz=u.z-sz,al=rx*ax+rz*az,sd=Math.abs(-rx*az+rz*ax); if(al>-.5&&al<L&&sd<w+u.r*.5){ dmg(h,u,pw,{skill:1}); ccHit(u,cc,sx+ax*al-az*.01,sz+az*al+ax*.01); } } emit(['line',+sx.toFixed(1),+sz.toFixed(1),+ang.toFixed(3),0,+L.toFixed(1),w*2,col]); if(s.ku) emit(['boom',+h.x.toFixed(1),+h.z.toFixed(1),2.5,col]); }}; break; }
@@ -225,6 +225,7 @@ function create(env,opts){
       case 'blast': { const [px,pz]=gp,dl=s.dl||(s.st||s.ku?.6:.45); emit(['ring',+px.toFixed(1),+pz.toFixed(1),s.a,col,dl+.05,1]); timers.push({t:dl,fn:()=>{ const nh=areaHit(h,px,pz,s.a,pw,cc,col); if(s.sh&&nh>0&&alive(h)) heal(h,(35+h.lvl*8)*(1+S.heal)); emit(['boom',+px.toFixed(1),+pz.toFixed(1),s.a,col]); }}); break; }
       case 'shot': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,a:s.a},cc),col,s.a?2.2:1.6,i===3&&R0>12?34:28); break;
       case 'pierce': skillshot(h,ang,R0+1,pw,Object.assign({skill:1,col,pass:1,w:s.w||2.2},cc),col,Math.max(1.6,(s.w||2.2)*.8),s.ku?18:24); break;
+      case 'barrage': h.chan={t:s.dur||3,ang,x:h.x,z:h.z,tick:0,pw,r:R0,col}; if(h.me) floatMsg('掃射中！移動會中斷','#ffd080',1); break;
       case 'infuse': { const v=s.v*rkM(h,i)*(1+S.heal+S.sp*.5); h.hp=Math.max(1,h.hp-h.max*.08); heal(infT,v); infT.buffs.push({spd:.2,t:1.5}); emit(['beam',+infT.x.toFixed(1),+infT.z.toFixed(1),1.2,'#9affc8',.6]); emit(['ring',+infT.x.toFixed(1),+infT.z.toFixed(1),1.6,'#9affc8',.5]); break; }
       case 'wish': { const v=s.v*rkM(h,i)*(1+S.heal+S.sp*.5); heroes.filter(a=>a.team===h.team&&alive(a)).forEach(a=>{ heal(a,a.hp/a.max<.4?v*1.5:v); emit(['beam',+a.x.toFixed(1),+a.z.toFixed(1),1.4,'#fff0a0',.8]); }); emit(['feed',TEAMN(h.team)+' '+h.def.n+' 發動星願：全隊補血！',h.team]); break; }
       case 'shield': { const v=s.v*rkM(h,i)*(1+S.heal); const L0=s.ally?heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<10):[h]; L0.forEach(a=>{ a.shield=Math.max(a.shield,v); a.shT=4; if(s.spd) a.buffs.push({spd:s.spd,t:2}); emit(['ring',+a.x.toFixed(1),+a.z.toFixed(1),1.4,'#9ad8ff',.5]); }); break; }
@@ -308,7 +309,12 @@ function create(env,opts){
     if(h.tcd<=0&&!h.recall){ if(h.tk==='g'){ const b=BUSH.find(b=>Math.hypot(b.x-h.x,b.z-h.z)<7&&!wards.some(w=>w.team===h.team&&Math.hypot(w.x-b.x,w.z-b.z)<6)); if(b&&Math.random()<.5) useTrinket(h,{x:b.x,z:b.z}); }
       else if(wards.some(w=>w.team!==h.team&&Math.hypot(w.x-h.x,w.z-h.z)<10)&&Math.random()<.35) useTrinket(h); } }
   /* ---------- 英雄每一刻 ---------- */
-  function heroTick(h,dt){ h.stl=Math.max(0,(h.stealthT||0)-Tm); if(h.air>0) h.air=Math.max(0,h.air-dt); if(h.sil>0) h.sil-=dt; if(h.rt>0) h.rt-=dt; h.cd=h.cd.map(v=>Math.max(0,v-dt)); h.spCd=h.spCd.map(v=>Math.max(0,v-dt)); h.atkCd-=dt; if(h.atkT>0) h.atkT-=dt; if(h.castT>0) h.castT-=dt; if(h.shT>0){ h.shT-=dt; if(h.shT<=0) h.shield=0; }
+  function heroTick(h,dt){ h.stl=Math.max(0,(h.stealthT||0)-Tm); if(h.air>0) h.air=Math.max(0,h.air-dt); if(h.sil>0) h.sil-=dt; if(h.rt>0) h.rt-=dt; h.cd=h.cd.map(v=>Math.max(0,v-dt)); h.spCd=h.spCd.map(v=>Math.max(0,v-dt)); h.atkCd-=dt; if(h.atkT>0) h.atkT-=dt; if(h.castT>0) h.castT-=dt;
+    if(h.chan){ const q=h.chan; // 彈幕掃射：站著朝扇形範圍連續開火
+      if(h.dead||h.stun>0||h.air>0||h.sil>0||h.cc2||h.dash||Math.hypot(h.x-q.x,h.z-q.z)>.35){ h.chan=null; if(h.me&&!h.dead) floatMsg('掃射被打斷','#ffb0b0',1); }
+      else { q.t-=dt; q.tick-=dt; h.face=q.ang; h.castT=.3; h.recall=0; if(q.tick<=0){ q.tick=.25; for(const u of [...enemiesOf(h.team)]){ const dx=u.x-h.x,dz=u.z-h.z,d=Math.hypot(dx,dz); if(d>q.r+(u.r||.6)) continue; let da=Math.atan2(dz,dx)-q.ang; while(da>PI) da-=TAU; while(da<-PI) da+=TAU; if(Math.abs(da)<=.45+(u.r||.6)/Math.max(1,d)) dmg(h,u,q.pw/12,{skill:1}); }
+          for(let k=0;k<3;k++){ const a=q.ang+(Math.random()-.5)*.9; emit(['line',+h.x.toFixed(1),+h.z.toFixed(1),+a.toFixed(3),0,+q.r.toFixed(1),.22,q.col]); } } if(q.t<=0) h.chan=null; } }
+    if(h.shT>0){ h.shT-=dt; if(h.shT<=0) h.shield=0; }
     h.buffs=h.buffs.filter(b=>(b.t-=dt)>0); if(h.slow>0) h.slow-=dt; if(h.weak>0) h.weak-=dt;
     for(const k in h.icd) if(h.icd[k]>0) h.icd[k]=Math.max(0,h.icd[k]-dt); if(h.tcd>0) h.tcd=Math.max(0,h.tcd-dt); if(h.lens>0) h.lens=Math.max(0,h.lens-dt);
     { const sv=supOf(h); if(sv&&sv<3) h.spl=Math.min(3,(h.spl==null?3:h.spl)+dt/18); if(sv===3){ h.wc=Math.min(3,(h.wc||0)+dt/50); if(mode===0&&Math.hypot(h.x-map.fount[h.team][0],h.z-map.fount[h.team][1])<8) h.wc=3; } }
@@ -426,7 +432,7 @@ function create(env,opts){
     else { const own=towers.filter(s=>s.team===h.team&&s.lane===li&&s.hp>0).sort((a,b)=>a.tier-b.tier)[0]||cores[h.team]; const s0=project(L,own.x,own.z)[0],p=along(L,s0+(h.team?-4:4)); ai.goal=[p[0],p[1]]; } }
   const pwEst=h=>stats(h).atk*3+skPow(h,h.def.sk[0],0);
   function towardHome(h,d){ const F=map.fount[h.team],dx=F[0]-h.x,dz=F[1]-h.z,l=Math.hypot(dx,dz)||1; return [h.x+dx/l*d,h.z+dz/l*d]; }
-  function botAct(h,dt){ const ai=h.ai; ai.t-=dt; if(ai.t<=0){ ai.t=LV.re*(.8+Math.random()*.4); botThink(h); ai.skT=(ai.skT||0)-1; }
+  function botAct(h,dt){ if(h.chan) return; const ai=h.ai; ai.t-=dt; if(ai.t<=0){ ai.t=LV.re*(.8+Math.random()*.4); botThink(h); ai.skT=(ai.skT||0)-1; }
     if(h.recall>0) return; const S=stats(h); botSpells(h); botItems(h);
     { const ii=h.def.sk.findIndex(q=>q.t==='infuse'); if(ii>=0&&h.cd[ii]<=0&&unlocked(h,ii)&&h.hp/h.max>.35&&Math.random()<LV.sk*dt*4){ const a=heroes.find(q=>q!==h&&q.team===h.team&&alive(q)&&q.hp/q.max<.55&&dist(q,h)<=9.5); if(a) cast(h,ii,{x:a.x,z:a.z}); } // 星語：補殘血隊友、全圖補血
       const wi=h.def.sk.findIndex(q=>q.t==='wish'); if(wi>=0&&h.cd[wi]<=0&&unlocked(h,wi)&&Math.random()<LV.sk*dt*3&&heroes.some(q=>q.team===h.team&&alive(q)&&q.hp/q.max<(LV.t>=2?.3:.25))) cast(h,wi); }
