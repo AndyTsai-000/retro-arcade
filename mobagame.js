@@ -313,7 +313,7 @@ function create(env,opts){
   function sellItem(h,i){ const id=h.items[i]; if(!id||!canShop(h)) return false; const it=ITEMS[id]; let back=Math.floor(it.c*.7); if(id==='pot'){ back=20*(h.pots||0); h.pots=0; } h.items.splice(i,1); h.gold+=back;
     const r0=h.hp/h.max; h.max=stats(h).hp; h.hp=Math.max(1,Math.min(h.max,h.max*r0)); if(h.me){ emit(['sfx','item']); floatMsg('賣掉 '+it.n+'　+'+back,'#ffd23f'); } return true; }
   function killWard(w,src){ const k=wards.indexOf(w); if(k>=0) wards.splice(k,1); emit(['burst',+w.x.toFixed(1),1,+w.z.toFixed(1),'#5fff7a',10,4]); if(src&&src.k==='h'){ src.gold+=30; if(src.me) floatMsg('清掉一個眼　+30','#ffd23f'); } emit(['sfx','pop']); }
-  function useTrinket(h,aim){ if(!h.tk){ if(h.me) floatMsg('還沒有眼：到商店買綠眼或紅眼（75 金）','#ffb0b0'); return false; } const TK=TRINK[h.tk]; if(h.tcd>0){ if(h.me) floatMsg(TK.n+' 還要 '+Math.ceil(h.tcd)+' 秒','#ffb0b0'); return false; }
+  function useTrinket(h,aim){ if(!h.tk){ if(h.me) floatMsg('還沒選眼：打開商店（P）選綠眼或紅眼（免費）','#ffb0b0'); return false; } const TK=TRINK[h.tk]; if(h.tcd>0){ if(h.me) floatMsg(TK.n+' 還要 '+Math.ceil(h.tcd)+' 秒','#ffb0b0'); return false; }
     if(h.tk==='r'){ h.lens=8; h.tcd=TK.cd; emit(['ring',+h.x.toFixed(1),+h.z.toFixed(1),9,'#ff5a5a',.8]); if(h.me) floatMsg('紅眼掃描中：敵人的眼會現形，點三下清掉','#ff9a9a',2.2); return true; }
     placeWard(h,aim); h.tcd=TK.cd; return true; }
   function placeWard(h,aim){ let tx,tz; if(aim){ const dx=aim.x-h.x,dz=aim.z-h.z,d=Math.hypot(dx,dz)||1,k=Math.min(1,6.5/d); tx=h.x+dx*k; tz=h.z+dz*k; } else { tx=h.x+Math.cos(h.face)*3; tz=h.z+Math.sin(h.face)*3; } [tx,tz]=map.inB(tx,tz);
@@ -398,7 +398,7 @@ function create(env,opts){
       else if(k==='pot'){ const i=h.items.indexOf('pot'); if(i>=0) useItem(h,i); else if(h.me) floatMsg('沒有藥水，去商店買','#ffb0b0'); }
       else if(k==='act'){ const i=h.items.findIndex(id=>ITEMS[id]&&ITEMS[id].act); if(i>=0) useItem(h,i,aim); }
       else if(k==='bi') buyItem(h,a.id,true); else if(k==='si') sellItem(h,a.i|0);
-      else if(k==='tc'){ if((a.v==='g'||a.v==='r')&&h.tk!==a.v){ const pc=TRINK[a.v].c||0; if(!canShop(h)){ if(h.me) floatMsg('要在溫泉（商店）才能買眼','#ffb0b0'); } else if(h.gold<pc){ if(h.me) floatMsg('金幣不夠（'+TRINK[a.v].n+' 要 '+pc+' 金）','#ffb0b0'); } else { h.gold-=pc; h.tk=a.v; h.tcd=Math.max(h.tcd,3); if(h.me) floatMsg('買了'+TRINK[a.v].n,'#5fff7a'); } } }
+      else if(k==='tc'){ if((a.v==='g'||a.v==='r')&&h.tk!==a.v){ const pc=TRINK[a.v].c||0; if(!canShop(h)){ if(h.me) floatMsg('要在溫泉（商店）才能換眼','#ffb0b0'); } else if(h.gold<pc){ if(h.me) floatMsg('金幣不夠（'+TRINK[a.v].n+' 要 '+pc+' 金）','#ffb0b0'); } else { h.gold-=pc; h.tk=a.v; h.tcd=Math.max(h.tcd,3); if(h.me) floatMsg('選了'+TRINK[a.v].n,'#5fff7a'); } } }
       else if(k==='hw'){ const w=wards.find(q=>q.id===a.id); if(w&&w.team!==h.team&&VIS[h.team].has(w.id)&&Math.hypot(w.x-h.x,w.z-h.z)<stats(h).rng+2&&!(h.hwT>Tm)){ h.hwT=Tm+.15; h.face=Math.atan2(w.z-h.z,w.x-h.x); h.atkT=.25; dmg(h,w,1,{}); } } }
     I.acts=[];
     const aid=remote?I.atkId:(I.ord&&I.ord.k==='atk'?I.ord.id:null);
@@ -801,9 +801,9 @@ function create(env,opts){
     c.fillStyle='#9a94c0'; c.font='700 11px '+TC; c.fillText(TOUCH?'點一下看說明，再按「購買」；點空白處關閉':'P 開關商店；再點一次同一件就直接買；1～6 用裝備、7 用眼',X+170,Y+23);
     shopBtn(X+Wd-40,Y+8,30,28,'✕');
     // 眼：二選一、免費
-    c.textAlign='left'; c.fillStyle='#fff'; c.font='900 13px '+TC; c.fillText('眼（第 7 格・75 金）',X+16,Y+64);
+    c.textAlign='left'; c.fillStyle='#fff'; c.font='900 13px '+TC; c.fillText('眼（第 7 格・免費選一種）',X+16,Y+64);
     [['g',X+170],['r',X+450]].forEach(([k,bx])=>{ const TK=TRINK[k],on=mh.tk===k; c.fillStyle=on?shadeHex(TK.col,.45):'rgba(255,255,255,.07)'; rr(c,bx,Y+46,270,38,10); c.fill(); c.strokeStyle=on?TK.col:'rgba(255,255,255,.2)'; c.lineWidth=on?2.5:1; c.stroke();
-      c.fillStyle=TK.col; c.beginPath(); c.arc(bx+20,Y+65,9,0,TAU); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.fillText(TK.n+(on?'（使用中）':'　● '+TK.c),bx+36,Y+58); c.fillStyle='#cfc8ff'; c.font='700 9.5px '+TC; c.fillText(TK.s,bx+36,Y+74); });
+      c.fillStyle=TK.col; c.beginPath(); c.arc(bx+20,Y+65,9,0,TAU); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.fillText(TK.n+(on?'（使用中）':'　點這裡選'),bx+36,Y+58); c.fillStyle='#cfc8ff'; c.font='700 9.5px '+TC; c.fillText(TK.s,bx+36,Y+74); });
     SHOP_TABS.forEach((tb,i)=>shopBtn(X+14+i*100,Y+96,94,28,tb[1],i===shopTab));
     const L=shopList(),gx=X+14,gy=Y+134;
     L.forEach((id,i)=>{ const it=ITEMS[id],x=gx+(i%6)*74,y=gy+Math.floor(i/6)*68,on=shopSel===id,pc=priceFor(mh,id).cost; c.fillStyle=on?'rgba(255,210,63,.22)':'rgba(255,255,255,.05)'; rr(c,x,y,70,64,8); c.fill(); if(on){ c.strokeStyle='#ffd23f'; c.lineWidth=2; c.stroke(); }
