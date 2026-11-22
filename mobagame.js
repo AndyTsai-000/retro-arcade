@@ -5,7 +5,7 @@ const W=960,H=540,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PI=Math.PI
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,k)=>a+(b-a)*k,dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 function rr(c,x,y,w,h,r){ r=Math.min(r,w/2,h/2); c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 const MODES=['三路峽谷','單路激戰'];
-const LVS={easy:{dm:.68,re:.7,sk:.45,ret:.38,n:'簡單'},mid:{dm:.88,re:.4,sk:.8,ret:.3,n:'中等'},hard:{dm:1.05,re:.22,sk:1,ret:.24,n:'困難'}};
+const LVS={easy:{dm:.68,re:.7,sk:.45,ret:.38,n:'簡單',t:0},mid:{dm:.88,re:.4,sk:.8,ret:.3,n:'中等',t:1},hard:{dm:1.05,re:.22,sk:1,ret:.24,n:'困難',t:2}};
 const ROLE_CLS={top:['tank','fighter'],jg:['assassin','fighter'],mid:['mage','assassin'],bot:['marksman'],sup:['support','tank']};
 const TW_R=8.5,CORE_R=9.5,XPN=l=>120+l*80,MAXL=18;
 function create(env,opts){
@@ -142,7 +142,7 @@ function create(env,opts){
     let [nx,nz]=map.inB(u.x+dx/l*k,u.z+dz/l*k); if(u.k==='h'){ u.dash={x:nx,z:nz}; u.recall=0; } else { u.x=nx; u.z=nz; } }
   function ccHit(u,cc,ox,oz){ applyCC(u,cc); if(cc&&cc.kb) knock(u,ox,oz,cc.kb); if(cc&&cc.pl) knock(u,ox,oz,-1); }
   /* ---------- 小兵 ---------- */
-  function spawnWave(){ waveN++; const sc=1+Tm/60*.05; map.lanes.forEach((L,li)=>{ for(let tm=0;tm<2;tm++){ const comp=['melee','melee','melee','ranged','ranged']; if(waveN%3===0||Tm>900) comp.push('cannon'); if(Tm>600) comp.push('melee'); const lost=towers.filter(q=>q.team!==tm&&q.lane===li&&q.tier===1&&q.hp<=0).length; if(lost) comp.push('cannon'); comp.forEach((mt,k)=>{ const S=MIN[mt],s0=tm?L.len-3-k*1.6:3+k*1.6,p=along(L,s0);
+  function spawnWave(){ waveN++; const sc=1+Tm/60*.03; /* 小兵血量隨時間成長放慢，兵線才清得動 */ map.lanes.forEach((L,li)=>{ for(let tm=0;tm<2;tm++){ const comp=['melee','melee','melee','ranged','ranged']; if(waveN%3===0||Tm>900) comp.push('cannon'); if(Tm>600) comp.push('melee'); const lost=towers.filter(q=>q.team!==tm&&q.lane===li&&q.tier===1&&q.hp<=0).length; if(lost) comp.push('cannon'); comp.forEach((mt,k)=>{ const S=MIN[mt],s0=tm?L.len-3-k*1.6:3+k*1.6,p=along(L,s0);
         minions.push({id:minId++,k:'m',mt,big:mt==='cannon',team:tm,lane:li,x:p[0]+(k%2?.6:-.6),z:p[1]+(k%2?-.6:.6),hp:S.hp*sc,max:S.hp*sc,atk:S.atk*(1+Tm/60*.04),as:S.as,rng:S.rng,arm:S.arm,spd:S.spd,r:S.r,cd:0,tgt:null,face:0,atkT:0,s:s0,think:0}); }); } }); }
   function minionTick(m,dt){ if(m.air>0) m.air-=dt; if(m.rt>0) m.rt-=dt; const L=map.lanes[m.lane]; m.cd-=dt; if(m.atkT>0) m.atkT-=dt; if(m.stun>0){ m.stun-=dt; return; } if(m.slow>0) m.slow-=dt; if(m.cc2){ const q=m.cc2; q.t-=dt; if(q.t<=0) m.cc2=null; else if(q.k==='tn'){ m.tgt=q.src; } else { const sx=alive(q.src)?q.src.x:q.x,sz=alive(q.src)?q.src.z:q.z; moveUnit(m,q.k==='fr'?m.x-sx:sx-m.x,q.k==='fr'?m.z-sz:sz-m.z,m.spd*.55,dt); return; } } m.think-=dt;
     if(m.think<=0&&!(m.cc2&&m.cc2.k==='tn')){ m.think=.3; // 目標順序：附近有敵方小兵先打小兵 → 看到英雄就打英雄 → 再打塔
@@ -366,7 +366,9 @@ function create(env,opts){
       else if(id==='ignite'){ const lo=heroes.find(e=>e.team!==h.team&&alive(e)&&dist(e,h)<6.5&&e.hp/e.max<.3); if(lo) castSpell(h,j,{x:lo.x,z:lo.z}); }
       else if(id==='cleanse'&&(h.slow>0||h.weak>0)&&E) castSpell(h,j); } }
   /* ---------- 電腦英雄 ---------- */
-  const laneOf=h=>mode?0:{top:0,mid:1,bot:2,sup:2}[h.role]??1;
+  const laneOf=h=>mode?0:h.grpL!=null?h.grpL:{top:0,mid:1,bot:2,sup:2}[h.role]??1;
+  // 困難：中後期全隊集合推同一路（挑對方塔最少的那一路）
+  const grpC=[{t:-99,l:1},{t:-99,l:1}]; function grpLane(tm){ const g=grpC[tm]; if(Tm-g.t>20){ g.t=Tm; let best=1,bv=1e9; for(let li=0;li<3;li++){ const v=towers.filter(s=>s.team!==tm&&s.lane===li&&s.hp>0).length*10-(li===1?1:0); if(v<bv){ bv=v; best=li; } } g.l=best; } return g.l; }
   const progress=(h,u)=>{ const L=map.lanes[laneOf(h)],s=project(L,u.x,u.z)[0]; return h.team?L.len-s:s; };
   function botThink(h){ const ai=h.ai,S=stats(h),hp=h.hp/h.max,F=map.fount[h.team],dF=Math.hypot(h.x-F[0],h.z-F[1]);
     const E=heroes.filter(e=>e.team!==h.team&&alive(e)&&dist(e,h)<13&&seen(e,h.team)),Al=heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,h)<14);
@@ -377,14 +379,25 @@ function create(env,opts){
     if(mode===1&&hp<LV.ret&&E.length&&!E.every(e=>e.hp/e.max<.15)){ const tw=towers.concat(cores).filter(q=>q.team===h.team&&q.hp>0).sort((a,b)=>dist(a,h)-dist(b,h))[0]; if(tw){ ai.goal=[tw.x+(h.team?3:-3),tw.z]; return; } }
     if(mode===0&&hp<LV.ret&&!(E.length&&E.every(e=>e.hp/e.max<.15))){ ai.mode='back'; if(!E.length&&dF>25) h.recall=3.5; else ai.goal=F; return; }
     if(h.recall>0) return;
+    h.grpL=LV.t>=2&&mode===0&&Tm>900&&(h.role!=='jg'||Tm>1200)?grpLane(h.team):null;
     const enemyTowerNear=(x,z)=>towers.concat(cores).find(s=>s.team!==h.team&&s.hp>0&&Math.hypot(s.x-x,s.z-z)<(s.k==='c'?CORE_R:TW_R)+1);
     if(E.length){ const weak=E.reduce((a,b)=>a.hp/a.max<b.hp/b.max?a:b),myPow=Al.reduce((s,a)=>s+a.hp,0),thPow=E.reduce((s,e)=>s+e.hp,0);
-      const tw=enemyTowerNear(weak.x,weak.z),safe=!tw||weak.hp<pwEst(h)*(OP.lv==='hard'?1.5:1.1)&&hp>.45||hp>.65&&Al.length>=2&&minions.filter(m=>m.team===h.team&&alive(m)&&dist(m,tw)<TW_R).length>=2&&!(tw.tgt&&tw.tgt===h);
+      if(LV.t>=2){ // 困難：像真人一樣算兩邊實力（血量、輸出、等級、大招有沒有好）再決定打不打
+        const pw=u=>{ const s=stats(u); return Math.max(1,u.hp)*(s.atk*(1+s.as)+u.lvl*25+(u.sk[3]>0&&u.cd[3]<=0?90:0)); };
+        const A2=heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,weak)<15),E2=heroes.filter(e=>e.team!==h.team&&alive(e)&&dist(e,weak)<15&&seen(e,h.team));
+        const my=A2.reduce((s,a)=>s+pw(a),0),th=E2.reduce((s,e)=>s+pw(e),0),burst=A2.filter(a=>dist(a,weak)<10).reduce((s,a)=>s+pwEst(a),0);
+        const tw=enemyTowerNear(weak.x,weak.z),ownTw=towers.concat(cores).some(s=>s.team===h.team&&s.hp>0&&dist(s,weak)<(s.k==='c'?CORE_R:TW_R)+2);
+        const dive=!tw||burst>weak.hp*1.3&&hp>.5&&!(tw.tgt===h)||tw.tgt&&tw.tgt.k==='m'&&minions.filter(m=>m.team===h.team&&alive(m)&&dist(m,tw)<TW_R).length>=3&&my>th*1.3;
+        const ratio=my/Math.max(1,th)*(ownTw?1.4:1);
+        if(dive&&(ratio>1.1||burst>weak.hp&&hp>.3)){ ai.tgt=weak; ai.mode='fight'; return; }
+        if(ratio<.8||hp<.35||tw&&!dive&&dist(h,tw)<(tw.k==='c'?CORE_R:TW_R)+1.5){ ai.goal=towardHome(h,9); return; } }
+      else {
+      const tw=enemyTowerNear(weak.x,weak.z),safe=LV.t===0?!tw:!tw||weak.hp<pwEst(h)*1.1&&hp>.45||hp>.65&&Al.length>=2&&minions.filter(m=>m.team===h.team&&alive(m)&&dist(m,tw)<TW_R).length>=2&&!(tw.tgt&&tw.tgt===h);
       if(E.length>=Al.length+2&&hp<.6){ ai.goal=towardHome(h,10); return; }
       if(safe&&(myPow>thPow*.9||weak.hp/weak.max<.35||hp>.4&&Al.length>=E.length)){ ai.tgt=weak; ai.mode='fight'; return; }
-      if(!safe||myPow<thPow*.6){ ai.goal=towardHome(h,8); return; } }
+      if(!safe||myPow<thPow*.6){ ai.goal=towardHome(h,8); return; } } }
     ai.mode=null;
-    if(h.role==='jg'&&mode===0){ let best=null,bd=1e9; for(const m of mons){ if(!alive(m)) continue; if(m.big&&h.lvl<6&&Al.length<3) continue; const d=dist(h,m)+(m.camp.side===h.team?0:25); if(d<bd){ bd=d; best=m; } }
+    if(h.role==='jg'&&mode===0&&h.grpL==null){ let best=null,bd=1e9; for(const m of mons){ if(!alive(m)) continue; if(m.big&&h.lvl<6&&Al.length<3) continue; const d=dist(h,m)+(m.camp.side===h.team?0:25); if(d<bd){ bd=d; best=m; } }
       // 隊友附近有殘血敵人就去支援
       const gank=heroes.find(e=>e.team!==h.team&&alive(e)&&e.hp/e.max<.5&&heroes.some(a=>a.team===h.team&&a!==h&&alive(a)&&dist(a,e)<9)&&dist(h,e)<35);
       if(gank&&h.lvl>=3&&hp>.5&&heroes.filter(e=>e.team!==h.team&&alive(e)&&dist(e,gank)<10).length<=heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,gank)<12).length+1&&!enemyTowerNear(gank.x,gank.z)){ ai.tgt=gank; ai.mode='fight'; return; }
@@ -392,15 +405,19 @@ function create(env,opts){
     if(h.role==='sup'){ const carry=heroes.find(a=>a.team===h.team&&a!==h&&alive(a)&&a.role==='bot')||heroes.find(a=>a.team===h.team&&a!==h&&alive(a)); if(carry&&dist(h,carry)>6){ ai.goal=[carry.x-(h.team?-2:2),carry.z+(h.team?-2:2)]; return; } }
     // 對手死了一半以上：趁機拆塔
     const deadE=heroes.filter(e=>e.team!==h.team&&e.dead).length;
-    if(deadE>=Math.max(1,Math.ceil(size/2))&&hp>.45){ const L2=map.lanes[laneOf(h)],st=towers.concat(cores).filter(q=>q.team!==h.team&&q.hp>0&&!q.inv).sort((a,b)=>(a.lane===laneOf(h)?0:40)+dist(a,h)-((b.lane===laneOf(h)?0:40)+dist(b,h)))[0];
-      if(st){ if(dist(st,h)<(st.k==='c'?CORE_R:TW_R)+1) ai.tgt=st; else ai.goal=[st.x,st.z]; return; } }
+    const aliveM=heroes.filter(a=>a.team===h.team&&alive(a)).length,aliveE=heroes.filter(e=>e.team!==h.team&&alive(e)).length;
+    if((LV.t>=2?deadE>=1&&aliveM>aliveE:LV.t===1?deadE>=Math.max(1,Math.ceil(size/2)):deadE>=size)&&hp>.45){ const L2=map.lanes[laneOf(h)],st=towers.concat(cores).filter(q=>q.team!==h.team&&q.hp>0&&!q.inv).sort((a,b)=>(a.lane===laneOf(h)?0:40)+dist(a,h)-((b.lane===laneOf(h)?0:40)+dist(b,h)))[0];
+      if(st&&dist(st,h)<(LV.t>=2?28:22)&&(LV.t<2||minions.some(m=>m.team===h.team&&alive(m)&&dist(m,st)<14)||deadE>=3)){ if(dist(st,h)<(st.k==='c'?CORE_R:TW_R)+1) ai.tgt=st; else ai.goal=[st.x,st.z]; return; } } // 只拆附近的塔，不要跑遍全圖
     // 兵線：跟在最前面的自己小兵後面，打敵方小兵；小兵在塔下時才打塔
     const li=laneOf(h),L=map.lanes[li],mine=minions.filter(m=>m.team===h.team&&m.lane===li&&alive(m));
     let front=null,fp=-1; for(const m of mine){ const p=progress(h,m); if(p>fp){ fp=p; front=m; } }
+    const twX=towers.concat(cores).filter(s=>s.team!==h.team&&s.hp>0&&!s.inv).find(s=>dist(s,h)<18&&(mine.some(q=>dist(q,s)<TW_R+1)||hp>.5&&heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,s)<16).length>=2&&!heroes.some(e=>e.team!==h.team&&alive(e)&&dist(e,s)<20)));
+    if(LV.t>=2){ // 困難：先補刀（一下打得死的兵），自己的兵在塔下扛塔時就拆塔
+      let lh=null; for(const m of minions) if(m.team!==h.team&&alive(m)&&m.lane===li&&dist(h,m)<9&&m.hp<=S.atk*100/(100+(m.arm||0))*1.05&&!(enemyTowerNear(m.x,m.z)&&!mine.some(q=>enemyTowerNear(q.x,q.z)))){ if(!lh||m.hp<lh.hp) lh=m; } if(lh){ ai.tgt=lh; return; }
+      if(twX&&twX.tgt!==h&&mine.filter(q=>dist(q,twX)<TW_R+1).length>=2&&E.length<=Al.length){ ai.tgt=twX; return; } }
     let tg=null,bd=9; for(const m of minions) if(m.team!==h.team&&alive(m)&&m.lane===li){ const d=dist(h,m); if(d<bd&&!(enemyTowerNear(m.x,m.z)&&!mine.some(q=>enemyTowerNear(q.x,q.z)))){ bd=d; tg=m; } }
     if(tg){ ai.tgt=tg; return; }
-    const tw=towers.concat(cores).filter(s=>s.team!==h.team&&s.hp>0&&!s.inv).find(s=>dist(s,h)<18&&(mine.some(q=>dist(q,s)<TW_R+1)||hp>.5&&heroes.filter(a=>a.team===h.team&&alive(a)&&dist(a,s)<16).length>=2&&!heroes.some(e=>e.team!==h.team&&alive(e)&&dist(e,s)<20)));
-    if(tw&&!E.length){ ai.tgt=tw; return; }
+    if(twX&&!E.length){ ai.tgt=twX; return; }
     if(front){ const p=along(L,clamp(project(L,front.x,front.z)[0]+(h.team?3:-3),0,L.len)); ai.goal=[p[0]+(h.slot%3-1)*1.2,p[1]+(h.slot%2?1:-1)]; }
     else { const own=towers.filter(s=>s.team===h.team&&s.lane===li&&s.hp>0).sort((a,b)=>a.tier-b.tier)[0]||cores[h.team]; const s0=project(L,own.x,own.z)[0],p=along(L,s0+(h.team?-4:4)); ai.goal=[p[0],p[1]]; } }
   const pwEst=h=>stats(h).atk*3+skPow(h,h.def.sk[0],0);
@@ -411,7 +428,8 @@ function create(env,opts){
     if(h.lens>0&&ai.mode!=='fight'){ const w=wards.find(q=>q.team!==h.team&&VIS[h.team].has(q.id)&&Math.hypot(q.x-h.x,q.z-h.z)<9); if(w){ if(dist(h,w)>S.rng+.8) chase(h,w.x,w.z,S.spd,dt); else basicAttack(h,w); return; } }
     const tg=ai.tgt; if(tg&&alive(tg)&&!seen(tg,h.team)&&tg.k==='h') ai.tgt=null;
     if(tg&&tg.k==='h'&&alive(tg)&&tg.hp>pwEst(h)*1.1){ const tw2=towers.concat(cores).find(s=>s.team!==h.team&&s.hp>0&&dist(s,tg)<(s.k==='c'?CORE_R:TW_R)); if(tw2&&(tw2.tgt===h||!minions.some(m=>m.team===h.team&&alive(m)&&dist(m,tw2)<TW_R))){ ai.tgt=null; ai.mode=null; ai.goal=towardHome(h,8); } } if(tg&&alive(tg)&&seen(tg,h.team)){ const reach=S.rng+.6+(tg.r||.6),d=dist(h,tg);
-      if(tg.k==='h'||tg.k==='j'||Math.random()<.04){ // 技能
+      const waveK=tg.k==='m'&&LV.t>=1&&h.mp>h.mpMax*(LV.t>=2?.35:.55)&&minions.filter(m=>m.team!==h.team&&alive(m)&&dist(m,tg)<4.5).length>=(LV.t>=2?3:4)&&Math.random()<(LV.t>=2?.5:.2); // 中等、困難：用範圍技能清兵，兵線才推得動
+      if(tg.k==='h'||tg.k==='j'||waveK||Math.random()<.04){ // 技能
         for(let i=3;i>=0;i--){ if(h.cd[i]>0||!unlocked(h,i)||h.mp<skCost(h,i)) continue; const s=h.def.sk[i]; if(Math.random()>LV.sk*dt*6) continue;
           if(s.t==='heal'||s.t==='shield'){ if(h.hp/h.max<.6||heroes.some(a=>a.team===h.team&&alive(a)&&a.hp/a.max<.5&&dist(a,h)<8)) cast(h,i); continue; }
           if(s.t==='aura') continue; if(s.t==='buff'||s.t==='empower'){ if(d<reach+2) cast(h,i); continue; } if(s.back){ if(h.hp/h.max<.45) cast(h,i); continue; }
@@ -811,7 +829,7 @@ function art(ctx,w,h,si,t){ const M0=window.__MOBA; const g=ctx.createLinearGrad
   ownP:true,ownTab:true,stages:MODES,stageLabel:'選擇模式',previewWarm:.3,stageShow:(ctx,w,h,si,t)=>art(ctx,w,h,si,t),
   stageGoal:si=>si?'單路激戰：只有一條路，沒有野區，雙方各兩座塔和主堡，一路打到底。':'三路峽谷：上中下三條路各有兩座塔，中路和上路、中路和下路之間各有一塊野區（1 隻大野怪＋3 隻小野怪）。選「打野」路線要帶召喚師技能「重擊」，先買打野幼獸；選「輔助」先買星界地圖，賺錢升級後可以插眼。',
   modes:[{id:'1p',label:'單人'}],
-  options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦強度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
+  options:[{key:'size',label:'對戰人數',def:'5',opts:[1,2,3,4,5].map(n=>({id:String(n),label:n+' 對 '+n}))},{key:'lv',label:'電腦難度',def:'mid',opts:[{id:'easy',label:'簡單'},{id:'mid',label:'中等'},{id:'hard',label:'困難'}]}],
   optNote:()=>'連線時真人輪流分到兩隊，不夠的位置由電腦補上。',
   help:[['滑鼠點地面','走過去（左鍵、右鍵都可以，按住會一直跟著走）'],['點敵人','追過去攻擊（英雄、小兵、野怪、塔）'],['Q W E R','四個技能，往滑鼠的方向或位置放'],['D F','兩個召喚師技能（B 回城、S 停下）'],['P','開商店（要回城、在泉水裡才能買）：買裝備、藥水，選綠眼或紅眼'],['魔力','放技能要用魔力（藍色條），沒魔力就不能放；平常慢慢回，回到泉水回最快'],['升級','打小兵、野怪、擊殺英雄拿經驗，最高 18 等；每升一等多一個技能點，點技能上的 ＋（或 Ctrl＋Q/W/E/R）學技能。一般技能最多 5 點，大招 6／11／16 等各能點一次'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['1～6','使用裝備的主動技能、喝藥水'],['7','用眼：綠眼插在滑鼠的位置；紅眼掃描敵人的眼，看到後點三下清掉'],['草叢','躲進草叢，外面的敵人看不到你（除非有眼）'],['閃技能','飛彈、穿透波、鉤子會飛向你瞄準的位置，地上的預警圈過一下才爆，走位可以閃開'],['吃兵（尾刀）','小兵要由你打最後一下才有錢；大隻的砲車兵錢最多；敵方小兵血條出現白框，代表普攻一下就能打死'],['控制效果','暈眩、擊飛：不能動；定身：不能走但能打；沉默：不能放技能；嘲諷：強制去打對方；恐懼：亂跑；魅惑：被吸過去；緩速：變慢'],['隱身','隱身時敵人看不到你，靠很近或被紅眼掃到才現形；普攻或放技能就現身（偷襲那一下比較痛）'],['Tab','按住看戰績：雙方擊殺、補刀、裝備和自己的數值'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使、戰鬥藥劑，點商店裡的裝備看說明'],['打野裝備','打野幼獸（要帶重擊）：打野怪會成長，12 層重擊可以打英雄，25 層覺醒'],['輔助裝備','星界地圖：隊友旁收殘血小兵、打敵方英雄賺錢，升級兩次變世界之眼，可以插眼']],
   touchHelp:[['左邊搖桿','移動'],['攻擊／兵／塔','按住自動攻擊；「兵」只打小兵野怪、「塔」只打防禦塔'],['技能','點一下自動瞄準，按住拖曳可以自己瞄準'],['召喚師技能','右下兩顆（閃現可以拖曳選方向）；回城、買裝備'],['藥水／眼','下方的「藥水」補血；「綠眼」按住拖曳插眼，「紅眼」掃描敵人的眼，看到後點三下清掉'],['商店','回城後按左邊「商店」買裝備、選綠眼或紅眼；有主動技能的裝備會多一顆按鈕'],['魔力','放技能要用魔力（藍色條），沒魔力不能放；回泉水回最快'],['升級','最高 18 等；每升一等點技能上的 ＋ 學技能。一般技能最多 5 點，大招 6 等才能學、最多 3 點'],['單路激戰','英雄從 3 等開始；不能回城，陣亡時才能買裝備，復活才補滿生命和魔力'],['草叢','躲進草叢，外面的敵人看不到你'],['閃技能','飛彈、鉤子、穿透波和預警圈都可以走位閃開'],['戰績','點右上角的擊殺／金幣框看雙方戰績，再點一下關掉'],['裝備','護甲擋普攻、魔抗擋技能；還有暴擊、穿透、咒刃、重傷、守護天使，點商店裡的裝備看說明']],
