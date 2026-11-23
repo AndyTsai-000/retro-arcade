@@ -122,7 +122,8 @@ function drawCourt(ctx,c0,c1,court,bg){
 
 function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options||{}).hp]||1; /* 開始前選的體力：決定一場打多久 */
   const net=opts.net,client=!!net&&!net.host,two=!net&&opts.mode==='2p',vs=two||(!!net&&net.count>1),me=net?Math.min(1,net.me):0;
-  const si=opts.stage||0,foe=STAGES[si],L=opts.look||{color:'#ff5d4f',hair:'0',ball:'#ffffff',court:'#e0a868',bg:'beach'};
+  /* 盃賽：八強 → 準決賽 → 決賽 */ const CUP=!vs&&!net&&(opts.options||{}).fmt==='cup'?(opts.cup||{r:0,res:[]}):null,RN=['八強賽','準決賽','決賽'];
+  const si=CUP?Math.min(STAGES.length-1,(opts.stage||0)+CUP.r):opts.stage||0,foe=STAGES[si],L=opts.look||{color:'#ff5d4f',hair:'0',ball:'#ffffff',court:'#e0a868',bg:'beach'};
   const {ctx}=env.canvas2d(W,H);
   const lookOf=t=>(net&&net.looks&&net.looks[t])||(t===0?L:null);
   const cols=[(lookOf(0)||L).color,vs?((lookOf(1)||{}).color||'#3d8bff'):foe.col]; if(cols[0]===cols[1]) cols[1]='#3d8bff'===cols[0]?'#ffd23f':'#3d8bff';
@@ -141,6 +142,9 @@ function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options
   const ball={x:MID,y:(YB+YF)/2,z:60,vx:0,vy:0,vz:0,st:'loose',holder:-1,team:-1,type:null,dmg:0,t:0,target:-1,hit:{},base:0,idle:0,ghost:0};
   const ctrl=[1,7],human=[true,vs],inp=[blank(),blank()],tap=[{d:0,t:-9,run:0},{d:0,t:-9,run:0}],prev=[{},{}];
   let t=0,over=0,ended=false,msg='',msgT=0,ev=[],sendT=0,lastIn='',start=1.2,freeze=0,shake=0,flash=0,cut=null;
+  const HIT=[0,0],CAT=[0,0]; /* 打中、接住 */
+  /* 淘汰重播：把人打出局的那一球慢動作重播 */ let REC=[],RP=0,rpWant=false; const RPD=3,PKd=['x','y','z','vz','face','state','st','run','throwT','catchT','hp','kx','duck','moving'],BKd=['x','y','z','vx','vy','vz','st','holder','type','team'];
+  const recFrame=()=>{ REC.push({t,p:P.map(q=>PKd.map(k=>q[k])),b:BKd.map(k=>ball[k])}); while(REC.length&&REC[0].t<t-3) REC.shift(); };
   if(opts.first!=null) ball.x=MID+(opts.first?70:-70); // 擲硬幣贏的一方先拿到球
   const gauge=[0,0],fx=[],rings=[];
   function blank(){ return {mx:0,my:0,run:false,a:false,b:false,j:false,x:false,bh:false}; }
@@ -211,7 +215,7 @@ function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options
     sfx('land');
   }
   function knock(p,dmg,bvx,power){
-    p.hp=Math.max(0,p.hp-dmg); p.state=4; p.st=p.hp<=0?1.1:.85+(power?.35:0); p.kx=Math.sign(bvx||1)*(power?150:90); p.vz=power?190:120; p.z=Math.max(p.z,1); p.run=false; p.catchT=0;
+    HIT[1-p.team]++; if(p.hp-dmg<=0&&p.hp>0) rpWant=true; p.hp=Math.max(0,p.hp-dmg); p.state=4; p.st=p.hp<=0?1.1:.85+(power?.35:0); p.kx=Math.sign(bvx||1)*(power?150:90); p.vz=power?190:120; p.z=Math.max(p.z,1); p.run=false; p.catchT=0;
     sfx(power?'boom':'hurt');
   }
   function stepBall(dt){
@@ -228,7 +232,7 @@ function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options
         const top=p.duck?15:36; if(Math.abs(p.x-b.x)>11||Math.abs(p.y-b.y)>10||b.z<p.z-2||b.z>p.z+top) continue;
         if(p.catchT>0&&b.vx*p.face<0&&sh!=='ultra'){ // 接住（超必殺接不住）
           if(sh){ p.hp=Math.max(1,p.hp-2); p.kx=Math.sign(b.vx)*60; }
-          p.catchT=0; addG(p.team,sh?35:20); fxEvent('#k|'+Math.round(p.x)+'|'+Math.round(p.y-p.z-20)); give(p); sfx('item'); say('接住！',.7); return; }
+          p.catchT=0; CAT[p.team]++; addG(p.team,sh?35:20); fxEvent('#k|'+Math.round(p.x)+'|'+Math.round(p.y-p.z-20)); give(p); sfx('item'); say('接住！',.7); return; }
         knock(p,b.dmg,b.vx,!!sh); b.hit[p.id]=1; addG(b.team,sh?18:28); addG(p.team,12);
         fxEvent('#h|'+Math.round(p.x)+'|'+Math.round(p.y-p.z-18)+'|'+(sh||'n')); if(sh) freeze=sh==='ultra'?.16:.1;
         if(sh!=='pierce'&&sh!=='ultra'){ b.st='loose'; b.vx*=-.25; b.vy=(Math.random()-.5)*80; b.vz=170; b.type=null; b.team=-1; return; }
@@ -333,9 +337,14 @@ function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options
 
   function conclude(w,note){
     if(ended) return; ended=true; const mine=two||w===me;
+    const stat='<p style="margin:4px 0">打中 '+HIT[0]+' : '+HIT[1]+'　接住 '+CAT[0]+' : '+CAT[1]+'</p>',sc=ins(0).length+' : '+ins(1).length;
+    if(CUP){ const r=CUP.r,won=w===0,res=CUP.res.concat([[RN[r],foe.name,sc,won]]),tbl=stat+'<table class="ls"><tr><th>賽程</th><th>對手</th><th>剩下</th><th></th></tr>'+[0,1,2].map(i=>{ const q=res[i]; return '<tr><td>'+RN[i]+'</td><td>'+(q?q[1]:'—')+'</td><td>'+(q?q[2]:'')+'</td><td>'+(q?(q[3]?'✅':'❌'):'')+'</td></tr>'; }).join('')+'</table>'; env.sfx(won?'win':'lose');
+      if(won&&r<2){ env.end({title:RN[r]+'勝利！晉級'+RN[r+1],big:sc,html:tbl,cont:{label:'下一場：'+RN[r+1],again:'重打這一場',opts:{cup:{r:r+1,res}}}}); return; }
+      if(won){ try{ localStorage.setItem('arcade.dodge.cup.'+(opts.stage||0),'1'); }catch(e){} env.end({title:'🏆 盃賽冠軍！',big:sc,html:tbl,text:'三連勝拿下冠軍！',score:si+1,cont:{label:'再打一次盃賽',again:'再打一次決賽',opts:{cup:null}}}); return; }
+      env.end({title:'止步'+RN[r],big:sc,html:tbl,cont:{label:'重打這一場',again:'從八強重來',opts:{}}}); return; }
     env.sfx(mine?'win':'lose');
     const tn=i=>names&&names[i]?names[i]:(i===0?(vs?'左隊':'你的隊伍'):(vs?'右隊':foe.name));
-    env.end({title:two?(w?'右隊':'左隊')+'獲勝':mine?'你贏了！':'你輸了',big:ins(0).length+' : '+ins(1).length,text:note||(tn(w)+'還有人站在場上。'),
+    env.end({title:two?(w?'右隊':'左隊')+'獲勝':mine?'你贏了！':'你輸了',big:ins(0).length+' : '+ins(1).length,html:stat,text:note||(tn(w)+'還有人站在場上。'),
       score:!vs&&!net&&w===0?si+1:null,next:!vs&&!net&&w===0&&si<STAGES.length-1});
   }
   const ST={held:0,shot:1,pass:2,loose:3},STN=['held','shot','pass','loose'];
@@ -380,11 +389,13 @@ function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options
       return;
     }
     if(ended) return;
+    if(RP>0){ RP-=dt; if(inp[0].a||inp[0].b) RP=0; inp[0].a=inp[0].b=false; if(RP<=0) REC=[]; return; } /* 重播中：按丟或傳跳過 */
     if(over){ over+=dt; if(over>1.6){ const w=ins(0).length?0:1; if(net){ net.send(snapshot()); net.send({end:[w,'']}); } conclude(w); } return; }
-    if(start>0){ start-=dt; if(start<=0) say('開始！',.8); }
+    if(start>0){ start-=dt; if(start<=0) say(CUP?'盃賽・'+RN[CUP.r]+'　對手：'+foe.name:'開始！',CUP?2.4:.8); }
     if(two){ read(0,1); read(1,2); } else read(0,0);
     // 必殺特寫和命中的瞬間，畫面會停一下
     if(freeze>0){ freeze-=dt; if(net){ sendT-=dt; if(sendT<=0){ sendT=1/30; net.send(snapshot()); } } return; }
+    recFrame();
     gauge[0]=Math.min(100,gauge[0]+dt*2.2); gauge[1]=Math.min(100,gauge[1]+dt*2.2);
     for(let tm=0;tm<2;tm++) if(human[tm]) pickCtrl(tm);
     const tmp=blank();
@@ -396,11 +407,17 @@ function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options
       if(o!==tmp){ o.a=o.b=o.j=o.x=false; }
     }
     if(start<=0) stepBall(dt); else { ball.vz-=560*dt; ball.z=Math.max(5,ball.z+ball.vz*dt); }
+    if(rpWant&&!P.some(q=>q.state===4)){ rpWant=false; if(!net&&REC.length>30&&!opts.preview){ RP=RPD; return; } }
     if(!ins(0).length||!ins(1).length) over=.001;
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/30; net.send(snapshot()); } }
   }
 
-  function draw(){
+  function draw(){ if(RP<=0||REC.length<2) return drawCore(); /* 重播：套用記錄畫面 */
+    const tEnd=REC[REC.length-1].t,span=Math.min(2,tEnd-REC[0].t),tt=tEnd-span+Math.max(0,Math.min(1,1-RP/RPD))*span; let fr=REC[REC.length-1]; for(const q of REC) if(q.t>=tt){ fr=q; break; }
+    const svP=P.map(q=>PKd.map(k=>q[k])),svB=BKd.map(k=>ball[k]); P.forEach((q,i)=>PKd.forEach((k,j)=>{ q[k]=fr.p[i][j]; })); BKd.forEach((k,j)=>{ ball[k]=fr.b[j]; });
+    try{ drawCore(); } finally { P.forEach((q,i)=>PKd.forEach((k,j)=>{ q[k]=svP[i][j]; })); BKd.forEach((k,j)=>{ ball[k]=svB[j]; }); }
+    ctx.fillStyle='rgba(0,0,0,.82)'; ctx.fillRect(0,H-30,W,30); ctx.font='900 16px '+TC; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillStyle=Math.sin(t*6)>0?'#ff3a3a':'#7a1a1a'; ctx.beginPath(); ctx.arc(22,H-15,6,0,7); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText('出局重播 REPLAY',34,H-15); ctx.textAlign='right'; ctx.font='700 12px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText((env.touch?'按「丟」':'按 J')+' 跳過',W-14,H-15); }
+  function drawCore(){
     ctx.save(); if(shake>0) ctx.translate((Math.random()-.5)*shake*22,(Math.random()-.5)*shake*16);
     if(G3){ G3.render({P,b:ball,t,ctrl:[0,1].filter(tm=>human[tm]&&(!net||tm===me)).map(tm=>ctrl[tm]),shotCol:ball.type&&SHOT[ball.type]?SHOT[ball.type].col:null}); ctx.drawImage(G3.canvas,0,0,W,H);
       for(let tm=0;tm<2;tm++) if(human[tm]&&(!net||tm===me)){ const p=P[ctrl[tm]]; if(!p) continue; const [hx,hy]=G3.head(p.id); ctx.fillStyle=tm?'#3ddbd9':'#ffd23f'; ctx.beginPath(); ctx.moveTo(hx-6,hy-8); ctx.lineTo(hx+6,hy-8); ctx.lineTo(hx,hy); ctx.fill(); }
@@ -457,7 +474,7 @@ function create(env,opts){ const HPK={short:.65,normal:1,long:1.5}[(opts.options
     ctx.textAlign='center'; ctx.font='9px '+PIX; ctx.fillStyle='#ffd23f'; ctx.fillText('VS',W/2,20);
     if(msgT>0&&msg){ ctx.font='900 24px '+TC; ctx.lineWidth=5; ctx.strokeStyle='#14122b'; ctx.strokeText(msg,W/2,74); ctx.fillStyle='#ffd23f'; ctx.fillText(msg,W/2,74); }
   }
-  return {update,draw,destroy(){},_dbg:{P,ball,ctrl,inp}};
+  return {update,draw,destroy(){},_dbg:{P,ball,ctrl,inp,human,conclude,get RP(){return RP;},get REC(){return REC;}}};
 }
 
 function preview(ctx,w,h,L,t){
@@ -491,7 +508,7 @@ window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
   name:'鬥魂躲避球',tag:'DODGE BALL',color:'#ff9d3d',online:true,maxPlayers:2,
   load:()=>{ const K=window.ARCADE_GAMES.kart; return K&&K.load?K.load().catch(()=>{}):Promise.resolve(); }, /* 3D 畫面要 three.js；載不到就用 2D */
   desc:'三對三躲避球，丟球打倒對方內野。助跑丟、跳起來丟會變成必殺球，共 7 種；集滿氣還能放超必殺。10 支隊伍，可單人、兩人同一台，或開房間連線。',
-  goal:'丟球打對方內野的人扣體力，三個人都倒下就贏了。連按兩下 ← 或 → 助跑後丟、或跳起來丟，會丟出必殺球。打中人或接到球會累積氣力，集滿後拿球按「必殺」放出接不住的超必殺。球飛過來時按「丟」可以接住。',
+  goal:'丟球打對方內野的人扣體力，三個人都倒下就贏了。連按兩下 ← 或 → 助跑後丟、或跳起來丟，會丟出必殺球。打中人或接到球會累積氣力，集滿後拿球按「必殺」放出接不住的超必殺。球飛過來時按「丟」可以接住。賽制選「盃賽」可以連打八強、準決賽、決賽；把人打出局會慢動作重播（按 J 跳過）。',
   // 開始畫面左邊：選哪一隊就顯示那一隊的三名內野
   stageShow:(ctx,w,h,si,t)=>{ const st=STAGES[si],col=st.col;
   const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1d1a40'); g.addColorStop(1,'#0e0c22'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
@@ -501,7 +518,7 @@ window.ARCADE_GUY=drawGuy; // 足球也用同一套人物畫法
     st.team.forEach((m,i)=>{ const x=w*(.25+i*.25),y=h*.8,pose=[0,2,1][(Math.floor(t*.7)+i)%3];
       ctx.save(); ctx.translate(x,y); ctx.scale(2.4,2.4); drawGuy(ctx,0,0,Math.abs(Math.sin(t*3+i))*3,-1,col,i%4,pose,t+i); ctx.restore();
       ctx.font='700 '+Math.round(h*.065)+'px "Noto Sans TC",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(m.name,x,y+h*.08); }); },
-  options:[{key:'hp',label:'體力',def:'normal',opts:[{id:'short',label:'少（快速一場）'},{id:'normal',label:'一般'},{id:'long',label:'多（打久一點）'}]}],
+  options:[{key:'fmt',label:'賽制',def:'one',solo:true,opts:[{id:'one',label:'單場'},{id:'cup',label:'盃賽（八強→決賽三連戰）'}]},{key:'hp',label:'體力',def:'normal',opts:[{id:'short',label:'少（快速一場）'},{id:'normal',label:'一般'},{id:'long',label:'多（打久一點）'}]}],
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>Math.max(1,Math.min(5,Math.ceil(s.lv*5-.01)))),
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
   help:[['↑ ↓ ← →','移動，連按兩下 ← → 助跑'],['J','丟球；沒球時是接球'],['K','傳球；沒球時按住是蹲下'],['L','跳'],['I','超必殺（氣力條滿、拿著球時）'],['W A S D F G H R','雙人左隊：移動、丟、傳、跳、超必殺'],['↑ ↓ ← → , . / M','雙人右隊：移動、丟、傳、跳、超必殺']],
