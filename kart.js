@@ -1246,10 +1246,11 @@ function create(env,opts){
     k.ss+=(inp.steer-k.ss)*Math.min(1,dt*(k.ai?40:11)); // 方向盤不是瞬間打到底
     k.stA=inp.steer?0:(k.stA||0)+dt;
     if(!k.drifting&&inp.drift&&(inp.steer||k.stA<.3)&&vf>14){ k.drifting=true; k.driftT=0; k.dBad=false; }
-    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<9){ k.drifting=false; k.gripT=.45; if(k.driftT>DB_MIN&&!k.dBad){ k.dbT=.6; k.dbAmt=driftMode?Math.min(2.4,.5+k.driftT):.55; if(mine&&!k.ai) toast(k,'按 '+(env.touch?'▲':local2&&k.i===0?'W':'↑')+' 甩噴！'); } } }
+    if(k.drifting){ k.driftT+=dt; if(!inp.drift||vf<9){ k.drifting=false; k.gripT=.45; if(k.driftT>DB_MIN&&!k.dBad){ k.dbT=.6; k.dbAmt=driftMode?Math.min(2.4,.5+k.driftT):k.driftT>2.4?1.5:k.driftT>1.4?1:.55; k.dbLv=k.driftT>2.4?3:k.driftT>1.4?2:1; /* 甩越久噴越久：黃→橘→紫 */ if(mine&&!k.ai) toast(k,'按 '+(env.touch?'▲':local2&&k.i===0?'W':'↑')+(k.dbLv===3?' 超級甩噴！':k.dbLv===2?' 大甩噴！':' 甩噴！')); } } }
     // 甩尾結束後 0.6 秒內按一下出發鍵（鍵盤 ↑、手機 ▲）才會噴
-    if(k.dbT>0){ k.dbT-=dt; if(inp.tap){ k.dbT=0; k.boostT=Math.max(k.boostT,k.dbAmt); k.bk=1; burst(k.x,k.z,driftMode?0x4fd0ff:0xffd23f,driftMode?8:4,1,.45); if(mine){ env.sfx('boost'); if(driftMode){ toast(k,'甩噴！'); flashT=.12; } } } }
+    if(k.dbT>0){ k.dbT-=dt; if(inp.tap){ k.dbT=0; k.boostT=Math.max(k.boostT,k.dbAmt); k.bk=1; burst(k.x,k.z,driftMode?0x4fd0ff:k.dbLv===3?0xc06aff:k.dbLv===2?0xff7a1a:0xffd23f,driftMode?8:3+k.dbLv,1,.45); if(mine){ env.sfx('boost'); if(driftMode){ toast(k,'甩噴！'); flashT=.12; } } } }
     k.h+=k.ss*1.9*Math.min(1,Math.abs(vf)/14)*(k.drifting?1.38:1)*(vf<0?-1:1)*dt;
+    /* 尾流：緊跟在別台車正後方 1 秒，會被吸過去加速 */ if(!k.remote&&vf>22&&k.fin==null&&cd<=0){ let behind=false; for(const q of karts){ if(q===k||q.left) continue; const rx=q.x-k.x,rz=q.z-k.z,al=rx*fx+rz*fz,la=Math.abs(rx*fz-rz*fx); if(al>2.5&&al<10&&la<1.8){ behind=true; break; } } if(behind){ k.dfT=(k.dfT||0)+dt; if(k.dfT>1&&k.boostT<.2){ k.dfT=-1.2; k.boostT=1; k.bk=3; burst(k.x+fx*2,k.z+fz*2,0xe8f4ff,2.5,.6,.35); toast(k,'尾流加速！'); if(mine) env.sfx('boost'); } } else if(k.dfT>0) k.dfT=Math.max(0,k.dfT-dt*2); else if(k.dfT<0) k.dfT=Math.min(0,k.dfT+dt); }
     fx=Math.sin(k.h); fz=Math.cos(k.h); const lx=fz,lz=-fx;
     vf=k.vx*fx+k.vz*fz; let vl=k.vx*lx+k.vz*lz;
     const off=Math.abs(k.d)>HW+.5&&!k.rough;
@@ -1298,7 +1299,8 @@ function create(env,opts){
     if(itemMode){
       for(const b of boxes){ if(b.cool>0) continue; const dx=k.x-b.x,dz=k.z-b.z;
         if(dx*dx+dz*dz<10){ // 最多留兩個，滿了就丟掉最舊的
-          const got=ITEMS[(Math.random()*ITEMS.length)|0]; k.rollT=.7; k.items.push(got); const old=k.items.length>2?k.items.shift():null;
+          const ord=karts.filter(q=>!q.left).sort(rankSort),rk=ord.length>1?ord.indexOf(k)/(ord.length-1):.5; /* 前面的人多拿防守道具，後面的人多拿加速、攻擊道具 */
+          const wt=rk<.34?{nitro:1,banana:3,missile:1,shield:3,water:2,cloud:1,bolt:0}:rk<.67?{nitro:2,banana:2,missile:2,shield:2,water:2,cloud:2,bolt:1}:{nitro:4,banana:1,missile:3,shield:1,water:1,cloud:2,bolt:2}; let wr=Math.random()*ITEMS.reduce((a,q)=>a+wt[q],0),got=ITEMS[0]; for(const q of ITEMS){ if(wr<wt[q]){ got=q; break; } wr-=wt[q]; } k.rollT=.7; k.items.push(got); const old=k.items.length>2?k.items.shift():null;
           toast(k,'獲得 '+INAME[got]+(old?'（丟掉 '+INAME[old]+'）':'')); burst(b.x,b.z,0xffffff,3);
           b.cool=4; b.mesh.visible=false; if(mine) env.sfx('item'); break; } }
       for(let n=bananas.length-1;n>=0;n--){ const b=bananas[n]; if(b.owner===k.i&&b.age<.6) continue; const dx=k.x-b.x,dz=k.z-b.z;
@@ -1424,7 +1426,7 @@ function create(env,opts){
     // 甩尾時後輪冒煙（甩越久顏色越熱），噴氮氣時車尾拖出火光
     if(cd<=0) for(const k of karts){ if(k.left) continue; k.fxT=(k.fxT||0)-dt; if(k.fxT>0||!(k.flags&3)) continue; k.fxT=.045; k.fxN=(k.fxN||0)+1;
       const sx=Math.sin(k.h),cz=Math.cos(k.h);
-      if(k.flags&2){ const c=k.remote?0xffffff:k.driftT>1.4?0xff7a1a:k.driftT>DB_MIN?0xffd23f:0xffffff; for(const d of [-1,1]) burst(k.x-sx*1.3+cz*d*1.1,k.z-cz*1.3-sx*d*1.1,c,1.2,.4,.4); }
+      if(k.flags&2){ const c=k.remote?0xffffff:k.driftT>2.4?0xc06aff:k.driftT>1.4?0xff7a1a:k.driftT>DB_MIN?0xffd23f:0xffffff; for(const d of [-1,1]) burst(k.x-sx*1.3+cz*d*1.1,k.z-cz*1.3-sx*d*1.1,c,1.2,.4,.4); }
       if(k.flags&1){
         if(k.flags&256){ for(const d of [-1,1]) burst(k.x-sx*2+cz*d*1.1,k.z-cz*2-sx*d*1.1,k.fxN%2?0xffffff:0x4fd0ff,.85,.45,.24); }      // 甩噴：兩個後輪各拖一道青白色的光
         else { const st=NITRO[k.look.nitro]||NITRO.fire,nit=k.flags&128;                                                                  // 氮氣：從車尾中間噴出，樣式看造型
@@ -1725,7 +1727,7 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).kart={
   name:'極速大亂鬥',tag:'KART RACE',color:'#ffd23f',online:true,maxPlayers:6,bots:true,
   desc:'3D 賽車。過彎按住飄移集氣，集滿拿到氮氣瓶，直線衝刺超車。共 200 關、三十多種場景（森林、城鎮、工廠、冰河、太空、神話、深海、糖果、蘑菇王國、彩虹星河…），星星越多越難，4、5 星路比較窄、彎比較急，還有不好走的捷徑；新賽道有加速板、跳台和會動的障礙物；有競速賽和道具賽，可單人、雙人分割畫面，或開房間連線。',
-  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣，甩尾放開後馬上按一下 ↑ 可以甩噴（手機按 ▲）。4、5 星賽道有碎石捷徑，路短但開不快又有石頭擋路。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多），分隊時照名次算積分（第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分，只有衝過終點的人才算分），總分高的隊伍獲勝。',
+  goal:'跑 3 圈，前 3 名過關。有人衝線後倒數 15 秒就結束並頒獎。競速賽：過彎按住飄移集氣換氮氣，甩尾放開後馬上按一下 ↑ 可以甩噴（手機按 ▲），甩越久噴越久（火花黃→橘→紫）；緊跟在別台車正後方一秒會被尾流吸過去加速。4、5 星賽道有碎石捷徑，路短但開不快又有石頭擋路。道具賽：撞問號箱拿道具（氮氣、香蕉、飛彈、護盾、水球、烏雲、閃電），最多留 2 個。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多），分隊時照名次算積分（第 1 名 10 分、第 2 名 8 分，再來 6、5、4、3 分，只有衝過終點的人才算分），總分高的隊伍獲勝。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   variants:[{id:'speed',label:'競速賽'},{id:'item',label:'道具賽'},{id:'tt',label:'計時賽（鬼影，單人）'}],
   options:[{key:'team',label:'雙人／連線玩法',def:'ffa',opts:[{id:'ffa',label:'各自分開'},{id:'vs',label:'分隊對戰（電腦補人）'},{id:'pvp',label:'玩家對決（不加電腦）'},{id:'coop',label:'玩家同隊打電腦'}]}],

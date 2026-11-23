@@ -239,7 +239,7 @@ function drawBalloon(ctx,cx,cy,t,r0,shape,col){
   ctx.fillStyle=mix(c,.62); ctx.fillRect(cx-2,cy-r-3,4,4);
 }
 // 道具：外圈顏色＋下方小字，一眼看得出是什麼（水球＋1、威力＋1、速度＋1、針＝被困時脫困）
-const ITEM_INFO={b:['水球','#4f9dff'],p:['威力','#ff5d8f'],s:['速度','#ff9d3d'],n:['針','#3fbf6a']};
+const ITEM_INFO={b:['水球','#4f9dff'],p:['威力','#ff5d8f'],s:['速度','#ff9d3d'],n:['針','#3fbf6a'],k:['踢','#b06aff']};
 function drawItem(ctx,x,y,type,t){
   const cx=x+T/2,cy=y+T/2-2+Math.sin(t*4+x)*1.5,info=ITEM_INFO[type]||ITEM_INFO.n;
   ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(cx,y+T-5,11,3,0,0,7); ctx.fill();
@@ -253,6 +253,9 @@ function drawItem(ctx,x,y,type,t){
     ctx.fillStyle='#ff9d3d'; ctx.beginPath(); ctx.moveTo(cx-7,cy-8); ctx.lineTo(cx-1,cy-8); ctx.lineTo(cx-1,cy-1); ctx.quadraticCurveTo(cx+8,cy-1,cx+8,cy+4); ctx.lineTo(cx-7,cy+4); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#14122b'; ctx.lineWidth=1.2; ctx.stroke();
     ctx.strokeStyle='#fff'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(cx-6,cy-5); ctx.lineTo(cx-2,cy-5); ctx.moveTo(cx-6,cy-2); ctx.lineTo(cx-2,cy-2); ctx.stroke();
     ctx.fillStyle='#14122b'; ctx.beginPath(); ctx.arc(cx-4,cy+7,2.6,0,7); ctx.arc(cx+5,cy+7,2.6,0,7); ctx.fill(); }
+  else if(type==='k'){ // 踢：紫色球鞋＋往前的線
+    ctx.fillStyle='#b06aff'; ctx.beginPath(); ctx.moveTo(cx-6,cy-7); ctx.lineTo(cx,cy-7); ctx.lineTo(cx+1,cy); ctx.quadraticCurveTo(cx+9,cy,cx+9,cy+5); ctx.lineTo(cx-6,cy+5); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#14122b'; ctx.lineWidth=1.2; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.fillRect(cx-6,cy+3,15,2.5); ctx.strokeStyle='#14122b'; ctx.lineWidth=1.4; ctx.beginPath(); for(const yy of [-4,0]){ ctx.moveTo(cx-12,cy+yy); ctx.lineTo(cx-8,cy+yy); } ctx.stroke(); }
   else { // 針：銀色的長針，針眼穿紅線，閃一下
     ctx.save(); ctx.translate(cx,cy); ctx.rotate(-Math.PI/4);
     const g=ctx.createLinearGradient(-2,0,2,0); g.addColorStop(0,'#9aa3b5'); g.addColorStop(.5,'#ffffff'); g.addColorStop(1,'#8a93a5'); ctx.fillStyle=g;
@@ -392,6 +395,7 @@ function create(env,opts){
   const st=STAGES[opts.stage||0],D0=DIFF[opts.variant]||DIFF.normal,D=D0===DIFF.normal&&(opts.stage||0)<4?Object.assign({},D0,[{think:[.4,.65],bombP:.42,hunt:0,itemR:4,cap:3,flee:.2},{think:[.3,.5],bombP:.52,hunt:0,itemR:5,cap:4,flee:.15},{think:[.22,.38],bombP:.62,itemR:6,cap:5,flee:.12},{think:[.18,.32],bombP:.7,itemR:7,cap:6,flee:.1}][opts.stage||0]):D0,net=opts.net,client=!!net&&!net.host,local2=!net&&opts.mode==='2p',single=!net&&!local2,me=net?net.me:0,humans=net?net.count:local2?2:1;
   const {ctx}=env.canvas2d(W,H);
   const grid=new Uint8Array(N),flameT=new Float32Array(N),bombAt=new Uint8Array(N),flameC=new Uint8Array(N);
+  /* 縮場：最後 45 秒從外圈往內一圈一圈變成柱子 */ const SD_T=45,SD=[]; for(let r=0;COLS-2*r>5&&ROWS-2*r>5;r++){ const x0=r,y0=r,x1=COLS-1-r,y1=ROWS-1-r; for(let x=x0;x<=x1;x++) SD.push(y0*COLS+x); for(let y=y0+1;y<=y1;y++) SD.push(y*COLS+x1); for(let x=x1-1;x>=x0;x--) SD.push(y1*COLS+x); for(let y=y1-1;y>y0;y--) SD.push(y*COLS+x0); } const SD_STEP=(SD_T-6)/SD.length; let sdI=0,sdAcc=0,banner='',bannerT=0;
   let items=new Map(),bombs=[],pending=[],time=180,t=0,overT=0,ended=false,evq=[],sendT=0,lastSent='';
   const inputs=[],pressT=[[0,0,0,0],[0,0,0,0]];
   const sfx=n=>{ env.sfx(n); if(net&&net.host) evq.push(n); };
@@ -408,7 +412,7 @@ function create(env,opts){
   const keep=new Set(); for(const [sx,sy] of SPAWN.slice(0,Math.max(4,total))){ for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]) keep.add((sy+dy)*COLS+sx+dx); }
   if(!client){ const g=layout(st,keep,Math.random); for(let i=0;i<N;i++) grid[i]=g[i]; }
   const players=SPAWN.slice(0,total).map(([x,y],i)=>({id:i,x,y,rx:x,ry:y,dir:1,moving:false,state:'alive',trapT:0,inv:0,
-    maxB:i<humans?1:D.maxB,power:i<humans?1:D.power,spd:0,needles:0,human:i<humans,team:teamOf(i),
+    maxB:i<humans?1:D.maxB,power:i<humans?1:D.power,spd:0,needles:0,kick:0,human:i<humans,team:teamOf(i),
     name:local2&&i<2?(i+1)+'P':i===me?'你':i<humans?((net&&net.names&&net.names[i])||'玩家'+(i+1)).slice(0,5):'電腦',
     ai:i<humans?null:{think:Math.random()*.5,path:[],flee:false,avoid:new Map()}}));
   for(let i=0;i<total;i++) inputs.push({dir:-1,bomb:false});
@@ -438,7 +442,7 @@ function create(env,opts){
     const i=cellOf(p); if(p.state!=='alive'||bombAt[i]||active(p)>=p.maxB) return false;
     bombs.push({x:i%COLS,y:(i/COLS)|0,t:FUSE,power:p.power,owner:p.id,done:false}); bombAt[i]=1; sfx('place'); return true;
   }
-  function rollItem(){ const r=Math.random(); return r<.32?'b':r<.6?'p':r<.82?'s':'n'; } // 針 18%
+  function rollItem(){ const r=Math.random(); return r<.3?'b':r<.56?'p':r<.76?'s':r<.9?'n':'k'; } // 針 14%、踢 10%
   function detonate(first){
     const q=[first]; first.done=true;
     while(q.length){ const b=q.pop(),i0=b.y*COLS+b.x,wc=players[b.owner]?players[b.owner].wc:0; bombAt[i0]=0; flameT[i0]=FLAME; flameC[i0]=wc;
@@ -544,14 +548,14 @@ function create(env,opts){
     let g=''; for(let i=0;i<N;i++) g+=grid[i];
     const f=[]; for(let i=0;i<N;i++) if(flameT[i]>0) f.push(i,r2(flameT[i]),flameC[i]);
     const m={s:1,g,i:[...items],b:bombs.map(b=>[b.x,b.y,r2(b.t),b.owner]),f,tm:Math.ceil(time),e:evq,
-      p:players.map(p=>[r2(p.x),r2(p.y),p.dir,p.state==='alive'?0:p.state==='trapped'?1:2,r2(p.trapT),p.maxB,p.power,p.spd,p.needles,p.moving?1:0])};
+      p:players.map(p=>[r2(p.x),r2(p.y),p.dir,p.state==='alive'?0:p.state==='trapped'?1:2,r2(p.trapT),p.maxB,p.power,p.spd,p.needles,p.moving?1:0,p.kick?1:0])};
     evq=[]; return m;
   }
   function apply(m){
     for(let i=0;i<N;i++){ grid[i]=m.g.charCodeAt(i)-48; flameT[i]=0; bombAt[i]=0; }
     for(let k=0;k<m.f.length;k+=3){ flameT[m.f[k]]=m.f[k+1]; flameC[m.f[k]]=m.f[k+2]; }
     items=new Map(m.i); bombs=m.b.map(b=>({x:b[0],y:b[1],t:b[2],owner:b[3]})); time=m.tm; for(const b of bombs) bombAt[b.y*COLS+b.x]=1;
-    m.p.forEach((a,i)=>{ const p=players[i],keep=i===me&&a[3]===0&&p.state==='alive'&&Math.abs(p.x-a[0])+Math.abs(p.y-a[1])<1.6; if(!keep){ p.x=a[0]; p.y=a[1]; p.dir=a[2]; } p.state=a[3]===0?'alive':a[3]===1?'trapped':'dead'; p.trapT=a[4]; p.maxB=a[5]; p.power=a[6]; p.spd=a[7]; p.needles=a[8]; p.moving=!!a[9]; });
+    m.p.forEach((a,i)=>{ const p=players[i],keep=i===me&&a[3]===0&&p.state==='alive'&&Math.abs(p.x-a[0])+Math.abs(p.y-a[1])<1.6; if(!keep){ p.x=a[0]; p.y=a[1]; p.dir=a[2]; } p.state=a[3]===0?'alive':a[3]===1?'trapped':'dead'; p.trapT=a[4]; p.maxB=a[5]; p.power=a[6]; p.spd=a[7]; p.needles=a[8]; p.moving=!!a[9]; p.kick=a[10]||0; });
     for(const n of m.e) env.sfx(n);
   }
   if(net){
@@ -577,7 +581,10 @@ function create(env,opts){
     time-=dt;
     for(let i=0;i<N;i++) if(flameT[i]>0) flameT[i]-=dt;
     for(let k=pending.length-1;k>=0;k--){ const it=pending[k]; it.t-=dt; if(it.t<=0){ pending.splice(k,1); if(!grid[it.i]&&!bombAt[it.i]&&flameT[it.i]<=0) items.set(it.i,it.type); } }
-    for(const b of bombs) b.t-=dt;
+    for(const b of bombs){ b.t-=dt; if(b.kv&&(b.kt-=dt)<=0){ b.kt=1/9; const nx=b.x+b.kv[0],ny=b.y+b.kv[1],ni=ny*COLS+nx; /* 被踢的水球一格一格滑，撞到東西停下 */
+      if(blocked(nx,ny)||players.some(q=>q.state!=='dead'&&Math.round(q.x)===nx&&Math.round(q.y)===ny)) b.kv=null; else { bombAt[b.y*COLS+b.x]=0; b.x=nx; b.y=ny; bombAt[ni]=1; items.delete(ni); if(flameT[ni]>0) b.t=0; } } }
+    if(time<=SD_T&&sdI<SD.length){ sdAcc+=dt; while(sdAcc>=SD_STEP&&sdI<SD.length){ sdAcc-=SD_STEP; const i=SD[sdI++]; if(grid[i]===1||grid[i]===3) continue; grid[i]=1; items.delete(i); flameT[i]=0; /* 縮場：外圈一格一格變成柱子 */
+      const bb=bombs.find(b=>b.y*COLS+b.x===i); if(bb){ bb.done=true; bombs=bombs.filter(b=>b!==bb); } bombAt[i]=0; for(const q of players) if(q.state!=='dead'&&Math.round(q.y)*COLS+Math.round(q.x)===i){ q.state='dead'; sfx('pop'); } } }
     for(;;){ const b=bombs.find(b=>b.t<=0&&!b.done); if(!b) break; detonate(b); }
 
     for(const p of players){
@@ -596,11 +603,11 @@ function create(env,opts){
           else if(p.trapT<=0){ p.state='dead'; sfx('pop'); continue; } }
       } else if(bomb) placeBomb(p);
       p.moving=dir>=0;
-      if(dir>=0){ p.dir=dir; step(p,dir,speedOf(p)*dt); }
+      if(dir>=0){ p.dir=dir; step(p,dir,speedOf(p)*dt); if(p.kick&&p.state==='alive'){ const fx=Math.round(p.x)+DIRS[dir][0],fy=Math.round(p.y)+DIRS[dir][1],b=bombs.find(o=>!o.done&&!o.kv&&o.x===fx&&o.y===fy); if(b&&Math.abs(p.x-fx)+Math.abs(p.y-fy)<1.08){ b.kv=DIRS[dir]; b.kt=0; sfx('place'); } } }
       const c=cellOf(p);
       if(p.state==='alive'){
         const it=items.get(c);
-        if(it){ items.delete(c); sfx('item'); const cap=p.human?99:D.cap; if(it==='b') p.maxB=Math.min(6,cap,p.maxB+1); else if(it==='p') p.power=Math.min(7,cap,p.power+1); else if(it==='s') p.spd=Math.min(5,p.spd+1); else p.needles=Math.min(3,p.needles+1); }
+        if(it){ items.delete(c); sfx('item'); const cap=p.human?99:D.cap; if(it==='b') p.maxB=Math.min(6,cap,p.maxB+1); else if(it==='p') p.power=Math.min(7,cap,p.power+1); else if(it==='s') p.spd=Math.min(5,p.spd+1); else if(it==='k'){ p.kick=1; if(p.id===me||local2&&p.id<2) banner='撿到「踢」！走去碰水球就能踢出去',bannerT=2.5; } else p.needles=Math.min(3,p.needles+1); }
         if(flameT[c]>0&&p.inv<=0){ p.state='trapped'; p.trapT=TRAP; if(p.ai) p.ai.path=[]; sfx('trap'); }
       }
       p.rx=p.x; p.ry=p.y;
@@ -627,8 +634,8 @@ function create(env,opts){
       ctx.font='700 13px '+TC; ctx.fillStyle=wide?(p.state==='dead'?'#6b6799':'#fff'):sc; ctx.fillText(p.name,x+25,19);
       if(wide){ ctx.textAlign='right'; ctx.fillStyle=sc; ctx.fillText(p.state==='alive'?'存活':p.state==='trapped'?'被困':'出局',x+114,19); ctx.textAlign='left'; } });
     const mp=players[me]; ctx.font='700 13px '+TC; ctx.fillStyle='#aaa4d8';
-    if(local2){ for(const q of [players[0],players[1]]){ ctx.fillStyle=q.col; ctx.fillText(q.name+'　水球 '+q.maxB+'　威力 '+q.power+'　速度 '+(q.spd+1)+'　針 '+q.needles,12+q.id*300,49); } }
-    else ctx.fillText('水球 '+mp.maxB+'　威力 '+mp.power+'　速度 '+(mp.spd+1)+'　針 '+mp.needles,12,49);
+    if(local2){ for(const q of [players[0],players[1]]){ ctx.fillStyle=q.col; ctx.fillText(q.name+'　水球 '+q.maxB+'　威力 '+q.power+'　速度 '+(q.spd+1)+'　針 '+q.needles+(q.kick?'　踢':''),12+q.id*300,49); } }
+    else ctx.fillText('水球 '+mp.maxB+'　威力 '+mp.power+'　速度 '+(mp.spd+1)+'　針 '+mp.needles+(mp.kick?'　踢':''),12,49);
     if(local2){} else if(mp.state==='trapped'){ ctx.textAlign='right'; ctx.fillStyle='#ffd23f'; ctx.fillText(mp.needles>0?'按水球鍵用針脫困！':'被困住了…',W-12,49); ctx.textAlign='left'; }
     else if(mp.state==='dead'&&net){ ctx.textAlign='right'; ctx.fillStyle='#aaa4d8'; ctx.fillText('已出局，觀戰中',W-12,49); ctx.textAlign='left'; }
 
@@ -668,6 +675,7 @@ function create(env,opts){
         ctx.font='700 14px '+TC; ctx.fillStyle='#fff'; ctx.fillText(mem.map(p=>p.name).join('、'),x,by+56);
         if(mem.some(p=>viewers.includes(p))){ ctx.font='700 11px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText(local2?'（'+mem.filter(p=>viewers.includes(p)).map(p=>p.name).join('、')+' 的隊伍）':'（你的隊伍）',x,by+78); } });
       ctx.fillStyle='#ffd23f'; ctx.font='900 22px '+PIX; ctx.fillText('VS',bx+bw/2,by+bh/2); ctx.globalAlpha=1; }
+    { const sdw=time<=SD_T&&time>SD_T-4&&!ended,msg=sdw?'時間快到了！場地從外圈開始縮小':bannerT>0?banner:''; if(bannerT>0) bannerT-=1/60; if(msg){ ctx.font='900 18px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; const tw=ctx.measureText(msg).width+30; ctx.fillStyle=sdw?'rgba(200,30,60,.88)':'rgba(11,10,28,.86)'; ctx.fillRect(W/2-tw/2,ROWS*T-58,tw,36); ctx.fillStyle='#fff'; ctx.fillText(msg,W/2,ROWS*T-40); } }
     ctx.restore();
   }
   return {update,draw,destroy(){},_dbg:{players,grid,bombs:()=>bombs,inputs}};
@@ -723,7 +731,7 @@ function thumb(ctx,w,h,t){
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bomb={_draw:drawChar,_item:drawItem,
   name:'水球炸翻天',tag:'WATER BOMB',color:'#ff5d8f',online:true,maxPlayers:6,bots:true,minPlayers:2,
   desc:'放水球炸開箱子、撿道具，把對手困進水泡再碰破。200 關、50 個場景（村莊、沙漠、冰原、海盜船、海底、萬聖節、雪人村、天空之城、夜市廟會、熊貓竹林、恐龍谷、外星基地、童話城堡、星空遊樂園…）、電腦有簡單／中等／困難三種強度，可單人、兩人同一台，或開房間連線對戰。',
-  goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困。沒有針被困住就會出局。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一定一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多）。分隊時隊友被困住，走過去碰一下就能救出來。',
+  goal:'放水球把對手困進水泡，再走過去碰破。炸開箱子會掉道具：藍色「水球」多放一顆、粉紅「威力」水柱變長、橘色「速度」跑更快、綠色「針」被困住時按水球鍵就能脫困、紫色「踢」走去碰水球就能踢出去。最後 45 秒場地會從外圈縮小。沒有針被困住就會出局。雙人和連線可以選玩法：「各自分開」、「分隊對戰」（兩隊人數一定一樣，1 對 1、2 對 2、3 對 3，不夠由電腦補）、「玩家對決」（不加電腦，雙人就是 1P 對 2P）或「玩家同隊打電腦」（電腦和玩家一樣多）。分隊時隊友被困住，走過去碰一下就能救出來。',
   stages:STAGES.map(s=>s.name),stageSize:[360,312],
   variants:[{id:'easy',label:'電腦：簡單'},{id:'normal',label:'電腦：中等',def:true},{id:'hard',label:'電腦：困難'}],
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],

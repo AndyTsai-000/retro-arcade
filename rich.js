@@ -77,7 +77,7 @@ function create(env,opts){
   const humans=net?net.count:hot?seats:1,me=net?net.me:0,ROUNDS=+OP.rounds||15,START=+OP.cash||15000,PACE=({slow:2,normal:1.5,fast:1})[OP.pace||'normal']||1.5; // 動作之間停多久
   const isAI=p=>p>=humans||left.has(p),left=new Set(),sfx=n=>env.sfx(n);
   const {ctx:c,canvas}=env.canvas2d(W,H);
-  const names=[]; for(let p=0;p<seats;p++) names.push(p<humans?(net?(net.names&&net.names[p])||'玩家 '+(p+1):hot?'玩家 '+(p+1):(opts.name||'你')):'電腦 '+(p-humans+1));
+  const names=[]; for(let p=0;p<seats;p++) names.push(p<humans?(net?(net.names&&net.names[p])||'玩家 '+(p+1):hot?'玩家 '+(p+1):(opts.name||'你')):'電腦 '+(p-humans+1)+'・'+['保守','普通','積極'][p%3]);
   const looks=[]; for(let p=0;p<seats;p++) looks.push(net?(net.looks&&net.looks[p])||{}:p===0?opts.look||{}:{});
   let G={tiles:TI.map(()=>({own:-1,lv:0})),pl:[],turn:0,phase:'intro',dice:[3,4],ds:0,mv:null,ms:0,card:null,cs:0,prompt:null,log:'',hist:[],round:1,pot:0,over:null,fx:[],fs:0,wait:2.6,after:'start'};
   for(let p=0;p<seats;p++) G.pl.push({cash:START,pos:0,out:false,hosp:0,free:0,cards:{buy:0,swap:0}});
@@ -90,17 +90,18 @@ function create(env,opts){
   const owned=p=>G.tiles.map((x,i)=>i).filter(i=>G.tiles[i].own===p);
   const groupAll=(g,p)=>TI.filter(x=>x.g===g).every(x=>G.tiles[x.i].own===p);
   function rent(i){ const T=TI[i],S=G.tiles[i]; if(T.type==='st') return 300*owned(S.own).filter(j=>TI[j].type==='st').length; return T.base*[1,3,6,10][S.lv]*(S.lv===0&&groupAll(T.g,S.own)?2:1); }
-  const assets=p=>G.pl[p].cash+owned(p).reduce((a,i)=>a+TI[i].price+(TI[i].cost||0)*G.tiles[i].lv,0);
+  const assets=p=>G.pl[p].cash+owned(p).reduce((a,i)=>a+TI[i].price*(G.tiles[i].mort?.45:1)+(TI[i].cost||0)*G.tiles[i].lv,0);
 
   /* ----- 規則（房主執行） ----- */
   function pay(a,b,amt){ if(amt<=0) return; G.pl[a].cash-=amt; if(b>=0) G.pl[b].cash+=amt; else if(b===-2) G.pot+=amt; flow(a,b,amt); sfx('bump'); if(G.pl[a].cash<0) liquidate(a); }
   function gain(p,amt){ G.pl[p].cash+=amt; flow(-1,p,amt); sfx('item'); }
   function liquidate(p){ const pl=G.pl[p]; const mine=owned(p).sort((x,y)=>(TI[y].price||0)-(TI[x].price||0));
     for(const i of mine){ while(pl.cash<0&&G.tiles[i].lv>0){ G.tiles[i].lv--; pl.cash+=Math.round(TI[i].cost/2); } }
-    for(const i of mine){ if(pl.cash>=0) break; G.tiles[i].own=-1; pl.cash+=Math.round(TI[i].price/2); }
-    if(pl.cash<0){ pl.out=true; pl.cash=0; for(const i of owned(p)){ G.tiles[i].own=-1; G.tiles[i].lv=0; } toast(names[p]+' 破產了！','#ff6b7d'); log(names[p]+' 破產出局'); sfx('lose'); }
-    else toast(names[p]+' 賣掉地產還債','#ff9a5d'); }
+    let mg=0; for(const i of mine){ if(pl.cash>=0) break; if(G.tiles[i].mort) continue; G.tiles[i].mort=1; mg++; pl.cash+=Math.round(TI[i].price/2); log(names[p]+' 抵押「'+TI[i].name+'」換 '+money(Math.round(TI[i].price/2))); } /* 先抵押：地還是自己的，但收不到過路費 */
+    if(pl.cash<0){ pl.out=true; pl.cash=0; for(const i of owned(p)){ G.tiles[i].own=-1; G.tiles[i].lv=0; G.tiles[i].mort=0; } toast(names[p]+' 破產了！','#ff6b7d'); log(names[p]+' 破產出局'); sfx('lose'); }
+    else toast(names[p]+(mg?' 抵押地產還債（之後錢夠會自動贖回）':' 賣掉房子還債'),'#ff9a5d'); }
   function startTurn(){ const pl=G.pl[G.turn]; G.prompt=null; G.card=null;
+    for(const i of owned(G.turn)){ const S=G.tiles[i],cost=Math.round(TI[i].price*.55); if(S.mort&&pl.cash-cost>=1500){ S.mort=0; pay(G.turn,-1,cost); toast(names[G.turn]+' 贖回「'+TI[i].name+'」','#86dc4f'); log(names[G.turn]+' 花 '+money(cost)+' 贖回「'+TI[i].name+'」'); } } /* 錢夠就自動贖回抵押的地 */
     if(pl.hosp>0){ pl.hosp--; log(names[G.turn]+' 在'+M.corner[1]+'休息，這回合不能走'); toast(names[G.turn]+' 在'+M.corner[1]+'休息，這回合不能走','#9ad6ff');
       if(isAI(G.turn)){ G.phase='wait'; G.wait=2*PACE; G.after='end'; } else { G.phase='rest'; G.prompt={k:'rest',i:pl.pos}; } return; }
     G.phase='roll'; log('輪到 '+names[G.turn]+'，擲骰子！'); }
@@ -122,8 +123,8 @@ function create(env,opts){
     if(T.type==='amb'){ toast(names[p]+' 被救護車載去'+M.corner[1]+'，下一回合要休息','#ff6b7d'); log(names[p]+' 被送去'+M.corner[1]+'，下一回合休息'); pl.hosp=1; sfx('hurt'); warp(p,8); G.after='endAfterWarp'; return; }
     endSoon(.8); }
   function endSoon(d){ G.phase='wait'; G.wait=d*PACE; G.after='end'; }
-  function payRent(p,i){ const pl=G.pl[p],S=G.tiles[i],r=rent(i); if(pl.free>0){ pl.free--; toast('用了免過路費卡！'); log(names[p]+' 用免過路費卡'); } else { pay(p,S.own,r); toast(names[p]+' 付過路費 '+money(r)+' 給 '+names[S.own],'#ff9a5d'); log(names[p]+' 付過路費 '+money(r)+' 給 '+names[S.own]); } }
-  function ownLand(p){ const pl=G.pl[p],T=TI[pl.pos],S=G.tiles[pl.pos]; if(T.type==='prop'&&S.lv<3&&pl.cash>=T.cost){ G.phase='build'; G.prompt={k:'build',i:pl.pos}; log(names[p]+' 要在「'+T.name+'」加蓋嗎？'); } else endSoon(.8); }
+  function payRent(p,i){ const pl=G.pl[p],S=G.tiles[i],r=rent(i); if(S.mort){ toast('「'+TI[i].name+'」抵押中，不用付過路費','#9ad6ff'); log('「'+TI[i].name+'」抵押中，不用付過路費'); return; } if(pl.free>0){ pl.free--; toast('用了免過路費卡！'); log(names[p]+' 用免過路費卡'); } else { pay(p,S.own,r); toast(names[p]+' 付過路費 '+money(r)+' 給 '+names[S.own],'#ff9a5d'); log(names[p]+' 付過路費 '+money(r)+' 給 '+names[S.own]); } }
+  function ownLand(p){ const pl=G.pl[p],T=TI[pl.pos],S=G.tiles[pl.pos]; if(S.mort){ log('「'+T.name+'」抵押中，贖回後才能加蓋'); return endSoon(.8); } if(T.type==='prop'&&S.lv<3&&pl.cash>=T.cost){ G.phase='build'; G.prompt={k:'build',i:pl.pos}; log(names[p]+' 要在「'+T.name+'」加蓋嗎？'); } else endSoon(.8); }
   const swapTargets=p=>G.tiles.map((x,i)=>i).filter(i=>{ const o=G.tiles[i].own; return o>=0&&o!==p&&!G.pl[o].out; });
   const worth=i=>TI[i].price+(TI[i].cost||0)*G.tiles[i].lv;
   function applyCard(){ const p=G.turn,pl=G.pl[p],e=G.cardFx||{}; G.card=null;
@@ -147,7 +148,7 @@ function create(env,opts){
     G.turn=n; startTurn(); }
   function decide(p,yes){ if(G.turn!==p||!G.prompt) return '還沒輪到你'; const i=G.prompt.i,T=TI[i],S=G.tiles[i],pl=G.pl[p],k=G.prompt.k;
     if(k==='rest'){ G.prompt=null; endSoon(.4); return null; }
-    if(k==='force'){ G.prompt=null; const ow=S.own; if(yes){ if(pl.cash<T.price) return '錢不夠'; pl.cards.buy--; pay(p,ow,T.price); S.own=p; toast(names[p]+' 用購地卡買下 '+names[ow]+' 的「'+T.name+'」！','#ff7eb6'); log(names[p]+' 用購地卡付原價 '+money(T.price)+' 買下「'+T.name+'」'); sfx('win'); } else payRent(p,i); endSoon(1.4); return null; }
+    if(k==='force'){ G.prompt=null; const ow=S.own; if(yes){ if(pl.cash<T.price) return '錢不夠'; pl.cards.buy--; pay(p,ow,T.price); S.own=p; S.mort=0; toast(names[p]+' 用購地卡買下 '+names[ow]+' 的「'+T.name+'」！','#ff7eb6'); log(names[p]+' 用購地卡付原價 '+money(T.price)+' 買下「'+T.name+'」'); sfx('win'); } else payRent(p,i); endSoon(1.4); return null; }
     if(k==='swap'){ if(yes){ G.phase='pick'; G.prompt={k:'pick',i,targets:swapTargets(p)}; log('選一塊別人的地來交換'); return null; } G.prompt=null; ownLand(p); return null; }
     if(k==='pick'){ G.prompt=null; ownLand(p); return null; }
     if(G.prompt.k==='buy'&&yes){ if(pl.cash<T.price) return '錢不夠'; pl.cash-=T.price; S.own=p; flow(p,-1,T.price); toast(names[p]+' 買下「'+T.name+'」','#86dc4f'); sfx('place'); log(names[p]+' 買下「'+T.name+'」'); }
@@ -163,15 +164,16 @@ function create(env,opts){
     else { net.onmsg=(m,from)=>{ if(!m.act) return; const err=doAct(from,m.act); if(err) net.send({bad:[from,err]}); broadcast(); };
       net.onleave=i=>{ names[i]+='（離開）'; left.add(i); broadcast(); }; } }
   // 電腦：錢夠就買（留一點預備金），能湊成同色就一定買；錢多才蓋房子
-  function ai(p){ const pl=G.pl[p];
+  const PERS=[1.5,1,.55]; /* 電腦個性：保守的人留比較多現金，積極的人看到地就買 */
+  function ai(p){ const pl=G.pl[p],pk=PERS[p%3];
     if(G.phase==='roll') return roll(p);
     if(G.prompt&&G.prompt.k==='rest') return decide(p,true);
     if(G.prompt&&G.prompt.k==='force'){ const i=G.prompt.i,T=TI[i],S=G.tiles[i]; return decide(p,pl.cash-T.price>=1500&&(S.lv>=1||T.price>=1400||T.g!=null&&TI.some(x=>x.g===T.g&&x.i!==i&&G.tiles[x.i].own===p))); }
     if(G.prompt&&(G.prompt.k==='swap'||G.prompt.k==='pick')){ const i=G.prompt.i,best=swapTargets(p).sort((a,b)=>worth(b)-worth(a))[0],good=best!=null&&worth(best)-worth(i)>=800;
       if(G.prompt.k==='swap') return decide(p,good); return good?pick(p,best):decide(p,false); }
-    if(G.prompt){ const T=TI[G.prompt.i],reserve=1500+G.round*150; let yes;
-      if(G.prompt.k==='buy') yes=pl.cash-T.price>=reserve||(T.g!=null&&TI.some(x=>x.g===T.g&&x.i!==T.i&&G.tiles[x.i].own===p)&&pl.cash-T.price>=500);
-      else yes=pl.cash-T.cost>=reserve+1000; return decide(p,yes); } }
+    if(G.prompt){ const T=TI[G.prompt.i],reserve=(1500+G.round*150)*pk; let yes;
+      if(G.prompt.k==='buy') yes=pl.cash-T.price>=reserve||(T.g!=null&&TI.some(x=>x.g===T.g&&x.i!==T.i&&G.tiles[x.i].own===p)&&pl.cash-T.price>=500*pk);
+      else yes=pl.cash-T.cost>=reserve+1000*pk; return decide(p,yes); } }
   let msg='',msgT=0; const showMsg=s=>{ msg=s; msgT=2; sfx('bump'); };
 
   /* ----- 更新 ----- */
@@ -229,7 +231,7 @@ function create(env,opts){
     if(boardImg) c.drawImage(boardImg,0,0,W,H);
     // 地產主人和房子
     G.tiles.forEach((S,i)=>{ if(S.own<0) return; const [x,y,w,h,side]=rect(i),X=BX+x,Y=BY+y,col=PCOL[S.own%4];
-      c.strokeStyle=col; c.lineWidth=3; rr(c,X+2,Y+2,w-4,h-4,6); c.stroke();
+      c.strokeStyle=col; c.lineWidth=3; rr(c,X+2,Y+2,w-4,h-4,6); c.stroke(); if(S.mort){ c.fillStyle='rgba(40,40,50,.55)'; rr(c,X+2,Y+2,w-4,h-4,6); c.fill(); c.save(); c.translate(X+w/2,Y+h/2); c.rotate(-.35); c.font='900 12px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#ff6b7d'; c.fillText('抵押',0,0); c.restore(); }
       const fx=X+(side===3?w-10:side===1?10:w-9),fy=Y+(side===0?h-12:side===2?12:h-12); c.fillStyle=col; c.beginPath(); c.moveTo(fx,fy); c.lineTo(fx,fy-12); c.lineTo(fx-9,fy-8); c.lineTo(fx,fy-5); c.fill(); c.fillStyle='#2a1a26'; c.fillRect(fx,fy-12,1.4,13);
       if(S.lv>0){ const bx=X+w/2,by=side===0?Y+h*.62:side===2?Y+h*.62:Y+h*.72; drawBuilding(bx,by,S.lv,col,side===1||side===3?.9:.85); } });
     if(G.prompt&&G.prompt.k==='pick'){ const pk=G.prompt.targets,mineP=hot?!isAI(G.turn):G.turn===me; pk.forEach((j,n)=>{ const [x,y,w,h]=rect(j),hv=hover&&hover[0]>=BX+x&&hover[0]<BX+x+w&&hover[1]>=BY+y&&hover[1]<BY+y+h,on=mineP&&(hv||n===pickSel);
@@ -357,7 +359,7 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).rich={
   name:'環島地產王',tag:'PROPERTY KING',color:'#e23b3b',online:true,maxPlayers:4,bots:true,minPlayers:2,
   desc:'擲骰子繞著 40 格棋盤跑，十張地圖從寶島、海底到外太空，買地蓋房子收過路費！和電腦玩、同一台輪流玩，或開房間 2～4 人連線。',
-  goal:'擲骰子前進，買地、蓋房子，別人停到你的地要付過路費。打完回合數時總資產最多的人贏（或其他人都破產）。',
+  goal:'擲骰子前進，買地、蓋房子，別人停到你的地要付過路費。打完回合數時總資產最多的人贏（或其他人都破產）。錢不夠時會先賣房子、再抵押土地（抵押中收不到過路費，之後錢夠會自動贖回）。電腦有保守、普通、積極三種個性。',
   stageGoal:si=>'地圖「'+MAPS[si].name+'」：停到空地可以買，機會、命運可能抽到購地卡（停到別人的地時付原價強制買下）和換地卡（停在自己的地上時跟別人的地互換），再停到自己的地可以加蓋（最多三層大樓），同色三塊都買下過路費加倍。經過起點拿 $2,000；機會、命運卡有好有壞；停到救護車會被送去'+MAPS[si].corner[1]+'休息一回合；罰款會放進'+MAPS[si].corner[2]+'，誰停到就全部拿走。錢不夠會自動賣房賣地，還是不夠就破產。',
   stages:MAPS.map(m=>m.name),stageLabel:'選擇地圖',
   modes:[{id:'1p',label:'和電腦玩'},{id:'local',label:'同一台輪流玩'}],

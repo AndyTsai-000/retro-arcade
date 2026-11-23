@@ -404,7 +404,10 @@ function create(env,opts){
       const r2=AR*rad*(.85+Math.random()*.3),e=f.ai?(1-f.ai.sk)*50:0; f.tx=Math.cos(a)*r2+(Math.random()-.5)*e; f.ty=Math.sin(a)*r2+(Math.random()-.5)*e; clampAim(f,1); clampAim(f); }); }
   function land(f){ const L=LPOS[f.i]||LPOS[0],dx=f.lx-L[0],dy=f.ly-L[1],d=hyp(dx,dy)||1,r=hyp(f.lx,f.ly)||1,K=f.k; f.x=f.lx; f.y=f.ly;
     const v0=K.cruise*.6+20; f.vx=-f.ly/r*K.dir*v0*.6-f.lx/r*v0*.3; f.vy=f.lx/r*K.dir*v0*.6-f.ly/r*v0*.3; addFx('land',f.x,f.y); } /* 落地後往中間衝、帶一點旋轉方向的偏移（花瓣路線） */
-  function setupRound(){ round++; rt=0; phase='aim'; PT=opts.preview?1.2:5.6; lastBeep=9; deb=[]; focus=null; if(!client) T.forEach(setP);
+  /* 終結慢動作重播：記錄最後幾秒，擊飛／爆裂／極限勝利時慢動作重播 */
+  let REC=[],rpWant=false,rpDone=false; const RPD=3,RPK=['x','y','vx','vy','ang','spin','st','out','fly','split','ox','oy'];
+  const recFrame=()=>{ REC.push({t,f:T.map(f=>{ const o={}; for(const k of RPK) o[k]=f[k]; return o; })}); while(REC.length&&REC[0].t<t-3) REC.shift(); };
+  function setupRound(){ REC=[]; rpWant=false; rpDone=false; round++; rt=0; phase='aim'; PT=opts.preview?1.2:5.6; lastBeep=9; deb=[]; focus=null; if(!client) T.forEach(setP);
     T.forEach(f=>{ setRPM(f,f.ai?Math.round((9000+f.ai.sk*6000+Math.random()*1200)/10)*10:15000); f.bm=0; f.st='on'; f.dashT=0; f.cd=1; f.railCD=0; f.last=-1; f.lastT=-9; f.out=0; f.lastX=-9; f.dEnd=-9; f.split=false; f.sh=null; f.lp=0; f.landed=false; f.pull=0; f.grab=false; f.aiR=(f.human?9:.22+(f.ai?(1-f.ai.sk)*.45:.2)+Math.random()*.18); }); BUL=[];
     prepAim(); if(round>1) voice('第 '+round+' 回合，選好落點！'); }
   setupRound(); if(!R.pv&&R.humans) phase='deck';
@@ -447,7 +450,7 @@ function create(env,opts){
     c.fillStyle=cur===3?'#ffd23f':'#3ed16a'; rr(c,BTN[0],BTN[1],BTN[2],BTN[3],12); c.fill(); c.fillStyle='#14122b'; c.font='900 18px '+TC; c.fillText(local2&&ed===0?'確定，換 2P':'確定出場',W/2,BTN[1]+24);
     if(waiting){ c.fillStyle='rgba(8,8,20,.7)'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='900 24px '+TC; c.fillText('等對手組好陀螺…',W/2,H/2); } }
   // 終結判定與給分
-  function finish(f,kind,pk){ if(f.st!=='on') return; f.st=kind==='spin'?'stop':kind==='burst'?'burst':'out'; f.out=0; f.ox=f.x; f.oy=f.y; f.fly=(kind==='over'||kind==='x')&&!pk;
+  function finish(f,kind,pk){ if(f.st!=='on') return; if(kind!=='spin') rpWant=true; f.st=kind==='spin'?'stop':kind==='burst'?'burst':'out'; f.out=0; f.ox=f.x; f.oy=f.y; f.fly=(kind==='over'||kind==='x')&&!pk;
     const vk=teamKey(f); let to=null; if(f.last>=0&&rt-f.lastT<4&&teamKey(T[f.last])!==vk&&T[f.last].st==='on') to=teamKey(T[f.last]);
     if(!to){ const alive=[...new Set(T.filter(q=>q.st==='on'&&teamKey(q)!==vk).map(teamKey))]; if(alive.length===1) to=alive[0]; }
     const F=FIN[kind]; if(to) score[to]+=F.p;
@@ -540,6 +543,8 @@ function create(env,opts){
     deb=deb.filter(d=>d.l>0);
     if(ban) ban.t+=dt; if(shake>0) shake-=dt;
     for(const f of T) if(f.st!=='on') f.out=Math.min(1.5,f.out+dt);
+    if(phase==='fight'||phase==='after'&&PT>1.3) recFrame();
+    if(phase==='replay'){ PT-=dt; if(PT<=0&&!client){ phase='after'; PT=.001; } if(net&&!client){ sendT-=dt; if(sendT<=0){ sendT=1/20; net.send({s:{f:T.map(pk),sc:score,ph:phase,pt:R1(PT),rd:round,fo:fouls,rt:R1(rt),wa:R1(windA),ev,bl:[]}}); ev=[]; } } return; }
     if(hitstop>0){ hitstop-=dt; return; }
     if(phase==='deck'){ deckKeys(); if(net){ deckT-=dt; if(deckT<=0&&!waiting) confirmDeck(); }
       if(!client){ if(net&&deckT<-5) T.forEach((f,i)=>rdy[i]=true); if(rdy.every(Boolean)){ T.forEach(setP); prepAim(); phase='aim'; PT=5.6; lastBeep=9; waiting=false; voice('第 1 回合，選好落點！'); }
@@ -572,7 +577,7 @@ function create(env,opts){
       if(phase==='fight'){ const ak=aliveKeys();
         if(ak.length<=1) endRound();
         else if(rt>=RT){ /* 時間到：轉速最高的一方拿旋轉勝利 */ let best=null,bs=-1; for(const f of T) if(f.st==='on'&&f.spin>bs){ bs=f.spin; best=f; } const loser=T.filter(f=>f.st==='on'&&teamKey(f)!==teamKey(best)); for(const f of loser){ f.last=best.i; f.lastT=rt; finish(f,'spin'); } endRound(); } }
-      else { PT-=sdt; if(PT<=0){ const top=Object.keys(score).filter(k=>score[k]>=TARGET).sort((a,b)=>score[b]-score[a]); if(top.length){ winKey=top[0]; phase='over'; PT=3.2; snd('win'); voice('比賽結束！'+keyName(winKey)+' 獲勝！'); roar(1,3); if(net) net.send({end:winKey}); } else { ban=null; setupRound(); } } } }
+      else { PT-=sdt; if(PT<=0&&rpWant&&!rpDone&&REC.length>20&&!opts.preview){ rpDone=true; phase='replay'; PT=RPD; voice('看一下慢動作重播！',1); } else if(PT<=0){ const top=Object.keys(score).filter(k=>score[k]>=TARGET).sort((a,b)=>score[b]-score[a]); if(top.length){ winKey=top[0]; phase='over'; PT=3.2; snd('win'); voice('比賽結束！'+keyName(winKey)+' 獲勝！'); roar(1,3); if(net) net.send({end:winKey}); } else { ban=null; setupRound(); } } } }
     else if(phase==='over'){ PT-=dt; if(PT<=0&&!ended){ ended=true; finishGame(); } }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/20; net.send({s:{f:T.map(pk),sc:score,ph:phase,pt:R1(PT),rd:round,fo:fouls,rt:R1(rt),wa:R1(windA),ev,bl:BUL.map(b=>[b.own,R1(b.x),R1(b.y),R1(b.spin)])}}); ev=[]; } } }
   // 衝刺時軌道磨出火花、地上留下擦痕；觀眾情緒、裁判對話框
@@ -661,7 +666,12 @@ function create(env,opts){
     selBox.sels.forEach((sl,i)=>{ const X=CX0(i); const hh=Math.max(30,32*k); Object.assign(sl.style,{left:(ox+(X+40)*k)+'px',top:(oy+SELY*k-hh/2)+'px',width:((CW-80)*k)+'px',height:hh+'px',fontSize:Math.max(12,14*k)+'px'}); /* 手機上至少 30px 高，手指點得到 */
       sl.innerHTML=TOPS.filter(q=>q.id===d[i].top||!d.some((o,j)=>j!==i&&o.top===q.id)).map(q=>{ const bad=q.id!==d[i].top&&clash(d,i,q.id); /* 棘輪或底座和別顆重複：看得到但不能選 */
         return '<option value="'+q.id+'"'+(q.id===d[i].top?' selected':'')+(bad?' disabled':'')+'>'+q.n+(bad?'（零件重複）':'')+'</option>'; }).join(''); }); }
-  function draw(){ deckUI(); if(phase==='deck'){ drawDeck(); return; } c.save(); if(shake>0) c.translate((Math.random()-.5)*shake*24,(Math.random()-.5)*shake*24);
+  function draw(){ if(phase!=='replay'||REC.length<2) return drawCore(); /* 重播：把記錄的位置套上去畫，畫完還原 */
+    const tEnd=REC[REC.length-1].t,span=Math.min(1.6,tEnd-REC[0].t),tt=tEnd-span+clamp(1-PT/RPD,0,1)*span; let fr=REC[REC.length-1]; for(const q of REC) if(q.t>=tt){ fr=q; break; }
+    const sv=T.map(f=>{ const o={}; for(const k of RPK) o[k]=f[k]; return o; }); T.forEach((f,i)=>{ const r=fr.f[i]; if(r) for(const k of RPK) f[k]=r[k]; }); phase='fight';
+    try{ drawCore(); } finally { phase='replay'; T.forEach((f,i)=>{ for(const k of RPK) f[k]=sv[i][k]; }); }
+    c.fillStyle='rgba(0,0,0,.85)'; c.fillRect(0,0,W,8); c.fillRect(0,H-30,W,30); c.font='900 16px '+TC; c.textAlign='left'; c.textBaseline='middle'; c.fillStyle=Math.sin(t*6)>0?'#ff3a3a':'#7a1a1a'; c.beginPath(); c.arc(22,H-15,6,0,TAU); c.fill(); c.fillStyle='#fff'; c.fillText('重播 REPLAY',34,H-15); c.textAlign='right'; c.font='700 13px '+TC; c.fillStyle='#ffd23f'; c.fillText('慢動作',W-16,H-15); }
+  function drawCore(){ deckUI(); if(phase==='deck'){ drawDeck(); return; } c.save(); if(shake>0) c.translate((Math.random()-.5)*shake*24,(Math.random()-.5)*shake*24);
     c.save(); view(.12); themeBg(c,ST.th,t); c.restore();
     c.save(); view(.4); drawCrowd(c,t,cheer); c.restore();
     c.save(); view(.75); drawFloor(c,ST.th); const rs=refState(); drawRef(c,REFX,REFY,1,rs[0],t,!!refSay,rs[1]); c.restore();
@@ -791,7 +801,7 @@ function preview(ctx,w,h,L,t){ const g=ctx.createLinearGradient(0,0,0,h); g.addC
   { const k=s/(S*TS)*.55; ctx.save(); ctx.translate(w*.06,h*.12); ctx.scale(k,k); drawLauncherC(ctx,0,0,'#3d8bff',1,.25+.2*Math.sin(t*2),false,false,L.lc,L.ls); ctx.restore(); } }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).spin={name:'陀螺旋風戰',tag:'SPIN STORM',color:'#ff7a3d',online:true,maxPlayers:2,
   desc:'30 顆熱門比賽陀螺一對一對決！開賽前選好落點，裁判喊「3、2、1，GO SHOOT！」就用滑鼠或手指拖曳拉繩發射（拉越快轉速越高，晚 1 秒就算發射失敗），之後全看陀螺自己轉、自己撞，鏡頭會自動拉近特寫。每人帶 3 顆輪流上場，旋轉勝利、擊飛勝利、爆裂勝利、極限勝利，裁判報分、觀眾歡呼，先拿 4 分的贏。10 座競技場：冰晶、沙漠、熔岩、星空低重力、暴風…',
-  goal:'選好落點發射，比對手轉得久＝旋轉勝利 1 分、撞進黃色擊飛區域或飛出場外＝擊飛勝利 2 分、撞到解體＝爆裂勝利 2 分、撞進紅色極限區域＝極限勝利 3 分。先拿 4 分的贏。',
+  goal:'選好落點發射，比對手轉得久＝旋轉勝利 1 分、撞進黃色擊飛區域或飛出場外＝擊飛勝利 2 分、撞到解體＝爆裂勝利 2 分、撞進紅色極限區域＝極限勝利 3 分。先拿 4 分的贏。擊飛、爆裂、極限勝利後會播慢動作重播。',
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:si=>{ const s=STAGES[si],h={ice:'冰面很滑，陀螺停不下來。',desert:'沙地摩擦大，轉速掉得快。',twin:'前面是紅色極限區域，後左右是黃色擊飛區域。',lava:'碰到滾燙的軌道會掉轉速，但衝刺更猛。',space:'低重力，碗面拉回中間的力比較小。',storm:'暴風會把陀螺往一個方向吹，每隔幾秒換方向。',arena:'兩側的場外口袋特別寬。',final:'冠軍等級的對手。'}[s.th]||'';
     return s.name+'：先拿 4 分的贏。'+h; },

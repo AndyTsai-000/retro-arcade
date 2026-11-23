@@ -820,10 +820,10 @@ function create(env,opts){
     const sk=clamp(.36+S.stars*.09+Math.random()*.16,.4,.92); // 1 星的電腦比較慢，5 星不變
     ps.push({n,x:LANE[4]-14+(n%2)*-30-Math.floor(n/2)*10,d:60-n*46,wasIn:false,v:0,vx:0,fall:0,inv:0,look,bot,team:teamOf[n],remote:!!net&&(bot?!host:n!==me),tx:0,td:0,
       ai:bot&&host?{skill:sk,lane:[252,300,180][n%3],top:.78+sk*.22,obey:Math.random()<sk,blT:3+Math.random()*6,blind:0}:null,
-      oi:0,phase:'pick',stopT:0,food:3,fuel:100,deadline:0,money:{fee:0,tip:0,fine:0,gas:0,late:0,comp:0,fix:0,bonus:0},done:false,doneT:0,deliv:0,lost:0,timeout:false,log:[],lean:0,gust:0,lastD:60-n*46,warned:{}}); }
+      oi:0,phase:'pick',stopT:0,food:3,fuel:100,deadline:0,money:{fee:0,tip:0,fine:0,gas:0,late:0,comp:0,fix:0,bonus:0,streak:0},streak:0,rates:[],done:false,doneT:0,deliv:0,lost:0,timeout:false,log:[],lean:0,gust:0,lastD:60-n*46,warned:{}}); }
   const SHIFT=Math.round((S.orders*50+30)*(JOB==='walk'?1.25:1)); // 這一班的時間（秒），時間到就收工
   let t=-3,simT=0,acc=0,ended=false,sendT=0,windT=0,windF=0,windDir=1,camD=[0,0],fx=[],introT=0,goSaid=false,endT=0,engine=null,ff=false;
-  const total=p=>p.money.fee+p.money.tip-p.money.fine-p.money.gas-p.money.late-p.money.comp-p.money.fix+(p.money.bonus||0);
+  const total=p=>p.money.fee+p.money.tip-p.money.fine-p.money.gas-p.money.late-p.money.comp-p.money.fix+(p.money.bonus||0)+(p.money.streak||0);
   const order=p=>lv.orders[p.oi];
   const local=p=>!p.remote&&!p.bot; // 自己這台電腦上操作的真人（音效只給他們）
   const sfx=(p,k)=>{ if(local(p)) env.sfx(k); };
@@ -919,9 +919,9 @@ function create(env,opts){
     if(busyStop){ p.stopT+=dt; if(p.stopT>=.8){ p.stopT=0;
         if(busyStop.kind==='gas'){ const cost=Math.round((100-p.fuel)*1.3); p.money.gas+=cost; p.fuel=100; p.noFuel=0; pop(p,'加滿油 -$'+cost,'#ffd23f'); sfx(p,'heal'); }
         else if(p.phase==='pick'){ p.phase='drop'; pop(p,JW.picked,'#86dc4f'); sfx(p,'item'); }
-        else { const late=t>p.deadline,fee=o.fee; p.money.fee+=fee; p.deliv++; let tip=0; if(!late){ tip=Math.round((p.deadline-t)*.8)+(p.food>=3?15:0); p.money.tip+=tip; }
+        else { const late=t>p.deadline,fee=o.fee; p.money.fee+=fee; p.deliv++; let tip=0; const rate=late?(t-p.deadline>20?1:2):Math.max(1,Math.min(5,2+p.food)); (p.rates||(p.rates=[])).push(rate); /* 顧客評分：準時又完整 5 星 */ let sb=0; if(!late){ tip=Math.round((Math.round((p.deadline-t)*.8)+(p.food>=3?15:0))*(rate>=5?1.2:rate>=4?1:.7)); p.money.tip+=tip; p.streak=(p.streak||0)+1; if(p.streak>=2){ sb=Math.min(60,(p.streak-1)*15); p.money.streak=(p.money.streak||0)+sb; } } else p.streak=0; /* 連續準時獎金 */
           if(late){ p.lateN=(p.lateN||0)+1; p.money.late+=Math.round(fee/2); p.log.push('超時，扣 $'+Math.round(fee/2)); }
-          pop(p,late?'超時（扣一半）+$'+(fee-Math.round(fee/2)):JW.done+'+$'+fee+(tip?'　小費 $'+tip:''),late?'#ffb36b':'#86dc4f'); sfx(p,late?'land':'lap'); p.oi++; startOrder(p); } } }
+          pop(p,(late?'超時（扣一半）+$'+(fee-Math.round(fee/2)):JW.done+'+$'+fee+(tip?'　小費 $'+tip:'')+(sb?'　連單 '+p.streak+' +$'+sb:''))+'　'+'★'.repeat(rate),late?'#ffb36b':'#86dc4f'); sfx(p,late?'land':'lap'); p.oi++; startOrder(p); } } }
     else p.stopT=0;
   }
 
@@ -942,8 +942,8 @@ function create(env,opts){
     const mine=ps[me],net$=st(me)[0],stars=net$>=S.target?3:net$>=S.target*.7?2:net$>=S.target*.4?1:0;
     try{ const k='arcade.deliver.bn.'+STAGES[si].name,old=parseInt(localStorage.getItem(k),10); if(!two&&!net&&(isNaN(old)||net$>old)) localStorage.setItem(k,net$); }catch(e){}
     const m=mine.money,row=(a,b,col)=>'<tr><td>'+a+'</td><td style="text-align:right;color:'+col+'">'+b+'</td></tr>';
-    const G=goalsOf(mine),gHtml='<p style="margin:4px 0">'+'★'.repeat(G.filter(g=>g[1]).length)+'☆'.repeat(3-G.filter(g=>g[1]).length)+' 任務目標</p><table class="ls">'+G.map(g=>'<tr><td>'+(g[1]?'✅':'❌')+' '+g[0]+'</td><td style="text-align:right;color:'+(g[1]?'#86dc4f':'#888')+'">'+(g[1]?'+$'+g[2]:'$0')+'</td></tr>').join('')+'</table>';
-    const mineHtml=gHtml+'<table class="ls">'+row(JOB==='car'?'車資':'外送費','+$'+m.fee,'#86dc4f')+row('小費','+$'+m.tip,'#86dc4f')+row('油錢','-$'+m.gas,'#ff8a8a')+row('罰單','-$'+m.fine,'#ff8a8a')+row('超時扣款','-$'+m.late,'#ff8a8a')+row('撞車修理費','-$'+m.fix,'#ff8a8a')+row('餐點賠償','-$'+m.comp,'#ff8a8a')+'</table>';
+    const G=goalsOf(mine),RT=mine.rates||[],gHtml=(RT.length?'<p style="margin:4px 0">顧客評分 <b style="color:#ffd23f">★ '+(RT.reduce((a,b)=>a+b,0)/RT.length).toFixed(1)+'</b>（'+RT.length+' 單）</p>':'')+'<p style="margin:4px 0">'+'★'.repeat(G.filter(g=>g[1]).length)+'☆'.repeat(3-G.filter(g=>g[1]).length)+' 任務目標</p><table class="ls">'+G.map(g=>'<tr><td>'+(g[1]?'✅':'❌')+' '+g[0]+'</td><td style="text-align:right;color:'+(g[1]?'#86dc4f':'#888')+'">'+(g[1]?'+$'+g[2]:'$0')+'</td></tr>').join('')+'</table>';
+    const mineHtml=gHtml+'<table class="ls">'+row(JOB==='car'?'車資':'外送費','+$'+m.fee,'#86dc4f')+row('小費','+$'+m.tip,'#86dc4f')+row('連續準時獎金','+$'+(m.streak||0),'#86dc4f')+row('油錢','-$'+m.gas,'#ff8a8a')+row('罰單','-$'+m.fine,'#ff8a8a')+row('超時扣款','-$'+m.late,'#ff8a8a')+row('撞車修理費','-$'+m.fix,'#ff8a8a')+row('餐點賠償','-$'+m.comp,'#ff8a8a')+'</table>';
     // 名次：淨收入高的贏；一樣多就比誰先收工
     const R=ps.map((p,i)=>({i,name:names[i],team:p.team,money:st(i)[0],deliv:st(i)[1],lost:st(i)[2],tm:st(i)[3],out:!!st(i)[4]})).sort((a,b)=>b.money-a.money||(a.out-b.out)||a.tm-b.tm);
     const all=lv.orders.length,safe=R.filter(r=>!r.out&&r.deliv===all&&r.lost===0).sort((a,b)=>a.tm-b.tm)[0];
@@ -1151,7 +1151,7 @@ function preview(ctx,w,h,L,t){ // 我的造型：正面＋側面（寫實）
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).deliver={
   name:'街頭外送王',tag:'STREET DELIVERY',color:'#ff7a3d',online:true,maxPlayers:4,bots:true,
   desc:'外送員生存賽：在下班前搶著取餐、送餐，躲開馬路三寶。扣掉油錢、罰單、超時、撞車修理費，淨賺最多的就是外送王。',
-  goal:'和電腦（或朋友）比賽，在下班倒數結束前把單送完：到店家取餐、送到客人手上，在機車道停下來就會自動取餐／送達。淨收入最高的贏；全部完整送達又最快收工的拿「最速安全送達」。越快送到小費越多；撞車要付修車費還會撞壞餐點，闖紅燈遇到照相機會吃罰單，時間到手上的餐沒送到要賠錢。',
+  goal:'和電腦（或朋友）比賽，在下班倒數結束前把單送完：到店家取餐、送到客人手上，在機車道停下來就會自動取餐／送達。淨收入最高的贏；全部完整送達又最快收工的拿「最速安全送達」。越快送到小費越多；撞車要付修車費還會撞壞餐點，闖紅燈遇到照相機會吃罰單，時間到手上的餐沒送到要賠錢。連續準時有連單獎金，準時又完整送到客人會給 5 星評分、小費更多。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人'}],
   stages:STAGES.map(s=>s.name),stars:STAGES.map(s=>s.stars),
   stageGoal:si=>{ const S=STAGES[si]; const m=S.orders*50+30; return S.name+'：'+S.desc+'下班時間 '+Math.floor(m/60)+' 分 '+(m%60)+' 秒內要送 '+S.orders+' 單，和其他外送員比淨收入，最多的就是外送王；自己淨收入 $'+S.target+' 以上拿三顆星。到店家門口的機車道停下來取餐，再送到客人門口；越快送到小費越多。撞車修理費 $20、餐點會撞壞（全毀賠 $80），闖紅燈遇到照相機罰 $300，超時扣一半外送費，油用完要去加油站加。'; },

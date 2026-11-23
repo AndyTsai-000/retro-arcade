@@ -815,6 +815,10 @@ function makeCreate(G){ return function create(env,opts){
     k.name=human?(net?(net.names&&net.names[i])||'玩家'+(i+1):local2?(i+1)+'P':opts.name||'你'):'電腦'+(i-humans+1); k.tz=k.z; k.tx=k.x; ks.push(k); }
   const my=ks[me],locals=ks.filter(k=>k.local);
   let t=0,cd=3.4,intro=2.2,lastBeep=4,ended=false,endT=0,remain=null,lastTick=99,sendT=0,cer=null,toastQ=new Map();
+  /* 鬼影：單人時跟自己這條賽道的最佳紀錄一起跑（每 0.1 秒記一筆 z,x） */
+  const GHK='arcade.'+G.id+'.g.'+S.name,useGhost=!net&&!local2&&!opts.preview&&!(my&&my.ai); let GH=null,ghRec=[],ghAcc=0; if(useGhost){ try{ const a=JSON.parse(localStorage.getItem(GHK)||'null'); if(Array.isArray(a)&&a.length>10) GH=a; }catch(e){} }
+  const ghAt=tt=>{ if(!GH) return null; const f=tt/.1,i=Math.floor(f); if(i>=GH.length-1) return GH[GH.length-1]; if(i<0) return GH[0]; const a=GH[i],b=GH[i+1],u=f-i; return [a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u]; };
+  const ghDiff=()=>{ if(!GH||!my) return null; let lo=0,hi=GH.length-1; if(GH[hi][0]<my.z) return null; while(lo<hi){ const m=(lo+hi)>>1; if(GH[m][0]<my.z) lo=m+1; else hi=m; } return t-lo*.1; }; /* 正數＝比最佳紀錄慢 */
   if(opts.preview){ intro=0; cd=0; my.ai={lane:0,skill:.9,nt:0,err:0}; } /* 開始畫面預覽：直接開跑、自己由電腦駕駛 */
   const toast=(k,s)=>{ if(k.local) toastQ.set(k.i,{s,t:2}); };
   // 引擎聲（機車、快艇）
@@ -915,13 +919,14 @@ function makeCreate(G){ return function create(env,opts){
     if(mode!=='ffa'){ const pts=[0,0]; order.forEach((k,i)=>{ if(k.team!=null&&k.fin!=null) pts[k.team]+=POINTS[i]||1; }); const w=pts[0]===pts[1]?-1:pts[0]>pts[1]?0:1;
       title=w<0?'平手！':(my.team===w?'你的隊伍贏了！':TEAMS[w].name+'獲勝'); text=TEAMS[0].name+' '+pts[0]+' 分 vs '+TEAMS[1].name+' '+pts[1]+' 分（照名次 10/8/6/5/4/3，只算衝過終點的人）'; }
     else title=local2?order[0].name+' 第一名！':myRank===1?'第一名！':'第 '+myRank+' 名';
-    if(!net&&my.fin!=null&&!local2){ score=Math.round(my.fin*100)/100; const key='arcade.'+G.id+'.t.'+S.name; try{ const old=parseFloat(localStorage.getItem(key)); if(!isFinite(old)||score<old){ localStorage.setItem(key,String(score)); text+=(text?'　':'')+'新紀錄！'+fmtTime(score); } localStorage.setItem('arcade.'+G.id+'.last',S.name); }catch(e){} }
+    if(!net&&my.fin!=null&&!local2){ score=Math.round(my.fin*100)/100; const key='arcade.'+G.id+'.t.'+S.name; try{ const old=parseFloat(localStorage.getItem(key)); if(!isFinite(old)||score<old){ localStorage.setItem(key,String(score)); text+=(text?'　':'')+'新紀錄！'+fmtTime(score); if(useGhost&&ghRec.length>10){ try{ localStorage.setItem(GHK,JSON.stringify(ghRec)); }catch(e){} } } localStorage.setItem('arcade.'+G.id+'.last',S.name); }catch(e){} }
     env.end({title,big:S.name,html,text,score,next:!net&&myRank<=3&&si<G.stages.length-1}); }
   function update(dt){
     if(cer){ cer.t+=dt; if(cer.t>4.2&&!cer.done){ cer.done=true; finish(); } return; }
     if(intro>0){ intro-=dt; if(!net&&(env.hit('Space')||env.hit('Enter'))) intro=0; return; }
     if(cd>0){ cd-=dt; const n=Math.ceil(cd); if(n<lastBeep&&n>=1&&n<=3){ lastBeep=n; env.sfx('beep'); } if(cd<=0) env.sfx('go'); return; }
     t+=dt; for(const car of traffic) carUpd(car,t);
+    if(useGhost&&my.fin==null){ ghAcc+=dt; while(ghAcc>=.1){ ghAcc-=.1; ghRec.push([Math.round(my.z*10)/10,Math.round(my.x*1000)/1000]); } }
     for(const k of ks){ if(k.left) continue;
       if(k.remote){ k.tz+=k.v*dt; const f=Math.min(1,dt*10); k.z+=(k.tz-k.z)*f; k.x+=(k.tx-k.x)*f; continue; }
       if(k.auto&&!k.ai) k.ai={lane:0,skill:.97,nt:0}; let inp=k.ai?aiInput(k):humanInput(k);
@@ -942,11 +947,13 @@ function makeCreate(G){ return function create(env,opts){
       if(!mine||t<3){ c.font='900 '+Math.max(9,Math.min(16,w*.13))+'px '+TC; c.textAlign='center'; c.textBaseline='bottom'; const tc=k.team!=null?TEAMS[k.team].col:'#fff'; c.lineWidth=3; c.strokeStyle='#0b0a1c'; const nm=mine?(local2?(k.i+1)+'P':'你'):k.name;
         if(w>18){ c.strokeText(nm,px,py-w*G.tagH); c.fillStyle=mine?'#ffd23f':tc; c.fillText(nm,px,py-w*G.tagH); } } }}); }
     for(const car of traffic){ const z=carZ(car,t); if(z<0||z>C.n*SEGL) continue; add(z,{x:car.x,ww:car.ww,d:(px,py,w)=>OBS.car.d(c,px,py,w,TH,t,car)}); }
+    if(GH&&view===my&&t>0&&my.fin==null){ const g=ghAt(t); if(g&&Math.abs(g[0]-my.z)>2) add(g[0],{x:g[1],ww:P.ww,d:(px,py,w)=>{ c.globalAlpha=.38; G.drawBack(c,px,py,w,{look:my.look,lean:0,slip:0,night:TH.night,spd:.8,num:my.i+1,air:0,col:'#9ad6ff'},t); c.globalAlpha=1; if(w>18){ c.font='900 '+Math.max(9,Math.min(14,w*.12))+'px '+TC; c.textAlign='center'; c.textBaseline='bottom'; c.lineWidth=3; c.strokeStyle='#0b0a1c'; c.strokeText('最佳紀錄',px,py-w*G.tagH); c.fillStyle='#9ad6ff'; c.fillText('最佳紀錄',px,py-w*G.tagH); } }}); } /* 半透明的鬼影 */
     return items; }
   function hud(vp,k){ const s=vp.w/W*(local2?1.6:1),x0=vp.x,y0=vp.y,R=rankOf(k),act=ks.filter(q=>!q.left).length;
     c.save(); c.textBaseline='middle';
     c.fillStyle='rgba(11,10,28,.6)'; rr(c,x0+10,y0+10,120*s,54*s,10*s); c.fill(); c.fillStyle='#ffd23f'; c.font='900 '+Math.round(22*s)+'px '+PIX; c.textAlign='left'; c.fillText(R+'/'+act,x0+20,y0+30*s); c.fillStyle='#fff'; c.font='700 '+Math.round(11*s)+'px '+TC; c.fillText('名次',x0+20,y0+50*s);
     c.textAlign='right'; c.font='900 '+Math.round(16*s)+'px '+PIX; c.fillStyle='#fff'; c.fillText(fmtTime(k.fin!=null?k.fin:t),x0+vp.w-14,y0+24*s);
+    if(k===my&&GH&&k.fin==null&&t>1){ const d=ghDiff(); if(d!=null){ c.font='900 '+Math.round(13*s)+'px '+TC; c.fillStyle=d>0?'#ff8a8a':'#86dc4f'; c.fillText('最佳紀錄 '+(d>0?'+':'−')+Math.abs(d).toFixed(2)+' 秒',x0+vp.w-40*s,y0+46*s); } }
     // 進度條
     const bx=x0+vp.w-18*s,by=y0+44*s,bh=vp.h-120*s; c.fillStyle='rgba(11,10,28,.55)'; rr(c,bx-5*s,by,10*s,bh,5*s); c.fill();
     for(const q of ks){ if(q.left) continue; const u=clamp((q.z-C.start*SEGL)/((C.finish-C.start)*SEGL),0,1); c.fillStyle=q===k?'#ffd23f':q.team!=null?TEAMS[q.team].col:'#c9c6e6'; c.beginPath(); c.arc(bx,by+bh*(1-u),(q===k?6:4)*s,0,7); c.fill(); }
@@ -1041,7 +1048,7 @@ const MOTO={id:'moto',name:'飆風機車王',camH:950,kmh:180,engine:'sawtooth',
     {key:'deco',label:'配件',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'box',label:'後箱',grp:'車上'},{id:'side',label:'側箱',grp:'車上'},{id:'flag',label:'旗子',grp:'車上'},{id:'flame',label:'火焰彩繪',grp:'車身'},{id:'num',label:'賽車號碼',grp:'車身'},{id:'stripe',label:'安全帽條紋',grp:'車身'},{id:'glow',label:'霓虹底燈',grp:'燈光'},{id:'catears',label:'貓耳',grp:'帽飾'},{id:'horns',label:'惡魔角',grp:'帽飾'},{id:'mohawk',label:'莫西幹',grp:'帽飾'},{id:'duck',label:'小鴨',grp:'帽飾'}]},
     {key:'nitro',label:'加速特效',opts:[{id:'blue',label:'藍焰'},{id:'fire',label:'火焰'},{id:'green',label:'綠焰'},{id:'rainbow',label:'彩虹'}]}],
   desc:'騎一般輕型機車、重型機車或越野機車，在市區、海岸、山路、霓虹夜街和雨天高速公路飆車（造型可選車款和後箱、側箱、彩繪、霓虹底燈等配件）。閃過車流、驚險超車集滿氮氣，撿氮氣瓶加速；雨天路滑、霧天看不遠。共 50 關，單人、雙人分割畫面或開房間連線。',
-  goal:'從起點騎到終點，前 3 名過關。路上有一般車輛，撞到會摔車；2 星以上的關卡有車會換車道（先閃方向燈再切過來，星數越高越多）；從車旁邊驚險超車三次可以集到一瓶氮氣，路上也撿得到氮氣瓶（最多存 3 瓶）。',
+  goal:'從起點騎到終點，前 3 名過關。路上有一般車輛，撞到會摔車；2 星以上的關卡有車會換車道（先閃方向燈再切過來，星數越高越多）；從車旁邊驚險超車三次可以集到一瓶氮氣，路上也撿得到氮氣瓶（最多存 3 瓶）。單人時會出現半透明的「最佳紀錄」鬼影，右上角顯示快慢幾秒。',
   help:[['↑ ↓','油門、煞車'],['← →','轉向'],['↓ + ← →','高速時甩尾過彎，放開加速'],['X','用氮氣加速'],['W A S D Q','雙人 1P（左半畫面），Q 用氮氣'],['↑ ↓ ← → Enter','雙人 2P（右半畫面），Enter 用氮氣']],
   touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車；按著煞再轉向＝甩尾'],['氮氣','用氮氣加速']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'煞',c:'ArrowDown'},{l:'氮氣',c:'KeyX',act:true}]}};
@@ -1081,7 +1088,7 @@ const SLED={id:'sled',name:'雪山大滑降',camH:1150,kmh:110,down:1,roll:.07,t
   looks:[{key:'sled',label:'雪橇顏色',type:'color',opts:['#c8803a','#e23b3b','#3d8bff','#5fd068','#c56bff','#ffd23f']},{key:'coat',label:'外套',type:'color',opts:['#3d8bff','#ff4d4d','#5fd068','#ff9d3d','#c56bff','#2f3a5a']},
     {key:'scarf',label:'圍巾',type:'color',opts:['#ff4d4d','#ffd23f','#3ddbd9','#ff7eb6','#ffffff']},{key:'hat',label:'毛帽',type:'color',opts:['#ffd23f','#ff4d4d','#3d8bff','#5fd068','#ff7eb6','#ffffff']}],
   desc:'坐雪橇從雪山一路往下衝！下坡越陡越快，穿過紅藍旗門存衝刺，閃開樹和石頭，冰面會打滑，跳台能飛起來。夜燈、暴風雪、極光等 50 條雪道，單人、雙人或連線。',
-  goal:'從山頂滑到山腳，前 3 名過關。下坡會自己加速，按 ↑ 壓低身體更快，↓ 煞車。穿過旗門可以存一次衝刺（最多 3 次），按 X 使用。撞到樹或石頭會翻滾減速。',
+  goal:'從山頂滑到山腳，前 3 名過關。下坡會自己加速，按 ↑ 壓低身體更快，↓ 煞車。穿過旗門可以存一次衝刺（最多 3 次），按 X 使用。撞到樹或石頭會翻滾減速。單人時會出現半透明的「最佳紀錄」鬼影，右上角顯示快慢幾秒。',
   help:[['← →','左右轉'],['↑','壓低身體加速'],['↓','煞車'],['X','衝刺（穿過旗門存的）'],['W A S D Q','雙人 1P（左半畫面）'],['↑ ↓ ← → Enter','雙人 2P（右半畫面）']],
   touchHelp:[['◀ ▶','左右轉'],['壓低','壓低身體加速'],['煞','煞車'],['衝刺','用衝刺']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'壓低',c:'ArrowUp'},{l:'煞',c:'ArrowDown'},{l:'衝刺',c:'KeyX',act:true}]}};
@@ -1125,7 +1132,7 @@ const JET={id:'jet',name:'浪尖快艇賽',camH:820,kmh:120,roll:.08,engine:'squ
     {key:'deco',label:'配件',type:'multi',hint:'每一類選一個，再按一次取下',opts:[{id:'flag',label:'旗子',grp:'船上'},{id:'wing',label:'尾翼',grp:'船上'},{id:'light',label:'警示燈',grp:'船上'},{id:'shark',label:'鯊魚嘴彩繪',grp:'船身'},{id:'flame',label:'火焰彩繪',grp:'船身'},{id:'num',label:'賽艇號碼',grp:'船身'},{id:'stripe',label:'賽車條紋',grp:'船身'},{id:'glow',label:'霓虹水底燈',grp:'燈光'},{id:'catears',label:'貓耳',grp:'帽飾'},{id:'horns',label:'惡魔角',grp:'帽飾'},{id:'mohawk',label:'莫西幹',grp:'帽飾'},{id:'duck',label:'小鴨',grp:'帽飾'}]},
     {key:'nitro',label:'加速特效',opts:[{id:'blue',label:'藍焰'},{id:'fire',label:'火焰'},{id:'green',label:'綠焰'},{id:'rainbow',label:'彩虹'}]}],
   desc:'騎坐式、站立式水上摩托車或競速快艇（造型可選船型和鯊魚嘴彩繪、尾翼、霓虹水底燈等配件），在海灣、河道、紅樹林、冰山海域和颱風巨浪裡競速。水面會甩尾滑行，浪頭跳台能飛起來，穿過加速圈存渦輪，閃開礁石和漂流木。共 50 關，單人、雙人或連線。',
-  goal:'沿著浮標水道衝到終點，前 3 名過關。水上轉彎會滑，要提早轉；穿過橘色加速圈可以存一次渦輪（最多 3 次），按 X 使用；從浪頭跳台飛起落地會小加速。撞到礁石、漂流木會翻船減速。',
+  goal:'沿著浮標水道衝到終點，前 3 名過關。水上轉彎會滑，要提早轉；穿過橘色加速圈可以存一次渦輪（最多 3 次），按 X 使用；從浪頭跳台飛起落地會小加速。撞到礁石、漂流木會翻船減速。單人時會出現半透明的「最佳紀錄」鬼影，右上角顯示快慢幾秒。',
   help:[['↑ ↓','油門、煞車'],['← →','轉向（會滑行）'],['X','渦輪加速'],['W A S D Q','雙人 1P（左半畫面）'],['↑ ↓ ← → Enter','雙人 2P（右半畫面）']],
   touchHelp:[['◀ ▶','轉向，自動催油門'],['煞','煞車'],['渦輪','渦輪加速']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'煞',c:'ArrowDown'},{l:'渦輪',c:'KeyX',act:true}]}};
@@ -1167,7 +1174,7 @@ const RUN={id:'run',name:'萌寵障礙賽跑',camH:720,kmh:40,roll:.025,run:1,ta
   looks:[{key:'animal',label:'動物',opts:Object.keys(ANIMALS).map(k=>({id:k,label:ANIMALS[k].name}))},{key:'cloth',label:'背心顏色',type:'color',opts:['#ff4d4d','#3d8bff','#ffd23f','#5fd068','#c56bff','#ff9d3d']},
     {key:'hat',label:'頭飾',opts:[{id:'none',label:'不戴'},{id:'band',label:'頭帶'},{id:'cap',label:'棒球帽'},{id:'crown',label:'皇冠'},{id:'flower',label:'小花'}]}],
   desc:'可愛的貓咪、小狗、兔子、熊貓、企鵝…大家一起跑障礙賽！跳過欄架和木頭、滑過低樹枝、別掉進水坑，吃紅蘿蔔存衝刺，踩彈簧飛高高。50 條跑道：草地、糖果、雪地、古堡、熔岩、彩虹橋…',
-  goal:'自動往前跑，前 3 名過關。看到欄架、木頭、水坑按 ↑ 或空白鍵跳過；看到低低的樹枝按 ↓ 滑過去；踩到泥巴會變慢。吃紅蘿蔔可以存一次衝刺（最多 3 次），按 X 使用。',
+  goal:'自動往前跑，前 3 名過關。看到欄架、木頭、水坑按 ↑ 或空白鍵跳過；看到低低的樹枝按 ↓ 滑過去；踩到泥巴會變慢。吃紅蘿蔔可以存一次衝刺（最多 3 次），按 X 使用。單人時會出現半透明的「最佳紀錄」鬼影，右上角顯示快慢幾秒。',
   help:[['← →','左右移動'],['↑ 或 空白鍵','跳'],['↓','滑行（鑽過低樹枝）'],['X','衝刺（吃紅蘿蔔存的）'],['W S A D Q','雙人 1P：W 跳、S 滑、Q 衝刺'],['↑ ↓ ← → Enter','雙人 2P：↑ 跳、↓ 滑、Enter 衝刺']],
   touchHelp:[['◀ ▶','左右移動'],['跳','跳過欄架、水坑'],['滑','滑過低樹枝'],['衝刺','用衝刺']],
   touch:{left:[{l:'◀',c:'ArrowLeft',big:true},{l:'▶',c:'ArrowRight',big:true}],right:[{l:'跳',c:'Space',act:true},{l:'滑',c:'ArrowDown'},{l:'衝刺',c:'KeyX'}]}};
