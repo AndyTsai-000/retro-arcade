@@ -76,20 +76,20 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
     const out=[[x1,z1]]; let c=g; while(c>=0&&c!==s){ out.unshift(N[c].slice()); c=pv[c]; } return out; };
   return M; }
 /* ================= 英雄、技能、裝備 ================= */
-const CLS={tank:{n:'坦克',col:'#7aa8ff',hp:1050,hpL:125,atk:52,atkL:4,as:.8,rng:2.4,mr:32,mrL:1.25,arm:32,armL:3.2,spd:6.2,ad:.3},
-  fighter:{n:'戰士',col:'#ffb04a',hp:880,hpL:108,atk:62,atkL:6,as:.9,rng:2.4,mr:30,mrL:1.2,arm:22,armL:2.6,spd:6.4,ad:.6},
-  assassin:{n:'刺客',col:'#ff5d8f',hp:760,hpL:94,atk:66,atkL:7,as:1,rng:2.2,mr:30,mrL:1.1,arm:20,armL:2.3,spd:6.8,ad:.7},
-  mage:{n:'法師',col:'#b98cff',hp:620,hpL:76,atk:46,atkL:3,as:.75,rng:7,mr:28,mrL:0.8,arm:12,armL:1.6,spd:6.2,ad:.1},
-  marksman:{n:'射手',col:'#86dc4f',hp:600,hpL:76,atk:58,atkL:6.5,as:.95,rng:7.5,mr:26,mrL:0.8,arm:12,armL:1.6,spd:6.3,ad:.6},
-  support:{n:'輔助',col:'#3ddbd9',hp:740,hpL:92,atk:42,atkL:3,as:.8,rng:6.5,mr:28,mrL:1,arm:18,armL:2.2,spd:6.3,ad:.1}};
+const CLS={tank:{n:'坦克',col:'#7aa8ff',hp:1050,hpL:125,atk:62,atkL:3.8,as:.8,rng:2.4,mr:32,mrL:1.25,arm:32,armL:3.2,spd:6.2,ad:.3},
+  fighter:{n:'戰士',col:'#ffb04a',hp:880,hpL:108,atk:66,atkL:3.7,as:.9,rng:2.4,mr:30,mrL:1.2,arm:22,armL:2.6,spd:6.4,ad:.6},
+  assassin:{n:'刺客',col:'#ff5d8f',hp:760,hpL:94,atk:64,atkL:3.4,as:1,rng:2.2,mr:30,mrL:1.1,arm:20,armL:2.3,spd:6.8,ad:.7},
+  mage:{n:'法師',col:'#b98cff',hp:620,hpL:76,atk:52,atkL:3,as:.75,rng:7,mr:28,mrL:0.8,arm:12,armL:1.6,spd:6.2,ad:.1},
+  marksman:{n:'射手',col:'#86dc4f',hp:600,hpL:76,atk:60,atkL:3,as:.95,rng:7.5,mr:26,mrL:0.8,arm:12,armL:1.6,spd:6.3,ad:.6},
+  support:{n:'輔助',col:'#3ddbd9',hp:740,hpL:92,atk:50,atkL:3,as:.8,rng:6.5,mr:28,mrL:1,arm:18,armL:2.2,spd:6.3,ad:.1}};
 const CLS_IDS=Object.keys(CLS);
 const S=(n,t,cd,o)=>Object.assign({n,t,cd},o);
 const HD=(n,cls,pal,sk,fl)=>Object.assign({n,cls,pal,sk},fl||{});
 // 被動技能說明
 const PSD={grit:v=>'血量低於 40% 時，護甲和魔抗 +'+v,shieldhit:v=>'被暈眩、擊飛、定身、沉默時，得到 '+v+' 點護盾（10 秒一次，隨等級變強）',thornp:v=>'被普攻時，反彈 '+v+' 點（加 10% 護甲）的傷害',giant:v=>'最大生命 +'+Math.round(v*100)+'%',regen:()=>'6 秒沒受傷，每秒回復 3% 最大生命',ten:v=>'被控制的時間縮短 '+Math.round(v*100)+'%',rage:v=>'血越少攻速越快（最多 +'+Math.round(v*100)+'%）',
-  cdhit:v=>'每次普攻，Q、W、E 冷卻少 '+v+' 秒',stack:()=>'參與擊殺英雄得到 1 層靈魂（最多 20 層），每層攻擊 +2、技能威力 +1%',third:v=>'每第 3 次普攻，額外造成目標最大生命 '+Math.round(v*100)+'% 的真實傷害',momentum:()=>'參與擊殺英雄後 3 秒內移動速度 +40%',bleed:()=>'普攻讓敵方英雄流血 4 秒，最多疊 5 層',
+  cdhit:v=>'每次普攻，Q、W、E 冷卻少 '+v+' 秒',stack:()=>'參與擊殺英雄得到 1 層靈魂（最多 20 層），每層攻擊 +2、法術強度 +2',third:v=>'每第 3 次普攻，額外造成目標最大生命 '+Math.round(v*100)+'% 的真實傷害',momentum:()=>'參與擊殺英雄後 3 秒內移動速度 +40%',bleed:()=>'普攻讓敵方英雄流血 4 秒，最多疊 5 層',
   execute:v=>'對血量低於 40% 的敵人傷害 +'+Math.round(v*100)+'%',ambush:v=>'對 8 秒內沒打過的敵方英雄，第一下傷害 +'+Math.round(v*100)+'%',swift:v=>'移動速度 +'+Math.round(v*100)+'%',spdcast:v=>'放技能後 1.5 秒內移動速度 +'+Math.round(v*100)+'%',spellweave:()=>'放技能後 5 秒內的下一次普攻，額外造成魔法傷害',
-  sorc:()=>'技能打中英雄後技能威力 +4%，最多疊 5 層（5 秒）',haste:v=>'技能冷卻縮短 '+Math.round(v*100)+'%',range:v=>'普攻射程 +'+v,healer:v=>'治療和護盾效果 +'+Math.round(v*100)+'%',aura:v=>'附近隊友移動速度 +'+Math.round(v*100)+'%',allyshield:v=>'放技能時，給附近血最少的隊友 '+v+' 點護盾（8 秒一次，隨等級變強）',lifeline:v=>'附近隊友血量低於 25% 時，自動幫他補 '+v+' 血（60 秒一次，隨等級變強）',
+  sorc:()=>'技能打中英雄後法術強度 +8，最多疊 5 層（5 秒）',haste:v=>'技能冷卻縮短 '+Math.round(v*100)+'%',range:v=>'普攻射程 +'+v,healer:v=>'治療和護盾效果 +'+Math.round(v*100)+'%',aura:v=>'附近隊友移動速度 +'+Math.round(v*100)+'%',allyshield:v=>'放技能時，給附近血最少的隊友 '+v+' 點護盾（8 秒一次，隨等級變強）',lifeline:v=>'附近隊友血量低於 25% 時，自動幫他補 '+v+' 血（60 秒一次，隨等級變強）',
   curse:()=>'技能打中的敵方英雄，3 秒內受到的技能傷害 +10%',mshield:()=>'血量低於 20% 時，得到等於 30% 魔力的護盾（90 秒一次）',granite:()=>'10 秒沒受傷時，得到最大生命 10% 的護盾'};
 const HEROES=[
   // 坦克
@@ -246,27 +246,27 @@ const ITEMS={
   // 基本材料
   sword:{n:'精鋼長劍',c:350,atk:12,cat:'atk',col:'#c8ccd8'},dagger:{n:'疾風短匕',c:300,as:.12,cat:'atk',col:'#9ad870'},cloak:{n:'迅影披風',c:600,crit:.15,cat:'atk',col:'#f0d070'},
   sheen:{n:'咒紋磨刀石',c:700,sb:{a:1},cat:'atk',col:'#a8e8ff',d:'咒刃：放完技能後，下一次普攻多打 100% 基礎攻擊'},
-  tome:{n:'入門魔導書',c:435,sp:.12,cat:'mag',col:'#a88cff'},rod:{n:'古樹法杖',c:850,sp:.25,cat:'mag',col:'#8a5aff'},gem:{n:'藍晶石',c:350,cdr:.06,mp:200,cat:'mag',col:'#6ad0ff'},
+  tome:{n:'入門魔導書',c:435,ap:20,cat:'mag',col:'#a88cff'},rod:{n:'古樹法杖',c:850,ap:40,cat:'mag',col:'#8a5aff'},gem:{n:'藍晶石',c:350,cdr:.06,mp:200,cat:'mag',col:'#6ad0ff'},
   ruby:{n:'生命紅晶',c:400,hp:150,cat:'def',col:'#ff6a7a'},belt:{n:'泰坦腰帶',c:900,hp:350,cat:'def',col:'#d0705a'},cloth:{n:'皮革護甲',c:300,arm:15,cat:'def',col:'#a8b4c8'},mantle:{n:'秘銀斗篷',c:450,mr:25,cat:'def',col:'#9a7ad8'},
   // 起始裝備（只能帶一件，後期自動賣掉）、消耗品
-  dblade:{n:'見習之劍',ic:'新劍',c:450,atk:8,hp:80,ls:.03,st:1,cat:'misc',col:'#e8a070',d:'起始裝備（只能帶一件）'},dring:{n:'見習之戒',ic:'新戒',c:400,sp:.08,hp:70,mp:100,st:1,cat:'misc',col:'#c0a0ff',d:'起始裝備（只能帶一件）'},
+  dblade:{n:'見習之劍',ic:'新劍',c:450,atk:8,hp:80,ls:.03,st:1,cat:'misc',col:'#e8a070',d:'起始裝備（只能帶一件）'},dring:{n:'見習之戒',ic:'新戒',c:400,ap:15,hp:70,mp:100,st:1,cat:'misc',col:'#c0a0ff',d:'起始裝備（只能帶一件）'},
   dshield:{n:'見習之盾',ic:'新盾',c:450,hp:110,arm:6,rg:2.5,st:1,cat:'misc',col:'#8ab0e0',d:'起始裝備（只能帶一件）'},
   pot:{n:'紅玫瑰藥水',c:50,cons:1,cat:'misc',col:'#ff4a5a',d:'喝下去 12 秒內回復 120 生命（最多帶 5 瓶，放在同一格）'},
-  elx:{n:'狂怒秘藥',c:400,elix:1,cat:'misc',col:'#ff9a3d',d:'9 等以上才能買，買了馬上喝：3 分鐘內攻擊 +25、技能威力 +20%（不佔格子）'},
+  elx:{n:'狂怒秘藥',c:400,elix:1,cat:'misc',col:'#ff9a3d',d:'9 等以上才能買，買了馬上喝：3 分鐘內攻擊 +25、法術強度 +50（不佔格子）'},
   // 打野專屬（要帶重擊、三選一）：打野怪累積成長 → 12 層重擊可以打英雄 → 25 層幼獸覺醒
   jgf:{n:'火狐幼獸',ic:'火獸',c:450,atk:10,jg:1,jgt:'f',st:1,keep:1,cat:'misc',col:'#ff7a3d',d:'打野專屬（要帶重擊）：打野怪傷害、金幣、經驗 +30%，打完野怪回血。打 12 層後重擊可以打英雄；25 層覺醒：打到敵方英雄時燃燒，多一段真實傷害'},
   jgw:{n:'風鷹幼獸',ic:'風獸',c:450,atk:10,jg:1,jgt:'w',st:1,keep:1,cat:'misc',col:'#7ae0ff',d:'打野專屬（要帶重擊）：打野怪傷害、金幣、經驗 +30%，打完野怪回血。打 12 層後重擊可以打英雄；25 層覺醒：脫離戰鬥時移動速度 +25%'},
   jgm:{n:'岩龜幼獸',ic:'岩獸',c:450,atk:10,jg:1,jgt:'m',st:1,keep:1,cat:'misc',col:'#8ad06a',d:'打野專屬（要帶重擊）：打野怪傷害、金幣、經驗 +30%，打完野怪回血。打 12 層後重擊可以打英雄；25 層覺醒：脫離戰鬥 6 秒得到護盾'},
   // 輔助專屬：賺金幣升級，最後可以插眼
-  sup1:{n:'星界地圖',ic:'地圖',c:400,hp:40,sp:.05,sup:1,st:1,keep:1,cat:'misc',col:'#ffd8a0',d:'輔助專屬：隊友在旁邊時，打殘血小兵會直接收掉，你和隊友都拿金幣（3 次，18 秒回 1 次）；打敵方英雄也賺金幣。賺 400 金升級成星盤羅盤'},
-  sup2:{n:'星盤羅盤',ic:'羅盤',c:400,hp:150,arm:8,mr:8,sp:.1,sup:2,st:1,keep:1,hide:1,cat:'misc',col:'#ffc070',d:'輔助專屬（星界地圖升級）：效果一樣，再賺到 1000 金變成先知之眼，可以插眼'},
-  sup3:{n:'先知之眼',ic:'世眼',c:400,hp:250,arm:12,mr:12,sp:.15,cdr:.1,sup:3,st:1,keep:1,hide:1,act:{k:'ward',cd:1},cat:'misc',col:'#ffb040',d:'輔助專屬最終型態：主動插一個綠眼（最多 3 次，回泉水補滿，每 50 秒回 1 次），可以多放 2 個眼'},
+  sup1:{n:'星界地圖',ic:'地圖',c:400,hp:40,ap:8,sup:1,st:1,keep:1,cat:'misc',col:'#ffd8a0',d:'輔助專屬：隊友在旁邊時，打殘血小兵會直接收掉，你和隊友都拿金幣（3 次，18 秒回 1 次）；打敵方英雄也賺金幣。賺 400 金升級成星盤羅盤'},
+  sup2:{n:'星盤羅盤',ic:'羅盤',c:400,hp:150,arm:8,mr:8,ap:15,sup:2,st:1,keep:1,hide:1,cat:'misc',col:'#ffc070',d:'輔助專屬（星界地圖升級）：效果一樣，再賺到 1000 金變成先知之眼，可以插眼'},
+  sup3:{n:'先知之眼',ic:'世眼',c:400,hp:250,arm:12,mr:12,ap:25,cdr:.1,sup:3,st:1,keep:1,hide:1,act:{k:'ward',cd:1},cat:'misc',col:'#ffb040',d:'輔助專屬最終型態：主動插一個綠眼（最多 3 次，回泉水補滿，每 50 秒回 1 次），可以多放 2 個眼'},
   // 鞋子
   boots:{n:'旅人短靴',c:300,spd:.08,cat:'misc',col:'#c8a060'},
   swift:{n:'疾風長靴',c:900,from:['boots'],spd:.16,cat:'misc',col:'#e0b060'},lucid:{n:'賢者便靴',c:950,from:['boots'],spd:.1,cdr:.15,cat:'misc',col:'#7ad0ff'},
   bers:{n:'狂戰鐵靴',c:1100,from:['boots','dagger'],spd:.1,as:.3,cat:'misc',col:'#b8e070'},
   steel:{n:'堡壘護脛',c:1000,from:['boots','cloth'],spd:.1,arm:20,cat:'misc',col:'#8a9ab0'},merc:{n:'秘銀戰靴',c:1100,from:['boots','mantle'],spd:.1,mr:25,ten:.3,cat:'misc',col:'#b0a0d8'},
-  sorc:{n:'秘法之靴',c:1100,from:['boots','tome'],spd:.1,sp:.1,mpen:.1,cat:'misc',col:'#b090ff'},
+  sorc:{n:'秘法之靴',c:1100,from:['boots','tome'],spd:.1,ap:15,mpen:.1,cat:'misc',col:'#b090ff'},
   // 攻擊
   exec:{n:'裂傷短刃',c:800,from:['sword'],atk:20,gw:1,cat:'atk',col:'#a03a3a',d:'重傷：打到敵方英雄時，他 3 秒內補血效果 -40%'},
   axe:{n:'雙刃戰斧',c:1200,from:['sword','dagger'],atk:30,as:.2,cat:'atk',col:'#ff7a3d'},bow:{n:'獵鷹速射弓',c:1150,from:['dagger','dagger'],atk:15,as:.4,cat:'atk',col:'#86dc4f'},
@@ -280,14 +280,14 @@ const ITEMS={
   qss:{n:'淨魂彎刀',c:1900,from:['sword','mantle'],atk:35,mr:30,cat:'atk',col:'#c8f0ff',act:{k:'qss',cd:60},d:'主動：解除暈眩、緩速、虛弱、點燃（暈眩時也能用）'},
   ga:{n:'天使之誓',ic:'天使',c:2800,from:['sword','cloth','cloth'],atk:35,arm:40,ga:1,pcd:240,cat:'atk',col:'#fff2b0',d:'被擊殺時改成金身 3 秒，再用一半生命復活（240 秒一次）'},
   // 法術
-  staff:{n:'星辰大法杖',c:1800,from:['tome','tome'],sp:.4,cat:'mag',col:'#c56bff'},crown:{n:'賢者之冠',c:1500,from:['tome','gem'],sp:.25,hp:150,cdr:.15,mp:350,cat:'mag',col:'#ffd23f'},
-  morello:{n:'腐咒魔典',c:2200,from:['tome','ruby'],sp:.3,hp:250,cdr:.1,gw:1,cat:'mag',col:'#8a3a6a',d:'重傷：技能打到敵方英雄時，他 3 秒內補血效果 -40%'},
-  void:{n:'深淵法杖',c:2500,from:['rod','tome'],sp:.35,mpen:.35,cat:'mag',col:'#6a3aa8',d:'無視敵人 35% 魔抗'},
-  lich:{n:'冥咒法刃',c:2900,from:['sheen','rod'],sp:.35,cdr:.1,spd:.05,sb:{a:.75,m:90,mag:1},cat:'mag',col:'#4ad0c0',d:'咒刃：放完技能後，下一次普攻多打一次魔法傷害'},
-  banshee:{n:'月影面紗',c:2500,from:['rod','mantle'],sp:.3,mr:40,ss:1,pcd:40,cat:'mag',col:'#5a8ad8',d:'法術護盾：每 40 秒擋掉一次敵方技能（傷害和暈眩都擋）'},
-  cap:{n:'大魔導師尖帽',c:3200,from:['rod','rod'],sp:.75,cat:'mag',col:'#3a2a6a',d:'大幅提高技能威力'},
-  hourglass:{n:'凝時沙漏',c:2000,from:['tome','cloth','cloth'],sp:.3,arm:30,cat:'mag',col:'#ffcf6a',act:{k:'stasis',cd:90},d:'主動：變成金身 2.5 秒，不會受傷但也不能動'},
-  gun:{n:'雷光槍刃',c:2200,from:['sword','tome'],atk:30,sp:.25,ls:.1,cat:'mag',col:'#ff6ad0',act:{k:'gun',cd:40},d:'主動：電擊附近一個敵方英雄並讓他變慢'},
+  staff:{n:'星辰大法杖',c:1800,from:['tome','tome'],ap:70,cat:'mag',col:'#c56bff'},crown:{n:'賢者之冠',c:1500,from:['tome','gem'],ap:45,hp:150,cdr:.15,mp:350,cat:'mag',col:'#ffd23f'},
+  morello:{n:'腐咒魔典',c:2200,from:['tome','ruby'],ap:55,hp:250,cdr:.1,gw:1,cat:'mag',col:'#8a3a6a',d:'重傷：技能打到敵方英雄時，他 3 秒內補血效果 -40%'},
+  void:{n:'深淵法杖',c:2500,from:['rod','tome'],ap:65,mpen:.35,cat:'mag',col:'#6a3aa8',d:'無視敵人 35% 魔抗'},
+  lich:{n:'冥咒法刃',c:2900,from:['sheen','rod'],ap:70,cdr:.1,spd:.05,sb:{a:.75,m:60,ap:.45,mag:1},cat:'mag',col:'#4ad0c0',d:'咒刃：放完技能後，下一次普攻多打一次魔法傷害'},
+  banshee:{n:'月影面紗',c:2500,from:['rod','mantle'],ap:60,mr:40,ss:1,pcd:40,cat:'mag',col:'#5a8ad8',d:'法術護盾：每 40 秒擋掉一次敵方技能（傷害和暈眩都擋）'},
+  cap:{n:'大魔導師尖帽',c:3200,from:['rod','rod'],ap:120,apm:.3,cat:'mag',col:'#3a2a6a',d:'總法術強度再提高 30%'},
+  hourglass:{n:'凝時沙漏',c:2000,from:['tome','cloth','cloth'],ap:60,arm:30,cat:'mag',col:'#ffcf6a',act:{k:'stasis',cd:90},d:'主動：變成金身 2.5 秒，不會受傷但也不能動'},
+  gun:{n:'雷光槍刃',c:2200,from:['sword','tome'],atk:30,ap:45,ls:.1,cat:'mag',col:'#ff6ad0',act:{k:'gun',cd:40},d:'主動：電擊附近一個敵方英雄並讓他變慢'},
   // 防禦
   plate:{n:'騎士胸甲',ic:'戰甲',c:1600,from:['ruby','cloth'],arm:45,hp:400,cat:'def',col:'#7aa8ff'},amulet:{n:'晨光吊墜',c:1300,from:['ruby','gem'],hp:400,mr:20,heal:.3,mp:250,cat:'def',col:'#fff0a0'},
   thorn:{n:'荊棘重甲',c:2500,from:['cloth','cloth','ruby'],arm:60,hp:300,thorn:1,cat:'def',col:'#6a8a5a',d:'被普攻時反彈傷害，並讓打你的英雄受到重傷'},
@@ -296,7 +296,7 @@ const ITEMS={
   locket:{n:'聖盾聖匣',ic:'聖匣',c:1800,from:['ruby','mantle','gem'],hp:250,arm:20,mr:25,cdr:.1,mp:200,cat:'def',col:'#ffe0a0',act:{k:'locket',cd:60},d:'主動：身邊隊友都得到護盾'},
   randuin:{n:'寒冰圓盾',c:2300,from:['ruby','cloth','cloth'],hp:350,arm:50,cat:'def',col:'#8a7a6a',act:{k:'slowaura',cd:60},d:'主動：身邊的敵人全部變慢'}};
 // 裝備的圖示和特點（商店顯示）
-const ITEM_X={sword:['sword','鐵匠鋪最常見的長劍，所有攻擊裝備的基礎材料'],dagger:['dagger','又輕又快的短刀，讓普攻速度變快'],cloak:['cloak','披上後身手靈活，更容易打出暴擊'],sheen:['whet','刻著古老咒紋的磨刀石，讓技能之後的那一刀特別痛'],tome:['book','法師學徒的第一本書，提升技能威力'],rod:['staff','用千年古樹的樹心做成，蘊藏大量魔力'],gem:['gem','能讓思緒更清晰的寶石，縮短技能冷卻'],ruby:['crystal','握在手裡就感覺得到心跳，增加生命'],belt:['belt','巨人族戰士束腰用的皮帶，大量增加生命'],cloth:['armor','輕便的皮甲，擋住刀劍的基本防具'],mantle:['cloak2','用秘銀絲織成，能化解魔法傷害'],dblade:['sword','新兵入伍發的佩劍，攻擊和吸血兼顧，適合對線'],dring:['ring','法師學院的入學戒指，技能威力和回魔'],dshield:['shield','新兵的木盾，耐打又能慢慢回血'],pot:['potion','紅玫瑰花瓣熬的藥水，喝下去慢慢回血'],elx:['elixir','巫醫的秘方，喝下後 3 分鐘內力量大增'],jgf:['pet','打野的夥伴，會長大的小火狐，覺醒後讓攻擊燃燒'],jgw:['pet','打野的夥伴，會長大的小風鷹，覺醒後跑得更快'],jgm:['pet','打野的夥伴，會長大的小岩龜，覺醒後給你護盾'],sup1:['map','輔助的起手裝，幫隊友收兵、一起賺錢'],sup2:['compass','星界地圖升級而成，指引隊伍方向'],sup3:['eye','輔助的最終型態，可以在地圖上放眼'],boots:['boots','所有鞋子的基礎，走得比較快'],swift:['boots','鞋底刻著風之符文，移動速度最快的鞋'],lucid:['boots','法師最愛的輕便鞋，縮短技能冷卻'],bers:['boots','射手和戰士的鞋，提升攻擊速度'],steel:['boots','鐵片包覆的戰靴，擋住普攻傷害'],merc:['boots','秘銀打造，抵抗魔法並縮短被控制的時間'],sorc:['boots','穿上後技能能穿透敵人的魔抗'],exec:['dagger','刀上有倒鉤，砍到的傷口很難癒合（重傷）'],axe:['axe','兩面都開了鋒的戰斧，攻擊和攻速兼具'],bow:['bow','獵人的輕弓，箭一支接一支射出去'],blade:['scimitar','在血月下鍛造的彎刀，砍人會吸血'],great:['greatsword','傳說砍過巨龍的大劍，純粹的攻擊力'],ldr:['hammer','專門敲碎盔甲的重錘，無視部分護甲'],ie:['greatsword','劍身閃著晨星的光，暴擊時傷害更驚人'],pd:['twin','一左一右的雙刀，又快又容易暴擊'],tri:['sword3','三種咒文合一的聖劍，放完技能後的普攻威力翻倍'],hydra:['axe','揮動時像浪潮一樣橫掃身邊所有敵人'],ghost:['dagger','刺客的愛刀，啟動後身影如風'],qss:['scimitar','刀上的聖光能洗掉身上的控制效果'],ga:['wings','天使的祝福，被擊倒時能原地復活一次'],staff:['staff','杖頭鑲著星辰碎片，大量提升技能威力'],crown:['crown','歷代大賢者戴過的冠冕，威力和冷卻兼顧'],morello:['book2','記載腐蝕詛咒的禁書，技能讓敵人補血變差（重傷）'],void:['staff2','從深淵帶回來的法杖，技能能穿透魔抗'],lich:['scimitar','亡靈法師的法刃，放完技能後的普攻追加魔法傷害'],banshee:['veil','月光織成的面紗，會自動擋下一次敵方技能'],cap:['hat','只有大魔導師才戴得起的尖帽，技能威力大幅提升'],hourglass:['hourglass','把時間凝住的沙漏，啟動後短暫無敵'],gun:['gun','槍和刀合一的機械武器，射出雷光讓敵人變慢'],plate:['armor','王國騎士的制式胸甲，生命和護甲'],amulet:['amulet','戴著它思緒清明，生命和冷卻縮減'],thorn:['thorns','全身長滿尖刺的重甲，打你的人自己也會受傷'],visage:['armor2','鎧甲裡流著生命之泉，受到的治療更多'],warmog:['heart','巨人跳動的心臟，脫離戰鬥時快速回血'],locket:['locket','打開聖匣，身邊隊友全部得到護盾'],randuin:['shield2','冰原部族的圓盾，啟動後讓身邊敵人全部變慢']};
+const ITEM_X={sword:['sword','鐵匠鋪最常見的長劍，所有攻擊裝備的基礎材料'],dagger:['dagger','又輕又快的短刀，讓普攻速度變快'],cloak:['cloak','披上後身手靈活，更容易打出暴擊'],sheen:['whet','刻著古老咒紋的磨刀石，讓技能之後的那一刀特別痛'],tome:['book','法師學徒的第一本書，提升法術強度'],rod:['staff','用千年古樹的樹心做成，蘊藏大量魔力'],gem:['gem','能讓思緒更清晰的寶石，縮短技能冷卻'],ruby:['crystal','握在手裡就感覺得到心跳，增加生命'],belt:['belt','巨人族戰士束腰用的皮帶，大量增加生命'],cloth:['armor','輕便的皮甲，擋住刀劍的基本防具'],mantle:['cloak2','用秘銀絲織成，能化解魔法傷害'],dblade:['sword','新兵入伍發的佩劍，攻擊和吸血兼顧，適合對線'],dring:['ring','法師學院的入學戒指，法術強度和回魔'],dshield:['shield','新兵的木盾，耐打又能慢慢回血'],pot:['potion','紅玫瑰花瓣熬的藥水，喝下去慢慢回血'],elx:['elixir','巫醫的秘方，喝下後 3 分鐘內力量大增'],jgf:['pet','打野的夥伴，會長大的小火狐，覺醒後讓攻擊燃燒'],jgw:['pet','打野的夥伴，會長大的小風鷹，覺醒後跑得更快'],jgm:['pet','打野的夥伴，會長大的小岩龜，覺醒後給你護盾'],sup1:['map','輔助的起手裝，幫隊友收兵、一起賺錢'],sup2:['compass','星界地圖升級而成，指引隊伍方向'],sup3:['eye','輔助的最終型態，可以在地圖上放眼'],boots:['boots','所有鞋子的基礎，走得比較快'],swift:['boots','鞋底刻著風之符文，移動速度最快的鞋'],lucid:['boots','法師最愛的輕便鞋，縮短技能冷卻'],bers:['boots','射手和戰士的鞋，提升攻擊速度'],steel:['boots','鐵片包覆的戰靴，擋住普攻傷害'],merc:['boots','秘銀打造，抵抗魔法並縮短被控制的時間'],sorc:['boots','穿上後技能能穿透敵人的魔抗'],exec:['dagger','刀上有倒鉤，砍到的傷口很難癒合（重傷）'],axe:['axe','兩面都開了鋒的戰斧，攻擊和攻速兼具'],bow:['bow','獵人的輕弓，箭一支接一支射出去'],blade:['scimitar','在血月下鍛造的彎刀，砍人會吸血'],great:['greatsword','傳說砍過巨龍的大劍，純粹的攻擊力'],ldr:['hammer','專門敲碎盔甲的重錘，無視部分護甲'],ie:['greatsword','劍身閃著晨星的光，暴擊時傷害更驚人'],pd:['twin','一左一右的雙刀，又快又容易暴擊'],tri:['sword3','三種咒文合一的聖劍，放完技能後的普攻威力翻倍'],hydra:['axe','揮動時像浪潮一樣橫掃身邊所有敵人'],ghost:['dagger','刺客的愛刀，啟動後身影如風'],qss:['scimitar','刀上的聖光能洗掉身上的控制效果'],ga:['wings','天使的祝福，被擊倒時能原地復活一次'],staff:['staff','杖頭鑲著星辰碎片，大量提升法術強度'],crown:['crown','歷代大賢者戴過的冠冕，威力和冷卻兼顧'],morello:['book2','記載腐蝕詛咒的禁書，技能讓敵人補血變差（重傷）'],void:['staff2','從深淵帶回來的法杖，技能能穿透魔抗'],lich:['scimitar','亡靈法師的法刃，放完技能後的普攻追加魔法傷害'],banshee:['veil','月光織成的面紗，會自動擋下一次敵方技能'],cap:['hat','只有大魔導師才戴得起的尖帽，法術強度大幅提升'],hourglass:['hourglass','把時間凝住的沙漏，啟動後短暫無敵'],gun:['gun','槍和刀合一的機械武器，射出雷光讓敵人變慢'],plate:['armor','王國騎士的制式胸甲，生命和護甲'],amulet:['amulet','戴著它思緒清明，生命和冷卻縮減'],thorn:['thorns','全身長滿尖刺的重甲，打你的人自己也會受傷'],visage:['armor2','鎧甲裡流著生命之泉，受到的治療更多'],warmog:['heart','巨人跳動的心臟，脫離戰鬥時快速回血'],locket:['locket','打開聖匣，身邊隊友全部得到護盾'],randuin:['shield2','冰原部族的圓盾，啟動後讓身邊敵人全部變慢']};
 for(const k in ITEM_X){ if(ITEMS[k]){ ITEMS[k].g=ITEM_X[k][0]; ITEMS[k].f=ITEM_X[k][1]; } }
 
 // 眼（第 7 格，免費、二選一）
