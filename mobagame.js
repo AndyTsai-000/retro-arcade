@@ -25,7 +25,7 @@ function create(env,opts){
   const G3=G3M(T,{W,H,map,low:!!env.touch});
   /* ---------- 狀態 ---------- */
   let phase='pick',pickT=120,Tm=0,t=0,ended=false,winner=-1,acc=0,nextWave=30,waveN=0,minId=1000,vpId=1,sendT=0,inT=0,overT=0;
-  const heroes=[],minions=[],TWHP=mode?[2200,2800]:[4600,5400],COHP=mode?4200:8000,towers=map.towers.map(q=>Object.assign({k:'t',hp:TWHP[q.tier],max:TWHP[q.tier],r:1.7,cd:0,tgt:null,hits:0,inv:false},q)),cores=map.cores.map(q=>Object.assign({k:'c',hp:COHP,max:COHP,r:3.6,cd:0,tgt:null,hits:0,inv:true},q));
+  const heroes=[],minions=[],TWHP=mode?[2200,2800]:[4600,5400],COHP=mode?4200:8000,towers=map.towers.map(q=>Object.assign({k:'t',hp:TWHP[q.tier],max:TWHP[q.tier],r:2.5,cd:0,tgt:null,hits:0,inv:false},q)),cores=map.cores.map(q=>Object.assign({k:'c',hp:COHP,max:COHP,r:4.8,cd:0,tgt:null,hits:0,inv:true},q));
   const mons=map.camps.map((cp,i)=>({id:300+i,k:'j',camp:cp,big:cp.big,kind:cp.kind,buff:cp.buff,crab:cp.crab,team:2,x:cp.x,z:cp.z,home:[cp.x,cp.z],hp:0,max:1,dead:true,rsp:cp.big?(cp.kind===1?300:360):cp.crab?175:cp.buff?55:((cp.kind|0)%4>=2?67:55),face:PI/2,cd:0,tgt:null,r:cp.big?1.8:1,slam:6}));
   const teamBuff=[{fire:0,earth:0,wind:0,water:0,bar:0},{fire:0,earth:0,wind:0,water:0,bar:0}],shrines=[],kills=[0,0],projs=[],zones=[],traps=[],timers=[],floats=[],feed=[],anns=[],vproj=new Map(); let firstB=0;
   let EV=[],sendEV=[];
@@ -76,10 +76,14 @@ function create(env,opts){
     for(const o of obsNear(nx,nz,u.r+.2)){ const ddx=nx-o.x,ddz=nz-o.z,d=Math.hypot(ddx,ddz),m=o.r+u.r*.6; if(d<m&&d>0){ nx=o.x+ddx/d*m; nz=o.z+ddz/d*m; } }
     for(const s of towers.concat(cores)){ if(s.hp<=0) continue; const ddx=nx-s.x,ddz=nz-s.z,d=Math.hypot(ddx,ddz),m=s.r+u.r*.5; if(d<m&&d>0){ nx=s.x+ddx/d*m; nz=s.z+ddz/d*m; } }
     return map.inB(nx,nz); }
-  function moveUnit(u,dx,dz,spd,dt){ if(u.rt>0) return; const l=Math.hypot(dx,dz); if(l<.01) return; const ux=dx/l,uz=dz/l,st=spd*dt; let [nx,nz]=tryMove(u,ux,uz,st);
+  // 前面有塔或主堡擋路（而且要去的地方在塔後面）：提早往旁邊轉，從塔旁邊繞過去
+  function steerStruct(u,ux,uz,l){ for(const s of towers.concat(cores)){ if(s.hp<=0) continue; const ox=s.x-u.x,oz=s.z-u.z,ah=ox*ux+oz*uz,dd=Math.hypot(ox,oz),R=s.r+u.r+.5; if(ah<=0||dd>R+4||u.tgt===s) continue; if(!(u.k==='m'&&!u.tgt)&&Math.hypot(u.x+ux*l-s.x,u.z+uz*l-s.z)<s.r+1.2) continue;
+      const lp=-ox*uz+oz*ux; if(Math.abs(lp)>=R) continue; const sg=lp>=0?-1:1,px=-uz*sg,pz=ux*sg,w=2.2*(1-Math.abs(lp)/R)*Math.min(1,(R+4-dd)/4+.3),vx=ux+px*w,vz=uz+pz*w,vl=Math.hypot(vx,vz); ux=vx/vl; uz=vz/vl; }
+    return [ux,uz]; }
+  function moveUnit(u,dx,dz,spd,dt){ if(u.rt>0) return; const l=Math.hypot(dx,dz); if(l<.01) return; let ux=dx/l,uz=dz/l; const st=spd*dt; [ux,uz]=steerStruct(u,ux,uz,l); let [nx,nz]=tryMove(u,ux,uz,st);
     if(Math.hypot(nx-u.x,nz-u.z)<st*.35){ // 卡住了：往左或右偏一點繞過去
       for(const a of [.9,-.9,1.5,-1.5]){ const c2=Math.cos(a),s2=Math.sin(a),vx=ux*c2-uz*s2,vz=ux*s2+uz*c2,[px,pz]=tryMove(u,vx,vz,st); if(Math.hypot(px-u.x,pz-u.z)>st*.5){ nx=px; nz=pz; break; } } }
-    u.x=nx; u.z=nz; u.face=Math.atan2(dz,dx); }
+    u.x=nx; u.z=nz; u.face=Math.atan2(uz,ux); }
   function goTo(u,x,z,spd,dt,stopAt){ const dx=x-u.x,dz=z-u.z,d=Math.hypot(dx,dz); if(d<=(stopAt||.3)) return true; moveUnit(u,dx,dz,Math.min(spd,d/dt),dt); return false; }
   /* ---------- 傷害、死亡、獎勵 ---------- */
   function armorOf(u){ return u.k==='h'?stats(u).arm:u.arm||0; }
@@ -532,6 +536,8 @@ function create(env,opts){
     if(Tm>=nextWave){ spawnWave(); nextWave+=Tm>=1800?20:Tm>=840?25:30; } // 0:30 第一波，之後每 30 秒；14 分起 25 秒、30 分起 20 秒
     for(const h of heroes) heroTick(h,dt);
     for(const m of minions) if(alive(m)) minionTick(m,dt);
+    // 衝刺、擊退、剛出生都可能卡進塔或主堡裡：每步推回塔外
+    for(const s of towers.concat(cores)){ if(s.hp<=0) continue; for(const u of heroes.concat(minions)){ if(u.dead||!(u.hp>0)) continue; const dx=u.x-s.x,dz=u.z-s.z; if(Math.abs(dx)>s.r+1||Math.abs(dz)>s.r+1) continue; const d=Math.hypot(dx,dz),m=s.r+u.r*.5; if(d<m){ const a=d>.01?Math.atan2(dz,dx):(u.team?-PI/4:PI*.75); u.x=s.x+Math.cos(a)*m; u.z=s.z+Math.sin(a)*m; } } }
     for(const m of mons) monTick(m,dt);
     for(const s of towers) towerTick(s,dt); for(const s of cores) towerTick(s,dt);
     projTick(dt);

@@ -513,7 +513,7 @@ function make(T,o){ const {W,H,map}=o,low=!!o.low,R=mul(map.seed||7),col=c=>new 
     shadows(on){ r.shadowMap.enabled=on; scene.traverse(m=>{ if(m.material) m.material.needsUpdate=true; }); },
     fx,
     render(G,cx,cz,flip,t,zoom){ sync(G,t); const z=zoom||1,dz=flip?-1:1;
-      for(const M of S.tow.values()){ const b=(M.z-cz)*dz,want=b>-1&&b<10&&Math.abs(M.x-cx)<4.5?.45:1; if(Math.abs(want-M.fade)>.01){ M.fade+=(want-M.fade)*.2; M.mats.forEach(m=>{ m.transparent=true; m.opacity=M.fade; m.depthWrite=M.fade>.9; }); } }
+      /* 防禦塔擋到鏡頭不再變半透明 */
       cam.position.set(cx,15.5*z,cz+10.5*z*dz); cam.lookAt(cx,0,cz+1.2*dz); cam.updateMatrixWorld(true);
       sun.position.set(cx-18,42,cz+16); sun.target.position.set(cx,0,cz); r.render(scene,cam); },
     fog:fogDraw, twDbg:()=>[...S.tow.values()].map(M=>[Math.round(M.x),Math.round(M.z),+M.fade.toFixed(2),M.parts[0].visible,M.mats.length]), info:()=>({calls:r.info.render.calls,tri:r.info.render.triangles,geo:r.info.memory.geometries,tex:r.info.memory.textures,objs:scene.children.length}),
