@@ -5,7 +5,7 @@ const W=960,H=540,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PI=Math.PI
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,k)=>a+(b-a)*k,dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 function rr(c,x,y,w,h,r){ r=Math.min(r,w/2,h/2); c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 const MODES=['三路峽谷','單路激戰'];
-const LVS={easy:{dm:.68,re:.7,sk:.45,ret:.38,n:'簡單',t:0},mid:{dm:.88,re:.4,sk:.8,ret:.3,n:'中等',t:1},hard:{dm:1.05,re:.22,sk:1,ret:.24,n:'困難',t:2}};
+const LVS={easy:{dm:.68,re:.7,sk:.45,ret:.38,n:'簡單',t:0,pk:.6,pr:24,ps:4},mid:{dm:.88,re:.4,sk:.8,ret:.3,n:'中等',t:1,pk:.4,pr:34,ps:3},hard:{dm:1.05,re:.22,sk:1,ret:.24,n:'困難',t:2,pk:0,pr:48,ps:2}};
 const ROLE_CLS={top:['tank','fighter'],jg:['assassin','fighter'],mid:['mage','assassin'],bot:['marksman'],sup:['support','tank']};
 const TW_R=8.5,CORE_R=9.5,APR={mage:[.7,.9],support:[.5,.6],assassin:[.5,.7],tank:[.4,.5],fighter:[.4,.5],marksman:[.3,.4]},XPN=l=>120+l*80,MAXL=18;
 function create(env,opts){
@@ -25,7 +25,7 @@ function create(env,opts){
   const G3=G3M(T,{W,H,map,low:!!env.touch});
   /* ---------- 狀態 ---------- */
   let phase='pick',pickT=120,Tm=0,t=0,ended=false,winner=-1,acc=0,nextWave=30,waveN=0,minId=1000,vpId=1,sendT=0,inT=0,overT=0;
-  const heroes=[],minions=[],TWHP=[3600,5000],COHP=5500,towers=map.towers.map(q=>Object.assign({k:'t',hp:TWHP[q.tier],max:TWHP[q.tier],r:2.5,cd:0,tgt:null,hits:0,inv:false},q)),cores=map.cores.map(q=>Object.assign({k:'c',hp:COHP,max:COHP,r:4.8,cd:0,tgt:null,hits:0,inv:true},q));
+  const heroes=[],minions=[],TWHP=[5000,3600],COHP=5500,towers=map.towers.map(q=>Object.assign({k:'t',hp:TWHP[q.tier],max:TWHP[q.tier],r:2.5,cd:0,tgt:null,hits:0,inv:false},q)),cores=map.cores.map(q=>Object.assign({k:'c',hp:COHP,max:COHP,r:4.8,cd:0,tgt:null,hits:0,inv:true},q));
   const mons=map.camps.map((cp,i)=>({id:300+i,k:'j',camp:cp,big:cp.big,kind:cp.kind,buff:cp.buff,crab:cp.crab,team:2,x:cp.x,z:cp.z,home:[cp.x,cp.z],hp:0,max:1,dead:true,rsp:cp.big?(cp.kind===1?300:360):cp.crab?175:cp.buff?55:((cp.kind|0)%4>=2?67:55),face:PI/2,cd:0,tgt:null,r:cp.big?1.8:1,slam:6}));
   const teamBuff=[{fire:0,earth:0,wind:0,water:0,bar:0},{fire:0,earth:0,wind:0,water:0,bar:0}],shrines=[],kills=[0,0],projs=[],zones=[],traps=[],timers=[],floats=[],feed=[],anns=[],vproj=new Map(); let firstB=0;
   let EV=[],sendEV=[];
@@ -495,8 +495,9 @@ function create(env,opts){
     // 對手死了一半以上：趁機拆塔
     const deadE=heroes.filter(e=>e.team!==h.team&&e.dead).length;
     const aliveM=heroes.filter(a=>a.team===h.team&&alive(a)).length,aliveE=heroes.filter(e=>e.team!==h.team&&alive(e)).length;
-    if((LV.t>=2?deadE>=1&&aliveM>aliveE:LV.t===1?deadE>=Math.max(1,Math.ceil(size/2)):deadE>=size)&&hp>.45){ const L2=map.lanes[laneOf(h)],st=towers.concat(cores).filter(q=>q.team!==h.team&&q.hp>0&&!q.inv).sort((a,b)=>(a.lane===laneOf(h)?0:40)+dist(a,h)-((b.lane===laneOf(h)?0:40)+dist(b,h)))[0];
-      if(st&&dist(st,h)<(LV.t>=2?28:22)&&(LV.t<2||minions.some(m=>m.team===h.team&&alive(m)&&dist(m,st)<14)||deadE>=3)){ if(dist(st,h)<(st.k==='c'?CORE_R:TW_R)+1) ai.tgt=st; else ai.goal=[st.x,st.z]; return; } } // 只拆附近的塔，不要跑遍全圖
+    // 推塔：簡單要對手死一大半才推、只推附近；中等死一半左右就推；困難只要人數佔優就推，而且跑比較遠去推
+    if((LV.t>=2?deadE>=1&&aliveM>aliveE:deadE>=Math.max(LV.t?1:2,Math.ceil(size*LV.pk))&&aliveM>=aliveE)&&hp>(LV.t>=2?.4:.5)){ const L2=map.lanes[laneOf(h)],st=towers.concat(cores).filter(q=>q.team!==h.team&&q.hp>0&&!q.inv).sort((a,b)=>(a.lane===laneOf(h)?0:40)+dist(a,h)-((b.lane===laneOf(h)?0:40)+dist(b,h)))[0];
+      if(st&&dist(st,h)<LV.pr&&(minions.some(m=>m.team===h.team&&alive(m)&&dist(m,st)<14)||deadE>=Math.min(LV.ps,aliveE+deadE)||LV.t>=2&&!heroes.some(e=>e.team!==h.team&&alive(e)&&dist(e,st)<18))){ if(dist(st,h)<(st.k==='c'?CORE_R:TW_R)+1) ai.tgt=st; else ai.goal=[st.x,st.z]; return; } } // 只拆附近的塔，不要跑遍全圖
     // 兵線：跟在最前面的自己小兵後面，打敵方小兵；小兵在塔下時才打塔
     const li=laneOf(h),L=map.lanes[li],mine=minions.filter(m=>m.team===h.team&&m.lane===li&&alive(m));
     let front=null,fp=-1; for(const m of mine){ const p=progress(h,m); if(p>fp){ fp=p; front=m; } }

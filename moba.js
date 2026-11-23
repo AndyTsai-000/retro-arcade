@@ -29,7 +29,7 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
   M.laneDist=(x,z)=>{ let d=1e9; for(const L of M.lanes) for(const g of L.seg) d=Math.min(d,segD(x,z,g.ax,g.az,g.bx,g.bz)); return d; };
   M.along=along;
   // 塔：每路兩座（外塔、內塔），主堡在基地
-  M.towers=[]; let tid=100; M.lanes.forEach((L,li)=>{ const side=mode===0&&li!==1,fr=mode?[.17,.35]:side?[.14,.31]:[.2,.37]; for(let tm=0;tm<2;tm++) fr.forEach((f,k)=>{ const p=along(L,tm?L.len*(1-f):L.len*f); M.towers.push({id:tid++,team:tm,lane:li,tier:k,x:p[0],z:p[1]}); }); });
+  M.towers=[]; let tid=100; M.lanes.forEach((L,li)=>{ const side=mode===0&&li!==1,fr=mode?[.35,.17]:side?[.31,.14]:[.37,.2]; /* tier 0＝外塔（離主堡遠、先打），tier 1＝內塔 */ for(let tm=0;tm<2;tm++) fr.forEach((f,k)=>{ const p=along(L,tm?L.len*(1-f):L.len*f); M.towers.push({id:tid++,team:tm,lane:li,tier:k,x:p[0],z:p[1]}); }); });
   M.cores=[0,1].map(tm=>({id:200+tm,team:tm,x:M.base[tm][0],z:M.base[tm][1]}));
   // 給電腦走的路網：三條路、河道、野怪營地
   const N=[],E=[]; const node=(x,z)=>{ N.push([x,z]); return N.length-1; };
