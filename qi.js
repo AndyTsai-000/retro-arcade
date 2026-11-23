@@ -308,6 +308,20 @@ function chPiece(c,x,y,cs,v,o){ const s=v>>3,t=v&7; o=o||{}; c.save(); c.transla
   if(o.hl){ c.strokeStyle=o.hl; c.lineWidth=3; c.beginPath(); c.arc(0,0,cs*.46,0,7); c.stroke(); }
   c.restore(); }
 
+/* 戰績、連勝稱號、每日任務（只記單機，各遊戲分開記；每天換三個任務） */
+function partyLog(ns,gname,games,res){ let D; try{ D=JSON.parse(localStorage.getItem('arcade.'+ns+'.rec')||'{}')||{}; }catch(e){ D={}; } D.g=D.g||{};
+  const td=new Date(),day=td.getFullYear()+'-'+(td.getMonth()+1)+'-'+td.getDate();
+  if(D.day!==day||!Array.isArray(D.tasks)){ let h=7; for(const ch of day+ns) h=(h*31+ch.charCodeAt(0))>>>0; const pick=n=>{ h=(Math.imul(h,1103515245)+12345)>>>0; return (h>>>8)%n; }; const gg=games[pick(games.length)];
+    const pool=[{k:'win',need:2,txt:'贏 2 場'},{k:'play',need:3,txt:'玩 3 場'},{k:'kinds',need:2,txt:'玩 2 種不同的遊戲'},{k:'streak',need:2,txt:'連贏 2 場'},{k:'winG',g:gg,need:1,txt:'在「'+gg+'」贏 1 場'}];
+    const T=[]; while(T.length<3) T.push(Object.assign({got:0},pool.splice(pick(pool.length),1)[0])); D.day=day; D.tasks=T; D.kinds=[]; D.allDone=false; D.st=0; }
+  const r=D.g[gname]=D.g[gname]||{w:0,l:0,d:0,s:0,best:0}; if(res==='w'){ r.w++; r.s++; r.best=Math.max(r.best,r.s); } else if(res==='l'){ r.l++; r.s=0; } else r.d++;
+  D.st=res==='w'?(D.st||0)+1:res==='l'?0:(D.st||0); if(!D.kinds.includes(gname)) D.kinds.push(gname);
+  for(const k of D.tasks){ if(k.k==='win'&&res==='w') k.got++; if(k.k==='play') k.got++; if(k.k==='kinds') k.got=D.kinds.length; if(k.k==='streak') k.got=Math.max(k.got,D.st); if(k.k==='winG'&&res==='w'&&gname===k.g) k.got++; k.got=Math.min(k.got,k.need); }
+  const all=D.tasks.every(k=>k.got>=k.need),newAll=all&&!D.allDone; if(newAll){ D.allDone=true; D.stars=(D.stars||0)+1; }
+  try{ localStorage.setItem('arcade.'+ns+'.rec',JSON.stringify(D)); }catch(e){}
+  const ti=([[12,'傳說'],[8,'無敵手'],[5,'常勝軍'],[3,'小有名氣'],[2,'手感不錯']].find(q=>r.s>=q[0])||[])[1];
+  return '<div style="margin:8px 0;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13px;line-height:1.7;text-align:left"><b>'+gname+'</b>　'+r.w+' 勝 '+r.l+' 敗'+(r.d?' '+r.d+' 和':'')+'　連勝 '+r.s+'（最多 '+r.best+'）'+(ti?'　稱號「<b style="color:#ffd23f">'+ti+'</b>」':'')
+    +'<br>今日任務　'+D.tasks.map(k=>(k.got>=k.need?'✅ ':'⬜ ')+k.txt+' '+k.got+'/'+k.need).join('　')+(newAll?'<br><b style="color:#86dc4f">🎉 今日任務全部完成！已經完成 '+D.stars+' 天</b>':all?'<br><span style="color:#86dc4f">今日任務都完成了</span>':'')+'</div>'; }
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0,OP=opts.options||{};
   const si=clamp(opts.stage|0,0,6),kind=GID[si],TWO=kind!=='cc'&&kind!=='mj',local2=!net&&opts.mode==='2p';
@@ -808,6 +822,7 @@ function create(env,opts){
     else if(o.win==null) title='和棋';
     else { won=!local2&&o.win===me; title=won?'你贏了！':local2?names[o.win]+' 獲勝！':net?names[o.win]+' 獲勝':'電腦獲勝'; }
     if(won&&!net){ try{ localStorage.setItem(WK,String((+localStorage.getItem(WK)||0)+1)); }catch(e){} }
+    if(!net&&!local2&&!opts.preview) html=(html||'')+partyLog('qi',GAMES[si],GAMES,won?'w':!o.rank&&o.win==null?'d':'l');
     env.sfx(won||local2&&o.win!=null?'win':'lose'); env.end({title,big:GAMES[si],html,text:o.why||'',score:null,next:false}); }
 
   /* ===== 操作 ===== */
@@ -891,7 +906,7 @@ function thumb(ctx,w,h,t){ drawBg(ctx,w,h,'tea',t); const k=w/480;
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).qi={
   name:'棋類派對',tag:'BOARD PARTY',color:'#c8913a',online:true,maxPlayers:si=>si===2?6:si===5?4:2,bots:true,minPlayers:2,
-  desc:'一盒棋玩七種：圍棋、五子棋、跳棋、象棋、暗棋、象棋麻將、西洋棋。和電腦下、兩個人同一台輪流下，或開房間連線對戰。',
+  desc:'一盒棋玩七種：圍棋、五子棋、跳棋、象棋、暗棋、象棋麻將、西洋棋。和電腦下、兩個人同一台輪流下，或開房間連線對戰。單機會記每種遊戲的戰績和連勝稱號，每天還有三個任務。',
   goal:'選一種棋開始玩。',
   stages:GAMES,stageLabel:'選擇遊戲',
   stageGoal:si=>[

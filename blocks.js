@@ -86,7 +86,7 @@ function bg(c,w,h,wi,t){ const Wd=WORLDS[wi],k=w/800,g=c.createLinearGradient(0,
     const rx=w*.8+Math.sin(t*.5)*30*k,ry=h*.2+Math.cos(t*.7)*12*k; c.save(); c.translate(rx,ry); c.rotate(.6); c.fillStyle='#fff'; rr(c,-8*k,-24*k,16*k,40*k,8*k); c.fill(); c.fillStyle='#e23b3b'; c.beginPath(); c.moveTo(-8*k,-14*k); c.lineTo(0,-30*k); c.lineTo(8*k,-14*k); c.fill(); c.fillStyle='#ffb000'; c.beginPath(); c.moveTo(-6*k,16*k); c.lineTo(0,(28+Math.sin(t*20)*4)*k); c.lineTo(6*k,16*k); c.fill(); c.restore(); } }
 
 /* ---------- 一塊盤面 ---------- */
-function Board(rnd,o){ const b={grid:new Uint8Array(COLS*ROWS),bag:[],queue:[],cur:null,fallT:0,lockT:0,lockN:0,lines:0,score:0,combo:-1,over:false,pend:0,fx:[],pops:[],das:{d:0,t:0},land:0,shake:0};
+function Board(rnd,o){ const b={grid:new Uint8Array(COLS*ROWS),bag:[],queue:[],cur:null,fallT:0,lockT:0,lockN:0,lines:0,score:0,combo:-1,over:false,pend:0,fx:[],pops:[],das:{d:0,t:0},land:0,shake:0,lastRot:false,b2b:false,tsN:0,tetN:0,pcN:0,b2bN:0,maxCombo:0,lc:null};
   const refill=()=>{ const k=KINDS.split(''),ex=o.iExtra?o.iExtra():0; if(ex>0){ for(let n=0;n<Math.floor(ex);n++) k.push('I'); if(rnd()<ex%1) k.push('I'); } else if(ex<0&&rnd()<-ex) k.splice(k.indexOf('I'),1);
     for(let i=k.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [k[i],k[j]]=[k[j],k[i]]; } b.bag.push(...k); };
   b.spawn=k=>{ const m=MAT[k]; b.cur={k,ci:KINDS.indexOf(k)+1,m,x:Math.floor((COLS-m.length)/2),y:k==='I'?-1:0}; b.lockT=0; b.lockN=0; b.fallT=0; if(b.hit(b.cur.m,b.cur.x,b.cur.y)) b.over=true; };
@@ -96,18 +96,22 @@ function Board(rnd,o){ const b={grid:new Uint8Array(COLS*ROWS),bag:[],queue:[],c
   b.hold=null; b.canHold=true;
   b.doHold=()=>{ const c=b.cur; if(!c||b.over||!b.canHold) return false; const k=c.k; if(b.hold){ const h=b.hold; b.hold=k; b.spawn(h); } else { b.hold=k; b.next(); } b.canHold=false; return true; };
   b.hit=(m,x,y)=>{ for(let r=0;r<m.length;r++) for(let q=0;q<m.length;q++){ if(!m[r][q]) continue; const X=x+q,Y=y+r; if(X<0||X>=COLS||Y>=ROWS) return true; if(Y>=0&&b.grid[Y*COLS+X]) return true; } return false; };
-  b.move=(dx,dy)=>{ const c=b.cur; if(!c||b.over) return false; if(b.hit(c.m,c.x+dx,c.y+dy)) return false; c.x+=dx; c.y+=dy; if(dx&&b.lockN<15&&b.hit(c.m,c.x,c.y+1)){ b.lockT=0; b.lockN++; } return true; };
-  b.rotate=()=>{ const c=b.cur; if(!c||b.over||c.k==='O') return false; const m=rot(c.m); for(const [dx,dy] of KICKS) if(!b.hit(m,c.x+dx,c.y+dy)){ c.m=m; c.x+=dx; c.y+=dy; if(b.lockN<15){ b.lockT=0; b.lockN++; } return true; } return false; };
+  b.move=(dx,dy)=>{ const c=b.cur; if(!c||b.over) return false; if(b.hit(c.m,c.x+dx,c.y+dy)) return false; c.x+=dx; c.y+=dy; b.lastRot=false; if(dx&&b.lockN<15&&b.hit(c.m,c.x,c.y+1)){ b.lockT=0; b.lockN++; } return true; };
+  b.rotate=()=>{ const c=b.cur; if(!c||b.over||c.k==='O') return false; const m=rot(c.m); for(const [dx,dy] of KICKS) if(!b.hit(m,c.x+dx,c.y+dy)){ c.m=m; c.x+=dx; c.y+=dy; b.lastRot=true; if(b.lockN<15){ b.lockT=0; b.lockN++; } return true; } return false; };
   b.ghostY=()=>{ const c=b.cur; let y=c.y; while(!b.hit(c.m,c.x,y+1)) y++; return y; };
-  b.lock=()=>{ const c=b.cur; for(let r=0;r<c.m.length;r++) for(let q=0;q<c.m.length;q++) if(c.m[r][q]){ const Y=c.y+r; if(Y<0){ b.over=true; continue; } b.grid[Y*COLS+c.x+q]=c.ci; }
+  b.lock=()=>{ const c=b.cur; let ts=false; if(c.k==='T'&&b.lastRot){ const cx=c.x+1,cy=c.y+1,occ=(X,Y)=>X<0||X>=COLS||Y>=ROWS||(Y>=0&&!!b.grid[Y*COLS+X]); let n=0; for(const [dx,dy] of [[-1,-1],[1,-1],[-1,1],[1,1]]) if(occ(cx+dx,cy+dy)) n++; ts=n>=3; } /* T 旋轉：轉進去的 T、四個角有三個被擋住 */ b.lc={ts,n:0,b2b:false,pc:false};
+    for(let r=0;r<c.m.length;r++) for(let q=0;q<c.m.length;q++) if(c.m[r][q]){ const Y=c.y+r; if(Y<0){ b.over=true; continue; } b.grid[Y*COLS+c.x+q]=c.ci; }
     b.land=.12; const full=[]; for(let y=0;y<ROWS;y++){ let ok=true; for(let x=0;x<COLS;x++) if(!b.grid[y*COLS+x]){ ok=false; break; } if(ok) full.push(y); }
     let sent=0;
     if(full.length){ for(const y of full){ b.fx.push({y,t:0}); for(let x=0;x<COLS;x++) b.pops.push({x:(x+.5)*CS,y:(y+.5)*CS,vx:(Math.random()-.5)*220,vy:-80-Math.random()*200,ci:b.grid[y*COLS+x],t:0}); }
       const ng=new Uint8Array(COLS*ROWS); let w=ROWS-1; for(let y=ROWS-1;y>=0;y--){ if(full.includes(y)) continue; ng.set(b.grid.subarray(y*COLS,y*COLS+COLS),w*COLS); w--; } b.grid=ng;
-      b.combo++; b.lines+=full.length; b.score+=[0,100,300,500,800][full.length]*(1+(o.level||0)*.1|0)+Math.max(0,b.combo)*50;
-      sent=[0,0,1,2,4][full.length]+Math.floor(Math.max(0,b.combo)/2); if(full.length===4) b.shake=.3;
+      b.combo++; b.maxCombo=Math.max(b.maxCombo,b.combo+1); b.lines+=full.length; const n=full.length,hard=n===4||ts; let base=ts?[400,800,1200,1600][n]:[0,100,300,500,800][n],atk=ts?[0,2,4,6][n]:[0,0,1,2,4][n];
+      if(hard&&b.b2b){ base=Math.round(base*1.5); atk+=1; b.b2bN++; b.lc.b2b=true; } b.b2b=hard; if(ts) b.tsN++; if(n===4) b.tetN++; /* 連續高難度消除（四消、T 旋轉）加成 */
+      if(!b.grid.some(v=>v)){ base+=3000; atk+=6; b.pcN++; b.lc.pc=true; b.shake=.4; } /* 全清 */
+      b.lc.n=n; b.score+=base*(1+(o.level||0)*.1|0)+Math.max(0,b.combo)*50;
+      sent=atk+Math.floor(Math.max(0,b.combo)/2); if(n===4||ts) b.shake=Math.max(b.shake,.3);
       const cancel=Math.min(sent,b.pend); b.pend-=cancel; sent-=cancel; }
-    else { b.combo=-1; if(b.pend>0){ b.addJunk(b.pend); b.pend=0; } }
+    else { b.combo=-1; if(ts){ b.score+=400; b.tsN++; } if(b.pend>0){ b.addJunk(b.pend); b.pend=0; } }
     b.cleared=full.length; b.sent=sent; if(!b.over) b.next(); return full.length; };
   b.addJunk=n=>{ const hole=Math.floor(rnd()*COLS); for(let i=0;i<n;i++){ for(let x=0;x<COLS;x++) if(b.grid[x]) b.over=true; b.grid.copyWithin(0,COLS); for(let x=0;x<COLS;x++) b.grid[(ROWS-1)*COLS+x]=x===hole?0:8; }
     if(b.cur&&b.hit(b.cur.m,b.cur.x,b.cur.y)) b.cur.y=Math.max(-2,b.cur.y-n); };
@@ -142,7 +146,8 @@ function create(env,opts){
     if(b.cur&&b.hit(b.cur.m,b.cur.x,b.cur.y+1)){ b.lockT+=dt; if(b.lockT>.5) after(b,b.lock(),false); } }
   const sendState=()=>{ const b=boards[me]; net.send({st:[btoa(String.fromCharCode(...b.grid)),b.cur,b.score,b.lines,b.pend,b.queue.slice(0,3)]}); };
   function after(b,n,hard){ const bi=boards.indexOf(b); if(net) sendState(); sfx(n===4?'boom':n>=2?'item':n===1?'pop':'land');
-    if(n){ say(bi,['','單消','雙消！','三消！','疊疊樂！四消！'][n]+(b.combo>0?'　連消 ×'+(b.combo+1):''),n===4?'#ff7eb6':'#ffd23f'); cheer=1.2; }
+    const lc=b.lc||{}; if(n){ const nm=lc.ts?['','T 旋轉單消！','T 旋轉雙消！','T 旋轉三消！'][n]:['','單消','雙消！','三消！','疊疊樂！四消！'][n]; say(bi,(lc.b2b?'連續大招 ':'')+nm+(b.combo>0?'　連消 ×'+(b.combo+1):''),lc.ts?'#b77bff':n===4?'#ff7eb6':'#ffd23f'); if(lc.pc) say(bi,'全部清空！+3000','#7ae8ff'); cheer=lc.ts||lc.pc?2:1.2; if(lc.ts||lc.pc) sfx('win'); }
+    else if(lc.ts){ say(bi,'T 旋轉 +400','#b77bff'); sfx('item'); }
     if(vs&&b.sent>0){ if(net) net.send({ga:b.sent}); else boards[1-bi].pend+=b.sent; say(bi,'攻擊 +'+b.sent,'#ff8a5d'); }
     if(!vs&&b.lines>=ST.lines&&!ended){ ended=true; endT=0; winner=0; sfx('win'); }
     if(b.over&&!ended){ ended=true; endT=0; winner=vs?1-bi:-1; sfx(vs&&!net?'win':'lose'); sad=2; if(net) net.send({dead:1}); } }
@@ -159,9 +164,10 @@ function create(env,opts){
     if(net){ control(boards[me],KS[0],dt); sendT-=dt; if(sendT<=0){ sendT=.1; sendState(); } }
     else boards.forEach((b,i)=>control(b,KS[i],dt)); }
   let done=false;
+  const statHtml=b=>'<p style="margin:4px 0">四消 '+b.tetN+'　T 旋轉 '+b.tsN+'　連續大招 '+b.b2bN+'　最多連消 '+b.maxCombo+(b.pcN?'　全清 '+b.pcN:'')+'</p>';
   function finish(){ if(done) return; done=true; const b=boards[net?me:0];
     if(!vs){ if(winner===0){ const old=getRec(si),rec=old==null||b.score>old; if(rec) try{ localStorage.setItem(recKey(si),String(b.score)); }catch(e){}
-        env.end({title:'過關！',big:b.score+' 分',text:'第 '+(si+1)+' 關「'+ST.name+'」消了 '+b.lines+' 行。'+(rec?'這關的新紀錄！':'這關最高 '+old+' 分'),score:b.score,next:si<STAGES.length-1}); }
+        env.end({title:'過關！',big:b.score+' 分',html:statHtml(b),text:'第 '+(si+1)+' 關「'+ST.name+'」消了 '+b.lines+' 行。'+(rec?'這關的新紀錄！':'這關最高 '+old+' 分'),score:b.score,next:si<STAGES.length-1}); }
       else env.end({title:'方塊堆滿了',big:b.score+' 分',text:'消了 '+b.lines+' / '+ST.lines+' 行。先把底下的洞補平，再一次消好幾行！',score:null}); return; }
     const sc=boards.map(x=>x.score);
     env.end({title:net?(winner===me?'你贏了！':names[1-me]+' 獲勝'):(names[winner]+' 獲勝'),big:sc.join(' ： '),text:'先堆到頂的人輸。一次消 2 行以上會把垃圾行丟給對方。',score:null}); }
@@ -223,7 +229,7 @@ function preview(ctx,w,h,L,t){ bg(ctx,w,h,0,t); const s=22; ['I','T','O','S'].fo
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).blocks={
   name:'方塊疊疊樂',tag:'BLOCK STACK',color:'#ff7eb6',online:true,maxPlayers:2,
   desc:'七種方塊從上面掉下來，排滿一整行就消掉。200 關闖關，或兩個人對戰互丟垃圾行。',
-  goal:'把方塊排滿一整行就會消掉，消到指定行數就過關；方塊堆到頂就輸了。',
+  goal:'把方塊排滿一整行就會消掉，消到指定行數就過關；方塊堆到頂就輸了。把 T 方塊旋轉塞進缺口再消行是「T 旋轉」，分數和攻擊都更高；連續四消或 T 旋轉有「連續大招」加成；整個盤面清空再加 3000 分。',
   stageGoal:si=>{ const S=STAGES[si]; return '消掉 '+S.lines+' 行就過關'+(S.junk?'，一開始底下有 '+S.junk+' 行垃圾':'')+'。方塊堆到頂就輸了；一次消越多行分數越高。雙人對戰時一次消 2 行以上會把垃圾行丟給對方。'; },
   stages:STAGES.map(s=>s.name),stars:STAGES.map((s,i)=>i<30?1+Math.floor(i/6):Math.min(5,3+Math.floor((i-30)/57))),stageLabel:'選擇關卡',
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+v+' 分'; },

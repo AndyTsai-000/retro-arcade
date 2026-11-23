@@ -173,7 +173,8 @@ function worldMap(c,cam,t,cur,avatar,L){ // 六個區域連成一條路
   // 主角站在節點上
   hero(c,avatar.x-cam,avatar.y-10,{t,L,run:avatar.moving?t:0,moving:avatar.moving,face:avatar.face,air:false,big:false});
   const lv=LEVELS[cur],rec=getRec(cur); c.fillStyle='rgba(11,10,28,.82)'; rr(c,W/2-210,H-74,420,60,18); c.fill(); c.fillStyle='#ffd23f'; c.font='900 20px '+TC; c.textAlign='center'; c.fillText('第 '+(cur+1)+' 關　'+lv.name,W/2,H-52);
-  c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText((document.body.classList.contains('touch')?'點關卡走過去，或 ◀ ▶ 選、按「跳」進入':'用滑鼠點關卡，或 ← → 選、空白鍵進入')+(rec!=null&&rec>=8?'　星星金幣 '+starsOf(rec)+' / 3':''),W/2,H-28); }
+  c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText((document.body.classList.contains('touch')?'點關卡走過去，或 ◀ ▶ 選、按「跳」進入':'用滑鼠點關卡，或 ← → 選、空白鍵進入')+(rec!=null&&rec>=8?'　星星金幣 '+starsOf(rec)+' / 3':'')+bestT(cur),W/2,H-28); }
+function bestT(i){ try{ const v=parseFloat(localStorage.getItem('arcade.jelly.t.'+i)),m=+(localStorage.getItem('arcade.jelly.m.'+i)||9); if(!(v>0)) return ''; return '　最快 '+Math.floor(v/60)+':'+(v%60).toFixed(1).padStart(4,'0')+(m<3?['　金牌','　銀牌','　銅牌'][m]:''); }catch(e){ return ''; } }
 
 /* ---------- 遊戲 ---------- */
 function create(env,opts){
@@ -183,11 +184,12 @@ function create(env,opts){
   const onPD=e=>{ if(opts.preview||mode!=='map') return; const [x,y]=toL(e); if(y>=H-74&&x>=W/2-210&&x<=W/2+210){ if(!avatar.moving) enter(cur); return; }
     for(let i=0;i<NODES.length;i++){ const n=NODES[i]; if(Math.hypot(n.x-mapCam-x,n.y-y)<24){ if(i!==0&&!unlocked(i)){ msg='先過前面的關卡才能玩這一關'; msgT=1.4; sfx('bump'); return; } mapGoal=i; sfx('click'); if(i===cur&&!avatar.moving){ mapGoal=null; enter(cur); } return; } } };
   if(cv&&cv.addEventListener&&!opts.preview) cv.addEventListener('pointerdown',onPD);
+  let runT=0; const MEDAL=['金','銀','銅'],fmtRT=v=>Math.floor(v/60)+':'+(v%60).toFixed(1).padStart(4,'0');
   let mode='map',cur=clamp(opts.stage|0,0,LEVELS.length-1),t=0,lives=5,totalCoins=0,ended=false,endT=0,mapCam=0,avatar={x:NODES[cur].x,y:NODES[cur].y,face:1,moving:false,target:cur};
   let lv=null,P=null,cam=0,ents=[],coins=[],stars=[],movers=[],items=[],fx=[],gotStars=0,cpOn=false,clearT=0,deathT=0,bossObj=null,coinsLv=0,msg='',msgT=0,introT=0;
   const unlocked=i=>i===0||getRec(i-1)!=null;
   function enter(i){ lv=makeLevel(i); ents=lv.ents.map(e=>Object.assign({vx:-40,vy:0,dead:0,y0:e.y,home:e.x},e)); coins=lv.coins.map(o=>Object.assign({},o)); stars=lv.stars.map(o=>Object.assign({},o)); movers=lv.movers.map(o=>Object.assign({},o));
-    items=[]; fx=[]; gotStars=0; cpOn=false; coinsLv=0; clearT=0; deathT=0; bossObj=lv.boss?{x:lv.boss.x,y:lv.boss.y,vx:-90,vy:0,hp:3,hurt:0,ax:lv.boss.ax,bx:lv.boss.bx,jumpT:1.5,dead:0}:null; spawn(); mode='play'; introT=1.6; sfx('go'); }
+    items=[]; fx=[]; gotStars=0; cpOn=false; coinsLv=0; clearT=0; deathT=0; runT=0; bossObj=lv.boss?{x:lv.boss.x,y:lv.boss.y,vx:-90,vy:0,hp:3,hurt:0,ax:lv.boss.ax,bx:lv.boss.bx,jumpT:1.5,dead:0}:null; spawn(); mode='play'; introT=1.6; sfx('go'); }
   function spawn(){ const sx=cpOn?lv.cp+TS:6*TS; /* 手機左下角有按鈕，起點往右一點 */ let gy=ROWS; const ci=Math.floor(sx/TS); for(let y=0;y<ROWS;y++) if(lv.cols[ci]&&SOLID(lv.cols[ci][y])){ gy=y; break; }
     P={x:sx,y:gy*TS,vx:0,vy:0,on:true,face:1,big:false,inv:0,star:0,run:0,coyote:0,buf:0,jumping:false,dead:false,goal:false}; cam=clamp(P.x-W*.35,0,lv.width-W); }
   const tileAt=(cx,cy)=>{ if(cx<0) return 1; if(cy<0) return 0; if(cy>=ROWS) return 0; const col=lv.cols[cx]; return col?col[cy]:0; };
@@ -235,7 +237,7 @@ function create(env,opts){
         if((env.hit('ArrowLeft')||env.hit('KeyA'))&&cur>0){ avatar.target=cur-1; mapGoal=null; sfx('click'); }
         if(env.hit('Space')||env.hit('Enter')||env.hit('KeyJ')||env.hit('ArrowUp')) enter(cur); }
       mapCam+=(clamp(avatar.x-W/2,0,MAPW-W)-mapCam)*Math.min(1,dt*5); return; }
-    if(mode==='play'){ if(introT>0){ introT-=dt; return; } move(dt); if(mode!=='play') return;
+    if(mode==='play'){ if(introT>0){ introT-=dt; return; } if(P&&!P.goal) runT+=dt; move(dt); if(mode!=='play') return;
       cam+=(clamp(P.x-W*.38,0,lv.width-W)-cam)*Math.min(1,dt*8);
       for(const m of movers){ m.x+=m.dir*m.sp*dt; if(m.x>m.bx){ m.x=m.bx; m.dir=-1; } if(m.x<m.ax){ m.x=m.ax; m.dir=1; } }
       // 怪物
@@ -261,9 +263,11 @@ function create(env,opts){
       const atGoal=lv.boss?(bossObj&&bossObj.dead&&P.x>lv.goal):(P.x>=lv.goal-6);
       if(!P.goal&&!P.dead&&atGoal){ P.goal=true; P.vx=0; clearT=0; sfx('win'); }
       if(P.goal&&clearT>2.6) levelClear(); } }
-  function levelClear(){ const i=lv.L.i,old=getRec(i),v=8|((old||0)&7)|gotStars; setRec(i,v); mode='map'; const next=Math.min(LEVELS.length-1,i+1);
+  function levelClear(){ const i=lv.L.i,old=getRec(i),v=8|((old||0)&7)|gotStars; setRec(i,v);
+    /* 計時挑戰：記錄最快時間、依關卡長度給獎牌 */ const par=lv.goal/200*1.5+(lv.boss?20:0),md=runT<=par?0:runT<=par*1.4?1:runT<=par*2?2:3; let tb=null; try{ tb=parseFloat(localStorage.getItem('arcade.jelly.t.'+i)); }catch(e){} const newT=!(tb>0)||runT<tb; if(newT) try{ localStorage.setItem('arcade.jelly.t.'+i,runT.toFixed(2)); const om=+(localStorage.getItem('arcade.jelly.m.'+i)||9); if(md<om) localStorage.setItem('arcade.jelly.m.'+i,String(md)); }catch(e){}
+    const tmsg='　時間 '+fmtRT(runT)+(md<3?'　'+MEDAL[md]+'牌':'')+(newT&&tb>0?'　新紀錄！':''); mode='map'; const next=Math.min(LEVELS.length-1,i+1);
     if(i===LEVELS.length-1){ ended=true; endT=0; mode='win'; finish(); return; }
-    avatar.target=next; avatar.x=NODES[i].x; avatar.y=NODES[i].y; cur=i; msg='第 '+(i+1)+' 關過關！星星金幣 '+starsOf(v)+' / 3'; msgT=2.4; }
+    avatar.target=next; avatar.x=NODES[i].x; avatar.y=NODES[i].y; cur=i; msg='第 '+(i+1)+' 關過關！星星金幣 '+starsOf(v)+' / 3'+tmsg; msgT=3.2; }
   let done=false;
   function finish(){ if(done) return; done=true; let far=-1; for(let i=0;i<LEVELS.length;i++) if(getRec(i)!=null) far=i; let st=0; for(let i=0;i<LEVELS.length;i++) st+=starsOf(getRec(i));
     env.end({title:mode==='win'?'果凍島全破了！':'命用完了…',big:'最遠第 '+(far+1)+' 關',text:'星星金幣 '+st+' / 90，這次撿了 '+totalCoins+' 枚金幣。'+(mode==='win'?'':'過的關卡都會記住，下次從地圖接著玩。'),score:far+1}); }
@@ -298,7 +302,7 @@ function create(env,opts){
     c.fillStyle='#ff5d8f'; c.font='900 16px '+TC; c.fillText('♥',22,25); c.fillStyle='#fff'; c.font='900 14px '+TC; c.fillText('× '+lives,40,25);
     coin(c,94,24,0); c.fillStyle='#fff'; c.fillText('× '+totalCoins,108,25);
     if(mode!=='map'&&lv){ for(let k=0;k<3;k++){ const got=stars.find(s=>s.id===k&&s.got); c.fillStyle=got?'#ffb000':'rgba(255,255,255,.3)'; c.font='900 18px '+TC; c.fillText('★',170+k*20,25); }
-      c.fillStyle='#cfd0ff'; c.font='700 13px '+TC; c.fillText(lv.L.name,240,25); }
+      c.fillStyle='#cfd0ff'; c.font='700 13px '+TC; c.fillText(lv.L.name,240,25); c.textAlign='right'; c.fillStyle='#ffd23f'; c.font='900 14px '+TC; c.fillText('⏱ '+fmtRT(runT),468,25); c.textAlign='left'; }
     else { c.fillStyle='#cfd0ff'; c.font='700 13px '+TC; c.fillText('世界地圖',170,25); } }
   if(opts.preview) enter(cur); /* 開始畫面預覽：直接進關卡 */
   return {update,draw,destroy(){ if(cv&&cv.removeEventListener) cv.removeEventListener('pointerdown',onPD); },_dbg:{get mode(){return mode;},get P(){return P;},get lv(){return lv;},enter,get lives(){return lives;},set lives(v){lives=v;},get boss(){return bossObj;},get cur(){return cur;},get avatar(){return avatar;},levelClear}};
@@ -320,7 +324,7 @@ function preview(ctx,w,h,L,t){ const k=h/H; ctx.save(); ctx.scale(k,k); backdrop
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).jelly={
   name:'蹦蹦果凍島',tag:'JELLY ISLAND',color:'#ff5d8f',
   desc:'在世界地圖上一關一關往前走！跳過斷崖、踩扁果凍史萊姆、頂問號糖果盒（偶爾會出無敵星星糖和愛心），每個世界最後到城堡打果凍大王。六個世界共 30 關。',
-  goal:'往右走到終點旗子就過關；掉下去或被怪物撞到會少一條命。每關藏著 3 枚星星金幣。',
+  goal:'往右走到終點旗子就過關；掉下去或被怪物撞到會少一條命。每關藏著 3 枚星星金幣。每關都會計時，越快過關拿金牌、銀牌、銅牌，最快時間會記下來。',
   stageGoal:si=>{ const l=LEVELS[si]; return l.name+'：'+(l.castle?'城堡關，走到最後的大王房間，踩果凍大王的頭三次。':'走到最右邊的終點旗。')+'踩怪物的頭可以打倒牠（刺刺栗不能踩），頂問號糖果盒有金幣或果凍果（吃了變大，被撞只會變小）。進遊戲後在世界地圖上選關。'; },
   stages:LEVELS.map(l=>l.name),stars:LEVELS.map((l,i)=>i<30?1+Math.floor(i/6):Math.min(5,3+Math.floor((i-30)/57))),stageLabel:'選擇關卡',
   stageBest:i=>{ const v=getRec(i); return v==null?'':'✓ '+'★'.repeat(starsOf(v)); },

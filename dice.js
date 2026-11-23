@@ -70,6 +70,20 @@ function drawTable(c,w,h,L,t){
   c.strokeStyle='#d9b25a'; c.lineWidth=3*k; c.beginPath(); c.ellipse(cx,cy,rx+7*k,ry+7*k,0,0,7); c.stroke();
   const g2=c.createRadialGradient(cx,cy,30*k,cx,cy,rx); g2.addColorStop(0,felt); g2.addColorStop(1,'rgba(0,0,0,.55)'); c.fillStyle=felt; c.beginPath(); c.ellipse(cx,cy,rx,ry,0,0,7); c.fill(); c.fillStyle=g2; c.fill(); }
 
+/* 戰績、連勝稱號、每日任務（只記單機，各遊戲分開記；每天換三個任務） */
+function partyLog(ns,gname,games,res){ let D; try{ D=JSON.parse(localStorage.getItem('arcade.'+ns+'.rec')||'{}')||{}; }catch(e){ D={}; } D.g=D.g||{};
+  const td=new Date(),day=td.getFullYear()+'-'+(td.getMonth()+1)+'-'+td.getDate();
+  if(D.day!==day||!Array.isArray(D.tasks)){ let h=7; for(const ch of day+ns) h=(h*31+ch.charCodeAt(0))>>>0; const pick=n=>{ h=(Math.imul(h,1103515245)+12345)>>>0; return (h>>>8)%n; }; const gg=games[pick(games.length)];
+    const pool=[{k:'win',need:2,txt:'贏 2 場'},{k:'play',need:3,txt:'玩 3 場'},{k:'kinds',need:2,txt:'玩 2 種不同的遊戲'},{k:'streak',need:2,txt:'連贏 2 場'},{k:'winG',g:gg,need:1,txt:'在「'+gg+'」贏 1 場'}];
+    const T=[]; while(T.length<3) T.push(Object.assign({got:0},pool.splice(pick(pool.length),1)[0])); D.day=day; D.tasks=T; D.kinds=[]; D.allDone=false; D.st=0; }
+  const r=D.g[gname]=D.g[gname]||{w:0,l:0,d:0,s:0,best:0}; if(res==='w'){ r.w++; r.s++; r.best=Math.max(r.best,r.s); } else if(res==='l'){ r.l++; r.s=0; } else r.d++;
+  D.st=res==='w'?(D.st||0)+1:res==='l'?0:(D.st||0); if(!D.kinds.includes(gname)) D.kinds.push(gname);
+  for(const k of D.tasks){ if(k.k==='win'&&res==='w') k.got++; if(k.k==='play') k.got++; if(k.k==='kinds') k.got=D.kinds.length; if(k.k==='streak') k.got=Math.max(k.got,D.st); if(k.k==='winG'&&res==='w'&&gname===k.g) k.got++; k.got=Math.min(k.got,k.need); }
+  const all=D.tasks.every(k=>k.got>=k.need),newAll=all&&!D.allDone; if(newAll){ D.allDone=true; D.stars=(D.stars||0)+1; }
+  try{ localStorage.setItem('arcade.'+ns+'.rec',JSON.stringify(D)); }catch(e){}
+  const ti=([[12,'傳說'],[8,'無敵手'],[5,'常勝軍'],[3,'小有名氣'],[2,'手感不錯']].find(q=>r.s>=q[0])||[])[1];
+  return '<div style="margin:8px 0;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13px;line-height:1.7;text-align:left"><b>'+gname+'</b>　'+r.w+' 勝 '+r.l+' 敗'+(r.d?' '+r.d+' 和':'')+'　連勝 '+r.s+'（最多 '+r.best+'）'+(ti?'　稱號「<b style="color:#ffd23f">'+ti+'</b>」':'')
+    +'<br>今日任務　'+D.tasks.map(k=>(k.got>=k.need?'✅ ':'⬜ ')+k.txt+' '+k.got+'/'+k.need).join('　')+(newAll?'<br><b style="color:#86dc4f">🎉 今日任務全部完成！已經完成 '+D.stars+' 天</b>':all?'<br><span style="color:#86dc4f">今日任務都完成了</span>':'')+'</div>'; }
 function create(env,opts){
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
   const kind=GID[clamp(opts.stage||0,0,4)],humans=net?net.count:1,OP=opts.options||{};
@@ -219,6 +233,7 @@ function create(env,opts){
       title=w===me?'你撐到最後！':names[w]+' 撐到最後'; html=tbl('結果',list); text='骰子被拿光就少一條命，命用完就出局。'; }
     else { const ch=G.over.chips,list=names.map((n,p)=>[n,ch[p]+' 籌碼',ch[p]]).sort((a,b)=>b[2]-a[2]);
       title=list[0][0]===names[me]?'你贏最多！':list[0][0]+' 贏最多'; html=tbl('籌碼',list); score=ch[me]>0?ch[me]:null; text='打完 '+ROUNDS+' 局比籌碼。'; }
+    if(!net&&!opts.preview) html=(html||'')+partyLog('dice',GAMES[GID.indexOf(kind)],GAMES,title.startsWith('你')?'w':'l');
     env.sfx(title.startsWith('你')?'win':'lose'); env.end({title,big:GAMES[GID.indexOf(kind)],html,text,score,next:false});
   }
 
@@ -368,7 +383,7 @@ function thumb(ctx,w,h,t){ setSty(null); drawTable(ctx,w,h,{felt:'#5a2a2a'},t); 
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).dice={
   name:'骰子派對',tag:'DICE PARTY',color:'#ff7a5c',online:true,maxPlayers:6,bots:true,minPlayers:2,
-  desc:'一組骰盅玩五種：吹牛、十八仔、妞妞、紅黑大小單雙、骰寶。和電腦同桌，或開房間 2～6 人連線。',
+  desc:'一組骰盅玩五種：吹牛、十八仔、妞妞、紅黑大小單雙、骰寶。和電腦同桌，或開房間 2～6 人連線。單機會記每種遊戲的戰績和連勝稱號，每天還有三個任務。',
   goal:'選一種骰子遊戲開始玩。',
   stages:GAMES,stageLabel:'選擇遊戲',
   stageGoal:si=>[
