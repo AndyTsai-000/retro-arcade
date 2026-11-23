@@ -76,12 +76,12 @@ function buildMap(mode,seed){ const R=mul(seed+mode*977),M={mode,seed,laneW:mode
     const out=[[x1,z1]]; let c=g; while(c>=0&&c!==s){ out.unshift(N[c].slice()); c=pv[c]; } return out; };
   return M; }
 /* ================= 英雄、技能、裝備 ================= */
-const CLS={tank:{n:'坦克',col:'#7aa8ff',hp:1050,hpL:125,atk:62,atkL:3.8,as:.8,rng:2.4,mr:32,mrL:1.25,arm:32,armL:3.2,spd:6.2,ad:.3},
-  fighter:{n:'戰士',col:'#ffb04a',hp:880,hpL:108,atk:66,atkL:3.7,as:.9,rng:2.4,mr:30,mrL:1.2,arm:22,armL:2.6,spd:6.4,ad:.6},
-  assassin:{n:'刺客',col:'#ff5d8f',hp:760,hpL:94,atk:64,atkL:3.4,as:1,rng:2.2,mr:30,mrL:1.1,arm:20,armL:2.3,spd:6.8,ad:.7},
-  mage:{n:'法師',col:'#b98cff',hp:620,hpL:76,atk:52,atkL:3,as:.75,rng:7,mr:28,mrL:0.8,arm:12,armL:1.6,spd:6.2,ad:.1},
-  marksman:{n:'射手',col:'#86dc4f',hp:600,hpL:76,atk:60,atkL:3,as:.95,rng:7.5,mr:26,mrL:0.8,arm:12,armL:1.6,spd:6.3,ad:.6},
-  support:{n:'輔助',col:'#3ddbd9',hp:740,hpL:92,atk:50,atkL:3,as:.8,rng:6.5,mr:28,mrL:1,arm:18,armL:2.2,spd:6.3,ad:.1}};
+const CLS={tank:{n:'坦克',col:'#7aa8ff',hp:650,hpL:110,atk:62,atkL:3.8,as:0.65,rng:2.4,mr:32,mrL:2.05,arm:36,armL:4.7,spd:6.2,ad:.3},
+  fighter:{n:'戰士',col:'#ffb04a',hp:640,hpL:108,atk:66,atkL:3.7,as:0.65,rng:2.4,mr:32,mrL:2.05,arm:34,armL:4.5,spd:6.4,ad:.6},
+  assassin:{n:'刺客',col:'#ff5d8f',hp:600,hpL:100,atk:64,atkL:3.4,as:0.67,rng:2.2,mr:32,mrL:2.05,arm:30,armL:4.5,spd:6.8,ad:.7},
+  mage:{n:'法師',col:'#b98cff',hp:580,hpL:100,atk:52,atkL:3,as:0.625,rng:7,mr:30,mrL:1.3,arm:20,armL:4.5,spd:6.2,ad:.1},
+  marksman:{n:'射手',col:'#86dc4f',hp:620,hpL:100,atk:60,atkL:3,as:0.66,rng:7.5,mr:30,mrL:1.3,arm:26,armL:4.4,spd:6.3,ad:.6},
+  support:{n:'輔助',col:'#3ddbd9',hp:580,hpL:100,atk:50,atkL:3,as:0.625,rng:6.5,mr:30,mrL:1.3,arm:24,armL:4.5,spd:6.3,ad:.1}};
 const CLS_IDS=Object.keys(CLS);
 const S=(n,t,cd,o)=>Object.assign({n,t,cd},o);
 const HD=(n,cls,pal,sk,fl)=>Object.assign({n,cls,pal,sk},fl||{});
@@ -303,7 +303,7 @@ for(const k in ITEM_X){ if(ITEMS[k]){ ITEMS[k].g=ITEM_X[k][0]; ITEMS[k].f=ITEM_X
 const TRINK={g:{n:'綠眼',c:0,col:'#5fff7a',cd:45,s:'插在地上 90 秒，看見暗處和草叢',d:'插在地上 90 秒，看得到周圍和草叢裡的敵人（最多 3 個）'},r:{n:'紅眼',c:0,col:'#ff5a5a',cd:60,s:'掃描身邊，找出敵人的綠眼來清掉',d:'8 秒內掃描身邊，找出敵人的綠眼，點三下就能清掉'}};
 const BUILD={tank:['dshield','merc','locket','thorn','visage','randuin','warmog'],fighter:['dblade','steel','tri','ldr','visage','ga','thorn'],assassin:['dblade','lucid','ghost','hydra','ldr','ga','qss'],
   mage:['dring','sorc','lich','cap','void','banshee','hourglass'],marksman:['dblade','bers','ie','pd','ldr','blade','ga'],support:['sup1','lucid','locket','amulet','banshee','visage','randuin']};
-const MIN={melee:{hp:400,atk:22,as:.9,rng:1.8,arm:10,spd:3.7,r:.55,gold:25,xp:50},ranged:{hp:280,atk:30,as:.8,rng:6.5,arm:5,spd:3.7,r:.5,gold:20,xp:40},cannon:{hp:900,atk:48,as:.7,rng:6.5,arm:22,spd:3.4,r:.9,gold:80,xp:90}};
+const MIN={melee:{hp:400,atk:12,as:.9,rng:1.8,arm:10,spd:3.7,r:.55,gold:25,xp:50},ranged:{hp:280,atk:23,as:.8,rng:6.5,arm:5,spd:3.7,r:.5,gold:20,xp:40},cannon:{hp:900,atk:41,as:.7,rng:6.5,arm:22,spd:3.4,r:.9,gold:80,xp:90}};
 const BOTN=['阿凱','小雨','大熊','米可','老王','阿哲','小魚','肉丸','阿樂','皮蛋','花生','豆豆','阿光','小綠','黑皮','飯糰','可樂','阿寶','小虎','布丁'];
 const ROLES=[['top','上路'],['jg','打野'],['mid','中路'],['bot','下路'],['sup','輔助']];
 const ROLE_N=Object.fromEntries(ROLES);

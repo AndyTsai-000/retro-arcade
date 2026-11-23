@@ -25,7 +25,7 @@ function create(env,opts){
   const G3=G3M(T,{W,H,map,low:!!env.touch});
   /* ---------- 狀態 ---------- */
   let phase='pick',pickT=120,Tm=0,t=0,ended=false,winner=-1,acc=0,nextWave=30,waveN=0,minId=1000,vpId=1,sendT=0,inT=0,overT=0;
-  const heroes=[],minions=[],TWHP=mode?[2200,2800]:[3600,5000],COHP=mode?4200:5500,towers=map.towers.map(q=>Object.assign({k:'t',hp:TWHP[q.tier],max:TWHP[q.tier],r:2.5,arm:mode?0:40,cd:0,tgt:null,hits:0,inv:false},q)),cores=map.cores.map(q=>Object.assign({k:'c',hp:COHP,max:COHP,r:4.8,cd:0,tgt:null,hits:0,inv:true},q));
+  const heroes=[],minions=[],TWHP=[3600,5000],COHP=5500,towers=map.towers.map(q=>Object.assign({k:'t',hp:TWHP[q.tier],max:TWHP[q.tier],r:2.5,cd:0,tgt:null,hits:0,inv:false},q)),cores=map.cores.map(q=>Object.assign({k:'c',hp:COHP,max:COHP,r:4.8,cd:0,tgt:null,hits:0,inv:true},q));
   const mons=map.camps.map((cp,i)=>({id:300+i,k:'j',camp:cp,big:cp.big,kind:cp.kind,buff:cp.buff,crab:cp.crab,team:2,x:cp.x,z:cp.z,home:[cp.x,cp.z],hp:0,max:1,dead:true,rsp:cp.big?(cp.kind===1?300:360):cp.crab?175:cp.buff?55:((cp.kind|0)%4>=2?67:55),face:PI/2,cd:0,tgt:null,r:cp.big?1.8:1,slam:6}));
   const teamBuff=[{fire:0,earth:0,wind:0,water:0,bar:0},{fire:0,earth:0,wind:0,water:0,bar:0}],shrines=[],kills=[0,0],projs=[],zones=[],traps=[],timers=[],floats=[],feed=[],anns=[],vproj=new Map(); let firstB=0;
   let EV=[],sendEV=[];
@@ -50,7 +50,7 @@ function create(env,opts){
   /* ---------- 英雄數值 ---------- */
   // 魔力：放技能才會用掉，沒魔力就不能放；平常慢慢回，回到泉水回最快
   const MPB={tank:[300,40],fighter:[280,38],assassin:[300,40],mage:[420,55],marksman:[330,42],support:[400,50]},SKC=[40,50,60,100],skCost=(h,i)=>h.def.sk[i].t==='aura'?0:SKC[i]+Math.max(0,h.sk[i]-1)*(i===3?20:8);
-  function stats(h){ const C=CLS[h.def.cls],l=h.lvl-1,o={ap:0,apm:0,mp:MPB[h.def.cls][0]+MPB[h.def.cls][1]*l,atk:C.atk+C.atkL*l,as:C.as+(h.def.cls==='marksman'?.02*l:.01*l),arm:C.arm+C.armL*l,hp:C.hp+C.hpL*l,spd:C.spd,sp:0,cdr:0,ls:0,heal:0,dmg:0,jg:0,rng:C.rng,mr:C.mr+C.mrL*l,crit:0,critd:0,pen:0,mpen:0,ten:0,rg:0,hin:0,gw:0,thorn:0,ga:0,ss:0,wm:0,sb:null};
+  function stats(h){ const C=CLS[h.def.cls],l=h.lvl-1,o={ap:0,apm:0,mp:MPB[h.def.cls][0]+MPB[h.def.cls][1]*l,atk:C.atk+C.atkL*l,as:C.as+(h.def.cls==='marksman'?.02*l:.015*l),arm:C.arm+C.armL*l,hp:C.hp+C.hpL*l,spd:C.spd,sp:0,cdr:0,ls:0,heal:0,dmg:0,jg:0,rng:C.rng,mr:C.mr+C.mrL*l,crit:0,critd:0,pen:0,mpen:0,ten:0,rg:0,hin:0,gw:0,thorn:0,ga:0,ss:0,wm:0,sb:null};
     for(const id of h.items){ const it=ITEMS[id]; o.atk+=it.atk||0; o.as+=(it.as||0)*C.as; o.arm+=it.arm||0; o.hp+=it.hp||0; o.spd+=(it.spd||0)*C.spd; o.ap+=it.ap||0; o.apm+=it.apm||0; o.cdr+=it.cdr||0; o.ls+=it.ls||0; o.heal+=it.heal||0; o.mp+=it.mp||0; if(it.jg) o.jg=1; o.mr+=it.mr||0; o.crit+=it.crit||0; o.critd+=it.critd||0; o.pen=Math.max(o.pen,it.pen||0); o.mpen+=it.mpen||0; o.ten+=it.ten||0; o.rg+=it.rg||0; o.hin+=it.hin||0;
       if(it.gw) o.gw=1; if(it.thorn) o.thorn=1; if(it.ga) o.ga=1; if(it.ss) o.ss=1; if(it.wm) o.wm=1; if(it.sb&&(!o.sb||it.sb.a+(it.sb.m||0)/60>o.sb.a+(o.sb.m||0)/60)) o.sb=it.sb; }
     if(h.elxT>Tm){ o.atk+=25; o.ap+=50; } o.crit=Math.min(1,o.crit); o.mpen=Math.min(.6,o.mpen);
@@ -198,7 +198,7 @@ function create(env,opts){
     if(!tg){ let bd=1e9; for(const m of minions) if(m.team!==s.team&&alive(m)){ const d=dist(m,s); if(d<=R0&&d<bd){ bd=d; tg=m; } } }
     if(!tg){ let bd=1e9; for(const h of heroes) if(h.team!==s.team&&alive(h)&&seen(h,s.team)){ const d=dist(h,s); if(d<=R0&&d<bd){ bd=d; tg=h; } } }
     if(tg!==s.tgt) s.hits=0; s.tgt=tg;
-    if(tg&&s.cd<=0){ s.cd=s.k==='c'?1:1.1; let a; if(tg.k==='m') a=tg.max*(tg.herald?.07:tg.mt==='cannon'?.22:.42); else { a=(s.k==='c'?240:175)+Tm/60*9; a*=1+Math.min(6,s.hits)*.35; s.hits++; if(s.hits>=2&&tg.me) floatMsg('防禦塔越打越痛！快離開塔下','#ff8a8a',1.2); }
+    if(tg&&s.cd<=0){ s.cd=s.k==='c'?1:1.1; let a; if(tg.k==='m') a=tg.max*(tg.herald?.07:tg.mt==='cannon'?.22:.42); else { a=s.k==='c'?240:Math.min(300,160+Tm/60*9); a*=1+Math.min(3,s.hits)*.4; /* 英雄聯盟：每連續一發 +40%，最多 +120% */ s.hits++; if(s.hits>=2&&tg.me) floatMsg('防禦塔越打越痛！快離開塔下','#ff8a8a',1.2); }
       const hot=tg.k==='h'?Math.min(6,s.hits-1):0; homing(s,tg,a,{tru:tg.k==='m'},hot>=2?(hot>=4?'#ff3a2a':'#ff9a3d'):TEAMC[s.team],2.2+hot*.35,26); } }
   /* ---------- 野怪 ---------- */
   const ELN={fire:'火',earth:'土',wind:'風',water:'水'},ELC={fire:'#ff6a2a',earth:'#c8a060',wind:'#a8e8ff',water:'#3aa8ff'};
