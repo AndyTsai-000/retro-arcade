@@ -695,31 +695,49 @@ function create(env,opts){
   function setWanted(n,why){ const old=WT.lv; WT.heat=Math.max(WT.heat,n+.2); WT.lv=Math.min(5,Math.floor(WT.heat)); WT.lose=0; if(WT.lv>old) wantedUp(PL[0],old,why||''); }
   function wantedUp(p,old,why){ const o=me(p),rn=roadName(Wd,o.x,o.y).replace(/ \d+ 號$/,''),what=o.ty?colorName(o.col)+VT[o.ty].n:'步行的男子';
     const L=['',`各單位注意，一輛${what}在${rn}附近${why||'違規'}，請前往攔查。`,`嫌犯拒絕攔檢，往${rn}方向逃逸，請求支援！`,`嫌犯危險駕駛！在前方路口設置路障！`,`空中警察隊直升機升空，支援追捕！`,`全城通緝！所有警力投入追捕！`];
-    radio('scan',L[WT.lv]||L[5],3.6); sfx('hurt'); toast(p,'被通緝了！'+'★'.repeat(WT.lv)); WT.spT=old===0?1.2:.5;
-    if(old===0) PL.forEach(q=>hint(q,'wanted','被警察追了！離開警車的視線一段時間，星星就會消失；也可以下車搭捷運躲開'));
+    WT.lk={x:o.x,y:o.y}; WT.srch=0; WT.know=t+4; /* 剛通報的前 4 秒警察知道你在哪 */ radio('scan',L[WT.lv]||L[5],3.6); sfx('hurt'); toast(p,'被通緝了！'+'★'.repeat(WT.lv)); WT.spT=old===0?1.2:.5;
+    if(old===0) PL.forEach(q=>hint(q,'wanted','被警察追了！轉進別條路、繞到房子後面，離開警車的視線，星星就會消失；也可以躲進老K車行換漆，或下車搭捷運'));
     if(WT.lv>=3) PL.forEach(q=>hint(q,'rb','前面可能有路障，從旁邊的路繞過去！'));
     for(const v of V) if(v.ty==='police'&&v.role==='traffic'&&Math.hypot(v.x-o.x,v.y-o.y)<520&&copN()<COPW[WT.lv]){ v.role='cop'; v.siren=true; v.noLight=1; v.vmax=Math.min(v.vmax,370); } }
-  function clearWanted(msg){ if(!WT.lv&&WT.heat<1) return; WT.lv=0; WT.heat=0; WT.lose=0; WT.heli=null; for(const v of V) if(v.role==='cop'||v.role==='block'){ v.role=v.role==='block'?'parked':'leave'; v.siren=false; } radio('scan',msg||'嫌犯失去蹤影，各單位解除追捕。',3); PL.forEach(p=>toast(p,'成功甩掉警察！')); sfx('lap'); if(M.onClear) M.onClear(); }
+  function clearWanted(msg){ if(!WT.lv&&WT.heat<1) return; WT.lv=0; WT.heat=0; WT.lose=0; WT.heli=null; WT.srch=0; WT.lk=null; for(const v of V) if(v.role==='cop'||v.role==='block'){ v.role=v.role==='block'?'parked':'leave'; v.siren=false; } radio('scan',msg||'嫌犯失去蹤影，各單位解除追捕。',3); PL.forEach(p=>toast(p,'成功甩掉警察！')); sfx('lap'); if(M.onClear) M.onClear(); }
   function copAI(v,dt){ if(v.hp<=0){ v.siren=false; drive(v,null,0,false,dt,6); return; } if(WT.lv<=0){ v.role='leave'; v.siren=false; return; } v.siren=true;
     let tg=null,td=1e9; for(const p of PL){ const o=me(p); if(!o||p.mrt) continue; const d=Math.hypot(o.x-v.x,o.y-v.y); if(d<td){ td=d; tg=o; } } if(!tg) return;
+    if(WT.lose>0&&WT.lk&&!v.see&&td>140){ /* 跟丟了：到最後看到的地方附近一條一條路找 */ v.spT=(v.spT||0)-dt; if(!v.sp||v.spT<=0||Math.hypot(v.sp.x-v.x,v.sp.y-v.y)<80){ const r=150+WT.lose*45,sx=clamp(WT.lk.x+(R()-.5)*2*r,0,WS),sy=clamp(WT.lk.y+(R()-.5)*2*r,0,WS),kx=Math.round(sx/P)*P,ky=Math.round(sy/P)*P; v.sp=Math.abs(sx-kx)<Math.abs(sy-ky)?{x:kx,y:sy}:{x:sx,y:ky}; v.spT=7; } aiDrive(v,v.sp.x,v.sp.y,dt,{lane:20,tv:v.vmax*.7}); return; } v.sp=null;
     if(td<190){ const lead=tg.ty?.32:0,px=tg.x+(tg.vx||0)*lead,py=tg.y+(tg.vy||0)*lead; if(tg.ty) drive(v,Math.atan2(py-v.y,px-v.x),v.vmax*(WT.lv>=2?1:.85),WT.lv>=3,dt,TH.grip*8); else drive(v,Math.atan2(py-v.y,px-v.x),Math.max(0,(td-34)*2.2),false,dt,TH.grip*8); }
     else aiDrive(v,tg.x,tg.y,dt,{lane:20,boost:WT.lv>=3&&td>500});
     v.sayT=(v.sayT||R()*4)-dt; if(v.sayT<=0&&td<380){ v.sayT=4+R()*4; say(v,pick(R,['前面的車！靠邊停！','警察！停車！','你跑不掉的！','嫌犯在這裡，請求支援！','下車！雙手舉起來！'])); } }
+  /* 視線：中間有房子擋住就看不到（公園、停車場不擋） */
+  function losCity(x1,y1,x2,y2){ const d=Math.hypot(x2-x1,y2-y1),n=Math.ceil(d/34); for(let k=1;k<n;k++){ const x=x1+(x2-x1)*k/n,y=y1+(y2-y1)*k/n; if(onH(y)>=0||onV(x)>=0) continue; const b=Wd.blk(Math.floor(x/P),Math.floor(y/P)); if(b&&b.type!=='park'&&b.type!=='lot') return false; } return true; }
+  const loseNeed=lv=>3+lv*1.5; /* 離開視線多久才甩掉 */
   const COPW=[0,1,2,2,3,4],copN=()=>V.filter(v=>v.role==='cop').length; /* 每個星等最多幾台警車在追（v242 從 2～6 台減少） */
+  /* 驚險閃過、甩尾：都會補氮氣 */
+  const pop=(p,txt,col)=>{ (p.pops||(p.pops=[])).push({txt,col,t:1.4}); if(p.pops.length>3) p.pops.shift(); };
+  function stuntStep(p,v,dt){ const sp=vspeed(v),L=p.nmL||(p.nmL=[]);
+    if(sp>230) for(const q of V){ if(q===v||q.drv>=0||q.role==='parked'||q.role==='wreck'||q.hp<=0) continue; const d=Math.hypot(q.x-v.x,q.y-v.y); if(d<(v.Wd+q.Wd)/2+16&&Math.hypot(v.vx-(q.vx||0),v.vy-(q.vy||0))>150&&!L.some(e=>e.q===q)) L.push({q,hp:v.hp,t}); }
+    for(let i=L.length-1;i>=0;i--){ const e=L[i],d=Math.hypot(e.q.x-v.x,e.q.y-v.y); if(t-e.t>3||v.hp<e.hp){ L.splice(i,1); continue; } if(d>(v.Wd+e.q.Wd)/2+60){ L.splice(i,1); p.nm=(p.nm||0)+1; p.nitro=Math.min(1,p.nitro+.12); pop(p,(e.q.role==='cop'?'驚險閃過警車！':'驚險閃過！')+' +氮氣'); sfx('item'); hint(p,'nm','高速從車旁邊擦身而過、甩尾，都會補氮氣'); } }
+    if(v.slip>20&&sp>260){ if(!p.drT) p.drH=v.hp; p.drT=(p.drT||0)+dt; if(v.hp<p.drH) p.drT=0; /* 甩尾途中撞到就不算 */ } else { if(p.drT>.7){ const g=Math.min(.25,p.drT*.1); p.nitro=Math.min(1,p.nitro+g); pop(p,'甩尾 '+p.drT.toFixed(1)+' 秒 +氮氣','#ffd23f'); sfx('item'); } p.drT=0; } }
+  /* 老K車行：被通緝時（警察沒看到）開進去換漆就解除通緝；車子壞了開進去修好 */
+  function garageStep(p,v,dt){ const g=Wd.garage,d=Math.hypot(g.x-v.x,g.y-v.y); if(d>220){ p.gT=0; return; }
+    if(WT.lv>0&&!WT.seenNow&&t>=(p.gCd||0)) hint(p,'garage','開進老K車行停一下，換個顏色，警察就認不出你了');
+    const need=WT.lv>0||v.hp<70; if(d>75||vspeed(v)>50||!need||t<(p.gCd||0)){ p.gT=Math.max(0,(p.gT||0)-dt*2); return; }
+    if(WT.lv>0&&WT.seenNow){ hint(p,'garage2','警察看到你開進來了！先甩開警車的視線，再進車行換漆'); p.gT=0; return; }
+    p.gT=(p.gT||0)+dt; if(p.gT>=2.2){ p.gT=0; p.gCd=t+45; v.hp=100; if(WT.lv>0){ const cs=['#f4f4f0','#1a1a1e','#c8202a','#1d4fa8','#e8c21c','#3a7a4a','#8a8e96','#e86a1a'].filter(x=>x!==v.col); v.col=cs[Math.floor(R()*cs.length)]; clearWanted('嫌犯的車不見了，各單位解除追捕。'); toast(p,'老K幫你換了顏色，警察認不出來了！'); } else { toast(p,'老K幫你把車修好了！'); sfx('lap'); } } }
   function wantedStep(dt){ const lv=WT.lv; if(lv<=0){ WT.heat=Math.max(0,WT.heat-dt*.01); if(sGain) sGain.gain.value=0; for(const p of PL) p.bust=0; return; }
     const ps=PL.filter(p=>!p.mrt).map(me); if(!ps.length){ WT.lose+=dt*3; } let seen=false,nd=1e9;
-    for(const v of V){ if(v.role!=='cop'||v.hp<=0) continue; for(const o of ps){ const d=Math.hypot(o.x-v.x,o.y-v.y); nd=Math.min(nd,d); if(d<480) seen=true; } }
-    if(WT.heli){ const h=WT.heli; for(const o of ps) if(Math.hypot(o.x-h.x,o.y-h.y)<300) seen=true; }
-    if(seen) WT.lose=Math.max(0,WT.lose-dt*.6); else { WT.lose+=dt; if(WT.lose>=3+lv*1.4){ clearWanted(); return; } } /* 被看到時進度只慢慢退，不會一下歸零 */
+    for(const v of V){ if(v.role!=='cop'||v.hp<=0) continue; v.see=false; for(const o of ps){ const d=Math.hypot(o.x-v.x,o.y-v.y); nd=Math.min(nd,d); if(d<140||d<480&&losCity(v.x,v.y,o.x,o.y)){ seen=true; v.see=true; WT.lk={x:o.x,y:o.y}; } } } /* 要看得到才算：轉進別條路、繞到房子後面就看不到 */
+    if(WT.heli){ const h=WT.heli; for(const o of ps) if(Math.hypot(o.x-h.x,o.y-h.y)<300){ seen=true; WT.lk={x:o.x,y:o.y}; } }
+    if(!seen&&t<(WT.know||0)&&ps.length){ seen=true; WT.lk={x:ps[0].x,y:ps[0].y}; for(const v of V) if(v.role==='cop') v.see=true; }
+    WT.seenNow=seen; if(!WT.lk&&ps.length) WT.lk={x:ps[0].x,y:ps[0].y};
+    if(seen){ WT.lose=Math.max(0,WT.lose-dt*.6); if(WT.lose<.3) WT.srch=0; } else { WT.lose+=dt; if(WT.lose>1.2&&!WT.srch){ WT.srch=1; radio('scan','嫌犯跟丟了！各單位在最後看到的地方附近搜索。',2.6); PL.forEach(q=>hint(q,'search','警察跟丟你了！地圖上的紅藍圈是搜索範圍，別被警車看到，星星就會消失')); } if(WT.lose>=loseNeed(lv)){ clearWanted(); return; } } /* 被看到時進度只慢慢退，不會一下歸零 */
     // 補警車
     const cops=copN(),want=COPW[lv]; WT.spT-=dt; /* v242 減少警車：原本 2～6 台太多逃不掉 */
-    if(cops<want&&WT.spT<=0&&ps.length&&WT.lose<1.5){ WT.spT=Math.max(2.6,5-lv*.4); const o=ps[Math.floor(R()*ps.length)]; for(let tr=0;tr<12;tr++){ const pt=roadPt(o,520,950); if(!offView(pt.x,pt.y,50)) continue; const cv=mkVeh('police',pt.x,pt.y,Math.atan2(o.y-pt.y,o.x-pt.x),'#f4f6f8','cop'); cv.siren=true; cv.noLight=1; cv.vmax=340+lv*16; cv.acc=380+lv*12; break; } }
+    if(cops<want&&WT.spT<=0&&ps.length&&WT.lose<1.5){ WT.spT=Math.max(2.6,5-lv*.4); const o=WT.lose>0&&WT.lk?WT.lk:ps[Math.floor(R()*ps.length)]; for(let tr=0;tr<12;tr++){ const pt=roadPt(o,520,950); if(!offView(pt.x,pt.y,50)) continue; const cv=mkVeh('police',pt.x,pt.y,Math.atan2(o.y-pt.y,o.x-pt.x),'#f4f6f8','cop'); cv.siren=true; cv.noLight=1; cv.vmax=340+lv*16; cv.acc=380+lv*12; break; } }
     // 路障（三星以上）
     if(lv>=3){ WT.rbT-=dt; if(WT.rbT<=0){ WT.rbT=28+R()*10; for(const p of PL){ const v=p.car; if(!v||vspeed(v)<120) continue; const hk=onH(v.y),vk=onV(v.x); if((hk>=0)===(vk>=0)) continue; const h=hk>=0,s2=Math.sign(h?Math.cos(v.a):Math.sin(v.a))||1; let u=(h?v.x:v.y)+s2*640; const segC=Math.round(u/P)*P; if(Math.abs(u-segC)<HR+70) u=segC+s2*(HR+110); if(u<LO+80||u>HI-80) continue; const k=h?hk:vk,cars=[];
       for(const o2 of [-44,0,44]){ const x=h?u:k*P+o2,y=h?k*P+o2:u; if(!offView(x,y,10)&&Math.hypot(x-v.x,y-v.y)<500) continue; const cv=mkVeh('police',x,y,(h?PI/2:0)+(o2?.25*Math.sign(o2):0),'#f4f6f8','block'); cv.siren=true; cars.push(cv); }
       if(cars.length){ EV.push({k:'rb',x:h?u:k*P,y:h?k*P:u,cars,life:45,cones:[[h?u-s2*30:k*P-58,h?k*P-58:u-s2*30],[h?u-s2*30:k*P+58,h?k*P+58:u-s2*30]]}); radio('scan','路障設好了，嫌犯就要過來了！',2.6); } } } }
     // 直升機（四星以上）
-    if(lv>=4&&ps.length){ const o=ps[0]; if(!WT.heli) WT.heli={x:o.x-700,y:o.y-700,h:300,a:0,tx:o.x,ty:o.y}; const h=WT.heli,dx=o.x-h.x,dy=o.y-h.y,d=Math.hypot(dx,dy),sp=Math.min(d*1.2,300); if(d>1){ h.x+=dx/d*sp*dt; h.y+=dy/d*sp*dt; h.a=Math.atan2(dy,dx); } h.tx+=(o.x-h.tx)*Math.min(1,dt*2); h.ty+=(o.y-h.ty)*Math.min(1,dt*2); } else WT.heli=null;
+    if(lv>=4&&ps.length){ const o=seen||!WT.lk?ps[0]:{x:WT.lk.x+Math.cos(t*.45)*(160+WT.lose*30),y:WT.lk.y+Math.sin(t*.45)*(160+WT.lose*30)}; /* 跟丟時直升機繞著搜索範圍找 */ if(!WT.heli) WT.heli={x:o.x-700,y:o.y-700,h:300,a:0,tx:o.x,ty:o.y}; const h=WT.heli,dx=o.x-h.x,dy=o.y-h.y,d=Math.hypot(dx,dy),sp=Math.min(d*1.2,300); if(d>1){ h.x+=dx/d*sp*dt; h.y+=dy/d*sp*dt; h.a=Math.atan2(dy,dx); } h.tx+=(o.x-h.tx)*Math.min(1,dt*2); h.ty+=(o.y-h.ty)*Math.min(1,dt*2); } else WT.heli=null;
     // 被逮捕
     for(const p of PL){ if(p.mrt) continue; const o=me(p),cop=nearCop(o.x,o.y,o.ty?76:62),slow=o.ty?vspeed(o)<40:true; if(cop&&slow&&vspeed(cop)<130&&cop.role==='cop'){ p.bust+=dt*(o.ty?1:1.3); if(p.bust>.3) hint(p,'bust','警察要逮捕你了！快開走（或跑走）！'); if(p.bust>3.2){ radio('scan','嫌犯已經逮捕到案。'); fail('被警察逮捕了！'); } } else p.bust=Math.max(0,p.bust-dt*2); }
     // 警笛聲
@@ -768,7 +786,7 @@ function create(env,opts){
     for(const p of PL){ p.rtT-=dt; if(p.rtT<=0){ p.rtT=.3; const tg=M.target&&M.target(),o=me(p); p.route=tg&&o&&!over?gps(o,tg):[]; } const o=me(p); if(o){ const rn=roadName(Wd,o.x,o.y).replace(/ \d+ 號$/,''); if(rn!==p.road&&!/口$/.test(rn)&&rn!=='人行道'&&rn!=='公園裡'){ p.road=rn; p.roadT=3; } } if(p.roadT>0) p.roadT-=dt; }
     /* 對話佇列 */
     if(DLG){ DLG.T+=dt; if(DLG.T>DLG.t){ DLG=null; } } if(!DLG&&DQ.length) DLG=DQ.shift();
-    for(const p of PL){ if(p.hq&&p.hq.length){ p.hq[0].t-=dt; if(p.hq[0].t<=0) p.hq.shift(); } if(p.toasts&&p.toasts.length){ p.toasts[0].t-=dt; if(p.toasts[0].t<=0) p.toasts.shift(); } }
+    for(const p of PL){ if(p.pops){ for(const q of p.pops) q.t-=dt; p.pops=p.pops.filter(q=>q.t>0); } if(p.hq&&p.hq.length){ p.hq[0].t-=dt; if(p.hq[0].t<=0) p.hq.shift(); } if(p.toasts&&p.toasts.length){ p.toasts[0].t-=dt; if(p.toasts[0].t<=0) p.toasts.shift(); } }
     for(let i=BUB.length-1;i>=0;i--){ BUB[i].t-=dt; if(BUB[i].t<=0) BUB.splice(i,1); }
     /* 玩家 */
     for(const p of PL){ const I=prev?botIn(p):keyIn(p.i); const fe=I.f&&!p.pf; p.pf=I.f; if(p.mrt){ mrtStep(p,I,dt,fe); continue; } if(running&&fe) toggleCar(p); const tank=VIEW==='3d'&&!I.abs;
@@ -780,6 +798,7 @@ function create(env,opts){
         const grip=TH.grip*(v.ty==='scooter'||bike?10:8.5);
         if(tank) driveTank(v,running?-I.dy:0,running?I.dx:0,boost,dt,grip); else drive(v,ta,running?null:0,boost,dt,grip);
         if(WX.storm&&running){ const g=WX.storm*(.45+.55*Math.sin(t*.9))*(v.ty==='scooter'||bike?60:16); v.vx+=g*dt*.8; v.vy+=g*dt*.3; }
+        if(running&&!bike) stuntStep(p,v,dt); if(running&&!M.noWanted) garageStep(p,v,dt);
         if(v.surf<.9&&vspeed(v)>80&&onWalk(v.x,v.y)) hint(p,'walk','開上人行道會變慢，也很危險喔');
         if(v.hp<=0&&p.wreckT<=0){ p.wreckT=2.6; p.wrecks++; M.time-=6; sfx('hurt'); toast(p,'車子拋錨了！-6 秒'); for(let k=0;k<14;k++) FX.push({k:'smoke',x:v.x,y:v.y,vx:(R()-.5)*40,vy:(R()-.5)*40,l:2,L:2,s:10,col:'70,70,70'}); hint(p,'swap','車子撐不住時，按 '+KN[Math.min(p.i,KN.length-1)].f+' 下車，換一台車繼續開',[KN[Math.min(p.i,KN.length-1)].f]); }
         } if(v.hp<35&&R()<.3) FX.push({k:'smoke',x:v.x+Math.cos(v.a)*v.L*.35,y:v.y+Math.sin(v.a)*v.L*.35,vx:(R()-.5)*20,vy:(R()-.5)*20-10,l:1.2,L:1.2,s:5,col:v.hp<15?'60,60,60':'170,170,170'});
@@ -962,7 +981,8 @@ function create(env,opts){
     c.drawImage(miniMap(),mx,my,ms,ms);
     if(p.route&&p.route.length){ c.strokeStyle='rgba(60,230,120,.95)'; c.lineWidth=2*u; c.beginPath(); const s0=mp(o.x,o.y); c.moveTo(s0[0],s0[1]); for(const q of p.route){ const s1=mp(q[0],q[1]); c.lineTo(s1[0],s1[1]); } c.stroke(); }
     for(const e of Wd.mrt){ const q=mp(e.x,e.y); c.fillStyle='#1d6ab8'; c.beginPath(); c.arc(q[0],q[1],3.4*u,0,TAU); c.fill(); c.strokeStyle='#fff'; c.lineWidth=1*u; c.stroke(); }
-    { const q=mp(Wd.garage.x,Wd.garage.y); if(ST.ch>=1){ c.fillStyle='#ffd23f'; c.fillRect(q[0]-2.5*u,q[1]-2.5*u,5*u,5*u); } const pb=Wd.police,pq=mp((pb.x0+pb.x1)/2,(pb.y0+pb.y1)/2); c.fillStyle='#4a8aff'; c.beginPath(); c.moveTo(pq[0],pq[1]-4*u); c.lineTo(pq[0]+3.4*u,pq[1]-2*u); c.lineTo(pq[0],pq[1]+4*u); c.lineTo(pq[0]-3.4*u,pq[1]-2*u); c.fill(); }
+    { const q=mp(Wd.garage.x,Wd.garage.y); if(ST.ch>=1||WT.lv>0){ c.fillStyle='#ffd23f'; c.fillRect(q[0]-2.5*u,q[1]-2.5*u,5*u,5*u); } const pb=Wd.police,pq=mp((pb.x0+pb.x1)/2,(pb.y0+pb.y1)/2); c.fillStyle='#4a8aff'; c.beginPath(); c.moveTo(pq[0],pq[1]-4*u); c.lineTo(pq[0]+3.4*u,pq[1]-2*u); c.lineTo(pq[0],pq[1]+4*u); c.lineTo(pq[0]-3.4*u,pq[1]-2*u); c.fill(); }
+    if(WT.lv>0&&WT.lose>0&&WT.lk){ const q=mp(WT.lk.x,WT.lk.y),r0=(150+WT.lose*45)*k; c.fillStyle=Math.sin(t*5)>0?'rgba(255,60,60,.24)':'rgba(60,110,255,.24)'; c.beginPath(); c.arc(q[0],q[1],r0,0,TAU); c.fill(); c.strokeStyle='rgba(255,255,255,.5)'; c.lineWidth=1*u; c.stroke(); } /* 警察搜索範圍 */
     for(const v of V) if(v.role==='cop'||v.role==='block'){ const q=mp(v.x,v.y); c.fillStyle=Math.sin(t*12)>0?'#ff3a3a':'#3a6aff'; c.beginPath(); c.arc(q[0],q[1],2.6*u,0,TAU); c.fill(); }
     if(WT.heli){ const q=mp(WT.heli.x,WT.heli.y); c.strokeStyle='#fff'; c.lineWidth=1.2*u; c.beginPath(); c.arc(q[0],q[1],4*u,0,TAU); c.stroke(); }
     const tg=M.target&&M.target(); if(tg){ const q=mp(tg.x,tg.y); c.fillStyle=Math.sin(t*6)>0?'#ffd23f':'#ff9a1a'; c.beginPath(); c.arc(q[0],q[1],3.6*u,0,TAU); c.fill(); }
@@ -971,7 +991,9 @@ function create(env,opts){
     c.restore(); c.strokeStyle='rgba(255,255,255,.4)'; c.lineWidth=1; c.strokeRect(mx,my,ms,ms);
     if(ya3!=null){ const na=-PI/2-ya3-PI/2,nr=ms/2-9,nx=mx+ms/2+Math.cos(na)*nr,ny=my+ms/2+Math.sin(na)*nr; c.fillStyle='rgba(200,30,40,.9)'; c.beginPath(); c.arc(nx,ny,7.5,0,TAU); c.fill(); c.font='900 10px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#fff'; c.fillText('北',nx,ny+.5); c.textBaseline='alphabetic'; } /* 北方在哪 */
     c.font='700 10px '+TC; c.textAlign=local2&&p.i===0?'left':'right'; c.fillStyle='rgba(255,255,255,.85)'; c.fillText('📍 '+roadName(Wd,o.x,o.y),local2&&p.i===0?x0+12:x0+w-12,my+ms+12);
-    if(WT.lv>0||WT.heat>=.3){ const sx0=local2&&p.i===0?x0+12:x0+w-12-5*18,sy0=my+ms+30,fl=WT.lose>0&&Math.sin(t*8)>0; c.font='900 17px '+TC; c.textAlign='left'; for(let i=0;i<5;i++){ const on=i<WT.lv; c.lineWidth=3; c.strokeStyle='rgba(0,0,0,.65)'; c.strokeText('★',sx0+i*18,sy0); c.fillStyle=on?(fl?'#fff6c0':'#ffd23f'):'rgba(255,255,255,.25)'; c.fillText('★',sx0+i*18,sy0); } if(WT.lv>0&&WT.lose>0){ const need=3+WT.lv*1.4; c.fillStyle='rgba(0,0,0,.5)'; c.fillRect(sx0,sy0+11,88,4); c.fillStyle='#7ae8ff'; c.fillRect(sx0,sy0+11,88*clamp(WT.lose/need,0,1),4); } }
+    if(WT.lv>0||WT.heat>=.3){ const sx0=local2&&p.i===0?x0+12:x0+w-12-5*18,sy0=my+ms+30,fl=WT.lose>0&&Math.sin(t*8)>0; c.font='900 17px '+TC; c.textAlign='left'; for(let i=0;i<5;i++){ const on=i<WT.lv; c.lineWidth=3; c.strokeStyle='rgba(0,0,0,.65)'; c.strokeText('★',sx0+i*18,sy0); c.fillStyle=on?(fl?'#fff6c0':'#ffd23f'):'rgba(255,255,255,.25)'; c.fillText('★',sx0+i*18,sy0); } if(WT.lv>0&&WT.lose>0){ const need=loseNeed(WT.lv); c.fillStyle='rgba(0,0,0,.5)'; c.fillRect(sx0,sy0+11,88,4); c.fillStyle='#7ae8ff'; c.fillRect(sx0,sy0+11,88*clamp(WT.lose/need,0,1),4); if(WT.srch){ c.font='800 10px '+TC; c.lineWidth=3; c.strokeStyle='rgba(0,0,0,.7)'; c.strokeText('警察在搜索你',sx0,sy0+24); c.fillStyle='#7ae8ff'; c.fillText('警察在搜索你',sx0,sy0+24); } } }
+    if(p.gT>0){ const bw=200,bx=x0+w/2-bw/2,yy=H/2-40; c.fillStyle='rgba(10,12,20,.8)'; rr(c,bx,yy,bw,40,9); c.fill(); c.font='900 13px '+TC; c.textAlign='center'; c.fillStyle='#ffd23f'; c.fillText(WT.lv>0?'老K車行：換漆中⋯':'老K車行：修車中⋯',x0+w/2,yy+14); c.fillStyle='rgba(255,255,255,.2)'; c.fillRect(bx+14,yy+26,bw-28,6); c.fillStyle='#ffd23f'; c.fillRect(bx+14,yy+26,(bw-28)*clamp(p.gT/2.2,0,1),6); }
+    if(p.pops&&p.pops.length){ p.pops.forEach((q,i)=>{ const a=clamp(q.t*2,0,1),yy=H-(local2?96:92)-i*22-(1.4-q.t)*14; c.globalAlpha=a; c.font='900 15px '+TC; c.textAlign='center'; c.lineWidth=4; c.strokeStyle='rgba(0,0,0,.7)'; c.strokeText(q.txt,x0+w/2,yy); c.fillStyle=q.col||'#7ae8ff'; c.fillText(q.txt,x0+w/2,yy); c.globalAlpha=1; }); }
     if(p.roadT>0&&p.road){ const a=Math.min(1,p.roadT*2,(3-p.roadT)*4); c.globalAlpha=a; c.font='900 20px '+TC; c.textAlign='right'; c.lineWidth=5; c.strokeStyle='rgba(0,0,0,.6)'; const ry=H-(local2?150:118),rx=x0+w-14; c.strokeText(p.road,rx,ry); c.fillStyle='#fff'; c.fillText(p.road,rx,ry); c.font='700 12px '+TC; c.strokeText(Wd.D.n,rx,ry+20); c.fillStyle='#ffd23f'; c.fillText(Wd.D.n,rx,ry+20); c.globalAlpha=1; }
     if(p.bust>.3){ c.font='900 18px '+TC; c.textAlign='center'; c.fillStyle='rgba(180,20,30,.9)'; rr(c,x0+w/2-130,H/2-90,260,40,10); c.fill(); c.fillStyle='#fff'; c.fillText('警察要逮捕你了！快逃！',x0+w/2,H/2-76); c.fillStyle='rgba(255,255,255,.3)'; c.fillRect(x0+w/2-110,H/2-62,220,6); c.fillStyle='#fff'; c.fillRect(x0+w/2-110,H/2-62,220*clamp(p.bust/2.4,0,1),6); }
     if(p.mrt) drawMRT(vw,p);
