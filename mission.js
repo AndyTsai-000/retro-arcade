@@ -13,14 +13,14 @@ const shuf=a=>{ for(let k=a.length-1;k>0;k--){ const j=Math.floor(Math.random()*
 const TEAM={5:[2,3,2,3,3],6:[2,3,4,3,4],7:[2,3,3,4,4],8:[3,4,4,5,5],9:[3,4,4,5,5],10:[3,4,4,5,5]};
 const EVIL={5:2,6:2,7:3,8:3,9:3,10:4};
 const ROLE={
-  seer:{n:'先知',av:'梅林',g:1,ic:'🔮',d:'你知道誰是壞人（影首除外）。帶好人避開壞人，但別太明顯，最後刺客會找你。'},
-  guard:{n:'護衛',av:'派西維爾',g:1,ic:'🛡',d:'你看得到先知和幻影師，但分不出誰是誰。找出真的先知，保護他。'},
-  loyal:{n:'忠臣',av:'亞瑟的忠臣',g:1,ic:'⚔',d:'你什麼都不知道，看投票和任務結果推理誰是壞人。'},
-  assassin:{n:'刺客',av:'刺客',g:0,ic:'🗡',d:'壞人。好人完成 3 次任務後，由你刺殺一個人；刺中先知就翻盤。'},
-  illus:{n:'幻影師',av:'莫甘娜',g:0,ic:'🎭',d:'壞人。在護衛眼中你跟先知長得一樣，假裝自己是先知。'},
-  shadow:{n:'影首',av:'莫德雷德',g:0,ic:'🌑',d:'壞人。連先知都看不到你。'},
-  lone:{n:'獨行者',av:'奧伯倫',g:0,ic:'🐺',d:'壞人，但你不知道隊友是誰，隊友也不知道你。'},
-  minion:{n:'爪牙',av:'莫德雷德的爪牙',g:0,ic:'💀',d:'壞人，你知道其他壞人是誰。讓任務失敗！'}};
+  seer:{n:'先知',s:'知道誰是壞人（影首除外），但不能被刺客認出來',av:'梅林',g:1,ic:'🔮',d:'你知道誰是壞人（影首除外）。帶好人避開壞人，但別太明顯，最後刺客會找你。'},
+  guard:{n:'護衛',s:'看得到先知和幻影師，分不出誰是誰',av:'派西維爾',g:1,ic:'🛡',d:'你看得到先知和幻影師，但分不出誰是誰。找出真的先知，保護他。'},
+  loyal:{n:'忠臣',s:'沒有特殊能力，靠推理',av:'亞瑟的忠臣',g:1,ic:'⚔',d:'你什麼都不知道，看投票和任務結果推理誰是壞人。'},
+  assassin:{n:'刺客',s:'好人過關後可以刺殺一人，刺中先知就翻盤',av:'刺客',g:0,ic:'🗡',d:'壞人。好人完成 3 次任務後，由你刺殺一個人；刺中先知就翻盤。'},
+  illus:{n:'幻影師',s:'在護衛眼中假扮成先知',av:'莫甘娜',g:0,ic:'🎭',d:'壞人。在護衛眼中你跟先知長得一樣，假裝自己是先知。'},
+  shadow:{n:'影首',s:'先知看不到他',av:'莫德雷德',g:0,ic:'🌑',d:'壞人。連先知都看不到你。'},
+  lone:{n:'獨行者',s:'不知道同夥，同夥也不知道他',av:'奧伯倫',g:0,ic:'🐺',d:'壞人，但你不知道隊友是誰，隊友也不知道你。'},
+  minion:{n:'爪牙',s:'知道其他壞人是誰',av:'莫德雷德的爪牙',g:0,ic:'💀',d:'壞人，你知道其他壞人是誰。讓任務失敗！'}};
 const SETS=[{id:'basic',label:'基本',d:'先知、刺客，其他是忠臣和爪牙'},{id:'std',label:'標準',d:'再加上護衛、幻影師'},{id:'all',label:'全部',d:'再加上影首（7 人以上）、獨行者（10 人）'}];
 function roleList(n,set){ const E=EVIL[n],g=['seer'],e=['assassin']; if(set!=='basic'){ g.push('guard'); e.push('illus'); } if(set==='all'){ if(E>=3) e.push('shadow'); if(E>=4) e.push('lone'); }
   while(g.length<n-E) g.push('loyal'); while(e.length<E) e.push('minion'); return g.concat(e); }
@@ -232,7 +232,9 @@ const LSn=k=>{ try{ return +localStorage.getItem(k)||0; }catch(e){ return 0; } }
   name:'王城密令',tag:'SECRET ORDERS',color:'#e8c050',online:true,maxPlayers:10,minPlayers:5,bots:true,
   desc:'玩法參考桌遊《阿瓦隆》，會玩的人不用重學規則。好人與壞人藏在同一張圓桌！隊長挑隊員出任務，大家公開投票，出任務的人暗中出成功或失敗。好人完成 3 次任務、壞人讓 3 次任務失敗；最後刺客還能刺殺先知翻盤。5～10 人，一個人玩有電腦同桌，也能和朋友連線。',
   goal:'（玩法同《阿瓦隆》）好人完成 3 次任務、壞人讓 3 次任務失敗就贏。隊伍要過半贊成才出發，連續 5 次被否決壞人贏；好人過關後刺客刺中先知，壞人翻盤。',
-  optNote(sel,count){ const m=clamp(count||+sel.seats||7,5,10),L=roleList(m,sel.roles||'std'),cnt={}; for(const k of L) cnt[k]=(cnt[k]||0)+1; return m+' 人局：'+Object.keys(cnt).map(k=>ROLE[k].n+'（'+ROLE[k].av+'）'+(cnt[k]>1?' ×'+cnt[k]:'')).join('、')+'<br>每次任務人數：'+TEAM[m].join('、')+(m>=7?'（第 4 次要 2 張失敗）':''); },
+  optNote(sel,count){ const m=clamp(count||+sel.seats||7,5,10),L=roleList(m,sel.roles||'std'),cnt={}; for(const k of L) cnt[k]=(cnt[k]||0)+1;
+    const side=g=>Object.keys(cnt).filter(k=>ROLE[k].g===g).map(k=>'・'+ROLE[k].n+'（阿瓦隆的'+ROLE[k].av+'）'+(cnt[k]>1?' ×'+cnt[k]:'')+'：'+ROLE[k].s).join('<br>');
+    return m+' 人局，每次任務人數：'+TEAM[m].join('、')+(m>=7?'（第 4 次要 2 張失敗）':'')+'<br><span style="color:#8ac4ff">🔵 好人陣營 '+(m-EVIL[m])+' 人</span>：完成 3 次任務<br>'+side(1)+'<br><span style="color:#ff8a9a">🔴 壞人陣營 '+EVIL[m]+' 人</span>：讓 3 次任務失敗<br>'+side(0); },
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'seats',label:'人數',solo:true,def:'7',opts:[{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'7',label:'7 人'},{id:'8',label:'8 人'},{id:'9',label:'9 人'},{id:'10',label:'10 人'}]},{key:'roles',label:'角色',def:'std',opts:SETS.map(s=>({id:s.id,label:s.label}))}],
   help:[['點人物','隊長挑隊員；刺客選要刺殺的人'],['按鈕','投票贊成／反對、出任務成功／失敗'],['左上角','隨時看自己的角色和知道的資訊']],
