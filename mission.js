@@ -21,8 +21,9 @@ const ROLE={
   shadow:{n:'影首',s:'先知看不到他',av:'莫德雷德',g:0,ic:'🌑',d:'壞人。連先知都看不到你。'},
   lone:{n:'獨行者',s:'不知道同夥，同夥也不知道他',av:'奧伯倫',g:0,ic:'🐺',d:'壞人，但你不知道隊友是誰，隊友也不知道你。'},
   minion:{n:'爪牙',s:'知道其他壞人是誰',av:'莫德雷德的爪牙',g:0,ic:'💀',d:'壞人，你知道其他壞人是誰。讓任務失敗！'}};
-const SETS=[{id:'basic',label:'基本',d:'先知、刺客，其他是忠臣和爪牙'},{id:'std',label:'標準',d:'再加上護衛、幻影師'},{id:'all',label:'全部',d:'再加上影首（7 人以上）、獨行者（10 人）'}];
-function roleList(n,set){ const E=EVIL[n],g=['seer'],e=['assassin']; if(set!=='basic'){ g.push('guard'); e.push('illus'); } if(set==='all'){ if(E>=3) e.push('shadow'); if(E>=4) e.push('lone'); }
+const SETS=[{id:'basic',label:'基本',d:'先知、刺客，其他是忠臣和爪牙'},{id:'std',label:'標準',d:'再加上護衛、幻影師，7 人以上再加影首'},{id:'all',label:'全部',d:'標準再加上獨行者（10 人）'}];
+const noSh=(t,L)=>L.includes('shadow')?t:t.replace('（影首除外）','');
+function roleList(n,set){ const E=EVIL[n],g=['seer'],e=['assassin']; if(set!=='basic'){ g.push('guard'); e.push('illus'); } if(set!=='basic'&&E>=3) e.push('shadow'); if(set==='all'&&E>=4) e.push('lone'); /* 照推薦配置：7 人以上有影首，10 人全部再加獨行者 */
   while(g.length<n-E) g.push('loyal'); while(e.length<E) e.push('minion'); return g.concat(e); }
 const PCOL=['#ff7a3d','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff5d6d','#3ddbd9','#ff9d3d','#ff7eb6','#9ad04a'];
 const BOTN=['亞瑟','小蘭','阿傑','米亞','老王','珊珊','大熊','可可','阿德','露露'];
@@ -71,7 +72,7 @@ function create(env,opts){
     return ''; }
   /* ---------- 電腦的推理（只在房主算） ---------- */
   const sus=Array(n).fill(0),priv=Array.from({length:n},()=>Array(n).fill(0)); // 大家公開看得到的可疑程度；priv＝每個人自己出任務得到的線索
-  function botSus(i,j){ const k=know(i,j); if(k==='evil'&&G.role[i]!=='seer') return 50; let s=sus[j]+priv[i][j]; if(k==='seer?') s-=1.2; if(G.role[i]==='seer'&&isEvil(j)&&G.role[j]!=='shadow') s+=2.4; /* 先知看得到壞人，但不會做得太明顯 */ return s; }
+  function botSus(i,j){ const k=know(i,j); if(k==='evil'&&G.role[i]!=='seer') return 50; let s=sus[j]+priv[i][j]; if(k==='seer?') s-=1.2; if(G.role[i]==='seer'&&isEvil(j)&&G.role[j]!=='shadow') s+=3; /* 先知看得到壞人，但不會做得太明顯 */ return s; }
   function botTeam(i){ const k=SIZES[G.q],others=[...Array(n).keys()].filter(j=>j!==i);
     if(isEvil(i)){ /* 壞人隊長：自己加上看起來最乾淨的好人 */ const good=others.filter(j=>know(i,j)!=='evil').sort((a,b)=>sus[a]-sus[b]+(Math.random()-.5)*.8); return [i].concat(good.slice(0,k-1)); }
     const sorted=others.sort((a,b)=>botSus(i,a)-botSus(i,b)+(Math.random()-.5)*(G.role[i]==='seer'?.6:.4)); return [i].concat(sorted.slice(0,k-1)); }
@@ -85,7 +86,7 @@ function create(env,opts){
     const known=evT.filter(j=>G.role[j]!=='lone').sort((a,b)=>a-b),nd=need(G.q);
     if(nd>=2) return known.length<2?Math.random()<.5:false;
     if(known[0]!==i) return true; // 一張失敗就夠，讓同夥裡號碼最小的人出
-    return G.q===0?Math.random()<.45:Math.random()<.12; }
+    return Math.random()<[.45,.3,.15,.1,.1][G.q]; } /* 前面幾次比較會藏，不急著出失敗 */
   function botAssn(i){ const cand=[...Array(n).keys()].filter(j=>j!==i&&know(i,j)!=='evil'),sc={};
     for(const j of cand){ let s=0; for(const p of G.props){ const bad=p.team.some(x=>isEvil(x)&&G.role[x]!=='shadow'); if(p.votes[j]===false&&bad) s+=1; if(p.votes[j]===true&&bad) s-=1; if(p.votes[j]===false&&!bad) s-=.3; if(p.lead===j&&!bad) s+=.6; if(p.lead===j&&bad) s-=1.5; } sc[j]=s; }
     /* 照分數抽籤：越像先知越容易被選，但不會每次都猜中 */ const wt=cand.map(j=>Math.exp(sc[j]*.45)),tot=wt.reduce((x,y)=>x+y,0); let r=Math.random()*tot; for(let k=0;k<cand.length;k++){ r-=wt[k]; if(r<=0) return cand[k]; } return cand[0]; }
@@ -100,7 +101,7 @@ function create(env,opts){
   function playCard(i,ok){ if(G.ph!=='quest'||!G.team.includes(i)||G.qc[i]!=null) return; if(!isEvil(i)) ok=true; /* 好人只能出成功 */ G.qc[i]=!!ok;
     if(G.team.every(j=>G.qc[j]!=null)){ const cards=shuf(G.team.map(j=>G.qc[j])),f=cards.filter(x=>!x).length,ok2=f<need(G.q); G.cards=cards; G.res.push({q:G.q,lead:G.lead,team:G.team.slice(),f,ok:ok2});
       /* 更新大家看得到的可疑度 */ const p=G.props[G.props.length-1]; for(const i of G.team) if(!isEvil(i)) for(const j of G.team) if(j!==i) priv[i][j]+=f?3*f/(G.team.length-1):-.6; /* 自己是好人：失敗牌一定是別人出的 */
-      if(!ok2||f){ for(const j of G.team) sus[j]+=2.2*f/G.team.length; sus[G.lead]+=.8; p&&p.votes.forEach((v,j)=>{ if(v) sus[j]+=.6; else sus[j]-=.3; }); } else { for(const j of G.team) sus[j]-=.5; p&&p.votes.forEach((v,j)=>{ if(v) sus[j]-=.2; else sus[j]+=.5; }); }
+      if(!ok2||f){ for(const j of G.team) sus[j]+=3*f/G.team.length; sus[G.lead]+=.8; p&&p.votes.forEach((v,j)=>{ if(v) sus[j]+=.8; else sus[j]-=.5; }); } else { for(const j of G.team) sus[j]-=.3; p&&p.votes.forEach((v,j)=>{ if(v) sus[j]-=.2; else sus[j]+=.5; }); }
       G.ph='qres'; G.PT=(1.2+cards.length*.7+2.6)*SP; G.evN++; } }
   function afterQuest(){ G.rej=0; if(succ()>=3){ G.ph='assn'; G.target=-1; G.PT=(bot[assassin()]?3.5:0)*SP; G.evN++; return; } if(fails()>=3){ endGame('evil','3 次任務失敗'); return; } G.q++; nextLead(); toPick(); }
   const assassin=()=>G.role.indexOf('assassin');
@@ -211,7 +212,7 @@ function create(env,opts){
     if(G.ph==='final'){ panel(176,130); txt(G.win==='good'?'🏆 好人獲勝！':'😈 壞人獲勝！',400,214,'900 26px '+TC,G.win==='good'?'#8ac4ff':'#ff6a7a'); txt(G.why,400,252,'700 13px '+TC,'#fff'); if(G.target>=0) txt('刺客刺殺了 '+names[G.target]+'（'+ROLE[G.role[G.target]].n+'）',400,278,'700 12px '+TC,'#ffd23f'); } }
   function roleCard(first){ const R=ROLE[G.role[me]],ev=isEvil(me); c.fillStyle='rgba(6,4,16,.6)'; c.fillRect(0,0,W,H); c.fillStyle=ev?'#3a1424':'#14244a'; rr(c,220,70,360,330,22); c.fill(); c.strokeStyle=ev?'#ff6a7a':'#8ac4ff'; c.lineWidth=3; c.stroke();
     txt(R.ic,400,112,'40px '+TC,'#fff'); txt('你是「'+R.n+'」',400,156,'900 24px '+TC,'#fff'); txt('（＝阿瓦隆的'+R.av+'）',400,180,'700 12px '+TC,'#c8b8e8'); pill(ev?'壞人陣營':'好人陣營',400,200,ev?'#e8364a':'#3a8aff','#fff','900 12px '+TC);
-    c.font='700 13px '+TC; const lines=wrapL(R.d,300); lines.forEach((l,k)=>txt(l,400,226+k*20,'700 13px '+TC,'#f0e8ff'));
+    c.font='700 13px '+TC; const lines=wrapL(noSh(R.d,G.role),300); lines.forEach((l,k)=>txt(l,400,226+k*20,'700 13px '+TC,'#f0e8ff'));
     const ev2=[],sq=[]; for(let j=0;j<n;j++){ const k=know(me,j); if(k==='evil') ev2.push(names[j]); if(k==='seer?') sq.push(names[j]); }
     let y=236+lines.length*20; if(ev2.length){ txt((G.role[me]==='seer'?'你看到的壞人：':'你的壞人同夥：')+ev2.join('、'),400,y,'900 13px '+TC,'#ff9aa8'); y+=22; }
     if(sq.length) { txt('先知是其中一個：'+sq.join('、'),400,y,'900 13px '+TC,'#c8a8ff'); y+=22; }
@@ -233,8 +234,8 @@ const LSn=k=>{ try{ return +localStorage.getItem(k)||0; }catch(e){ return 0; } }
   desc:'玩法參考桌遊《阿瓦隆》，會玩的人不用重學規則。好人與壞人藏在同一張圓桌！隊長挑隊員出任務，大家公開投票，出任務的人暗中出成功或失敗。好人完成 3 次任務、壞人讓 3 次任務失敗；最後刺客還能刺殺先知翻盤。5～10 人，一個人玩有電腦同桌，也能和朋友連線。',
   goal:'（玩法同《阿瓦隆》）好人完成 3 次任務、壞人讓 3 次任務失敗就贏。隊伍要過半贊成才出發，連續 5 次被否決壞人贏；好人過關後刺客刺中先知，壞人翻盤。',
   optNote(sel,count){ const m=clamp(count||+sel.seats||7,5,10),L=roleList(m,sel.roles||'std'),cnt={}; for(const k of L) cnt[k]=(cnt[k]||0)+1;
-    const side=g=>Object.keys(cnt).filter(k=>ROLE[k].g===g).map(k=>'・'+ROLE[k].n+'（阿瓦隆的'+ROLE[k].av+'）'+(cnt[k]>1?' ×'+cnt[k]:'')+'：'+ROLE[k].s).join('<br>');
-    return m+' 人局，每次任務人數：'+TEAM[m].join('、')+(m>=7?'（第 4 次要 2 張失敗）':'')+'<br><span style="color:#8ac4ff">🔵 好人陣營 '+(m-EVIL[m])+' 人</span>：完成 3 次任務<br>'+side(1)+'<br><span style="color:#ff8a9a">🔴 壞人陣營 '+EVIL[m]+' 人</span>：讓 3 次任務失敗<br>'+side(0); },
+    const side=g=>Object.keys(cnt).filter(k=>ROLE[k].g===g).map(k=>'・'+ROLE[k].n+'（阿瓦隆的'+ROLE[k].av+'）'+(cnt[k]>1?' ×'+cnt[k]:'')+'：'+noSh(ROLE[k].s,L)).join('<br>');
+    return m+' 人局，每次任務人數：'+TEAM[m].join('、')+(m>=7?'（第 4 次要 2 張失敗）':'')+'<br><span style="color:#8ac4ff">🔵 好人陣營 '+(m-EVIL[m])+' 人</span>：完成 3 次任務<br>'+side(1)+'<br><span style="color:#ff8a9a">🔴 壞人陣營 '+EVIL[m]+' 人</span>：讓 3 次任務失敗<br>'+side(0)+(L.includes('lone')?'':'<br><span style="color:#c8b8e8">這局沒有'+(L.includes('shadow')?'':'影首（阿瓦隆的莫德雷德）、')+'獨行者（阿瓦隆的奧伯倫）：'+(L.includes('shadow')?'角色選「全部」、10 人才會加入':'影首要角色選「標準」以上、7 人以上；獨行者要選「全部」、10 人')+'</span>'); },
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'seats',label:'人數',solo:true,def:'7',opts:[{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'7',label:'7 人'},{id:'8',label:'8 人'},{id:'9',label:'9 人'},{id:'10',label:'10 人'}]},{key:'roles',label:'角色',def:'std',opts:SETS.map(s=>({id:s.id,label:s.label}))}],
   help:[['點人物','隊長挑隊員；刺客選要刺殺的人'],['按鈕','投票贊成／反對、出任務成功／失敗'],['左上角','隨時看自己的角色和知道的資訊']],
