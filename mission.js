@@ -230,8 +230,8 @@ function thumb(ctx,w,h,t){ ctx.save(); ctx.scale(w/W,h/H); const c=ctx; c.drawIm
 const LSn=k=>{ try{ return +localStorage.getItem(k)||0; }catch(e){ return 0; } };
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).mission={
   name:'王城密令',tag:'SECRET ORDERS',color:'#e8c050',online:true,maxPlayers:10,minPlayers:5,bots:true,
-  desc:'好人與壞人藏在同一張圓桌！隊長挑隊員出任務，大家公開投票，出任務的人暗中出成功或失敗。好人完成 3 次任務、壞人讓 3 次任務失敗；最後刺客還能刺殺先知翻盤。5～10 人，一個人玩有電腦同桌，也能和朋友連線。',
-  goal:'好人完成 3 次任務、壞人讓 3 次任務失敗就贏。隊伍要過半贊成才出發，連續 5 次被否決壞人贏；好人過關後刺客刺中先知，壞人翻盤。',
+  desc:'玩法參考桌遊《阿瓦隆》，會玩的人不用重學規則。好人與壞人藏在同一張圓桌！隊長挑隊員出任務，大家公開投票，出任務的人暗中出成功或失敗。好人完成 3 次任務、壞人讓 3 次任務失敗；最後刺客還能刺殺先知翻盤。5～10 人，一個人玩有電腦同桌，也能和朋友連線。',
+  goal:'（玩法同《阿瓦隆》）好人完成 3 次任務、壞人讓 3 次任務失敗就贏。隊伍要過半贊成才出發，連續 5 次被否決壞人贏；好人過關後刺客刺中先知，壞人翻盤。',
   optNote(sel,count){ const m=clamp(count||+sel.seats||7,5,10),L=roleList(m,sel.roles||'std'),cnt={}; for(const k of L) cnt[k]=(cnt[k]||0)+1; return m+' 人局：'+Object.keys(cnt).map(k=>ROLE[k].n+(cnt[k]>1?' ×'+cnt[k]:'')).join('、')+'<br>每次任務人數：'+TEAM[m].join('、')+(m>=7?'（第 4 次要 2 張失敗）':''); },
   modes:[{id:'1p',label:'單人'}],
   options:[{key:'seats',label:'人數',solo:true,def:'7',opts:[{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'7',label:'7 人'},{id:'8',label:'8 人'},{id:'9',label:'9 人'},{id:'10',label:'10 人'}]},{key:'roles',label:'角色',def:'std',opts:SETS.map(s=>({id:s.id,label:s.label}))}],
