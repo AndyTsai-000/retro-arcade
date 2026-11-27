@@ -143,9 +143,10 @@ function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,pv=!!opts.preview,OP=opts.options||{},si=clamp(opts.stage|0,0,THEMES.length-1);
   const n=net?net.count:pv?6:clamp(+OP.seats||5,3,10),me=net?net.me:-1,ROUNDS=+OP.rounds||12,local=!net;
   const names=[],looks=[]; for(let i=0;i<n;i++){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):i===0&&opts.name&&opts.name!=='你'?opts.name:'玩家 '+(i+1)); looks.push(net?(net.looks&&net.looks[i])||BOTLOOK(i):i===0&&opts.look?opts.look:BOTLOOK(i)); }
+  if(local&&!pv&&window.PARTY_NAMES) window.PARTY_NAMES.fill(names);
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%PCOL.length]:L.color; },cols=names.map((_,i)=>colOf(i));
   const CX=270,CY=272,RAD=186,K=1.15;
-  let t=0,ended=false,sendT=0,evq=[],fx=[],lastSeg=-1,hover='';
+  let t=0,ended=false,sendT=0,evq=[],fx=[],lastSeg=-1,hover='',editing=false;
   const used={truth:new Set(),dare:new Set()};
   let G={ph:'spin0',a0:-Math.PI/2-Math.PI/n,v0:0,el:0,dur:0,who:-1,kind:'',q:'',pun:'',round:1,spinBy:0,done:Array(n).fill(0),skip:Array(n).fill(0),cnt:Array(n).fill(0),flip:0,evN:0};
   const ang=()=>G.ph==='spin'?G.a0+G.v0/K*(1-Math.exp(-K*G.el)):G.a0+(G.v0?G.v0/K:0);
@@ -177,16 +178,17 @@ function create(env,opts){
   function act(a,k){ if(pv) return; if(a==='spin'&&!canSpin()) return; if(a==='pick'&&!canPick()) return; if((a==='res'||a==='go')&&!canRes()) return; tone(720,.05);
     if(client){ net.send({a,k,ok:k}); return; } const by=net?me:G.who; if(a==='spin') doSpin(net?me:G.spinBy); else if(a==='pick') choose(by,k); else if(a==='res') resolve(by,k); else if(a==='go'&&G.ph==='pun') nextRound(); }
   /* 按鈕 */
-  const BTN={spin:[520,330,240,64],truth:[510,250,130,110],dare:[650,250,130,110],rand:[540,372,210,44],ok:[510,404,130,52],no:[650,404,130,52],go:[560,404,180,52],end:[W-92,H-38,80,28]};
+  const BTN={spin:[520,330,240,64],truth:[510,250,130,110],dare:[650,250,130,110],rand:[540,372,210,44],ok:[510,404,130,52],no:[650,404,130,52],go:[560,404,180,52],end:[W-92,H-38,80,28],name:[12,52,104,30]};
+  const canName=()=>local&&!pv&&!editing&&!!window.PARTY_NAMES&&(G.ph==='spin0'||G.ph==='next');
   const inR=(x,y,[a,b,w,h])=>x>=a&&y>=b&&x<=a+w&&y<=b+h;
   const toG=e=>{ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H); return [(e.clientX-r.left-(r.width-W*s)/2)/s,(e.clientY-r.top-(r.height-H*s)/2)/s]; };
-  const which=(x,y)=>{ if(canSpin()&&(inR(x,y,BTN.spin)||Math.hypot(x-CX,y-CY)<RAD)) return ['spin']; if(canPick()){ if(inR(x,y,BTN.truth)) return ['pick','truth']; if(inR(x,y,BTN.dare)) return ['pick','dare']; if(inR(x,y,BTN.rand)) return ['pick','rand']; }
+  const which=(x,y)=>{ if(canName()&&inR(x,y,BTN.name)) return ['name']; if(canSpin()&&(inR(x,y,BTN.spin)||Math.hypot(x-CX,y-CY)<RAD)) return ['spin']; if(canPick()){ if(inR(x,y,BTN.truth)) return ['pick','truth']; if(inR(x,y,BTN.dare)) return ['pick','dare']; if(inR(x,y,BTN.rand)) return ['pick','rand']; }
     if(G.ph==='card'&&canRes()){ if(inR(x,y,BTN.ok)) return ['res',true]; if(inR(x,y,BTN.no)) return ['res',false]; } if(G.ph==='pun'&&canRes()&&inR(x,y,BTN.go)) return ['go']; if(local&&G.ph==='next'&&ROUNDS>=99&&inR(x,y,BTN.end)) return ['end']; return null; };
-  const pd=e=>{ const [x,y]=toG(e),w=which(x,y); if(!w) return; if(w[0]==='end'){ G.ph='end'; return; } act(w[0],w[1]); };
+  const pd=e=>{ const [x,y]=toG(e),w=which(x,y); if(!w) return; if(w[0]==='end'){ G.ph='end'; return; } if(w[0]==='name'){ editing=true; hover=''; window.PARTY_NAMES.edit(env.stage,names,()=>{ editing=false; }); return; } act(w[0],w[1]); };
   const pm=e=>{ const [x,y]=toG(e),w=which(x,y); hover=w?w.join(':'):''; canvas.style.cursor=w?'pointer':''; };
   canvas.addEventListener('pointerdown',pd); canvas.addEventListener('pointermove',pm);
   function update(dt){ if(ended) return; dt=Math.min(dt,.05); t+=dt; if(G.flip<1) G.flip=Math.min(1,G.flip+dt*3);
-    if(!pv){ if(env.hit('Space')){ if(canSpin()) act('spin'); else if(G.ph==='pun') act('go'); } if(env.hit('Digit1')||env.hit('ArrowLeft')) canPick()&&act('pick','truth'); if(env.hit('Digit2')||env.hit('ArrowRight')) canPick()&&act('pick','dare'); if(env.hit('Digit3')||env.hit('ArrowDown')) canPick()&&act('pick','rand');
+    if(!pv&&!editing){ if(env.hit('Space')){ if(canSpin()) act('spin'); else if(G.ph==='pun') act('go'); } if(env.hit('Digit1')||env.hit('ArrowLeft')) canPick()&&act('pick','truth'); if(env.hit('Digit2')||env.hit('ArrowRight')) canPick()&&act('pick','dare'); if(env.hit('Digit3')||env.hit('ArrowDown')) canPick()&&act('pick','rand');
       if(env.hit('Enter')){ if(G.ph==='card') act('res',true); else if(G.ph==='pun') act('go'); } if(env.hit('Backspace')||env.hit('KeyX')) G.ph==='card'&&act('res',false); }
     if(client&&G.ph==='spin') G.el=Math.min(G.dur,G.el+dt);
     if(G.ph==='spin'){ const s=segAt(ang()); if(s!==lastSeg){ lastSeg=s; tone(900+Math.random()*80,.03,'square',.04); } }
@@ -217,8 +219,9 @@ function create(env,opts){
       else { c.fillStyle='rgba(11,10,28,.85)'; rr(c,510,340,270,60,12); c.fill(); c.fillStyle='#ffb0b8'; c.font='900 14px '+TC; c.fillText('跳過要接受小懲罰：',644,358); c.fillStyle='#ffd23f'; c.font='900 19px '+TC; c.fillText(G.pun,644,382); if(mineTurn) button(BTN.go,'做完了，下一輪','#ff5a9a',hover==='go'); } }
     if(local&&G.ph==='next'&&ROUNDS>=99){ c.fillStyle='rgba(255,255,255,.18)'; rr(c,...BTN.end,10); c.fill(); c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText('結束',BTN.end[0]+40,BTN.end[1]+14); }
     for(const f of fx){ c.save(); c.globalAlpha=Math.min(1,f.l*2); c.translate(f.x,f.y); c.rotate(f.r); c.fillStyle=f.c; c.fillRect(-5,-3,10,6); c.restore(); }
+    if(canName()){ c.fillStyle=hover==='name'?'rgba(255,255,255,.32)':'rgba(255,255,255,.18)'; rr(c,...BTN.name,10); c.fill(); c.fillStyle='#fff'; c.font='700 13px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.fillText('✏️ 改名字',BTN.name[0]+52,BTN.name[1]+15); }
     /* 左上：每個人完成幾題 */ c.textAlign='left'; c.font='700 12px '+TC; c.fillStyle='rgba(255,255,255,.75)'; c.fillText(local?(env.touch?'大家輪流用同一台手機':'大家輪流用同一台電腦'):'',12,40); }
-  return {update,draw,destroy(){ canvas.removeEventListener('pointerdown',pd); canvas.removeEventListener('pointermove',pm); },_dbg:{get G(){return G;},doSpin,choose,resolve,nextRound,Q}};
+  return {update,draw,destroy(){ const o=env.stage&&env.stage.querySelector('.pnEdit'); if(o) o.remove(); canvas.removeEventListener('pointerdown',pd); canvas.removeEventListener('pointermove',pm); },_dbg:{get G(){return G;},doSpin,choose,resolve,nextRound,Q}};
 }
 function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); bgArt(ctx,t,TCOL[si]); const nm=['小胖','阿美','大雄','小綠','阿花','鐵蛋'],cols=PCOL.slice(0,6); wheelArt(ctx,300,260,190,t*1.4,nm,cols,t,-1);
   const q=si<BANK.length?Q[si][Math.floor(t/3)%2?'dare':'truth'][Math.floor(t/6)%12]:Q[Math.floor(t/3)%5].truth[0],truth=!(Math.floor(t/3)%2);

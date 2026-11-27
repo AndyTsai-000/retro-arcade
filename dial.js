@@ -80,6 +80,7 @@ function create(env,opts){
   const names=[],looks=[],bot=[]; for(let i=0;i<N;i++){ const h=i<humans; bot.push(!h);
     if(h){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):room?'玩家 '+(i+1):(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:room?BOTLOOK(i):opts.look||{}); }
     else { names.push(BOTN[(i-humans)%BOTN.length]); looks.push(BOTLOOK(i)); } }
+  if(room&&window.PARTY_NAMES) window.PARTY_NAMES.fill(names);
   const HEARTS=Math.min(8,N);
   /* 主持人順序：單人讓電腦先示範一輪、第二輪換你；連線只讓真人當主持人 */
   const hostSeq=[]; for(let r=0;r<ROUNDS;r++) hostSeq.push(r%N); const left=Array(N).fill(false);
@@ -88,7 +89,7 @@ function create(env,opts){
   const pool=shuf(QS.map((q,k)=>k).filter(k=>si>=BANK.length||QS[k].ci===si));
   const newG=()=>({ph:'intro',PT:pv?1.5:4.2,r:-1,q:-1,host:-1,hearts:HEARTS,num:Array(N).fill(0),ans:Array(N).fill(null),lv:Array(N).fill(0),order:[],ai:0,peekI:0,peekOn:false,flip:[],bad:[],prev:0,miss:0,hist:[],est:[],opt:[],win:null});
   let G=newG();
-  let t=0,ended=false,sendT=0,fx=[],btns=[],hoverB=-1,prevKey='',flipA={},shake=0,lastFlipN=0;
+  let t=0,ended=false,sendT=0,fx=[],btns=[],hoverB=-1,prevKey='',flipA={},shake=0,lastFlipN=0,editing=false;
   const sfx=k=>{ if(!pv) env.sfx(k); };
   const tone=(f,d,type,v)=>{ const A=env.audio&&env.audio(); if(!A||pv) return; try{ const o=A.createOscillator(),g=A.createGain(),t0=A.currentTime; o.type=type||'sine'; o.frequency.value=f; g.gain.setValueAtTime(v||.06,t0); g.gain.exponentialRampToValueAtTime(.001,t0+d); o.connect(g); g.connect((env.out&&env.out())||A.destination); o.start(t0); o.stop(t0+d+.02); }catch(e){} };
   const Q=()=>QS[G.q];
@@ -104,13 +105,14 @@ function create(env,opts){
     if(G.flip.length>=G.order.length||G.hearts<=0){ G.ph='result'; G.PT=(G.hearts<=0?3:4.6)*SP; G.hist.push({host:G.host,q:G.q,miss:G.miss,seq:G.flip.map(j=>G.num[j])}); if(G.hearts<=0) G.order.forEach(j=>{ if(!G.flip.includes(j)) G.flip.push(j); }); } }
   function afterRound(){ if(G.hearts<=0){ G.win=false; G.ph='final'; G.PT=3.6; return; } if(G.r+1>=ROUNDS){ G.win=true; G.ph='final'; G.PT=3.6; return; } startRound(); }
   function doAct(from,a){ if(!a||ended) return; const cur=G.order[G.ai];
+    if(a.k==='go'&&room&&G.ph==='intro'){ startRound(); return; }
     if(a.k==='peek'&&room&&G.ph==='peek') G.peekOn=true;
     else if(a.k==='peekDone'&&room&&G.ph==='peek'&&G.peekOn){ G.peekOn=false; G.peekI++; if(G.peekI>=G.order.length){ G.ph='answer'; G.ai=0; G.PT=.6; } }
     else if(a.k==='said'&&room&&G.ph==='answer'&&G.PT<=0) giveAns(cur,'🗣',0);
     else if(a.k==='ans'&&G.ph==='answer'&&!room&&G.PT<=0&&cur!=null&&!bot[cur]&&(net?from===cur:true)){ const o=G.opt[cur]; if(a.o!=null&&o&&o[a.o]) giveAns(cur,o[a.o][1],o[a.o][0]); else if(net&&a.t) giveAns(cur,a.t,0); }
     else if(a.k==='flip'&&G.ph==='order'&&!bot[G.host]&&(net?from===G.host||left[G.host]:true)&&G.PT<=1.0*SP) doFlip(a.i); }
   function hostStep(dt){ G.PT-=dt;
-    if(G.ph==='intro'){ if(G.PT<=0) startRound(); }
+    if(G.ph==='intro'){ if(G.PT<=0&&!room) startRound(); }
     else if(G.ph==='theme'){ if(G.PT<=0){ if(room){ G.ph='peek'; G.peekI=0; } else { G.ph='answer'; G.ai=0; G.PT=.4; } } }
     else if(G.ph==='answer'){ const cur=G.order[G.ai]; if(cur!=null&&left[cur]&&G.PT<=0) giveAns(cur,'（已離開）',0); else if(cur!=null&&bot[cur]&&G.PT<=-1.2*SP){ const n=G.num[cur]; giveAns(cur,Q().a[n-1][G.opt.some(o=>o)?1:Math.random()<.5?0:1],n); /* 有真人要選參考答案時，電腦用另一個說法，免得重複 */ } }
     else if(G.ph==='order'){ if(bot[G.host]&&G.PT<=0){ let best=-1,bv=1e9; for(const i of G.order) if(!G.flip.includes(i)&&G.est[i]<bv){ bv=G.est[i]; best=i; } if(best>=0) doFlip(best); } }
@@ -130,14 +132,15 @@ function create(env,opts){
   /* ---------- 輸入 ---------- */
   const toG=e=>{ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H); return [(e.clientX-r.left-(r.width-W*s)/2)/s,(e.clientY-r.top-(r.height-H*s)/2)/s]; };
   const inR=(x,y,b)=>x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h;
-  const pd=e=>{ if(pv) return; const [x,y]=toG(e); for(const b of btns) if(inR(x,y,b)){ b.fn(); return; } };
+  const pd=e=>{ if(pv||editing) return; const [x,y]=toG(e); for(const b of btns) if(inR(x,y,b)){ b.fn(); return; } };
   const pm=e=>{ if(pv) return; const [x,y]=toG(e); hoverB=btns.findIndex(b=>inR(x,y,b)); canvas.style.cursor=hoverB>=0?'pointer':''; };
   canvas.addEventListener('pointerdown',pd); canvas.addEventListener('pointermove',pm);
   const iHost=()=>G.host>=0&&local(G.host);
   const myTurnAns=()=>G.ph==='answer'&&G.order[G.ai]!=null&&local(G.order[G.ai])&&G.PT<=0&&!room;
   /* ---------- 更新 ---------- */
   function update(dt){ if(ended) return; dt=Math.min(dt,.05); t+=dt; if(host) hostStep(dt); else G.PT-=dt;
-    if(!pv&&document.activeElement!==inp){       if(room&&G.ph==='peek'&&(env.hit('Space')||env.hit('Enter'))) act({k:G.peekOn?'peekDone':'peek'});
+    if(!pv&&!editing&&document.activeElement!==inp){       if(room&&G.ph==='intro'&&(env.hit('Space')||env.hit('Enter'))) act({k:'go'});
+       if(room&&G.ph==='peek'&&(env.hit('Space')||env.hit('Enter'))) act({k:G.peekOn?'peekDone':'peek'});
       if(room&&G.ph==='answer'&&G.PT<=0&&(env.hit('Space')||env.hit('Enter'))) act({k:'said'}); }
     if(net&&!pv){ const show=myTurnAns(); const was=wrap.style.display==='flex'; wrap.style.display=show?'flex':'none'; if(show&&!was){ place(); if(!env.touch) setTimeout(()=>{ try{ inp.focus(); }catch(e){} },50); } }
     const key=G.ph+'|'+G.r+'|'+G.ai+'|'+G.flip.length; if(key!==prevKey){ onChange(prevKey); prevKey=key; }
@@ -195,7 +198,8 @@ function create(env,opts){
   function introPanel(){ c.fillStyle='rgba(20,8,40,.86)'; rr(c,W/2-250,160,500,210,22); c.fill(); c.textAlign='center'; c.textBaseline='middle'; c.fillStyle='#fff'; c.font='900 30px '+TC; c.fillText('心中有數',W/2,196);
     c.font='700 15px '+TC; c.fillStyle='#f0dcff'; ['每人暗抽一張 1～10 的數字牌','照數字的程度回答題目（1 最低、10 最高）','主持人從小到大一張一張翻牌，翻錯碎一顆心'].forEach((s,k)=>c.fillText(s,W/2,234+k*26));
     c.fillStyle='#ffd23f'; c.font='900 16px '+TC; c.fillText('大家一起撐過 '+ROUNDS+' 輪就贏！共 '+HEARTS+' 顆默契心',W/2,322);
-    c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText(net?'連線：每個人看自己的螢幕、打字回答':'大家用一台：輪流偷看數字，用說的回答',W/2,350); }
+    c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText(net?'連線：每個人看自己的螢幕、打字回答':'大家用一台：輪流偷看數字，用說的回答',W/2,350);
+    if(room){ btn(W/2-200,388,180,52,'✏️ 改名字','#e8dcff',()=>{ editing=true; hoverB=-1; window.PARTY_NAMES.edit(env.stage,names,()=>{ editing=false; }); }); btn(W/2+20,388,180,52,'▶ 開始遊戲','#ffd23f',()=>act({k:'go'}),env.touch?'':'空白鍵'); } }
   function phaseUI(){ const hostNm=local(G.host)&&!room?'你':names[G.host];
     if(G.ph==='theme'){ status(hostNm+(hostNm==='你'?'':' ')+'當主持人，大家抽數字牌…','#ffd23f'); }
     else if(G.ph==='peek'){ const i=G.order[G.peekI]; if(i==null) return; if(!G.peekOn){ status('把螢幕交給「'+names[i]+'」，其他人先別看！','#ffd23f'); btn(W/2-130,420,260,58,'👀 我是 '+names[i]+'，看數字','#ffd23f',()=>act({k:'peek'}),'看完按「記住了」'); }
@@ -211,7 +215,7 @@ function create(env,opts){
       c.font='700 14px '+TC; c.fillStyle='#f0dcff'; c.fillText('翻牌順序：'+h.seq.join(' → '),W/2,464); }
     else if(G.ph==='final'){ c.fillStyle='rgba(20,8,40,.88)'; rr(c,W/2-220,402,440,86,20); c.fill(); c.textAlign='center'; c.font='900 28px '+TC; c.fillStyle=G.win?'#7affa0':'#ff6a7a'; c.fillText(G.win?'🏆 大家一起過關！':'默契心全碎了…',W/2,430); c.font='700 15px '+TC; c.fillStyle='#fff'; c.fillText(G.win?'剩下 '+G.hearts+' 顆默契心':'下一次一定可以！',W/2,466); } }
   function drawFx(){ for(const f of fx){ c.save(); c.globalAlpha=Math.min(1,f.l); c.translate(f.x,f.y); c.rotate(f.r); if(f.h){ heart(c,0,0,5,f.c,false); } else { c.fillStyle=f.c; c.fillRect(-4,-2.5,8,5); } c.restore(); } }
-  return {update,draw,destroy(){ removeEventListener('resize',place); if(wrap.parentNode) wrap.remove(); canvas.removeEventListener('pointerdown',pd); canvas.removeEventListener('pointermove',pm); },
+  return {update,draw,destroy(){ const o=env.stage&&env.stage.querySelector('.pnEdit'); if(o) o.remove(); removeEventListener('resize',place); if(wrap.parentNode) wrap.remove(); canvas.removeEventListener('pointerdown',pd); canvas.removeEventListener('pointermove',pm); },
     _dbg:{get G(){ return G; },set G(v){ G=v; },doAct,QS,bot,names,N,hostSeq,doFlip}};
 }
 function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); const c=ctx; c.drawImage(bg(),0,0,W,H);
