@@ -298,7 +298,7 @@ body.padswap #pad{flex-direction:row-reverse} /* 方向鍵放右邊 */
 <div id="modal" hidden><div class="card" id="mcard"></div></div>
 
 <script>
-window.ARCADE_V=433; // 每次改版加一
+window.ARCADE_V=434; // 每次改版加一
 (function(){ var q=/github\.io$/.test(location.hostname)?'?v='+window.ARCADE_V:'';
   document.write(['stairs','kart','bomb','volley','crowd3d','moba3d','moba','mobagame','dodge3d','dodge','soccer3d','soccer','bowl3d','bowl','baseball3d','baseball','purple','rummy','mahjong','meow','rainbow','poker','dice','deliver3d','deliver','chess','qi','racer','brawl','bball3d','bball','h3d','golf3d','golf','pool3d','pool','blocks','drum','dance','tower','jelly','rich','space','royale','draw','wolf','passbomb','bubble','claw','tank','dash','spin','night','chase3d','chase','sumo','sky','boxing','ace','classic','hide','spy','sling','room','boomcode','tug','truth','charades','dial','mission','relay','bluff','party','gems','chair','tacit','piano','stroke','dragon','badminton','cook','fish','pickleball','tennis','pingpong','racket'].map(function(n){ return '<script src="'+n+'.js'+q+'"><\/script>'; }).join('')); })();
 </script>
@@ -793,10 +793,10 @@ const goalOf=(g,si)=>(g.stageGoal?g.stageGoal(si):g.goal)+(g.optNote?'<br><b>'+n
 function optsHtml(g,ro){
   const cnt=Net.sid?Net.count+(Net.bots||0):0;
   return visOpts(g).map(o=>o.multi?(ro?'<p>'+o.label+'：'+(o.get(optSel,cnt).map(k=>o.opts.find(x=>x.id===k).label).join('、')||'無')+'</p>':'<div class="chips"><span class="olbl">'+o.label+'</span>'+o.opts.map(x=>'<button class="chip'+(o.get(optSel,cnt).includes(x.id)?' sel':'')+'" data-omk="'+o.key+'" data-omv="'+x.id+'">'+x.label+'</button>').join('')+'</div>'+(o.hint?'<p class="hint">'+o.hint(optSel,cnt)+'</p>':'')):ro?'<p>'+o.label+'：'+((o.opts.find(x=>x.id===optSel[o.key])||{}).label||'')+'</p>'
-    :'<div class="chips"><span class="olbl">'+o.label+'</span>'+o.opts.map(x=>'<button class="chip'+(x.id===optSel[o.key]?' sel':'')+'" data-ok="'+o.key+'" data-ov="'+x.id+'">'+x.label+'</button>').join('')+'</div>').join('');
+    :'<div class="chips"><span class="olbl">'+o.label+'</span>'+o.opts.map(x=>'<button class="chip'+(x.id===optSel[o.key]?' sel':'')+'" data-ok="'+o.key+'" data-ov="'+x.id+'">'+x.label+'</button>').join('')+'</div>'+(o.hint?'<p class="hint" style="text-align:left;line-height:1.7" data-hk="'+o.key+'">'+o.hint(optSel,cnt)+'</p>':'')).join(''); /* 單選設定也可以有說明（hint），點選後更新 */
 }
 function bindOpts(g,after){ card.querySelectorAll('[data-ok]').forEach(b=>b.addEventListener('click',()=>{ const k=b.dataset.ok; optSel[k]=b.dataset.ov; save('arcade.opt.'+g.id+'.'+k,b.dataset.ov); SFX.click();
-  card.querySelectorAll('[data-ok="'+k+'"]').forEach(x=>x.classList.toggle('sel',x===b)); if(after) after(); }));
+  card.querySelectorAll('[data-ok="'+k+'"]').forEach(x=>x.classList.toggle('sel',x===b)); { const o=g.options.find(x=>x.key===k),hp=card.querySelector('[data-hk="'+k+'"]'); if(o&&o.hint&&hp) hp.innerHTML=o.hint(optSel,Net.sid?Net.count+(Net.bots||0):0); } if(after) after(); }));
   card.querySelectorAll('[data-omk]').forEach(b=>b.addEventListener('click',()=>{ const k=b.dataset.omk,v=b.dataset.omv,o=g.options.find(x=>x.key===k),cnt=Net.sid?Net.count+(Net.bots||0):0,cur0=o.get(optSel,cnt),nx=o.set(optSel,cnt,cur0.includes(v)?cur0.filter(x=>x!==v):cur0.concat(v)); SFX.click(); if(nx==null){ const w0=b.textContent; b.textContent=o.full||'放不下'; setTimeout(()=>{ b.textContent=w0; },900); return; } optSel[k]=nx; save('arcade.opt.'+g.id+'.'+k,nx); if(after) after(); else b.classList.toggle('sel'); })); }
 const variantName=g=>{ const v=g.variants&&g.variants.find(v=>v.id===variantSel); return v?v.label:''; };
 function padSpec(g,mode){ return typeof g.touch==='function'?g.touch(mode):g.touch; }

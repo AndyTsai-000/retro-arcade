@@ -21,7 +21,7 @@ const ROLE={
   shadow:{n:'影首',s:'先知看不到他',av:'莫德雷德',g:0,ic:'🌑',d:'壞人。連先知都看不到你。'},
   lone:{n:'獨行者',s:'不知道同夥，同夥也不知道他',av:'奧伯倫',g:0,ic:'🐺',d:'壞人，但你不知道隊友是誰，隊友也不知道你。'},
   minion:{n:'爪牙',s:'知道其他壞人是誰',av:'莫德雷德的爪牙',g:0,ic:'💀',d:'壞人，你知道其他壞人是誰。讓任務失敗！'}};
-const SETS=[{id:'basic',label:'基本',d:'先知、刺客，其他是忠臣和爪牙'},{id:'std',label:'標準',d:'再加上護衛、幻影師，7 人以上再加影首'},{id:'all',label:'全部',d:'標準再加上獨行者（10 人）'}];
+const SETS=[{id:'basic',label:'基本',d:'先知、刺客，其他是忠臣和爪牙',roles:'🔵 先知、忠臣　🔴 刺客、爪牙'},{id:'std',label:'標準',d:'再加上護衛、幻影師，7 人以上再加影首',roles:'🔵 先知、護衛、忠臣　🔴 刺客、幻影師、爪牙（7 人以上再加影首）'},{id:'all',label:'全部',d:'標準再加上獨行者（10 人）',roles:'標準的全部角色，10 人時壞人再加獨行者'}];
 const noSh=(t,L)=>L.includes('shadow')?t:t.replace('（影首除外）','');
 function roleList(n,set){ const E=EVIL[n],g=['seer'],e=['assassin']; if(set!=='basic'){ g.push('guard'); e.push('illus'); } if(set!=='basic'&&E>=3) e.push('shadow'); if(set==='all'&&E>=4) e.push('lone'); /* 照推薦配置：7 人以上有影首，10 人全部再加獨行者 */
   while(g.length<n-E) g.push('loyal'); while(e.length<E) e.push('minion'); return g.concat(e); }
@@ -237,7 +237,7 @@ const LSn=k=>{ try{ return +localStorage.getItem(k)||0; }catch(e){ return 0; } }
     const side=g=>Object.keys(cnt).filter(k=>ROLE[k].g===g).map(k=>'・'+ROLE[k].n+'（阿瓦隆的'+ROLE[k].av+'）'+(cnt[k]>1?' ×'+cnt[k]:'')+'：'+noSh(ROLE[k].s,L)).join('<br>');
     return m+' 人局，每次任務人數：'+TEAM[m].join('、')+(m>=7?'（第 4 次要 2 張失敗）':'')+'<br><span style="color:#8ac4ff">🔵 好人陣營 '+(m-EVIL[m])+' 人</span>：完成 3 次任務<br>'+side(1)+'<br><span style="color:#ff8a9a">🔴 壞人陣營 '+EVIL[m]+' 人</span>：讓 3 次任務失敗<br>'+side(0)+(L.includes('lone')?'':'<br><span style="color:#c8b8e8">這局沒有'+(L.includes('shadow')?'':'影首（阿瓦隆的莫德雷德）、')+'獨行者（阿瓦隆的奧伯倫）：'+(L.includes('shadow')?'角色選「全部」、10 人才會加入':'影首要角色選「標準」以上、7 人以上；獨行者要選「全部」、10 人')+'</span>'); },
   modes:[],
-  options:[{key:'roles',label:'角色',def:'std',opts:SETS.map(s=>({id:s.id,label:s.label}))}],
+  options:[{key:'roles',label:'角色',def:'std',opts:SETS.map(s=>({id:s.id,label:s.label})),hint:sel=>SETS.map(s=>{ const on=(sel.roles||'std')===s.id; return (on?'<b style="color:#ffd23f">▶ ':'')+s.label+'：'+s.roles+(on?'</b>':''); }).join('<br>')}],
   help:[['點人物','隊長挑隊員；刺客選要刺殺的人'],['按鈕','投票贊成／反對、出任務成功／失敗'],['左上角','隨時看自己的角色和知道的資訊']],
   touchHelp:[['點人物','隊長挑隊員；刺客選要刺殺的人'],['按鈕','投票、出任務'],['左上角','看自己的角色']],touch:null,
   hubBest:()=>{ const v=LSn('arcade.mission.w'); return v?'陣營獲勝 <b>'+v+'</b> 次':'尚無紀錄'; },
