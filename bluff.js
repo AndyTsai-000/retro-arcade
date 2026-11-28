@@ -1,6 +1,6 @@
 // 誰在唬爛：冷知識唬爛派對遊戲（2～8 人）。每輪一題冷知識，大家各自編一個「看起來很像真的」假答案，
 // 再把所有假答案和真答案混在一起，每人選一個自己覺得是真的。選中真答案 +2 分，你的假答案每騙到一個人 +1 分。
-// 單人時和電腦玩；連線各自用自己的螢幕打字；大家用一台時輪流偷偷打答案、輪流選。
+// 全部真人玩（3～8 人）：連線各自用自己的螢幕打字；大家用一台時輪流偷偷打答案、輪流選。電腦只在開始畫面的預覽裡出現，連線中途有人離開時代打。
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2;
@@ -530,9 +530,9 @@ function wrapLines(c,s,w,max){ const out=[]; let line=''; for(const ch of s){ if
 
 function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,pv=!!opts.preview,OP=opts.options||{},si=clamp(opts.stage|0,0,STAGES.length-1);
-  const room=!net&&!pv&&opts.mode==='room',me=net?net.me:0,ROUNDS=clamp(+OP.rounds||6,3,10);
-  const N=net?clamp(net.count+(net.bots||0),2,8):pv?5:clamp(+OP.n||5,3,8);
-  const humans=pv?0:net?net.count:room?N:1;
+  const room=!net&&!pv,me=net?net.me:0,ROUNDS=clamp(+OP.rounds||6,3,10);
+  const N=net?clamp(net.count,2,8):pv?5:clamp(+OP.n||5,3,8);
+  const humans=pv?0:net?net.count:N;
   const names=[],looks=[],bot=[]; for(let i=0;i<N;i++){ const h=i<humans; bot.push(!h);
     if(h){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):room?'玩家 '+(i+1):(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:room?BOTLOOK(i):opts.look||{}); }
     else { names.push(BOTN[(i-humans)%BOTN.length]); looks.push(BOTLOOK(i)); } }
@@ -585,7 +585,7 @@ function create(env,opts){
     else if(G.ph==='final'&&G.PT<=0&&!ended){ if(pv){ G=newG(); return; } ended=true; if(net) net.send({G,end:1}); finish(); }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/6; net.send({G}); } } }
   if(net){ if(client) net.onmsg=m=>{ if(m.G) G=m.G; if(m.end&&!ended){ ended=true; finish(); } };
-    else { net.onmsg=(m,from)=>{ if(m.a) doAct(from,m.a); }; net.onleave=i=>{ if(i>0&&i<N&&!left[i]){ bot[i]=true; names[i]+='（電腦代打）'; botT[i]=1; } }; } }
+    else { net.onmsg=(m,from)=>{ if(m.a) doAct(from,m.a); }; net.onleave=i=>{ if(i>0&&i<N&&!left[i]){ bot[i]=true; names[i]+='（離開）'; botT[i]=1; } }; } }
   const act=a=>{ if(pv) return; if(client) net.send({a}); else doAct(me,a); };
   /* ---------- 打字輸入 ---------- */
   const wrap=document.createElement('div'); wrap.style.cssText='position:absolute;z-index:6;display:none;gap:6px'; const inp=document.createElement('input'); inp.maxLength=12; inp.placeholder='編一個像真的假答案'; inp.autocomplete='off'; inp.style.cssText='flex:1;min-width:0;font:700 16px '+TC+';padding:4px 10px;border-radius:10px;border:2px solid #ff8ad0;background:#fff;color:#2a1040';
@@ -614,7 +614,7 @@ function create(env,opts){
     if(G.ph==='final'&&op!=='final') sfx('win'); }
   function rank(){ return [...Array(N).keys()].sort((a,b)=>G.score[b]-G.score[a]); }
   function finish(){ if(pv){ env.end({}); return; } const R=rank(),top=G.score[R[0]],winners=R.filter(i=>G.score[i]===top),iWin=winners.some(i=>local(i)&&!room);
-    if(iWin){ try{ localStorage.setItem('arcade.bluff.w',String((+localStorage.getItem('arcade.bluff.w')||0)+1)); }catch(e){} }
+    try{ localStorage.setItem('arcade.bluff.n',String((+localStorage.getItem('arcade.bluff.n')||0)+1)); }catch(e){}
     const rows=R.map((i,k)=>'<tr><td>'+(k+1)+'</td><td>'+(local(i)&&!room?'你':names[i])+'</td><td>'+G.score[i]+' 分</td></tr>').join('');
     const qs=G.hist.map((h,k)=>'<tr><td>'+(k+1)+'</td><td style="text-align:left">'+QS[h.q].q.replace('＿＿','<b>'+QS[h.q].a+'</b>')+'</td><td>'+h.right+' 人猜中</td></tr>').join('');
     env.end({title:room?names[winners[0]]+(winners.length>1?' 等人':'')+' 最會唬爛！':iWin?'你是唬爛王！':names[winners[0]]+' 是唬爛王！',big:top+' 分',text:'選中真答案 +2，假答案每騙到一人 +1',
@@ -676,7 +676,7 @@ function create(env,opts){
   function introPanel(){ c.fillStyle='rgba(20,8,40,.88)'; rr(c,W/2-260,70,520,290,22); c.fill(); c.textAlign='center'; c.textBaseline='middle'; neon(c,W/2,112,34,t);
     c.font='700 15px '+TC; c.fillStyle='#f0dcff'; ['每一題是一個冷知識，答案被挖空了','大家各自編一個「看起來很像真的」假答案','所有答案混在一起，選出你覺得是真的那個'].forEach((s,k)=>c.fillText(s,W/2,160+k*28));
     c.fillStyle='#ffd23f'; c.font='900 16px '+TC; c.fillText('選中真答案 +2 分・假答案每騙到一個人 +1 分',W/2,256);
-    c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText(net?'連線：每個人用自己的螢幕打字、選答案':room?'大家用一台：輪流偷偷打字、輪流選':'和電腦一起玩，共 '+ROUNDS+' 題',W/2,284);
+    c.fillStyle='#fff'; c.font='700 13px '+TC; c.fillText(net?'連線：每個人用自己的螢幕打字、選答案':'大家用一台：輪流偷偷打字、輪流選',W/2,284);
     if(room){ btn(W/2-200,300,180,50,'✏️ 改名字','#e8dcff',()=>{ editing=true; hoverB=-1; window.PARTY_NAMES.edit(env.stage,names,()=>{ editing=false; }); }); btn(W/2+20,300,180,50,'▶ 開始遊戲','#ffd23f',()=>act({k:'go'}),env.touch?'':'空白鍵'); }
     else { c.fillStyle='rgba(255,255,255,.7)'; c.fillText('馬上開始…',W/2,326); } }
   function drawFx(){ for(const f of fx){ c.save(); c.globalAlpha=Math.min(1,f.l); c.translate(f.x,f.y); c.rotate(f.r); c.fillStyle=f.c; c.fillRect(-4,-2.5,8,5); c.restore(); } }
@@ -691,17 +691,17 @@ function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); const c=ctx; c
   c.font='900 24px '+TC; c.lineWidth=6; c.strokeStyle='#2a1040'; c.strokeText(STAGES[si],W/2,476); c.fillStyle='#ffd23f'; c.fillText(STAGES[si],W/2,476); ctx.restore(); }
 const LSn=k=>{ try{ return +localStorage.getItem(k)||0; }catch(e){ return 0; } };
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).bluff={
-  name:'誰在唬爛',tag:'WHO IS BLUFFING',color:'#ff4fd8',online:true,maxPlayers:8,minPlayers:2,bots:true,
-  desc:'冷知識唬爛大賽！每題的答案被挖空，大家各編一個像真的假答案，再從所有答案裡找出真的那個。騙到越多人分數越高。一個人和電腦玩，也能連線或大家用一台。',
+  name:'誰在唬爛',tag:'WHO IS BLUFFING',color:'#ff4fd8',online:true,maxPlayers:8,minPlayers:3,
+  desc:'冷知識唬爛大賽！每題的答案被挖空，大家各編一個像真的假答案，再從所有答案裡找出真的那個。騙到越多人分數越高。3～8 人一起玩：連線各用自己的手機，或大家用一台輪流。',
   goal:'在「＿＿」編一個像真的假答案，再從所有答案裡選出真的。選中真答案 +2 分，你的假答案每騙到一個人 +1 分，最後分數最高的人贏。',
   stages:STAGES,stageLabel:'選擇題庫',stageShow,thumb:(c,w,h,t)=>stageShow(c,w,h,Math.floor(t/6)%STAGES.length,t),
   stageGoal:i=>(i<BANK.length?'題庫「'+BANK[i][0]+'」':'十種題庫混在一起')+'。每題各編一個像真的假答案，再選出真答案：選中 +2 分，假答案每騙到一人 +1 分。',
-  modes:[{id:'1p',label:'單人（和電腦）'},{id:'room',label:'大家用一台'}],
+  modes:[{id:'room',label:'大家用一台'}],
   options:[{key:'n',label:'玩家人數',def:'5',solo:true,opts:[3,4,5,6,7,8].map(n=>({id:String(n),label:n+' 人'}))},{key:'rounds',label:'題數',def:'6',opts:[{id:'4',label:'4 題'},{id:'6',label:'6 題'},{id:'8',label:'8 題'},{id:'10',label:'10 題'}]}],
   help:[['打字＋Enter','編一個假答案送出（💡 幫你想一個）'],['點答案','選出你覺得是真的那一個'],['空白鍵','大家用一台：開始、看完分數換下一題']],
   touchHelp:[['打字','編一個假答案送出（💡 幫你想一個）'],['點答案','選出你覺得是真的那一個']],touch:null,
   looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'},{id:'chef',label:'廚師'},{id:'pirate',label:'海盜'},{id:'ninja',label:'忍者'},{id:'bow',label:'蝴蝶結'}]},{key:'color',label:'人物顏色',type:'color',opts:['auto','#ff7a3d','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6']}],
   preview:(ctx,w,h,L,t)=>{ ctx.drawImage(bg(),0,0,w,h); const C=window.ARCADE_CHAR; if(C) C.drawChar(ctx,w/2,h*.6,!L||!L.color||L.color==='auto'?PCOL[0]:L.color,1,false,t,2.6,(L&&L.char)||'cap',''); },
-  hubBest:()=>{ const v=LSn('arcade.bluff.w'); return v?'當上唬爛王 <b>'+v+'</b> 次':'尚無紀錄'; },
+  hubBest:()=>{ const v=LSn('arcade.bluff.n'); return v?'玩過 <b>'+v+'</b> 次':'尚無紀錄'; },
   best:{label:'',fmt:v=>v,lower:false},create};
 })();
