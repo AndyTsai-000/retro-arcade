@@ -79,12 +79,13 @@ function bombArt(c,x,y,R,t,hot,lo,hi,flash,boomT){ c.save(); c.translate(x+(hot>
 
 let SET_ROT=0; // 連線輪流出密碼：房主記到第幾個人了（重玩時換下一個）
 function create(env,opts){
-  const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,two=!net&&opts.mode==='2p',pv=!!opts.preview,OP=opts.options||{},sc=clamp(opts.stage|0,0,SCN.length-1);
+  const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,room=!net&&!opts.preview,pv=!!opts.preview,OP=opts.options||{},sc=clamp(opts.stage|0,0,SCN.length-1);
   const MAX=+OP.max||100,TL=0,ST=30; // 喊密碼不限時間（TL=0）；出密碼還是 30 秒
-  const humans=net?net.count:pv?0:two?2:1,n=net?clamp(net.count+(net.bots||0),2,8):clamp(+OP.seats||5,2,8),me=net?net.me:0;
-  const names=[],looks=[]; for(let i=0;i<n;i++){ if(i<humans){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:i===0?opts.look||{}:{}); } else { names.push(BOTN[(i-humans+sc*2)%BOTN.length]); looks.push(BOTLOOK(i+sc)); } }
+  const n=net?clamp(net.count,2,8):clamp(+OP.seats||5,2,8),humans=net?net.count:pv?0:n,me=net?net.me:0; /* 全部真人：大家用一台輪流輸入，或連線 */
+  const names=[],looks=[]; for(let i=0;i<n;i++){ if(i<humans){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):'玩家 '+(i+1)); looks.push(net?(net.looks&&net.looks[i])||{}:BOTLOOK(i+sc)); } else { names.push(BOTN[(i-humans+sc*2)%BOTN.length]); looks.push(BOTLOOK(i+sc)); } }
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%8]:L.color; };
-  const mine=i=>two?i<2:i===me;
+  if(room&&window.PARTY_NAMES) window.PARTY_NAMES.fill(names);
+  const mine=i=>!room&&i===me;
   let secret=0,t=0,ended=false,sendT=0,evq=[],shake=0,fx=[],buf='',aiT=1,aiN=0,aiTxt='',flash=0,pops=[];
   let mySec=0; const setter=net&&host&&OP.setter!=='cpu'&&!pv?(SET_ROT++)%net.count:-1;
   let G={ph:'intro',T:pv?.4:3,lo:1,hi:MAX,dlo:1,dhi:MAX,wait:0,cur:0,setter,turnT:TL,boom:Array(n).fill(0),last:null,hits:0,boomAt:-1,boomN:0,msg:'',guessN:0,typing:'',hist:[]};
@@ -111,9 +112,9 @@ function create(env,opts){
       if(G.cur>=humans){ aiT-=dt; const s=String(aiN); G.typing=s.slice(0,clamp(Math.floor((1.3-aiT)*3)+1,0,s.length)*(aiT<1.3?1:0)); if(aiT<=0) guess(G.cur,aiN); } }
     if(G.ph==='boom'){ G.T-=dt; if(G.T<=0){ G.ph='end'; G.T=.3; } }
     if(G.ph==='end'){ G.T-=dt; if(G.T<=0&&!ended){ ended=true; if(net) net.send({st:G}); finish(); } } }
-  function finish(){ const L=G.boomAt,meLose=two?L<2:L===me,iSet=!two&&G.setter===me&&me>=0; if(!net&&!pv&&!(two?false:meLose)) try{ localStorage.setItem('arcade.boomcode.safe',(+localStorage.getItem('arcade.boomcode.safe')||0)+1); }catch(e){}
-    env.sfx(meLose&&!two?'lose':'win');
-    env.end({title:names[L]+' 猜中密碼 '+G.hits+'，被炸了！',big:two?(L===0?'2P 獲勝':L===1?'1P 獲勝':'1P、2P 都安全'):meLose?'你被炸了！':iSet?'你的密碼炸到 '+names[L]+'！':'你安全了！',
+  function finish(){ const L=G.boomAt,meLose=!room&&L===me,iSet=!room&&G.setter===me&&me>=0; if(!pv&&!meLose) try{ localStorage.setItem('arcade.boomcode.safe',(+localStorage.getItem('arcade.boomcode.safe')||0)+1); }catch(e){}
+    env.sfx(meLose?'lose':'win');
+    env.end({title:names[L]+' 猜中密碼 '+G.hits+'，被炸了！',big:room?names[L]+' 被炸了！':meLose?'你被炸了！':iSet?'你的密碼炸到 '+names[L]+'！':'你安全了！',
       text:'密碼是 '+G.hits+(G.setter>=0?'（'+names[G.setter]+' 出的）':'')+'，大家一共猜了 '+G.hist.length+' 次',
       html:'<table class="ls"><tr><th>順序</th><th>玩家</th><th>猜的數字</th></tr>'+G.hist.map((h,k)=>'<tr><td>'+(k+1)+'</td><td>'+names[h[0]]+'</td><td>'+(h[0]===L&&k===G.hist.length-1?'💥 '+h[1]:h[1])+'</td></tr>').join('')+'</table>',score:null}); }
   const pub=()=>Object.assign({},G); // 密碼不在 G 裡，別人看不到
@@ -126,7 +127,7 @@ function create(env,opts){
   /* 數字鍵盤（在自己回合才出現） */
   const KEYS=['1','2','3','4','5','6','7','8','9','0','⌫','確定'],kRect=k=>{ const w=58,gp=6,x0=W/2-(12*(w+gp)-gp)/2; return [x0+k*(w+gp),H-50,w+(k===11?0:0),42]; };
   const toG=e=>{ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/W,r.height/H); return [(e.clientX-r.left-(r.width-W*s)/2)/s,(e.clientY-r.top-(r.height-H*s)/2)/s]; };
-  const mySet=()=>G.ph==='set'&&G.setter===me&&!pv&&!mySec,myTurn=()=>!pv&&(mySet()||G.ph==='turn'&&!(G.wait>0)&&(two?G.cur<2:G.cur===me));
+  const mySet=()=>G.ph==='set'&&G.setter===me&&!pv&&!mySec,myTurn=()=>!pv&&(mySet()||G.ph==='turn'&&!(G.wait>0)&&(room||G.cur===me));
   const rng=()=>mySet()?[1,MAX]:[G.lo,G.hi];
   function type(k){ if(!myTurn()) return; if(k==='⌫'){ buf=buf.slice(0,-1); tone(300,.04); return; } if(k==='確定'){ submit(); return; } if(buf.length>=String(MAX).length) return; buf=(buf+k).replace(/^0+/,''); tone(700,.04); }
   function submit(){ if(!buf) return; const g=+buf,[lo,hi]=rng(); if(!(g>=lo&&g<=hi)){ G.bad=.6; buf=''; env.sfx('bump'); return; }
@@ -167,7 +168,7 @@ function create(env,opts){
     /* 左上：回合、計時 */ c.fillStyle='rgba(11,10,28,.75)'; rr(c,10,10,176,30,10); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.textAlign='left'; c.fillText('密碼 1～'+MAX+'　已猜 '+G.hist.length+' 次',20,25);
     if(mySec&&G.setter===me){ c.fillStyle='rgba(11,10,28,.75)'; rr(c,10,46,176,28,10); c.fill(); c.fillStyle='#7aff7a'; c.fillText('🔑 你出的密碼：'+mySec,20,60); }
     if(G.ph==='set'){ const s=G.setter===me?(mySec?'密碼設好了！':'偷偷輸入一個密碼，別人看不到！'):names[G.setter]+' 正在出密碼…',yy=BY-BR-14>30?BY-BR-14:40; c.textAlign='center'; c.font='900 24px '+TC; c.lineWidth=6; c.strokeStyle='#14122b'; c.strokeText(s,W/2,yy); c.fillStyle='#ffd23f'; c.fillText(s,W/2,yy); c.font='700 13px '+TC; c.textAlign='right'; c.fillStyle='#fff'; c.fillText('剩 '+Math.ceil(Math.max(0,G.turnT))+' 秒',W-20,25); }
-    if(G.ph==='turn'&&!(G.wait>0)){ const nm=names[G.cur],s=mine(G.cur)?(two?(G.cur+1)+'P 輪到你了！':'輪到你了！'):'輪到 '+nm; c.fillStyle='rgba(11,10,28,.75)'; rr(c,W-196,10,186,30,10); c.fill(); c.fillStyle=mine(G.cur)?'#ffd23f':'#fff'; c.textAlign='left'; c.fillText(s,W-186,25); if(TL>0){ const u=clamp(G.turnT/TL,0,1); c.fillStyle=u<.3&&Math.sin(t*16)>0?'#ff5d4f':'#ffd23f'; c.beginPath(); c.moveTo(W-28,25); c.arc(W-28,25,10,-Math.PI/2,-Math.PI/2+u*TAU); c.fill(); } }
+    if(G.ph==='turn'&&!(G.wait>0)){ const nm=names[G.cur],s=mine(G.cur)?'輪到你了！':room?'輪到 '+nm+' 了！':'輪到 '+nm; c.fillStyle='rgba(11,10,28,.75)'; rr(c,W-196,10,186,30,10); c.fill(); c.fillStyle=mine(G.cur)?'#ffd23f':'#fff'; c.textAlign='left'; c.fillText(s,W-186,25); if(TL>0){ const u=clamp(G.turnT/TL,0,1); c.fillStyle=u<.3&&Math.sin(t*16)>0?'#ff5d4f':'#ffd23f'; c.beginPath(); c.moveTo(W-28,25); c.arc(W-28,25,10,-Math.PI/2,-Math.PI/2+u*TAU); c.fill(); } }
     /* 鍵盤 */ if(myTurn()){ c.fillStyle='rgba(11,10,28,.82)'; rr(c,18,H-110,W-36,104,16); c.fill();
       c.fillStyle=G.bad>0?'#ff5d4f':'#fff'; c.font='900 14px '+TC; c.textAlign='left'; const [klo,khi]=rng(); c.fillText(G.bad>0?'要在 '+klo+' ～ '+khi+' 裡面喔！':mySet()?'出一個 1 ～ '+MAX+' 的密碼':G.dlo===klo&&G.dhi===khi?'猜一個 '+klo+' ～ '+khi+' 的數字':'猜 '+G.dlo+' 和 '+G.dhi+' 中間的數字（'+(klo===khi?'只剩 '+klo:klo+' ～ '+khi)+'）',36,H-90);
       c.fillStyle='#0c1a0c'; rr(c,W/2-70,H-104,140,42,10); c.fill(); c.fillStyle='#7aff7a'; c.font='900 28px "Courier New",monospace'; c.textAlign='center'; c.fillText(buf||(Math.sin(t*6)>0?'_':''),W/2,H-82);
@@ -178,15 +179,15 @@ function create(env,opts){
 function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); bg(ctx,si,t); const lo=10+Math.floor(t)%20,hi=90-Math.floor(t*1.3)%30; ctx.fillStyle='#8a5a34'; ctx.fillRect(260,240,280,22); bombArt(ctx,400,160,92,t,.4+.3*Math.sin(t),lo,hi,0,0);
   const C=window.ARCADE_CHAR; if(C) for(let i=0;i<5;i++){ const u=i/4,x=90+u*620,y=420-Math.sin(u*Math.PI)*50,L=BOTLOOK(i); C.drawChar(ctx,x,y-30,PCOL[i],1,i===Math.floor(t)%5,t+i,1.4,L.char,L.deco); } ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).boomcode={
-  name:'密碼炸彈大挑戰',tag:'CODE BOMB',color:'#7aff7a',online:true,maxPlayers:8,minPlayers:2,bots:true,
-  coin:o=>({verb:'先猜',names:o.net?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:o.mode==='2p'?['1P','2P']:[o.name||'你','電腦']}),
-  desc:'炸彈裡藏了一個密碼數字，大家輪流猜，每猜一次範圍就縮小，猜中密碼的人就被炸！玩到有人被炸為止。連線時可以讓大家輪流出密碼。',
+  name:'密碼炸彈大挑戰',tag:'CODE BOMB',color:'#7aff7a',online:true,maxPlayers:8,minPlayers:2,
+  coin:o=>({verb:'先猜',names:o.net?[o.net.names[0]||'玩家 1',o.net.names[1]||'玩家 2']:['玩家 1','玩家 2']}),
+  desc:'炸彈裡藏了一個密碼數字，大家輪流猜，每猜一次範圍就縮小，猜中密碼的人就被炸！玩到有人被炸為止。大家用一台輪流輸入，或連線各用自己的手機（可以讓大家輪流出密碼）。',
   goal:'輪到你時猜一個範圍內的數字，猜中密碼就被炸，別當那個人！',
   stages:SCN.map(s=>s.name),stageLabel:'選擇場景',stageShow,thumb:(c,w,h,t)=>stageShow(c,w,h,0,t),
-  modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人同一台'}],
+  modes:[{id:'room',label:'大家用一台'}],
   options:[{key:'max',label:'密碼範圍',def:'100',opts:[{id:'50',label:'1～50（簡單）'},{id:'100',label:'1～100'},{id:'500',label:'1～500（困難）'}]},
     {key:'setter',label:'連線時誰出密碼',def:'turn',opts:[{id:'turn',label:'玩家輪流出'},{id:'cpu',label:'電腦出'}]},
-    {key:'seats',label:'單機人數',def:'5',opts:[{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'}]}],
+    {key:'seats',label:'玩家人數',def:'5',solo:true,opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'}]}],
   help:[['數字鍵','輸入數字，Enter 確定'],['↑↓ ←→','加減 1、加減 10'],['雙人','輪到誰就誰按']],
   touchHelp:[['數字鍵盤','點數字，再點「確定」']],touch:null,
   looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'},{id:'chef',label:'廚師'},{id:'pirate',label:'海盜'},{id:'ninja',label:'忍者'},{id:'bow',label:'蝴蝶結'}]},{key:'color',label:'人物顏色',type:'color',opts:['auto','#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6']}],

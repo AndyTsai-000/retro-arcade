@@ -52,7 +52,7 @@ function qcard(c,x,y,w,h,face,ok,sc){ c.save(); c.translate(x,y); c.scale(Math.m
   c.restore(); }
 function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,pv=!!opts.preview,OP=opts.options||{};
-  const humans=pv?0:net?net.count:1,n=clamp(pv?7:net?net.count+(net.bots||0):+OP.seats||7,5,10),me=pv?-1:net?net.me:0,SET=OP.roles||'std';
+  const humans=pv?0:net?net.count:1,n=clamp(pv?7:net?net.count:7,5,10),me=pv?-1:net?net.me:0,SET=OP.roles||'std';
   const names=[],looks=[],bot=[]; for(let i=0;i<n;i++){ const h=i<humans; bot.push(!h); names.push(h?(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你')):BOTN[i%BOTN.length]); looks.push(h?(net?(net.looks&&net.looks[i])||BOTLOOK(i):opts.look||BOTLOOK(i)):BOTLOOK(i)); }
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%PCOL.length]:L.color; };
   const SP=pv?.35:1,SIZES=TEAM[n],E=EVIL[n];
@@ -125,7 +125,7 @@ function create(env,opts){
     else if(G.ph==='final'&&G.PT<=0&&!ended){ if(pv){ G=newG(); sus.fill(0); priv.forEach(r=>r.fill(0)); return; } ended=true; if(net) net.send({G,end:1}); finish(); }
     if(net){ sendT-=dt; if(sendT<=0){ sendT=1/8; net.send({G}); } } }
   if(net){ if(client) net.onmsg=m=>{ if(m.G) G=m.G; if(m.end&&!ended){ ended=true; finish(); } };
-    else { net.onmsg=(m,from)=>{ if(m.a) doAct(from,m.a); }; net.onleave=i=>{ if(i>0&&i<n&&!bot[i]){ bot[i]=true; names[i]+='（電腦）'; G.ready[i]=true; botAt[i]=1; if(G.ph==='pick'&&G.lead===i) G.PT=1.5; if(G.ph==='assn'&&assassin()===i) G.PT=2; } }; } }
+    else { net.onmsg=(m,from)=>{ if(m.a) doAct(from,m.a); }; net.onleave=i=>{ if(i>0&&i<n&&!bot[i]){ bot[i]=true; names[i]+='（離開，電腦代打）'; G.ready[i]=true; botAt[i]=1; if(G.ph==='pick'&&G.lead===i) G.PT=1.5; if(G.ph==='assn'&&assassin()===i) G.PT=2; } }; } }
   const act=a=>{ if(pv) return; if(client) net.send({a}); else doAct(me,a); };
   function finish(){ const mine=me>=0?(G.win==='good')===!isEvil(me):false;
     if(mine){ try{ localStorage.setItem('arcade.mission.w',String((+localStorage.getItem('arcade.mission.w')||0)+1)); }catch(e){} }
@@ -230,14 +230,14 @@ function thumb(ctx,w,h,t){ ctx.save(); ctx.scale(w/W,h/H); const c=ctx; c.drawIm
   c.font='900 28px '+TC; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=6; c.strokeStyle='#140e1c'; c.strokeText('王城密令',400,440); c.fillStyle='#ffd23f'; c.fillText('王城密令',400,440); ctx.restore(); }
 const LSn=k=>{ try{ return +localStorage.getItem(k)||0; }catch(e){ return 0; } };
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).mission={
-  name:'王城密令',tag:'SECRET ORDERS',color:'#e8c050',online:true,maxPlayers:10,minPlayers:5,bots:true,
-  desc:'玩法參考桌遊《阿瓦隆》，會玩的人不用重學規則。好人與壞人藏在同一張圓桌！隊長挑隊員出任務，大家公開投票，出任務的人暗中出成功或失敗。好人完成 3 次任務、壞人讓 3 次任務失敗；最後刺客還能刺殺先知翻盤。5～10 人，一個人玩有電腦同桌，也能和朋友連線。',
+  name:'王城密令',tag:'SECRET ORDERS',color:'#e8c050',online:true,maxPlayers:10,minPlayers:5,
+  desc:'玩法參考桌遊《阿瓦隆》，會玩的人不用重學規則。好人與壞人藏在同一張圓桌！隊長挑隊員出任務，大家公開投票，出任務的人暗中出成功或失敗。好人完成 3 次任務、壞人讓 3 次任務失敗；最後刺客還能刺殺先知翻盤。5～10 位真人連線，每個人用自己的手機看身分。',
   goal:'（玩法同《阿瓦隆》）好人完成 3 次任務、壞人讓 3 次任務失敗就贏。隊伍要過半贊成才出發，連續 5 次被否決壞人贏；好人過關後刺客刺中先知，壞人翻盤。',
-  optNote(sel,count){ const m=clamp(count||+sel.seats||7,5,10),L=roleList(m,sel.roles||'std'),cnt={}; for(const k of L) cnt[k]=(cnt[k]||0)+1;
+  optNote(sel,count){ const m=clamp(count||7,5,10),L=roleList(m,sel.roles||'std'),cnt={}; for(const k of L) cnt[k]=(cnt[k]||0)+1;
     const side=g=>Object.keys(cnt).filter(k=>ROLE[k].g===g).map(k=>'・'+ROLE[k].n+'（阿瓦隆的'+ROLE[k].av+'）'+(cnt[k]>1?' ×'+cnt[k]:'')+'：'+noSh(ROLE[k].s,L)).join('<br>');
     return m+' 人局，每次任務人數：'+TEAM[m].join('、')+(m>=7?'（第 4 次要 2 張失敗）':'')+'<br><span style="color:#8ac4ff">🔵 好人陣營 '+(m-EVIL[m])+' 人</span>：完成 3 次任務<br>'+side(1)+'<br><span style="color:#ff8a9a">🔴 壞人陣營 '+EVIL[m]+' 人</span>：讓 3 次任務失敗<br>'+side(0)+(L.includes('lone')?'':'<br><span style="color:#c8b8e8">這局沒有'+(L.includes('shadow')?'':'影首（阿瓦隆的莫德雷德）、')+'獨行者（阿瓦隆的奧伯倫）：'+(L.includes('shadow')?'角色選「全部」、10 人才會加入':'影首要角色選「標準」以上、7 人以上；獨行者要選「全部」、10 人')+'</span>'); },
-  modes:[{id:'1p',label:'單人'}],
-  options:[{key:'seats',label:'人數',solo:true,def:'7',opts:[{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'7',label:'7 人'},{id:'8',label:'8 人'},{id:'9',label:'9 人'},{id:'10',label:'10 人'}]},{key:'roles',label:'角色',def:'std',opts:SETS.map(s=>({id:s.id,label:s.label}))}],
+  modes:[],
+  options:[{key:'roles',label:'角色',def:'std',opts:SETS.map(s=>({id:s.id,label:s.label}))}],
   help:[['點人物','隊長挑隊員；刺客選要刺殺的人'],['按鈕','投票贊成／反對、出任務成功／失敗'],['左上角','隨時看自己的角色和知道的資訊']],
   touchHelp:[['點人物','隊長挑隊員；刺客選要刺殺的人'],['按鈕','投票、出任務'],['左上角','看自己的角色']],touch:null,
   hubBest:()=>{ const v=LSn('arcade.mission.w'); return v?'陣營獲勝 <b>'+v+'</b> 次':'尚無紀錄'; },

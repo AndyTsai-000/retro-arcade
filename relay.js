@@ -41,9 +41,9 @@ function wrapLines(c,s,w,max){ const out=[]; let line=''; for(const ch of s){ if
 
 function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,pv=!!opts.preview,OP=opts.options||{};
-  const room=!net&&!pv&&opts.mode==='room',me=net?net.me:0;
-  const N=net?clamp(net.count+(net.bots||0),3,8):pv?5:clamp(+OP.n||5,3,8);
-  const humans=pv?0:net?Math.min(net.count,N):room?N:1;
+  const room=!net&&!pv,me=net?net.me:0;
+  const N=net?clamp(net.count,3,8):pv?5:clamp(+OP.n||5,3,8);
+  const humans=pv?0:net?Math.min(net.count,N):N;
   const names=[],looks=[],bot=[]; for(let i=0;i<N;i++){ const h=i<humans; bot.push(!h);
     if(h){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):room?'玩家 '+(i+1):(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:room?BOTLOOK(i):opts.look||{}); }
     else { names.push(BOTN[(i-humans)%BOTN.length]); looks.push(BOTLOOK(i)); } }
@@ -203,10 +203,10 @@ function stageShow(ctx,w,h,t){ ctx.save(); ctx.scale(w/W,h/H); const c=ctx; c.dr
   c.font='900 19px '+TC; c.fillStyle='#fff'; c.fillText('寫 → 畫 → 猜 → 畫 → 猜…看題目怎麼越傳越歪',W/2,420); ctx.restore(); }
 const LSn=k=>{ try{ return +localStorage.getItem(k)||0; }catch(e){ return 0; } };
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).relay={
-  name:'傳話變變變',tag:'DRAW RELAY',color:'#7ad85a',online:true,maxPlayers:8,minPlayers:2,bots:true,
-  desc:'畫圖傳話遊戲！每人一本本子，寫一個題目往下傳，下一個人照著畫、再下一個人看圖猜，一路傳下去。最後一本一本翻開，看「貓咪」怎麼變成「外星人」。和電腦玩、連線同時畫，或大家用一台輪流畫。',
+  name:'傳話變變變',tag:'DRAW RELAY',color:'#7ad85a',online:true,maxPlayers:8,minPlayers:3,
+  desc:'畫圖傳話遊戲！每人一本本子，寫一個題目往下傳，下一個人照著畫、再下一個人看圖猜，一路傳下去。最後一本一本翻開，看「貓咪」怎麼變成「外星人」。3～8 人一起玩：連線各用自己的手機同時畫，或大家用一台輪流畫。',
   goal:'第一頁寫一個題目，接著輪流「照著字畫圖」和「看圖猜字」，每本傳完一圈。最後一本一本翻開，看題目怎麼越傳越歪；不計分、不限時。',
-  modes:[{id:'1p',label:'單人（和電腦）'},{id:'room',label:'大家用一台'}],
+  modes:[{id:'room',label:'大家用一台'}],
   options:[{key:'n',label:'玩家人數',def:'5',solo:true,opts:[3,4,5,6,7,8].map(n=>({id:String(n),label:n+' 人'}))}],
   help:[['打字＋Enter','寫題目、寫你猜的答案'],['滑鼠','在白板上畫圖，畫好按「畫好了」'],['空白鍵','翻開本子時看下一頁']],
   touchHelp:[['打字','寫題目、寫你猜的答案'],['手指','在白板上畫圖，畫好按「畫好了」'],['下一頁','翻開本子時一頁一頁看']],touch:null,
