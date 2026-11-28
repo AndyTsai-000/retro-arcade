@@ -4,7 +4,7 @@
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',PIX='"Press Start 2P","Noto Sans TC",monospace';
-const GAMES=['大老二','德州撲克','十三支','二十一點','賽馬','妞妞','心臟病','抽鬼牌','撿紅點','排七','接龍'],GID=['b2','th','13','bj','hr','nn','hx','om','jh','pq','sol'];
+const GAMES=['大老二','德州撲克','十三支','二十一點','賽馬','妞妞','心臟病','抽鬼牌','撿紅點','排七','接龍','彩虹出光光'],GID=['b2','th','13','bj','hr','nn','hx','om','jh','pq','sol','uno'];
 const SUITS=['♣','♦','♥','♠'];
 const rk=id=>id%13+2,su=id=>(id/13)|0,RN=r=>r<=10?String(r):['J','Q','K','A'][r-11];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -103,7 +103,7 @@ function drawCard(c,x,y,w,h,id,up,o){
   c.restore();
 }
 // 每種牌戲預設的場景：大老二在咖啡廳、德州撲克在賭場、十三支在木框賭桌、二十一點在半圓的二十一點桌
-const THEME={b2:{bg:'cafe',felt:'#2f7a52'},th:{bg:'casino',felt:'#1f6b4a'},'13':{bg:'wood',felt:'#3a2d57'},bj:{bg:'bjt',felt:'#1f6b4a'},hr:{bg:'turf',felt:'#2f7a3a'},nn:{bg:'cny',felt:'#1f6b4a'},hx:{bg:'night',felt:'#6b1f3a'},om:{bg:'felt',felt:'#3a2d57'},jh:{bg:'cny',felt:'#6b1f3a'},pq:{bg:'wood',felt:'#1f4f7a'},sol:{bg:'felt',felt:'#1f6b4a'}};
+const THEME={b2:{bg:'cafe',felt:'#2f7a52'},th:{bg:'casino',felt:'#1f6b4a'},'13':{bg:'wood',felt:'#3a2d57'},bj:{bg:'bjt',felt:'#1f6b4a'},hr:{bg:'turf',felt:'#2f7a3a'},nn:{bg:'cny',felt:'#1f6b4a'},hx:{bg:'night',felt:'#6b1f3a'},om:{bg:'felt',felt:'#3a2d57'},jh:{bg:'cny',felt:'#6b1f3a'},pq:{bg:'wood',felt:'#1f4f7a'},sol:{bg:'felt',felt:'#1f6b4a'},uno:{bg:'night',felt:'#3a2d57'}};
 const savedLook=()=>{ try{ return JSON.parse(localStorage.getItem('arcade.look.poker')||'null')||{}; }catch(e){ return {}; } }; // 開始畫面左邊的圖也用自己存的造型
 const themed=(L,kind)=>{ L=L||{}; const T=THEME[kind]; return Object.assign({},L,{bg:!L.bg||L.bg==='auto'?T.bg:L.bg,felt:L.felt||T.felt}); };
 // 牌桌背景：經典綠桌、木框賭桌、星空、咖啡廳、賭場、二十一點桌
@@ -146,6 +146,7 @@ function drawTable(c,w,h,L,t){
   c.strokeStyle=bg==='night'?'#7a7ac8':'#d9b25a'; c.lineWidth=3*k; c.beginPath(); c.ellipse(cx,cy,rx+7*k,ry+7*k,0,0,7); c.stroke();
   const g2=c.createRadialGradient(cx,cy,30*k,cx,cy,rx); g2.addColorStop(0,felt); g2.addColorStop(1,'rgba(0,0,0,.55)'); c.fillStyle=felt; c.beginPath(); c.ellipse(cx,cy,rx,ry,0,0,7); c.fill(); c.fillStyle=g2; c.fill();
 }
+window.__pokerKit={get partyLog(){ return partyLog; },drawTable:(...a)=>drawTable(...a),themed:(...a)=>themed(...a),GAMES}; // 給 rainbow.js 用
 /* 戰績、連勝稱號、每日任務（只記單機，各遊戲分開記；每天換三個任務） */
 function partyLog(ns,gname,games,res){ let D; try{ D=JSON.parse(localStorage.getItem('arcade.'+ns+'.rec')||'{}')||{}; }catch(e){ D={}; } D.g=D.g||{};
   const td=new Date(),day=td.getFullYear()+'-'+(td.getMonth()+1)+'-'+td.getDate();
@@ -161,6 +162,7 @@ function partyLog(ns,gname,games,res){ let D; try{ D=JSON.parse(localStorage.get
   return '<div style="margin:8px 0;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13px;line-height:1.7;text-align:left"><b>'+gname+'</b>　'+r.w+' 勝 '+r.l+' 敗'+(r.d?' '+r.d+' 和':'')+'　連勝 '+r.s+'（最多 '+r.best+'）'+(ti?'　稱號「<b style="color:#ffd23f">'+ti+'</b>」':'')
     +'<br>今日任務　'+D.tasks.map(k=>(k.got>=k.need?'✅ ':'⬜ ')+k.txt+' '+k.got+'/'+k.need).join('　')+(newAll?'<br><b style="color:#86dc4f">🎉 今日任務全部完成！已經完成 '+D.stars+' 天</b>':all?'<br><span style="color:#86dc4f">今日任務都完成了</span>':'')+'</div>'; }
 function create(env,opts){
+  if(GID[clamp(opts.stage||0,0,GID.length-1)]==='uno'&&window.ARCADE_RAINBOW) return window.ARCADE_RAINBOW.create(env,opts); // 彩虹出光光在 rainbow.js
   const net=opts.net,client=!!net&&!net.host,me=net?net.me:0;
   const kind=GID[clamp(opts.stage||0,0,GID.length-1)],humans=net?net.count:1;
   const OP=(opts.options||{}),seats=+OP.seats||6,bjSeats=+OP.bjseats||3;
@@ -918,6 +920,7 @@ function create(env,opts){
 
 /* ---------- 開始畫面的示意圖 ---------- */
 function stageShow(ctx,w,h,si,t){
+  if(GID[si]==='uno'&&window.ARCADE_RAINBOW){ window.ARCADE_RAINBOW.stageShow(ctx,w,h,t); return; }
   setStyle(window.__pokerLook); drawTable(ctx,w,h,themed(window.__pokerLook||savedLook(),GID[si]),t); // 背景跟著選的牌戲
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.09)+'px '+TC; ctx.fillStyle='#ffd23f'; ctx.fillText(GAMES[si],w/2,h*.1);
   const k=w/480,cw=48*k,ch=68*k,u=(t%4)/4;
@@ -977,12 +980,12 @@ function thumb(ctx,w,h,t){
   const ids=[47,48,49,50,51],k=w/480;
   ids.forEach((id,i)=>{ const a=(i-2)*.22+Math.sin(t*1.2)*.04; ctx.save(); ctx.translate(w/2+(i-2)*38*k,h*.62); ctx.rotate(a); drawCard(ctx,-30*k,-90*k,60*k,86*k,id,true); ctx.restore(); });
   ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+Math.round(h*.13)+'px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#0b0a1c'; ctx.strokeText('牌桌派對',w/2,h*.16); ctx.fillStyle='#ffd23f'; ctx.fillText('牌桌派對',w/2,h*.16);
-  ctx.font='700 '+Math.round(h*.06)+'px '+TC; ctx.fillStyle='#cfe8d8'; ctx.fillText('大老二・德撲・十三支・21點・賽馬・妞妞・心臟病・抽鬼牌・撿紅點・排七・接龍',w/2,h*.9,w*.96);
+  ctx.font='700 '+Math.round(h*.06)+'px '+TC; ctx.fillStyle='#cfe8d8'; ctx.fillText('大老二・德撲・十三支・21點・賽馬・妞妞・心臟病・抽鬼牌・撿紅點・排七・接龍・彩虹出光光',w/2,h*.9,w*.96);
 }
 
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).poker={
   name:'牌桌派對',tag:'CARD PARTY',color:'#e23b3b',online:true,maxPlayers:si=>si===1?9:si===3?7:si===4?8:si===10?1:si===8||si===9?4:si>=5?6:4,bots:true,minPlayers:2, // 德州撲克最多 9 人、二十一點 7 人，其他 4 人
-  desc:'一副撲克牌玩十一種：大老二、德州撲克、十三支、二十一點、賽馬、妞妞、心臟病、抽鬼牌、撿紅點、排七、接龍。和電腦同桌，或開房間 2～4 人連線。單機會記每種遊戲的戰績和連勝稱號，每天還有三個任務。',
+  desc:'一副撲克牌玩十一種：大老二、德州撲克、十三支、二十一點、賽馬、妞妞、心臟病、抽鬼牌、撿紅點、排七、接龍，再加一副彩色牌玩彩虹出光光。和電腦同桌，或開房間 2～4 人連線。單機會記每種遊戲的戰績和連勝稱號，每天還有三個任務。',
   goal:'大老二：拿到最小牌的人先出，跟著出同張數、比上一手大的牌，先出完的人贏。德州撲克：兩張手牌配五張公牌湊最大的五張，打 8 手比籌碼；起始籌碼、盲注和人數（單機 4～9 人、連線最多 9 人）可以在開始前選。十三支：把 13 張分成頭墩 3、中墩 5、尾墩 5，尾墩最大、頭墩最小，和每家逐墩比大小。二十一點：和莊家比點數，越接近 21 越好，超過就爆，打 6 局比籌碼；最多 7 位玩家同桌（單機 2～7 人可選）。',
   stages:GAMES,stageLabel:'選擇遊戲', // 這裡的「關卡」其實是十一種牌戲
   stageGoal:si=>[
@@ -996,7 +999,7 @@ function thumb(ctx,w,h,t){
     '抽鬼牌：52 張牌加一張鬼牌全部發完，成對的（點數一樣）先丟掉。輪流從下一家手上抽一張，湊成一對就自動丟掉，手上沒牌就過關。最後拿著鬼牌的人輸。',
     '撿紅點：每人發牌（4 人各 6 張、3 人 8 張、2 人 12 張），桌上翻開 4 張。輪到你時出一張手牌，和桌上的牌加起來剛好 10（A＋9、2＋8……5＋5）就把兩張吃下來；10、J、Q、K 要吃同點數的。吃不到就丟到桌上。接著翻牌堆最上面一張，能吃也吃。牌出完比分數：只有紅色牌算分（A 20、2～8 照點數、9～K 各 10），黑桃 A 30 分。',
     '排七：52 張全部發完，拿到黑桃 7 的人先出。之後只能出 7，或接在桌上各花色的兩邊（往 A 一張一張接下去，或往 K 接上去）。能出就一定要出；沒有牌接得上，就選一張手牌蓋起來。全部出完後，蓋起來的牌照點數扣分（A 1 點、K 13 點），扣最少的人贏。',
-    '接龍（單人）：下面 7 疊牌，翻開的牌要紅黑相間、由大到小往下接（例如黑 8 下面接紅 7），可以整串一起移；空位只能放 K。左上角的牌堆點一下翻一張。把 A 到 K 照花色收到右上角，四種都收完就贏。'][si],
+    '接龍（單人）：下面 7 疊牌，翻開的牌要紅黑相間、由大到小往下接（例如黑 8 下面接紅 7），可以整串一起移；空位只能放 K。左上角的牌堆點一下翻一張。把 A 到 K 照花色收到右上角，四種都收完就贏。',(window.ARCADE_RAINBOW||{}).goal||''][si],
   options:[{key:'speed',label:'電腦速度',def:'normal',opts:[{id:'slow',label:'慢'},{id:'normal',label:'正常'},{id:'fast',label:'快'}]},
     {key:'chips',label:'起始籌碼',only:[1],def:'1000',opts:[{id:'500',label:'500'},{id:'1000',label:'1000'},{id:'2000',label:'2000'},{id:'5000',label:'5000'}]},
     {key:'blind',label:'盲注',only:[1],def:'10/20',opts:[{id:'5/10',label:'5／10'},{id:'10/20',label:'10／20'},{id:'25/50',label:'25／50'},{id:'50/100',label:'50／100'}]},
@@ -1019,7 +1022,9 @@ function thumb(ctx,w,h,t){
     {key:'hxseats',label:'單機人數',only:[6],def:'4',opts:[2,3,4,5,6].map(n=>({id:String(n),label:n+' 人'}))},
     {key:'omseats',label:'單機人數',only:[7],def:'4',opts:[2,3,4,5,6].map(n=>({id:String(n),label:n+' 人'}))},
     {key:'jhseats',label:'單機人數',only:[8],def:'4',opts:[2,3,4].map(n=>({id:String(n),label:n+' 人'}))},
-    {key:'pqseats',label:'單機人數',only:[9],def:'4',opts:[2,3,4].map(n=>({id:String(n),label:n+' 人'}))}],
+    {key:'pqseats',label:'單機人數',only:[9],def:'4',opts:[2,3,4].map(n=>({id:String(n),label:n+' 人'}))},
+    {key:'unoseats',label:'單機人數',only:[11],def:'4',opts:[2,3,4,5,6].map(n=>({id:String(n),label:n+' 人'}))},
+    {key:'unogoal',label:'怎麼算贏',only:[11],def:'1',opts:[{id:'1',label:'一局定輸贏'},{id:'500',label:'先到 500 分（正式規則）'}]}],
   stageHelp:si=>{ const H=[
       [['點牌','選取／取消選取，可以一次選好幾張'],['出牌','選好後按「出牌」；壓不過就按「過」'],['提示','幫你挑一手能出的牌'],['牌型','單張、一對，或五張：順子＜同花＜葫蘆＜鐵支＜同花順']],
       [['棄牌','這一手不玩了'],['過牌／跟注','跟上目前的下注金額'],['加注','拖拉桿或按 −／＋ 選金額，再按「加注到 …」'],['全下','把手上籌碼全部押上']],
@@ -1031,7 +1036,7 @@ function thumb(ctx,w,h,t){
       [['點牌','輪到你時，點下一家攤開的牌抽一張'],['自動配對','湊成一對會自動丟掉'],['輸贏','最後拿著鬼牌的人輸']],
       [['點手牌','選一張要出的牌'],['點桌上綠框的牌','加起來 10（或同點數的 10、J、Q、K）就吃下來'],['丟到桌上','吃不到時把牌放到桌上'],['翻牌','出完會自動翻牌堆一張，能吃就吃']],
       [['點亮著的牌','接在 7 的旁邊出牌'],['蓋牌','沒牌接得上時選一張，再按「蓋這張」'],['輸贏','蓋的牌點數扣分，最少的人贏']],
-      [['點牌','選起來（可以選一整串）'],['再點目的地','放到另一疊或右上角收牌區'],['同一張再點一次','直接收到右上角'],['自動收牌','能收的全部收上去']]][si];
+      [['點牌','選起來（可以選一整串）'],['再點目的地','放到另一疊或右上角收牌區'],['同一張再點一次','直接收到右上角'],['自動收牌','能收的全部收上去']],(window.ARCADE_RAINBOW||{}).help||[]][si];
     return {help:H,touchHelp:H}; },
   help:[['點牌','選取／取消選取'],['按鈕','出牌、過、跟注、加注、要牌、停牌…'],['大老二','單張、一對、五張牌型（順子＜同花＜葫蘆＜鐵支＜同花順）'],['十三支','點牌再點空位放進墩裡，或按「自動排牌」']],
   touchHelp:[['點牌','選取／取消選取'],['按鈕','出牌、過、跟注、加注、要牌、停牌…'],['十三支','點牌再點空位放進墩裡，或按「自動排牌」']],
