@@ -23,7 +23,7 @@ window.PARTY_NAMES={
     const mk=(tx,bg,fg)=>{ const b=document.createElement('button'); b.textContent=tx; b.style.cssText='font:900 15px '+TCF+';padding:8px 22px;border-radius:12px;border:0;cursor:pointer;background:'+bg+';color:'+fg; return b; };
     const cancel=mk('取消','#6a5a8a','#fff'),ok=mk('確定','#ffd23f','#2a1e0e'); row.append(cancel,ok); card.append(grid,row); ov.appendChild(card); stage.appendChild(ov);
     const close=()=>{ ov.remove(); if(done) done(); };
-    ok.addEventListener('click',()=>{ const s=loadN(); ins.forEach((inp,i)=>{ const v=cleanN(inp.value); names[i]=v||'玩家 '+(i+1); s[i]=/^玩家 ?\d+$/.test(v)?'':v; }); try{ localStorage.setItem(NKEY,JSON.stringify(s.slice(0,10))); }catch(e){} close(); });
+    ok.addEventListener('click',()=>{ const s=loadN(); ins.forEach((inp,i)=>{ const v=cleanN(inp.value); names[i]=v||'玩家 '+(i+1); s[i]=/^玩家 ?\d+$/.test(v)?'':v; }); try{ localStorage.setItem(NKEY,JSON.stringify(s.slice(0,12))); }catch(e){} close(); });
     cancel.addEventListener('click',close); ov.addEventListener('pointerdown',e=>e.stopPropagation());
     if(!('ontouchstart' in window)) setTimeout(()=>{ try{ ins[0].focus(); }catch(e){} },30); }};
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).party={

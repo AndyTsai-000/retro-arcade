@@ -1000,7 +1000,7 @@ const BANK=[
 const THEMES=BANK.map(b=>b[0]).concat(['綜合隨機']),TCOL=BANK.map(b=>b[1]).concat(['#c56bff']);
 const Q=BANK.map(b=>({truth:b[2].split('\n'),dare:b[3].split('\n')}));
 const PUN=['喝一大口水','做 10 下開合跳','學貓叫 3 聲','唱一句歌','說一個冷笑話','原地轉 5 圈','用屁股寫自己的名字','比一個超可愛的動作'];
-const PCOL=['#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6','#8a5a3c','#a8e05a'];
+const PCOL=['#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6','#8a5a3c','#a8e05a','#7a8aff','#e8c050'];
 const BOTLOOK=i=>({char:['cat','bunny','chef','pirate','ninja','crown','bow','cap'][i%8],color:'auto',deco:['','shades','scarf','cape','blush','tie'][i%6]});
 function wrap(c,s,maxW){ const out=[]; let line=''; for(const ch of s){ if(c.measureText(line+ch).width>maxW&&line){ out.push(line); line=ch; } else line+=ch; } if(line) out.push(line); return out; }
 function bgArt(c,t,col){ const g=c.createRadialGradient(400,250,40,400,250,520); g.addColorStop(0,'#3a1450'); g.addColorStop(1,'#12061e'); c.fillStyle=g; c.fillRect(0,0,W,H);
@@ -1016,7 +1016,7 @@ function wheelArt(c,cx,cy,R,ang,names,cols,t,hi){ const n=names.length,seg=TAU/n
   /* 指針（上方） */ c.fillStyle='#ff3b5a'; c.strokeStyle='#7a0a1a'; c.lineWidth=3; c.beginPath(); c.moveTo(0,-R+18); c.lineTo(-16,-R-22); c.lineTo(16,-R-22); c.closePath(); c.fill(); c.stroke(); c.fillStyle='#fff'; c.beginPath(); c.arc(0,-R-14,5,0,TAU); c.fill(); c.restore(); }
 function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,pv=!!opts.preview,OP=opts.options||{},si=clamp(opts.stage|0,0,THEMES.length-1);
-  const n=net?net.count:pv?6:clamp(+OP.seats||5,3,10),me=net?net.me:-1,ROUNDS=+OP.rounds||12,local=!net;
+  const n=net?net.count:pv?6:clamp(+OP.seats||5,3,12),me=net?net.me:-1,ROUNDS=+OP.rounds||12,local=!net;
   const names=[],looks=[]; for(let i=0;i<n;i++){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):i===0&&opts.name&&opts.name!=='你'?opts.name:'玩家 '+(i+1)); looks.push(net?(net.looks&&net.looks[i])||BOTLOOK(i):i===0&&opts.look?opts.look:BOTLOOK(i)); }
   if(local&&!pv&&window.PARTY_NAMES) window.PARTY_NAMES.fill(names);
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%PCOL.length]:L.color; },cols=names.map((_,i)=>colOf(i));
@@ -1104,13 +1104,13 @@ function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); bgArt(ctx,t,TC
   ctx.fillStyle='#2a0e40'; ctx.font='900 19px '+TC; const L=wrap(ctx,q,224); L.forEach((s,k)=>ctx.fillText(s,0,-10+(k-(L.length-1)/2)*28)); ctx.restore();
   ctx.textAlign='center'; ctx.font='900 24px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#2a0e40'; ctx.strokeText(THEMES[si],640,440); ctx.fillStyle='#ffd23f'; ctx.fillText(THEMES[si],640,440); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).truth={
-  name:'真心話轉轉樂',tag:'TRUTH OR DARE',color:'#c56bff',online:true,maxPlayers:8,minPlayers:2,bots:false,
+  name:'真心話轉轉樂',tag:'TRUTH OR DARE',color:'#c56bff',online:true,maxPlayers:12,minPlayers:2,bots:false,
   desc:'轉盤轉到誰，誰就要選「真心話」或「大冒險」，抽一張題目卡照做！不敢做就跳過，但要接受小懲罰。10 種題庫共 1000 題（每種真心話、大冒險各 50 題），大家用一台輪流玩，或連線各用各的手機。',
   goal:'轉轉盤選人，被轉到的人選真心話或大冒險，照卡片做完按「完成」。',
   stages:THEMES,stageLabel:'選擇題庫',stageShow,thumb:(c,w,h,t)=>stageShow(c,w,h,0,t),
   stageGoal:i=>i<BANK.length?'「'+THEMES[i]+'」50 題真心話＋50 題大冒險。':'從全部 1000 題裡隨機抽。',
   modes:[{id:'1p',label:'大家用一台'}],
-  options:[{key:'seats',label:'幾個人玩',def:'5',opts:[{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'},{id:'10',label:'10 人'}]},{key:'rounds',label:'玩幾輪',def:'12',opts:[{id:'8',label:'8 輪'},{id:'12',label:'12 輪'},{id:'20',label:'20 輪'},{id:'99',label:'不限'}]}],
+  options:[{key:'seats',label:'幾個人玩',def:'5',opts:[{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'7',label:'7 人'},{id:'8',label:'8 人'},{id:'9',label:'9 人'},{id:'10',label:'10 人'},{id:'11',label:'11 人'},{id:'12',label:'12 人'}]},{key:'rounds',label:'玩幾輪',def:'12',opts:[{id:'8',label:'8 輪'},{id:'12',label:'12 輪'},{id:'20',label:'20 輪'},{id:'99',label:'不限'}]}],
   help:[['空白鍵','轉轉盤'],['1 / 2 / 3','真心話／大冒險／讓命運決定'],['Enter','完成（也可以用滑鼠點按鈕）']],
   touchHelp:[['點轉盤','轉轉盤'],['點按鈕','選真心話或大冒險、完成']],touch:null,
   looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'},{id:'chef',label:'廚師'},{id:'pirate',label:'海盜'},{id:'ninja',label:'忍者'},{id:'bow',label:'蝴蝶結'}]},{key:'color',label:'人物顏色',type:'color',opts:['auto','#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6']}],

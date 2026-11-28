@@ -30,7 +30,7 @@ function mime(c,x,y,s,t,col){ const ph=Math.floor(t*1.2)%4,a=[[-1.2,1.2],[-.3,-2
   c.moveTo(0,-54); c.lineTo(Math.cos(a[0]-1.57)*30,-54+Math.sin(a[0]-1.57)*30); c.moveTo(0,-54); c.lineTo(Math.cos(a[1]-1.57)*30,-54+Math.sin(a[1]-1.57)*30); c.stroke();
   c.fillStyle='#fff'; c.font='900 16px '+TC; c.textAlign='center'; c.fillText('🤐',22,-92); c.restore(); }
 function create(env,opts){ const OP=opts.options||{},si=clamp(opts.stage|0,0,BANK.length-1),{ctx:c,canvas}=env.canvas2d(W,H);
-  const ROUNDS=clamp(+OP.rounds||3,1,6),TIME=OP.time==='60'?60:OP.time==='90'?90:OP.time==='120'?120:0,PERTURN=5;
+  const ROUNDS=clamp(+OP.rounds||3,1,5),TIME=OP.time==='60'?60:OP.time==='90'?90:OP.time==='120'?120:0,PERTURN=5;
   let pool=BANK[si][1].split(' ').sort(()=>Math.random()-.5),pi=0;
   const next=()=>{ if(pi>=pool.length){ pool.sort(()=>Math.random()-.5); pi=0; } return pool[pi++]; };
   let t=0,ph='ready',team=0,round=1,score=[0,0],word='',left=0,timeT=0,done=[],flip=0,conf=[],btns=[],ended=false,flash=0,flashC='#86dc4f',lastTick=-1;
@@ -82,7 +82,7 @@ function stageShow(c,w,h,si,t){ c.save(); c.scale(w/W,h/H); bg(c,t,'#ff5d6d'); m
   stageGoal:i=>'題庫「'+BANK[i][0]+'」：表演的人只能比動作，不能說話、發出聲音或用嘴型。隊友喊出答案就按「答對」，太難可以「跳過」。',
   modes:[{id:'1p',label:'大家用一台'}],
   options:[{key:'time',label:'每輪',def:'none',opts:[{id:'none',label:'5 題（不限時）'},{id:'60',label:'限時 60 秒'},{id:'90',label:'限時 90 秒'},{id:'120',label:'限時 120 秒'}]},
-    {key:'rounds',label:'每隊幾輪',def:'3',opts:[{id:'2',label:'2 輪'},{id:'3',label:'3 輪'},{id:'4',label:'4 輪'}]}],
+    {key:'rounds',label:'每隊幾輪',def:'3',opts:[{id:'1',label:'1 輪'},{id:'2',label:'2 輪'},{id:'3',label:'3 輪'},{id:'4',label:'4 輪'},{id:'5',label:'5 輪'}]}],
   help:[['空白鍵／→','答對'],['X／←','跳過'],['空白鍵','開始表演、換隊']],touchHelp:[['答對','隊友猜中了'],['跳過','換下一題']],touch:null,
   best:{label:'',fmt:v=>v,lower:false},create};
 })();

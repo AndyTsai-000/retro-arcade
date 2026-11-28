@@ -137,7 +137,7 @@ const thumb=(ctx,w,h,t)=>stageShow(ctx,w,h,1,t);
   goal:'炸彈在手上時，照順序按對箭頭就會傳給下一個人。按錯引信會變短。活到最後的人贏。',
   stages:SCENES.map(s=>s.name),stageLabel:'選擇場景',stageShow,
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  options:[{key:'life',label:'每人幾條命',def:'2',opts:[{id:'1',label:'1 條'},{id:'2',label:'2 條'},{id:'3',label:'3 條'}]},{key:'seats',label:'單機人數',def:'5',opts:[{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'}]}],
+  options:[{key:'life',label:'每人幾條命',def:'2',opts:[{id:'1',label:'1 條'},{id:'2',label:'2 條'},{id:'3',label:'3 條'}]},{key:'seats',label:'單機人數',def:'5',opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'7',label:'7 人'},{id:'8',label:'8 人'}]}],
   help:[['↑ ↓ ← →','照順序按箭頭，傳走炸彈'],['雙人','1P 用 WASD、2P 用方向鍵']],
   touchHelp:[['方向盤','照順序按箭頭，傳走炸彈']],
   touch:{left:'dpad',right:[]},best:{label:'最久',fmt:v=>'撐到第 '+v+' 回合',lower:false},thumb,create};

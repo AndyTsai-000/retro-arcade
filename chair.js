@@ -74,7 +74,7 @@ function boombox(c,x,y,t,on){ c.save(); c.translate(x,y); const b=on?Math.abs(Ma
 
 function create(env,opts){
   const {ctx:c}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,two=!net&&opts.mode==='2p',pv=!!opts.preview,OP=opts.options||{},sc=clamp(opts.stage|0,0,SCN.length-1),SC=SCN[sc];
-  const humans=net?net.count:pv?0:two?2:1,n=net?clamp(net.count+(net.bots||0),2,8):clamp(+OP.seats||6,3,8),me=net?net.me:0,AK=AIK[OP.ai||'normal']||AIK.normal;
+  const humans=net?net.count:pv?0:two?2:1,n=net?clamp(net.count+(net.bots||0),2,8):clamp(+OP.seats||6,2,8),me=net?net.me:0,AK=AIK[OP.ai||'normal']||AIK.normal;
   const names=[],looks=[]; for(let i=0;i<n;i++){ if(i<humans){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:i===0?opts.look||{}:{}); } else { names.push(BOTN[(i-humans+sc*3)%BOTN.length]); looks.push(BOTLOOK(i+sc)); } }
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%8]:L.color; };
   let t=0,ended=false,sendT=0,evq=[],shake=0,fx=[],texts=[],lastBeat=-1,seqT=0,step=0,musicOn=false,stopFx=0,prevPh='';
@@ -205,7 +205,7 @@ const wins=k=>{ try{ return +localStorage.getItem('arcade.chair.w.'+k)||0; }catc
   stages:SCN.map(s=>s.n),stageLabel:'選擇場景',stageShow,thumb:(c,w,h,t)=>stageShow(c,w,h,2,t),
   stageGoal:i=>'在「'+SCN[i].n+'」搶椅子：音樂停的時候坐上空椅子就能留下來，最後搶到椅子的人贏。',
   modes:[{id:'1p',label:'單人'},{id:'2p',label:'雙人',kb:true}],
-  options:[{key:'seats',label:'單機人數',def:'6',opts:[{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'}]},{key:'ai',label:'電腦強度',def:'normal',opts:[{id:'easy',label:'簡單'},{id:'normal',label:'普通'},{id:'hard',label:'困難'}]}],
+  options:[{key:'seats',label:'單機人數',def:'6',opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'7',label:'7 人'},{id:'8',label:'8 人'}]},{key:'ai',label:'電腦強度',def:'normal',opts:[{id:'easy',label:'簡單'},{id:'normal',label:'普通'},{id:'hard',label:'困難'}]}],
   help:[['方向鍵','走路（音樂播放時只能往前繞圈）'],['J 空白鍵','推開旁邊的人'],['碰到空椅子','自動坐下'],['雙人','1P：WASD＋F 推　2P：方向鍵＋Enter 推']],
   touchHelp:[['方向盤','走路，音樂停就衝去坐空椅子'],['推','推開旁邊的人']],
   touch:{left:'dpad',right:[{l:'推',c:'KeyJ',act:true}]},

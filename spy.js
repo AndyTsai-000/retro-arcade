@@ -224,7 +224,7 @@ function thumb(ctx,w,h,t){ ctx.save(); ctx.scale(w/W,h/H); room(ctx,t,W/2,300,26
   desc:'每人拿到一個詞，只有臥底的詞不一樣（但很像）！輪流用一句話描述，聽出誰怪怪的再投票。連你自己都不知道是不是臥底。一個人玩有電腦同桌，也能和朋友連線。',
   goal:'平民：把臥底全部投出去就贏。臥底：撐到臥底跟平民一樣多（或撐過 10 輪）就贏。平票的人再投一次，再平票就沒人出局。描述時不能直接說出詞。',
   modes:[{id:'1p',label:'單人'}],
-  options:[{key:'seats',label:'單機人數',solo:true,def:'6',opts:['4','5','6','7','8','10'].map(k=>({id:k,label:k+' 人'}))},{key:'talk',label:'描述秒數',def:'30',opts:[{id:'30',label:'30 秒'},{id:'45',label:'45 秒'},{id:'60',label:'60 秒'}]}],
+  options:[{key:'seats',label:'單機人數',solo:true,def:'6',opts:['3','4','5','6','7','8','9','10','11','12'].map(k=>({id:k,label:k+' 人'}))},{key:'talk',label:'描述秒數',def:'30',opts:[{id:'30',label:'30 秒'},{id:'45',label:'45 秒'},{id:'60',label:'60 秒'}]}],
   help:[['輸入框','輪到你時用一句話描述你的詞'],['💡 靈感','想不到時給你一句'],['滑鼠','投票時點一個人']],touchHelp:[['輸入框','輪到你時用一句話描述'],['💡 靈感','想不到時給你一句'],['點人物','投票']],
   touch:{left:[],right:[]},hubBest:()=>{ const v=+LS('arcade.spy.w')||0; return v?'單人贏了 <b>'+v+'</b> 場':'尚無紀錄'; },thumb,create};
 })();

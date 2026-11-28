@@ -187,7 +187,7 @@ function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); bg(ctx,si,t); 
   modes:[{id:'room',label:'大家用一台'}],
   options:[{key:'max',label:'密碼範圍',def:'100',opts:[{id:'50',label:'1～50（簡單）'},{id:'100',label:'1～100'},{id:'500',label:'1～500（困難）'}]},
     {key:'setter',label:'連線時誰出密碼',def:'turn',opts:[{id:'turn',label:'玩家輪流出'},{id:'cpu',label:'電腦出'}]},
-    {key:'seats',label:'玩家人數',def:'5',solo:true,opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'8',label:'8 人'}]}],
+    {key:'seats',label:'玩家人數',def:'5',solo:true,opts:[{id:'2',label:'2 人'},{id:'3',label:'3 人'},{id:'4',label:'4 人'},{id:'5',label:'5 人'},{id:'6',label:'6 人'},{id:'7',label:'7 人'},{id:'8',label:'8 人'}]}],
   help:[['數字鍵','輸入數字，Enter 確定'],['↑↓ ←→','加減 1、加減 10'],['雙人','輪到誰就誰按']],
   touchHelp:[['數字鍵盤','點數字，再點「確定」']],touch:null,
   looks:[{key:'char',label:'人物',opts:[{id:'cap',label:'帽子'},{id:'cat',label:'貓耳'},{id:'bunny',label:'兔耳'},{id:'crown',label:'皇冠'},{id:'chef',label:'廚師'},{id:'pirate',label:'海盜'},{id:'ninja',label:'忍者'},{id:'bow',label:'蝴蝶結'}]},{key:'color',label:'人物顏色',type:'color',opts:['auto','#ff5d4f','#4f9dff','#5fd068','#ffd23f','#c56bff','#ff9d3d','#3ddbd9','#ff7eb6']}],
