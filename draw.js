@@ -5,12 +5,17 @@ const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif';
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 const WORDS={
-  animal:['貓咪','小狗','大象','長頸鹿','企鵝','烏龜','兔子','獅子','鯊魚','章魚','蝴蝶','蜜蜂','蝸牛','恐龍','貓頭鷹','斑馬','無尾熊','海豚','螃蟹','青蛙','蛇','猴子','老鼠','母雞','金魚','老虎','刺蝟','松鼠','駱駝','孔雀'],
-  food:['珍珠奶茶','雞排','小籠包','西瓜','香蕉','蘋果','披薩','漢堡','薯條','壽司','甜甜圈','冰淇淋','蛋糕','荷包蛋','滷肉飯','泡麵','臭豆腐','鳳梨','櫻桃','葡萄','熱狗','棒棒糖','蚵仔煎','粽子','湯圓','牛肉麵','豆花','芒果冰','烤玉米','草莓'],
-  thing:['雨傘','手機','眼鏡','剪刀','牙刷','電風扇','馬桶','時鐘','鑰匙','吉他','鋼琴','腳踏車','飛機','火車','機車','帆船','火箭','安全帽','書包','鉛筆','氣球','電視','沙發','檯燈','皇冠','冰箱','吹風機','枕頭','掃把','望遠鏡'],
-  place:['台北101','城堡','金字塔','摩天輪','游泳池','燈塔','夜市','廟宇','學校','公園','便利商店','沙灘','火山','彩虹','雪人','月亮','太陽','颱風','聖誕樹','溜滑梯','鬼屋','機場','醫院','動物園','瀑布','沙漠','小島','森林','圖書館','遊樂園'],
-  act:['打籃球','游泳','釣魚','睡覺','跳舞','刷牙','放風箏','洗澡','滑手機','吃飯','爬山','打噴嚏','唱KTV','騎機車','拍照','跳繩','做瑜珈','擦眼淚','烤肉','衝浪','放煙火','玩躲貓貓','搭捷運','打麻將','追公車','打電動','溜冰','踢足球','看電影','寫作業']};
-const CAT=[['all','全部'],['animal','動物'],['food','美食'],['thing','生活用品'],['place','地點與景色'],['act','動作']],PAL=['#1c1c22','#ffffff','#e23b3b','#ff9d3d','#ffd23f','#3fae5a','#2f8fe8','#7a4ac8','#ff7eb6','#8a5a2a'],SIZES=[3,7,14,26];
+  animal:['貓咪','小狗','大象','長頸鹿','企鵝','烏龜','兔子','獅子','鯊魚','章魚','蝴蝶','蜜蜂','蝸牛','恐龍','貓頭鷹','斑馬','無尾熊','海豚','螃蟹','青蛙','蛇','猴子','老鼠','母雞','金魚','老虎','刺蝟','松鼠','駱駝','孔雀','熊貓','狐狸','狼','鹿','河馬','犀牛','鱷魚','蝙蝠','鸚鵡','天鵝','鴨子','鴕鳥','啄木鳥','瓢蟲','蜘蛛','螞蟻','蚊子','水母','海星','海馬'],
+  food:['珍珠奶茶','雞排','小籠包','西瓜','香蕉','蘋果','披薩','漢堡','薯條','壽司','甜甜圈','冰淇淋','蛋糕','荷包蛋','滷肉飯','泡麵','臭豆腐','鳳梨','櫻桃','葡萄','熱狗','棒棒糖','蚵仔煎','粽子','湯圓','牛肉麵','豆花','芒果冰','烤玉米','草莓','飯糰','便當','水餃','煎餅','鬆餅','吐司','三明治','熱狗堡','炸雞','牛排','義大利麵','拉麵','咖哩飯','炒飯','雞蛋糕','車輪餅','鳳梨酥','布丁','巧克力','爆米花'],
+  thing:['雨傘','手機','眼鏡','剪刀','牙刷','電風扇','馬桶','時鐘','鑰匙','吉他','鋼琴','腳踏車','飛機','火車','機車','帆船','火箭','安全帽','書包','鉛筆','氣球','電視','沙發','檯燈','皇冠','冰箱','吹風機','枕頭','掃把','望遠鏡','牙膏','毛巾','拖鞋','襪子','帽子','圍巾','手套','鬧鐘','蠟燭','釘書機','橡皮擦','尺','地球儀','書本','信封','郵票','相機','耳機','電腦','鍵盤'],
+  place:['台北101','城堡','金字塔','摩天輪','游泳池','燈塔','夜市','廟宇','學校','公園','便利商店','沙灘','火山','彩虹','雪人','月亮','太陽','颱風','聖誕樹','溜滑梯','鬼屋','機場','醫院','動物園','瀑布','沙漠','小島','森林','圖書館','遊樂園','教堂','城牆','長城','燈籠街','菜市場','停車場','加油站','消防局','警察局','郵局','銀行','電影院','博物館','體育館','賽車場','海底','太空','冰山','草原','稻田'],
+  act:['打籃球','游泳','釣魚','睡覺','跳舞','刷牙','放風箏','洗澡','滑手機','吃飯','爬山','打噴嚏','唱KTV','騎機車','拍照','跳繩','做瑜珈','擦眼淚','烤肉','衝浪','放煙火','玩躲貓貓','搭捷運','打麻將','追公車','打電動','溜冰','踢足球','看電影','寫作業','洗碗','掃地','晾衣服','化妝','打哈欠','伸懶腰','擁抱','握手','敬禮','鼓掌','比讚','跳水','攀岩','划船','滑雪','堆沙堡','吹泡泡','盪鞦韆','喝飲料','吃冰棒'],
+  vehicle:['汽車','公車','計程車','捷運','高鐵','直升機','熱氣球','遊艇','獨木舟','潛水艇','救護車','消防車','警車','垃圾車','卡車','吊車','挖土機','推土機','拖拉機','三輪車','馬車','雪橇','滑翔翼','降落傘','纜車','手扶梯','滑板車','嬰兒車','輪椅','雲霄飛車','旋轉木馬','碰碰車','跑車','郵輪','漁船','海盜船','坦克','戰鬥機','竹筏','太空梭','飛碟','滑板','輪船','電動車','遊覽車','校車','冰淇淋車','雙層巴士','拖車','貨櫃船'],
+  job:['醫生','護士','警察','消防員','老師','廚師','司機','理髮師','記者','魔術師','歌手','舞者','郵差','清潔員','牙醫','攝影師','畫家','太空人','飛行員','外送員','農夫','漁夫','木匠','主播','健身教練','救生員','導遊','空服員','船長','獸醫','修車師傅','水電工','麵包師傅','模特兒','小丑','馴獸師','軍人','偵探','直播主','裁縫師','法官','科學家','工程師','建築師','園丁','保全','消防隊長','賽車手','足球員','棒球投手'],
+  sport:['籃球','足球','棒球','排球','網球','桌球','羽球','高爾夫','保齡球','撞球','潛水','射箭','拳擊','舉重','跆拳道','柔道','相撲','擊劍','體操','跳高','跳遠','跨欄','馬拉松','接力賽','鉛球','標槍','騎馬','自行車賽','賽車','躲避球','飛盤','呼拉圈','踢毽子','瑜伽','太極拳','冰上曲棍球','水球','帆船賽','啦啦隊','拔河比賽','鐵人三項','槌球','曲棍球','美式足球','橄欖球','壁球','沙灘排球','跳傘','風箏衝浪','滑翔傘'],
+  nature:['星星','雲','雨','雪','閃電','打雷','龍捲風','冰雹','霧','露珠','地震','海浪','河流','湖','山','島嶼','洞穴','峽谷','溫泉','花朵','大樹','仙人掌','竹子','楓葉','向日葵','玫瑰','蘑菇','落葉','蒲公英','日出','夕陽','流星','極光','月食','銀河','隕石','地球','海浪花','水滴','冰柱','霜','雪花','晚霞','烏雲','小溪','池塘','荷花','稻穗','椰子樹','松樹'],
+  holiday:['聖誕老人','麋鹿','禮物','生日蛋糕','紅包','鞭炮','春聯','燈籠','龍舟','月餅','柚子','南瓜燈','巫婆','鬼','幽靈','吸血鬼','殭屍','木乃伊','天使','惡魔','獨角獸','美人魚','龍','鳳凰','精靈','魔法棒','水晶球','公主','王子','騎士','海盜','寶藏','藏寶圖','外星人','機器人','忍者','超人','煙火','彩帶','天燈','情人節巧克力','巫師帽','掃帚','魔毯','神燈','寶劍','盾牌','王冠','皇后','小矮人']};
+const CAT=[['all','全部']].concat(Object.keys(WORDS).map(k=>[k,{"animal": "動物", "food": "美食", "thing": "生活用品", "place": "地點與景色", "act": "動作", "vehicle": "交通工具", "job": "職業人物", "sport": "運動", "nature": "天氣與自然", "holiday": "節日與奇幻"}[k]])),PAL=['#1c1c22','#ffffff','#e23b3b','#ff9d3d','#ffd23f','#3fae5a','#2f8fe8','#7a4ac8','#ff7eb6','#8a5a2a'],SIZES=[3,7,14,26];
 // 單人：電腦畫。座標用 0～100 的正方形（x 可以超出到 -30～130，白板比較寬），每筆是 [顏色, 點, 填色?]
 const C={k:'#1c1c22',r:'#e23b3b',o:'#ff9d3d',y:'#ffd23f',g:'#3fae5a',b:'#2f8fe8',p:'#ff7eb6',n:'#8a5a2a',w:'#ffffff',s:'#9aa3ad',lg:'#a8e06a',lb:'#9fd8ff',t:'#e8c18a',v:'#7a4ac8',dg:'#2a7a3a',dn:'#5a3a1a'};
 const Q=(x,y)=>[+(.5+(x-50)*.7072/100).toFixed(4),+(y/100).toFixed(4)];
@@ -97,7 +102,7 @@ function create(env,opts){
   const {ctx:c,canvas}=env.canvas2d(W,H),names=[]; for(let i=0;i<n;i++) names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你'));
   const BX=14,BY=56,BW=526,BH=372; // 畫布位置（畫面座標）
   const board=document.createElement('canvas'); board.width=BW*2; board.height=BH*2; const b=board.getContext('2d'); b.lineCap='round'; b.lineJoin='round'; const wipe=()=>{ b.fillStyle='#fff'; b.fillRect(0,0,BW*2,BH*2); }; wipe();
-  const pool=()=>CATK==='all'?[].concat(WORDS.animal,WORDS.food,WORDS.thing,WORDS.place,WORDS.act):WORDS[CATK];
+  const pool=()=>CATK==='all'||!WORDS[CATK]?[].concat(...Object.values(WORDS)):WORDS[CATK];
   // 共用狀態：G 由房主決定
   let G={score:Array(n).fill(0),phase:'pick',dr:0,turn:0,total:n*ROUNDS,word:'',choices:[],T:12,got:[],hint:'',reveal:0},chat=[],stroke=[],strokes=[],curCol=PAL[0],curSz=1,erasing=false,t=0,ended=false,sendT=0,lastSec=99,fx=[],soloList=null,soloI=0,soloP=0,soloStroke=0,soloGood=0,soloTotal=+OP.rounds*4||8;
   const say=(who,txt,col)=>{ chat.push({who,txt,col}); if(chat.length>40) chat.shift(); renderChat(); };
@@ -155,7 +160,7 @@ function create(env,opts){
   function soloEnd(){ const it=soloList[soloI]; while(soloStroke<it.s.length) soloDraw(1e9); G.phase='result'; G.T=2.2; if(!chat.length||!chat[chat.length-1].txt.includes('答對')) say('','答案是「'+it.w+'」','#ffb36b'); }
   function soloDraw(dp){ const it=soloList[soloI]; let budget=dp; while(budget>0&&soloStroke<it.s.length){ const st=it.s[soloStroke],col=st[0],pts=st[1]; if(soloP+1>=pts.length){ if(st[2]) fillPts(pts,col); soloStroke++; soloP=0; continue; } seg(pts[soloP],pts[soloP+1],col,st[3]||(st[2]?2:4)); soloP++; budget--; } }
   function fillPts(pts,col){ b.fillStyle=col; b.beginPath(); pts.forEach((p,i)=>i?b.lineTo(p[0]*BW*2,p[1]*BH*2):b.moveTo(p[0]*BW*2,p[1]*BH*2)); b.closePath(); b.fill(); }
-  if(solo){ const l=CPU.filter(q=>CATK==='all'||q.c===CATK).sort(()=>Math.random()-.5); /* 只出選到的題目類型 */ soloList=l.slice(0,Math.min(l.length,soloTotal)); soloNext(); say('','電腦開始畫了，打字猜猜看！','#ffd23f'); }
+  if(solo){ let l=CPU.filter(q=>CATK==='all'||q.c===CATK); if(!l.length) l=CPU.slice(); /* 電腦只會畫前五種題庫的圖，其他題庫單人時改成全部題目 */ l.sort(()=>Math.random()-.5); /* 只出選到的題目類型 */ soloList=l.slice(0,Math.min(l.length,soloTotal)); soloNext(); say('','電腦開始畫了，打字猜猜看！','#ffd23f'); }
   function finish(){ if(ended) return; ended=true; const L=names.map((m,i)=>({m,s:G.score[i]})).sort((a,b)=>b.s-a.s); env.sfx('win'); env.end({title:solo?'猜完了！':L[0].m+' 獲勝！',big:solo?soloGood+' / '+soloList.length+' 題':L[0].s+' 分',html:solo?'':'<table class="ls"><tr><th>玩家</th><th>分數</th></tr>'+L.map(q=>'<tr><td>'+q.m+'</td><td>'+q.s+'</td></tr>').join('')+'</table>',text:solo?'總分 '+G.score[0]:'',score:solo?G.score[0]:null}); }
   let simAcc=0;
   function update(dt){ if(ended) return; dt=Math.min(dt,.05); t+=dt; if(client){ G.T-=dt; } else if(solo){ G.T-=dt; if(G.phase==='draw'){ const it=soloList[soloI]; if(it.n==null) it.n=it.s.reduce((a,q)=>a+q[1].length,0); simAcc+=dt*Math.max(14,it.n/20); /* 大約 20 秒畫完 */ const k=Math.floor(simAcc); if(k){ simAcc-=k; soloDraw(k); } const W2=[...G.word],rv=Math.floor((1-G.T/45)*W2.length*.8); if(rv!==G.reveal&&W2.length>1){ G.reveal=rv; G.hint=W2.map((ch,i)=>i<rv&&i%2===0?ch:'＿').join(' '); } if(G.T<=0) soloEnd(); } else if(G.phase==='result'&&G.T<=0){ soloI++; soloNext(); } } else hostTick(dt);
