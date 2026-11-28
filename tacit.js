@@ -1,5 +1,5 @@
 // 默契大考驗：大家看同一題、各自偷偷選答案，選得一樣就有默契！500 題分 10 類。
-// 單人＝跟電腦搭檔「小默」（它照大家最常選的比例回答）；雙人同一台（1P 按 1～4、2P 按 7～0 或點自己那邊）；連線最多 8 人，看誰跟誰最有默契。
+// 全部真人玩：雙人同一台（1P 按 1～4、2P 按 7～0 或點自己那邊）；連線最多 8 人，看誰跟誰最有默契。
 (function(){
 'use strict';
 const W=800,H=500,TC='"Noto Sans TC","Microsoft JhengHei",sans-serif',TAU=Math.PI*2;
@@ -529,8 +529,8 @@ function heartPath(c,x,y,s){ c.beginPath(); c.moveTo(x,y+s*.9); c.bezierCurveTo(
 function wrap(c,s,x,y,w,lh){ const lines=[]; let line=''; for(const ch of s){ if(c.measureText(line+ch).width>w){ lines.push(line); line=ch; } else line+=ch; } lines.push(line); lines.forEach((l,k)=>c.fillText(l,x,y+(k-(lines.length-1)/2)*lh)); }
 
 function create(env,opts){
-  const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,two=!net&&opts.mode==='2p',pv=!!opts.preview,OP=opts.options||{},si=clamp(opts.stage|0,0,STAGES.length-1);
-  const humans=net?net.count:two?2:pv?0:1,n=net?clamp(net.count+(net.bots||0),2,8):2,me=net?net.me:0,TL=OP.time==='0'?0:(+OP.time||15);
+  const {ctx:c,canvas}=env.canvas2d(W,H),net=opts.net,client=!!net&&!net.host,host=!client,two=!net&&!opts.preview,pv=!!opts.preview,OP=opts.options||{},si=clamp(opts.stage|0,0,STAGES.length-1);
+  const humans=net?net.count:two?2:pv?0:1,n=net?clamp(net.count,2,8):2,me=net?net.me:0,TL=OP.time==='0'?0:(+OP.time||15);
   const names=[],looks=[]; for(let i=0;i<n;i++){ if(i<humans){ names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):two?(i+1)+'P':(opts.name||'你')); looks.push(net?(net.looks&&net.looks[i])||{}:i===0?opts.look||{}:{}); } else { names.push(BOTN[(i-humans)%BOTN.length]); looks.push(BOTLOOK(i)); } }
   const colOf=i=>{ const L=looks[i]; return !L||!L.color||L.color==='auto'?PCOL[i%8]:L.color; };
   const isBot=i=>i>=humans;
@@ -614,12 +614,12 @@ function stageShow(ctx,w,h,si,t){ ctx.save(); ctx.scale(w/W,h/H); ctx.drawImage(
   ctx.textAlign='center'; ctx.font='900 24px '+TC; ctx.lineWidth=6; ctx.strokeStyle='#2a0e40'; ctx.strokeText(cat[0],W/2,H-40); ctx.fillStyle='#ffd23f'; ctx.fillText(cat[0],W/2,H-40); ctx.fillStyle='#ff5a9a'; heartPath(ctx,W/2,58,16); ctx.fill(); ctx.restore(); }
 const bestOf=i=>{ try{ const v=localStorage.getItem('arcade.tacit.b.'+i); return v==null?null:+v; }catch(e){ return null; } };
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).tacit={
-  name:'默契大考驗',tag:'MIND MATCH',color:'#ff5a9a',online:true,maxPlayers:8,minPlayers:2,bots:true,
-  desc:'同一題、各自偷偷選答案，選得一樣才算有默契！500 題分 10 類，單人跟電腦搭檔、雙人同一台，或連線大家一起看誰最有默契。',
+  name:'默契大考驗',tag:'MIND MATCH',color:'#ff5a9a',online:true,maxPlayers:8,minPlayers:2,
+  desc:'同一題、各自偷偷選答案，選得一樣才算有默契！500 題分 10 類，兩個人同一台，或連線大家一起看誰最有默契。',
   goal:'每題四個選項，和搭檔選到一樣的就得一分，10 題看你們的默契度有幾 %。',
   stages:STAGES,stageLabel:'選擇題庫',stageShow,thumb:(c,w,h,t)=>stageShow(c,w,h,4,t),
   stageGoal:i=>(i<CATS.length?'「'+CATS[i][0]+'」50 題隨機出 10 題':'從 500 題隨機出 10 題')+'：和搭檔選一樣就得一分，最後看默契度幾 %。',
-  modes:[{id:'1p',label:'單人（跟電腦搭檔）'},{id:'2p',label:'雙人同一台'}],
+  modes:[{id:'2p',label:'雙人同一台'}],
   options:[{key:'time',label:'每題時間',def:'15',opts:[{id:'10',label:'10 秒'},{id:'15',label:'15 秒'},{id:'20',label:'20 秒'},{id:'0',label:'不限'}]}],
   help:[['1 2 3 4','選 A B C D（也可以用滑鼠點卡片）'],['雙人','1P 按 1～4、2P 按 7～0，或點自己那邊的按鈕']],
   touchHelp:[['點卡片','選答案'],['雙人','各自點自己那一邊的按鈕']],touch:null,

@@ -98,8 +98,9 @@ const CPU=[
  {c:'act',w:'騎機車',alt:['機車','騎車'],s:[[C.k,O(24,76,12)],[C.k,O(78,76,12)],[C.r,L(24,76,34,62,66,62,76,50,82,40,88,40)],[C.r,L(34,62,40,74,70,74,78,76)],[C.r,L(38,60,60,60,58,54,40,54,38,60),F],[C.k,O(52,20,7)],[C.y,O(52,20,9,180,360),F],[C.k,L(52,27,50,50)],[C.k,L(50,50,56,62)],[C.k,L(52,34,74,40,82,40)],[C.y,L(88,40,96,38)]]}
 ];
 function create(env,opts){
-  const net=opts.net,client=!!net&&!net.host,solo=!net,OP=opts.options||{},ROUNDS=+OP.rounds||2,SEC=+OP.sec||70,me=net?net.me:0,n=net?Math.max(1,net.count):1,CATK=OP.cat||'all';
-  const {ctx:c,canvas}=env.canvas2d(W,H),names=[]; for(let i=0;i<n;i++) names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):(opts.name||'你'));
+  const net=opts.net,client=!!net&&!net.host,room=!net&&!opts.preview,solo=!net&&!!opts.preview,OP=opts.options||{},ROUNDS=+OP.rounds||2,SEC=+OP.sec||70,n=net?Math.max(1,net.count):room?clamp(+OP.n||4,2,8):1,CATK=OP.cat||'all';
+  let me=net?net.me:0,peekHold=false,RB=[]; /* 大家用一台：輪到誰畫，me 就是誰；RB＝這一格畫面上的按鈕 */
+  const {ctx:c,canvas}=env.canvas2d(W,H),names=[]; for(let i=0;i<n;i++) names.push(net?(net.names&&net.names[i])||'玩家'+(i+1):room?'玩家 '+(i+1):(opts.name||'你')); if(room&&window.PARTY_NAMES) window.PARTY_NAMES.fill(names);
   const BX=14,BY=56,BW=526,BH=372; // 畫布位置（畫面座標）
   const board=document.createElement('canvas'); board.width=BW*2; board.height=BH*2; const b=board.getContext('2d'); b.lineCap='round'; b.lineJoin='round'; const wipe=()=>{ b.fillStyle='#fff'; b.fillRect(0,0,BW*2,BH*2); }; wipe();
   const pool=()=>CATK==='all'||!WORDS[CATK]?[].concat(...Object.values(WORDS)):WORDS[CATK];
@@ -118,7 +119,9 @@ function create(env,opts){
   /* ---- 房主流程 ---- */
   const broadcast=()=>{ if(net&&net.host) net.send({st:G}); };
   function pick3(){ const p=pool().slice(),o=[]; for(let i=0;i<3;i++) o.push(p.splice(Math.floor(Math.random()*p.length),1)[0]); return o; }
-  function beginTurn(){ G.dr=G.turn%n; G.phase='pick'; G.choices=pick3(); G.pm=null; G.own=false; G.word=''; G.T=15; G.got=[]; G.reveal=0; G.hint=''; clearBoard(); net&&net.send({clear:1}); env.sfx('go'); broadcast(); }
+  function beginTurn(){ G.dr=G.turn%n; G.phase='pick'; G.choices=pick3(); G.pm=null; G.own=false; G.word=''; G.T=15; G.got=[]; G.reveal=0; G.hint=''; clearBoard(); net&&net.send({clear:1}); if(room){ me=G.dr; G.phase='pass'; peekHold=false; } env.sfx('go'); broadcast(); }
+  /* 大家用一台：大家用喊的猜，畫的人點誰猜對 */
+  function roomGot(i){ if(G.phase!=='draw'||i===G.dr) return; const pts=Math.round(40+60*(G.T/SEC)); G.score[i]+=pts; G.score[G.dr]+=Math.round(25+15*(G.T/SEC)); G.got.push(i); say('','🎉 '+names[i]+' 猜對了！+'+pts,'#86dc4f'); env.sfx('win'); endTurn(); }
   /* 出題方式：電腦出題（三選一）或自訂題目（自己打字，最多 10 個字） */
   const cleanW=v=>String(v||'').replace(/\s+/g,'').slice(0,10);
   function setPm(pm){ if(G.phase!=='pick'||G.pm) return; G.pm=pm==='own'?'own':'cpu'; G.T=Math.max(G.T,G.pm==='own'?30:10); broadcast(); }
@@ -140,13 +143,14 @@ function create(env,opts){
   const TOOLS=(()=>{ const a=[]; PAL.forEach((col,i)=>a.push({k:'c',col,x:BX+2+i*29,y:BY+BH+8,w:25,h:25})); SIZES.forEach((z,i)=>a.push({k:'z',i,x:BX+300+i*30,y:BY+BH+8,w:26,h:25})); a.push({k:'undo',x:BX+424,y:BY+BH+8,w:48,h:25,l:'復原'},{k:'clr',x:BX+476,y:BY+BH+8,w:48,h:25,l:'清除'}); return a; })();
   const hit=(q,a)=>q[0]>=a.x&&q[0]<=a.x+a.w&&q[1]>=a.y&&q[1]<=a.y+a.h;
   function onDown(e){ const q=toG(e); if(solo){ return; }
+    if(room){ for(const r of RB) if(hit(q,r)){ r.fn(); return; } }
     if(G.phase==='pick'&&G.dr===me&&!G.pm){ [['cpu',BY+120],['own',BY+196]].forEach(([pm,y])=>{ if(hit(q,{x:BX+BW/2-140,y,w:280,h:58})){ if(client){ net.send({pm}); G.pm=pm; } else setPm(pm); env.sfx('click'); if(pm==='own') setTimeout(()=>{ try{ inp.focus(); }catch(er){} },50); } }); return; }
     if(G.phase==='pick'&&G.dr===me&&G.pm==='own') return;
     if(G.phase==='pick'&&G.dr===me){ G.choices.forEach((w,i)=>{ const a={x:BX+BW/2-110,y:BY+110+i*62,w:220,h:50}; if(hit(q,a)){ if(client) net.send({choose:w}); else chooseWord(w); env.sfx('click'); } }); return; }
     if(!iDraw()) return; for(const a of TOOLS) if(hit(q,a)){ env.sfx('click'); if(a.k==='c'){ curCol=a.col; } else if(a.k==='z') curSz=a.i; else if(a.k==='undo'){ strokes.pop(); redraw(); sendDraw({undo:1}); } else { clearBoard(); sendDraw({clear:1}); } return; }
     if(q[0]<BX||q[0]>BX+BW||q[1]<BY||q[1]>BY+BH) return; try{ canvas.setPointerCapture(e.pointerId); }catch(er){} const p=[(q[0]-BX)/BW,(q[1]-BY)/BH]; pen={c:curCol,z:SIZES[curSz],p:[p]}; strokes.push(pen); seg(p,p,pen.c,pen.z); outbox.push({n:1,c:pen.c,z:pen.z,p:[p.map(v=>+v.toFixed(3))]}); e.preventDefault(); }
   function onMove(e){ if(!pen) return; const q=toG(e),p=[clamp((q[0]-BX)/BW,0,1),clamp((q[1]-BY)/BH,0,1)],l=pen.p[pen.p.length-1]; if(Math.hypot(p[0]-l[0],p[1]-l[1])<.004) return; seg(l,p,pen.c,pen.z); pen.p.push(p); outbox.push({p:[p.map(v=>+v.toFixed(3))]}); }
-  const onUp=()=>{ pen=null; };
+  const onUp=()=>{ pen=null; peekHold=false; };
   canvas.addEventListener('pointerdown',onDown); canvas.addEventListener('pointermove',onMove); canvas.addEventListener('pointerup',onUp); canvas.addEventListener('pointercancel',onUp); canvas.style.touchAction='none';
   function sendDraw(m){ if(net) net.send(m); }
   function flushDraw(){ if(!outbox.length) return; const merged=[]; for(const o of outbox){ const l=merged[merged.length-1]; if(!o.n&&l) l.p.push(...o.p); else merged.push({n:o.n,c:o.c,z:o.z,p:o.p.slice()}); } outbox=[]; if(net) net.send({dw:merged,by:me}); }
@@ -160,7 +164,8 @@ function create(env,opts){
   function soloEnd(){ const it=soloList[soloI]; while(soloStroke<it.s.length) soloDraw(1e9); G.phase='result'; G.T=2.2; if(!chat.length||!chat[chat.length-1].txt.includes('答對')) say('','答案是「'+it.w+'」','#ffb36b'); }
   function soloDraw(dp){ const it=soloList[soloI]; let budget=dp; while(budget>0&&soloStroke<it.s.length){ const st=it.s[soloStroke],col=st[0],pts=st[1]; if(soloP+1>=pts.length){ if(st[2]) fillPts(pts,col); soloStroke++; soloP=0; continue; } seg(pts[soloP],pts[soloP+1],col,st[3]||(st[2]?2:4)); soloP++; budget--; } }
   function fillPts(pts,col){ b.fillStyle=col; b.beginPath(); pts.forEach((p,i)=>i?b.lineTo(p[0]*BW*2,p[1]*BH*2):b.moveTo(p[0]*BW*2,p[1]*BH*2)); b.closePath(); b.fill(); }
-  if(solo){ let l=CPU.filter(q=>CATK==='all'||q.c===CATK); if(!l.length) l=CPU.slice(); /* 電腦只會畫前五種題庫的圖，其他題庫單人時改成全部題目 */ l.sort(()=>Math.random()-.5); /* 只出選到的題目類型 */ soloList=l.slice(0,Math.min(l.length,soloTotal)); soloNext(); say('','電腦開始畫了，打字猜猜看！','#ffd23f'); }
+  if(solo){ let l=CPU.filter(q=>CATK==='all'||q.c===CATK); if(!l.length) l=CPU.slice(); /* 電腦只會畫前五種題庫的圖，其他題庫單人時改成全部題目 */ l.sort(()=>Math.random()-.5); /* 只出選到的題目類型 */ soloList=l.slice(0,Math.min(l.length,soloTotal)); soloNext(); }
+  if(room){ beginTurn(); say('','大家用一台：畫的人畫，其他人用喊的猜！','#ffd23f'); }
   function finish(){ if(ended) return; ended=true; const L=names.map((m,i)=>({m,s:G.score[i]})).sort((a,b)=>b.s-a.s); env.sfx('win'); env.end({title:solo?'猜完了！':L[0].m+' 獲勝！',big:solo?soloGood+' / '+soloList.length+' 題':L[0].s+' 分',html:solo?'':'<table class="ls"><tr><th>玩家</th><th>分數</th></tr>'+L.map(q=>'<tr><td>'+q.m+'</td><td>'+q.s+'</td></tr>').join('')+'</table>',text:solo?'總分 '+G.score[0]:'',score:solo?G.score[0]:null}); }
   let simAcc=0;
   function update(dt){ if(ended) return; dt=Math.min(dt,.05); t+=dt; if(client){ G.T-=dt; } else if(solo){ G.T-=dt; if(G.phase==='draw'){ const it=soloList[soloI]; if(it.n==null) it.n=it.s.reduce((a,q)=>a+q[1].length,0); simAcc+=dt*Math.max(14,it.n/20); /* 大約 20 秒畫完 */ const k=Math.floor(simAcc); if(k){ simAcc-=k; soloDraw(k); } const W2=[...G.word],rv=Math.floor((1-G.T/45)*W2.length*.8); if(rv!==G.reveal&&W2.length>1){ G.reveal=rv; G.hint=W2.map((ch,i)=>i<rv&&i%2===0?ch:'＿').join(' '); } if(G.T<=0) soloEnd(); } else if(G.phase==='result'&&G.T<=0){ soloI++; soloNext(); } } else hostTick(dt);
@@ -168,12 +173,14 @@ function create(env,opts){
   function draw(){ const g=c.createLinearGradient(0,0,W,H); g.addColorStop(0,'#2a2460'); g.addColorStop(1,'#4a2a70'); c.fillStyle=g; c.fillRect(0,0,W,H); c.fillStyle='rgba(255,255,255,.04)'; for(let i=0;i<14;i++){ c.beginPath(); c.arc((i*137)%W,(i*91)%H,18+i%4*14,0,7); c.fill(); }
     // 題目列
     c.fillStyle='rgba(11,10,28,.75)'; rr(c,BX,8,BW,42,11); c.fill(); c.textAlign='center'; c.textBaseline='middle'; const drawer=!solo&&G.dr===me; let top='';
-    if(G.phase==='pick') top=solo?'':drawer?(!G.pm?'選出題方式':G.pm==='own'?'在右下輸入你要畫的題目':'選一個題目來畫'):names[G.dr]+' 正在選題目⋯'; else if(G.phase==='draw') top=drawer?'你要畫：'+G.word:G.hint; else if(G.phase==='result') top='答案：'+G.word;
-    c.font='900 21px '+TC; c.fillStyle=drawer&&G.phase==='draw'?'#ffd23f':'#fff'; c.fillText(top,BX+BW/2,29,BW-110);
+    if(G.phase==='pick') top=solo?'':room?(!G.pm?names[G.dr]+'：選出題方式':G.pm==='own'?names[G.dr]+'：在右下輸入題目':names[G.dr]+'：選一個題目，記住它'):drawer?(!G.pm?'選出題方式':G.pm==='own'?'在右下輸入你要畫的題目':'選一個題目來畫'):names[G.dr]+' 正在選題目⋯'; else if(G.phase==='pass') top='換「'+names[G.dr]+'」畫圖'; else if(G.phase==='draw') top=room?(peekHold?'題目：'+G.word:G.hint):drawer?'你要畫：'+G.word:G.hint; else if(G.phase==='result') top='答案：'+G.word;
+    c.font='900 21px '+TC; c.fillStyle=drawer&&G.phase==='draw'&&(!room||peekHold)?'#ffd23f':'#fff'; c.fillText(top,BX+BW/2,29,BW-110); RB=[];
     const left=Math.max(0,Math.ceil(G.T)); if(G.phase==='draw'||G.phase==='pick'){ c.fillStyle=left<=10?'#ff5d6d':'#3ddbd9'; c.beginPath(); c.arc(BX+BW-24,29,17,0,7); c.fill(); c.fillStyle='#14122b'; c.font='900 15px '+TC; c.fillText(left,BX+BW-24,30); }
     if(!solo){ c.fillStyle='#cfc8ff'; c.font='700 11px '+TC; c.textAlign='left'; c.fillText('第 '+(Math.min(G.turn,G.total-1)+1)+' / '+G.total+' 回',BX+10,29); }
     // 畫布
     c.fillStyle='rgba(0,0,0,.3)'; rr(c,BX+3,BY+4,BW,BH,8); c.fill(); c.save(); rr(c,BX,BY,BW,BH,8); c.clip(); c.drawImage(board,BX,BY,BW,BH); c.restore(); c.strokeStyle='#ffd23f'; c.lineWidth=2.5; rr(c,BX,BY,BW,BH,8); c.stroke();
+    if(G.phase==='pass'){ c.fillStyle='rgba(11,10,28,.86)'; c.fillRect(BX,BY,BW,BH); c.fillStyle='#ffd23f'; c.textAlign='center'; c.font='900 22px '+TC; c.fillText('把螢幕交給「'+names[G.dr]+'」',BX+BW/2,BY+110); c.fillStyle='#fff'; c.font='700 15px '+TC; c.fillText('其他人先別看螢幕，等他選好題目',BX+BW/2,BY+146);
+      const r={x:BX+BW/2-140,y:BY+190,w:280,h:60,fn:()=>{ env.sfx('click'); G.phase='pick'; G.T=20; }}; RB.push(r); c.fillStyle='#ffd23f'; rr(c,r.x,r.y,r.w,r.h,14); c.fill(); c.fillStyle='#14122b'; c.font='900 20px '+TC; c.fillText('🙈 我是 '+names[G.dr]+'，看題目',BX+BW/2,r.y+31); }
     if(G.phase==='pick'&&!solo){ c.fillStyle='rgba(11,10,28,.72)'; c.fillRect(BX,BY,BW,BH); if(drawer&&!G.pm){ [['電腦出題','從三個題目選一個',BY+120,'#ffd23f'],['自訂題目','自己打字出題',BY+196,'#3ddbd9']].forEach(([a,b,y,col])=>{ const x=BX+BW/2-140; c.fillStyle=col; rr(c,x,y,280,58,14); c.fill(); c.fillStyle='#14122b'; c.textAlign='center'; c.font='900 21px '+TC; c.fillText(a,x+140,y+22); c.font='700 12px '+TC; c.fillText(b,x+140,y+44); }); }
       else if(drawer&&G.pm==='own'){ c.fillStyle='#fff'; c.textAlign='center'; c.font='900 20px '+TC; c.fillText(document.body.classList.contains('touch')?'在右下的輸入框打題目，按「送出」':'在右下的輸入框打題目，按 Enter',BX+BW/2,BY+BH/2-14); c.font='700 13px '+TC; c.fillStyle='#cfc8ff'; c.fillText('最多 10 個字；時間到還沒打，會改用電腦出的題目',BX+BW/2,BY+BH/2+16); }
       else if(drawer) G.choices.forEach((w,i)=>{ const x=BX+BW/2-110,y=BY+110+i*62; c.fillStyle='#ffd23f'; rr(c,x,y,220,50,12); c.fill(); c.fillStyle='#14122b'; c.font='900 21px '+TC; c.textAlign='center'; c.fillText(w,x+110,y+26); }); else { c.fillStyle='#fff'; c.font='900 22px '+TC; c.textAlign='center'; c.fillText(names[G.dr]+' 準備畫圖',BX+BW/2,BY+BH/2); } }
@@ -182,7 +189,12 @@ function create(env,opts){
     else { c.fillStyle='#cfc8ff'; c.font='700 13px '+TC; c.textAlign='center'; c.fillText(solo?'第 '+(soloI+1)+' / '+soloList.length+' 題　總分 '+G.score[0]:G.phase==='draw'&&G.got.includes(me)?'你猜對了，等其他人⋯':G.phase==='draw'?'看圖在右下打字猜':'',BX+BW/2,BY+BH+21); }
     // 右邊：分數、對話
     const X=550; c.fillStyle='rgba(11,10,28,.72)'; rr(c,X-4,8,246,166,11); c.fill(); c.textAlign='left'; c.font='900 13px '+TC; c.fillStyle='#ffd23f'; c.fillText(solo?'分數':'排行榜',X+6,23); const L=names.map((m,i)=>({m,s:G.score[i],i})).sort((a,b)=>b.s-a.s); L.slice(0,8).forEach((q,k)=>{ const y=42+k*16; c.font=(q.i===me?'900 ':'700 ')+'12px '+TC; c.fillStyle=G.got&&G.got.includes(q.i)?'#86dc4f':q.i===G.dr&&!solo?'#ffb36b':q.i===me?'#ffd23f':'#fff'; c.textAlign='left'; c.fillText((q.i===G.dr&&!solo?'✏ ':'')+q.m.slice(0,9),X+6,y); c.textAlign='right'; c.fillText(q.s,X+232,y); });
-    c.fillStyle='rgba(11,10,28,.72)'; rr(c,X-4,180,246,268,11); c.fill(); c.drawImage(chatC,X,194,238,240);
+    c.fillStyle='rgba(11,10,28,.72)'; rr(c,X-4,180,246,268,11); c.fill();
+    if(room&&G.phase==='draw'){ c.textAlign='center'; c.fillStyle='#ffd23f'; c.font='900 14px '+TC; c.fillText('大家用喊的猜！誰猜對了？',X+119,198); let k=0; for(let i=0;i<n;i++){ if(i===G.dr) continue; const r={x:X+(k%2)*118,y:212+Math.floor(k/2)*34,w:112,h:28,fn:()=>roomGot(i)}; RB.push(r); c.fillStyle='#86dc4f'; rr(c,r.x,r.y,r.w,r.h,9); c.fill(); c.fillStyle='#14122b'; c.font='900 13px '+TC; c.fillText('✔ '+names[i].slice(0,6),r.x+r.w/2,r.y+15); k++; }
+      const ny=212+Math.ceil(k/2)*34+4,r2={x:X,y:ny,w:230,h:30,fn:()=>{ env.sfx('click'); endTurn(); }}; RB.push(r2); c.fillStyle='rgba(255,255,255,.18)'; rr(c,r2.x,r2.y,r2.w,r2.h,9); c.fill(); c.fillStyle='#fff'; c.font='900 13px '+TC; c.fillText('沒人猜到，公布答案',r2.x+r2.w/2,r2.y+16);
+      const r3={x:X,y:392,w:230,h:46,fn:()=>{ peekHold=true; }}; RB.push(r3); c.fillStyle=peekHold?'#ffd23f':'#3ddbd9'; rr(c,r3.x,r3.y,r3.w,r3.h,12); c.fill(); c.fillStyle='#14122b'; c.font='900 15px '+TC; c.fillText('👀 按住偷看題目（畫的人）',r3.x+r3.w/2,r3.y+24); }
+    else c.drawImage(chatC,X,194,238,240);
+    if(room) wrap.style.display=G.phase==='pick'&&G.pm==='own'?'flex':'none';
     if(drawer&&G.phase==='pick'&&G.pm==='own'){ inp.disabled=false; inp.placeholder='輸入題目，按 Enter'; } else if(drawer&&G.phase==='draw'){ inp.disabled=true; inp.placeholder='你在畫圖，不能猜'; } else { inp.disabled=false; inp.placeholder='輸入答案，按 Enter'; } }
   renderChat();
   return {update,draw,destroy(){ removeEventListener('resize',place); if(wrap.parentNode) wrap.remove(); },_dbg:{get G(){return G;},setPm,submitWord:v=>{ inp.value=v; submit(); },guess,soloGuess,get soloList(){return soloList;},chooseWord}};
@@ -190,10 +202,10 @@ function create(env,opts){
 function art(ctx,w,h,t){ ctx.save(); ctx.scale(w/W,h/H); const g=ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,'#2a2460'); g.addColorStop(1,'#4a2a70'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; rr(ctx,150,50,500,350,10); ctx.fill(); ctx.strokeStyle='#ffd23f'; ctx.lineWidth=4; ctx.stroke(); const it=CPU[Math.floor(t/4)%CPU.length],u=Math.min(1,(t%4)/3),total=it.s.reduce((a,s)=>a+s[1].length,0); let left=Math.floor(u*total); ctx.lineCap='round'; ctx.lineJoin='round'; for(const [col,p,f,lw] of it.s){ if(left<=1) break; ctx.strokeStyle=col; ctx.lineWidth=lw?lw*1.7:f?3:7; ctx.beginPath(); p.forEach((q,i)=>{ if(i<left){ const x=150+q[0]*500,y=50+q[1]*350; i?ctx.lineTo(x,y):ctx.moveTo(x,y); } }); if(f&&left>=p.length){ ctx.closePath(); ctx.fillStyle=col; ctx.fill(); } ctx.stroke(); left-=p.length; } ctx.fillStyle='#14122b'; rr(ctx,250,420,300,50,14); ctx.fill(); ctx.fillStyle='#ffd23f'; ctx.font='900 26px '+TC; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('猜猜我畫什麼？',W/2,445); ctx.restore(); }
 (window.ARCADE_GAMES=window.ARCADE_GAMES||{}).draw={
   name:'你畫我猜',tag:'DRAW & GUESS',color:'#ffd23f',online:true,maxPlayers:8,minPlayers:2,
-  desc:'一個人畫、其他人猜！連線時輪流畫題目，越快猜對分數越高。一個人玩時，換電腦畫給你猜。',
-  goal:'輪到你畫時，先選「電腦出題」（三選一）或「自訂題目」（自己打字）再畫；其他時候看圖打字猜答案。全部輪完分數最高的贏。',
-  modes:[{id:'1p',label:'單人（電腦畫）'}],
-  options:[{key:'cat',label:'題目類型',def:'all',opts:CAT.map(q=>({id:q[0],label:q[1]}))},{key:'rounds',label:'每人畫幾輪',def:'2',opts:[{id:'1',label:'1 輪'},{id:'2',label:'2 輪'},{id:'3',label:'3 輪'}]},{key:'sec',label:'每題秒數',def:'70',opts:[{id:'50',label:'50 秒'},{id:'70',label:'70 秒'},{id:'90',label:'90 秒'}]}],
+  desc:'一個人畫、其他人猜！大家輪流畫題目，越快猜對分數越高。可以大家用一台（用喊的猜），或連線各用自己的手機打字猜。',
+  goal:'輪到你畫時，先選「電腦出題」（三選一）或「自訂題目」（自己打字）再畫；其他時候看圖猜答案（連線打字；大家用一台用喊的，畫的人點誰猜對）。全部輪完分數最高的贏。',
+  modes:[{id:'room',label:'大家用一台'}],
+  options:[{key:'n',label:'玩家人數',def:'4',solo:true,opts:[2,3,4,5,6,7,8].map(k=>({id:String(k),label:k+' 人'}))},{key:'cat',label:'題目類型',def:'all',opts:CAT.map(q=>({id:q[0],label:q[1]}))},{key:'rounds',label:'每人畫幾輪',def:'2',opts:[{id:'1',label:'1 輪'},{id:'2',label:'2 輪'},{id:'3',label:'3 輪'}]},{key:'sec',label:'每題秒數',def:'70',opts:[{id:'50',label:'50 秒'},{id:'70',label:'70 秒'},{id:'90',label:'90 秒'}]}],
   help:[['滑鼠','輪到你時在白板上畫圖'],['Enter','輸入答案後送出']],touchHelp:[['手指','輪到你時在白板上畫圖'],['輸入框','打字猜答案']],
   touch:{left:[],right:[]},best:{label:'單人最高',fmt:v=>v+' 分',lower:false},thumb:art,create,_cpu:CPU};
 })();
